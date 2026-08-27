@@ -1,5 +1,4 @@
-import { GRADE_TO_CONFIDENCE, type Grade } from '@/lib/domain/confidence'
-import { needsReview } from '@/lib/domain/library'
+import { GRADE_TO_CONFIDENCE, needsReview, type Grade } from '@/lib/domain/confidence'
 import type { Topic } from '@/lib/domain/types'
 
 /** One graded answer. A skip produces no result at all, so it cannot appear here. */

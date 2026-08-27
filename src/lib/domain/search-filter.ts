@@ -1,5 +1,5 @@
 import { categoryOf } from '@/lib/domain/category-suggest'
-import { isNeverPracticed } from '@/lib/domain/confidence'
+import { isNeverPracticed, needsReview } from '@/lib/domain/confidence'
 import type { Confidence, Difficulty, Topic } from '@/lib/domain/types'
 
 /**
@@ -35,7 +35,11 @@ export function matchesQuery(topic: Topic, query: string): boolean {
   return fields.some((field) => field !== null && normaliseText(field).includes(needle))
 }
 
-export type QuickFilter = 'never-practiced' | 'recently-added' | 'recently-practiced'
+export type QuickFilter =
+  | 'never-practiced'
+  | 'needs-review'
+  | 'recently-added'
+  | 'recently-practiced'
 
 export interface TopicFilters {
   query?: string
@@ -56,6 +60,12 @@ const QUICK_FILTERS: Record<QuickFilter, (topic: Topic, now: Date) => boolean> =
   // Goes through the same predicate as the practice-selection bucket, so the
   // two can never disagree about what "never practiced" means.
   'never-practiced': (topic) => isNeverPracticed(topic),
+  /*
+    The mobile chip row's "Weak" — which means the weak-topics membership rule, not
+    `confidence = 'weak'`. It reuses `needsReview`, so this adds a way to ask for a
+    rule that already exists rather than a second copy of it.
+  */
+  'needs-review': (topic) => needsReview(topic),
   'recently-added': (topic, now) => isRecent(topic.created_at, now),
   'recently-practiced': (topic, now) => isRecent(topic.last_practiced_at, now),
 }

@@ -1,5 +1,6 @@
 'use client'
 
+import { Kbd } from '@/components/ui/kbd'
 import { Scrim } from '@/components/ui/scrim'
 import { useFocusTrap } from '@/components/ui/use-focus-trap'
 
@@ -29,10 +30,26 @@ export function Sheet({
         aria-modal="true"
         aria-label={title}
         tabIndex={-1}
-        className="w-[min(560px,100%)] overflow-auto border-l border-rule bg-surface px-[30px] pt-[26px] pb-10 shadow-pop"
+        className="w-full overflow-auto bg-surface px-5 pt-5 pb-10 shadow-pop md:w-[min(560px,100%)] md:border-l md:border-rule md:px-[30px] md:pt-[26px]"
       >
-        <div className="mb-[22px] flex items-center justify-between">
-          <h2 className="font-display text-[23px] font-medium tracking-[-0.02em]">{title}</h2>
+        <div className="mb-[22px] flex items-center justify-between gap-4">
+          <h2 className="font-display text-[19px] font-medium tracking-[-0.02em] md:text-[23px]">
+            {title}
+          </h2>
+          {/*
+            Escape and the scrim already close this, but neither is an affordance —
+            and a phone has no Escape key at all.
+          */}
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-label text-ink-2 hover:bg-surface-2 hover:text-ink"
+          >
+            Close
+            <span className="hidden md:inline">
+              <Kbd>Esc</Kbd>
+            </span>
+          </button>
         </div>
         {children}
         {footer ? (

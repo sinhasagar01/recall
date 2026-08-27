@@ -128,3 +128,58 @@ describe.each(['sheet', 'modal'] as const)('%s', (overlay) => {
     expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
 })
+
+describe('what a dialog focuses on open', () => {
+  it('focuses the first form control when there is one', async () => {
+    const user = userEvent.setup()
+
+    function FormSheet() {
+      const [open, setOpen] = useState(false)
+      return (
+        <>
+          <button type="button" onClick={() => setOpen(true)}>
+            Open
+          </button>
+          <Sheet open={open} onClose={() => setOpen(false)} title="Add topic">
+            <input aria-label="Title" />
+            <input aria-label="Definition" />
+          </Sheet>
+        </>
+      )
+    }
+
+    render(<FormSheet />)
+    await user.click(screen.getByRole('button', { name: 'Open' }))
+
+    // Not the Close button, which comes first in the DOM.
+    expect(screen.getByRole('textbox', { name: 'Title' })).toHaveFocus()
+  })
+
+  it('falls back to the first action when there is no form control', async () => {
+    const user = userEvent.setup()
+
+    function ConfirmModal() {
+      const [open, setOpen] = useState(false)
+      return (
+        <>
+          <button type="button" onClick={() => setOpen(true)}>
+            Open
+          </button>
+          <Modal
+            open={open}
+            onClose={() => setOpen(false)}
+            title="Delete topic"
+            footer={<button type="button">Keep it</button>}
+          >
+            This cannot be undone.
+          </Modal>
+        </>
+      )
+    }
+
+    render(<ConfirmModal />)
+    await user.click(screen.getByRole('button', { name: 'Open' }))
+
+    expect(screen.getByRole('button', { name: 'Keep it' })).toHaveFocus()
+  })
+})

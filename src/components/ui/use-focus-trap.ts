@@ -33,9 +33,26 @@ export function useFocusTrap({ open, onClose }: { open: boolean; onClose: () => 
 
     const focusable = () => Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE))
 
-    // Focus the first thing inside, or the container itself if it holds nothing
-    // focusable — otherwise focus stays outside and the trap has no subject.
-    const initial = focusable()[0] ?? container
+    /*
+      Focus what the dialog is FOR.
+
+      A dialog containing a form is there to be filled in, so focus its first form
+      control rather than whatever happens to come first in the DOM — otherwise
+      adding a Close button to the header silently moves the caret off the first
+      field, and a keyboard user types their title into a button. (That is not
+      hypothetical: it regressed exactly that way when Sheet gained its close
+      control.)
+
+      A dialog with no form control — the delete confirmation — falls back to the
+      first focusable, which is its first action. And a dialog with nothing
+      focusable at all falls back to the container, so the trap always has a
+      subject.
+    */
+    const items = focusable()
+    const firstField = items.find((element) =>
+      ['INPUT', 'TEXTAREA', 'SELECT'].includes(element.tagName),
+    )
+    const initial = firstField ?? items[0] ?? container
     initial.focus()
 
     const onKeyDown = (event: KeyboardEvent) => {

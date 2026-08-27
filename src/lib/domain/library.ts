@@ -1,18 +1,10 @@
-import { CONFIDENCE_LABEL, isNeverPracticed } from '@/lib/domain/confidence'
+import { CONFIDENCE_LABEL, needsReview } from '@/lib/domain/confidence'
+
+// Re-exported so existing callers keep their import path.
+export { needsReview }
 import { categoryOf } from '@/lib/domain/category-suggest'
 import { filterTopics } from '@/lib/domain/search-filter'
 import type { Difficulty, Topic } from '@/lib/domain/types'
-
-/**
- * A topic the weak-topics destination is about.
- *
- * The product spec fixes this: Weak Topics shows confidence = 'new' OR
- * confidence = 'weak'. One definition, used by the rail count, the library
- * subtitle and (phase 9) the weak page itself.
- */
-export function needsReview(topic: Topic): boolean {
-  return topic.confidence === 'weak' || isNeverPracticed(topic)
-}
 
 /** The card's path line: "React · rendering". */
 export function topicPath(topic: Topic): string {

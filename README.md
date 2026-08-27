@@ -99,7 +99,7 @@ every run so a half-finished run cannot poison the next one.
 
 | User | State | What it is for |
 | --- | --- | --- |
-| `E2E_USER_*` | accumulates topics | The general-purpose account. Specs create their own uniquely-titled topics and assert only on those, so the four Playwright workers never collide |
+| `E2E_USER_*` | reset each run | The general-purpose account. Specs create their own uniquely-titled topics and assert only on those, so the four Playwright workers never collide |
 | `E2E_EMPTY_USER_*` | no topics, ever | The empty-library state. No spec writes to it, and the seed clears it, so leftovers cannot defeat the test |
 | `E2E_FEW_USER_*` | exactly 2 topics | The too-few-to-practise state and its override. Two is below the practice minimum of three |
 | `E2E_STRONG_USER_*` | 2 topics, okay and strong | "Nothing needs review", so the weak page's empty state is tested for the reason its copy gives rather than because the library is empty |
@@ -112,9 +112,6 @@ The seed also purges those users' storage folders: rows disappear with a
 Deliberate, and listed in full with reasoning in TASKS.md. The ones worth knowing before
 you use this:
 
-- **No mobile navigation.** Below 860px the rail is hidden and nothing replaces it, so
-  Practice, Weak topics and Sign out are unreachable on a phone. Adding a topic and
-  searching still work. The reference has a mobile tab bar; it is not built.
 - **`Cache-Control` on a session refresh is Next's, not the Supabase package's.** See
   ARCHITECTURE.md — `Expires` and `Pragma` arrive intact, `Cache-Control` is replaced.
 - No password reset, no OAuth, no profile management. Email and password only.

@@ -137,7 +137,9 @@ Counts and grouping are the reason this isn't a native select. Keep them.
 
 ## 3. Screen and state inventory
 
-Every row is a screen in `design-reference.html`. All 21 must exist in the build.
+Every row is a screen in `design-reference.html`. **The tab bar carries 20**, and all
+20 must exist in the build. (An earlier draft of this document said 21; the count was
+wrong, not the reference.)
 
 | Area | States |
 | --- | --- |

@@ -390,8 +390,8 @@ folders, because objects survive a `db reset` and rows do not.
 
 ### The screen audit
 
-`design-reference.html`'s tab bar carries **20** screens, not 21 — DESIGN.md's count is
-off by one. 19 are built; the twentieth is `mobile`, which is three frames.
+`design-reference.html`'s tab bar carries **20** screens, not 21 — DESIGN.md said 21 and
+has been corrected. All 20 are built.
 
 | # | Screen | Built | Note |
 |---|---|---|---|
@@ -414,7 +414,7 @@ off by one. 19 are built; the twentieth is `mobile`, which is three frames.
 | 17 | practice-thin | yes | With the override |
 | 18 | weak | yes | |
 | 19 | weak-empty | yes | |
-| 20 | **mobile** | **no** | The one genuine gap. See below |
+| 20 | mobile | yes | Built in phase 12 — tab bar, FAB, Weak as a chip, collapsed filters |
 
 ### Deliberate divergences, as decisions
 
@@ -429,11 +429,6 @@ off by one. 19 are built; the twentieth is `mobile`, which is three frames.
 
 ### Deliberately not built
 
-- **Mobile navigation.** Below 860px the rail is hidden and nothing replaces it:
-  verified at 375px, Practice / Weak topics / Sign out are unreachable, though adding
-  and searching work and there is no horizontal overflow. The reference's mobile tab
-  bar, FAB and collapsed `Filters` chip are not built. **Reported for a decision, not
-  built quietly.**
 - From DESIGN.md §7: search-term highlighting, "Review the N you missed", undo on the
   edit toast, per-option counts in the difficulty select.
 - No password reset, OAuth or profile management — the brief said email and password only.
@@ -470,19 +465,58 @@ Reported rather than built, because Phase 11 adds no scope.
    the first run after a code change is measurably slower (1.9m against 40s warm) and
    is where the residual failures cluster. A warm server runs the suite in ~24s with
    57/57 green. Changing this reverses a phase 0 decision and needs its own pass.
-2. **Mobile navigation.** The largest real gap. Needs the tab bar, the FAB, and the
-   `Filters` chip that collapses the three selects. A day's work, and the reference
-   already specifies it.
-3. **`Cache-Control` on session refresh.** Next replaces the package's header. Worth
+2. **`Cache-Control` on session refresh.** Next replaces the package's header. Worth
    understanding before deploying behind a shared cache; harmless on Vercel, where
    responses are already per-user.
-4. **Orphaned storage objects on a failed replace.** Currently surfaced to the user but
+3. **Orphaned storage objects on a failed replace.** Currently surfaced to the user but
    never collected. A periodic sweep comparing `storage.objects` against
    `topics.mental_model_image_path` would close it.
-5. **`listTopics` fetches every row.** This bit during phase 11: the fixture user had
+4. **`listTopics` fetches every row.** This bit during phase 11: the fixture user had
    accumulated 288 topics across the build, and the library got slow enough that saving
    a topic outlasted a 15s test timeout. The seed now resets it, but the unbounded
    fetch is still there. Fine for a personal library of hundreds;
    pagination or a server-side filter would be needed in the thousands.
-6. **The practice queue is computed per request.** Two tabs practising at once would
+5. **The practice queue is computed per request.** Two tabs practising at once would
    each get their own queue and could grade the same topic twice.
+
+---
+
+## Phase 12 — mobile navigation
+
+- [x] Bottom tab bar below 860px: Library and Practice, plus the centre FAB
+- [x] Weak topics is a filter chip on Library, not a third tab (DESIGN.md §4.8)
+- [x] The three Selects collapse behind one `Filters` chip, into the existing Sheet
+- [x] Add Topic is full-bleed on mobile, a side sheet from `md` up
+- [x] Practice hides the tab bar — it is in its own route group, so it never had one
+- [x] 7 Playwright specs at 390×844, written and run red before the layout existed
+- [x] The desktop suite passes unchanged, which is the proof desktop did not move
+
+### Where sign out went
+
+The mock does not place it. It sits in the Library page head on mobile, beside the
+title — the default destination, always one tap away. The tab bar has two destinations
+plus the FAB and no room for a third, and burying sign out inside the Filters sheet
+would be worse than obvious.
+
+### Two additions to existing components, both flagged before building
+
+**`Sheet` gained a close button.** It had none: Escape and the scrim worked, but there
+was no visible affordance, and a phone has no Escape key. The reference's sheet head
+shows `Close [Esc]`.
+
+**One new quick filter, `needs-review`.** The mobile chip row's "Weak" means the
+weak-topics membership rule — `confidence = 'new' OR 'weak'` — which neither
+`confidence` nor the existing quick filters could express. It calls the existing
+`needsReview` predicate, so it adds a way to ask for a rule, not a second copy of one.
+
+### Two problems this phase created and caught
+
+**A circular import.** `search-filter` needed `needsReview`, which lived in `library`,
+which already imports `search-filter`. It worked only by accident of lazy evaluation.
+`needsReview` moved to `confidence.ts`, beside `isNeverPracticed`, where it belongs.
+
+**A focus regression, caught by the phase 11 audit.** Sheet's new close button became
+the first focusable element, so opening "Add topic" put the caret on Close and a
+keyboard user typed their title into a button. The focus trap now focuses the first
+form *control* when the dialog has one, falling back to the first action otherwise —
+so the delete confirmation still lands on "Keep it". Two component tests pin both.

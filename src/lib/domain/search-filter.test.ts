@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { RECENT_WINDOW_DAYS, filterTopics, matchesQuery } from '@/lib/domain/search-filter'
+import { needsReview } from '@/lib/domain/library'
 import { makeTopic } from '@/lib/domain/topic-fixture'
 import type { Topic } from '@/lib/domain/types'
 
@@ -249,5 +250,37 @@ describe('filterTopics — the Uncategorized case', () => {
 
   it('does not sweep uncategorised topics into a named category', () => {
     expect(titles(filterTopics(topics, { category: 'React' }, NOW))).toEqual(['react'])
+  })
+})
+
+describe('filterTopics — the needs-review quick filter', () => {
+  /*
+    Added in phase 12 for the mobile "Weak" chip. It is the weak-topics membership
+    rule — new OR weak — which neither `confidence` nor the other quick filters
+    could express, and which `needsReview` already defines.
+  */
+  const topics = [
+    topic('never', { confidence: 'new' }),
+    topic('weak', { confidence: 'weak', last_practiced_at: '2026-01-01T00:00:00.000Z' }),
+    topic('okay', { confidence: 'okay', last_practiced_at: '2026-01-01T00:00:00.000Z' }),
+    topic('strong', { confidence: 'strong', last_practiced_at: '2026-01-01T00:00:00.000Z' }),
+  ]
+
+  it('selects new and weak, and nothing else', () => {
+    expect(titles(filterTopics(topics, { quickFilters: ['needs-review'] }, NOW))).toEqual([
+      'never',
+      'weak',
+    ])
+  })
+
+  it('agrees with the predicate the rail count and the weak page use', () => {
+    const viaFilter = filterTopics(topics, { quickFilters: ['needs-review'] }, NOW)
+    expect(viaFilter).toEqual(topics.filter(needsReview))
+  })
+
+  it('still composes with the others', () => {
+    expect(
+      titles(filterTopics(topics, { quickFilters: ['needs-review', 'never-practiced'] }, NOW)),
+    ).toEqual(['never'])
   })
 })

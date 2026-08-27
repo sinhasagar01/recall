@@ -1,9 +1,11 @@
 'use client'
 
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { QuickFilterChip } from '@/components/ui/chip'
 import { Kbd } from '@/components/ui/kbd'
 import { Select } from '@/components/ui/select'
+import { Sheet } from '@/components/ui/sheet'
 import type { CategoryOption } from '@/lib/domain/library'
 import type { QuickFilter } from '@/lib/domain/search-filter'
 
@@ -36,6 +38,8 @@ export function LibraryToolbar({
   difficulties: CategoryOption[]
   quickCounts: Record<QuickFilter, number>
 }) {
+  const [filtersOpen, setFiltersOpen] = useState(false)
+
   const toggleQuick = (quick: QuickFilter) =>
     onChange({
       quickFilters: state.quickFilters.includes(quick)
@@ -73,29 +77,18 @@ export function LibraryToolbar({
           </span>
         </div>
 
-        <div className="flex flex-wrap gap-1.5">
-          <Select
-            label="Category"
-            options={categories}
-            value={state.category}
-            unsetValue="all"
-            onChange={(category) => onChange({ category })}
-            filterable
-          />
-          <Select
-            label="Confidence"
-            options={confidences}
-            value={state.confidence}
-            unsetValue="any"
-            onChange={(confidence) => onChange({ confidence })}
-          />
-          <Select
-            label="Difficulty"
-            options={difficulties}
-            value={state.difficulty}
-            unsetValue="any"
-            onChange={(difficulty) => onChange({ difficulty })}
-            align="right"
+        {/*
+          Three popovers side by side do not fit at 390pt, so below the breakpoint
+          they move into a sheet behind one Filters chip. Same components, same
+          state — only where they are drawn changes.
+        */}
+        <div className="hidden flex-wrap gap-1.5 md:flex">
+          <Selects
+            state={state}
+            onChange={onChange}
+            categories={categories}
+            confidences={confidences}
+            difficulties={difficulties}
           />
           {isFiltered ? (
             <Button variant="ghost" onClick={onClear} className="font-mono text-[11.5px]">
@@ -111,6 +104,16 @@ export function LibraryToolbar({
         "no" — and after a quiet fortnight the 7-day window makes that common.
       */}
       <div className="mt-[-14px] mb-[22px] flex flex-wrap gap-1.5">
+        {/* Weak is a chip here, not a destination — DESIGN.md section 4.8. */}
+        <span className="md:hidden">
+          <QuickFilterChip
+            pressed={state.quickFilters.includes('needs-review')}
+            onClick={() => toggleQuick('needs-review')}
+          >
+            Weak {quickCounts['needs-review']}
+          </QuickFilterChip>
+        </span>
+
         {(
           [
             ['never-practiced', 'Never practiced'],
@@ -118,15 +121,84 @@ export function LibraryToolbar({
             ['recently-practiced', 'Recently practiced'],
           ] as const
         ).map(([value, label]) => (
-          <QuickFilterChip
-            key={value}
-            pressed={state.quickFilters.includes(value)}
-            onClick={() => toggleQuick(value)}
-          >
-            {label} {quickCounts[value]}
-          </QuickFilterChip>
+          <span key={value} className={value === 'never-practiced' ? '' : 'hidden md:inline'}>
+            <QuickFilterChip
+              pressed={state.quickFilters.includes(value)}
+              onClick={() => toggleQuick(value)}
+            >
+              {label} {quickCounts[value]}
+            </QuickFilterChip>
+          </span>
         ))}
+
+        <span className="md:hidden">
+          <QuickFilterChip pressed={filtersOpen} onClick={() => setFiltersOpen(true)}>
+            Filters
+          </QuickFilterChip>
+        </span>
+
+        {isFiltered ? (
+          <span className="md:hidden">
+            <QuickFilterChip pressed={false} onClick={onClear}>
+              Clear
+            </QuickFilterChip>
+          </span>
+        ) : null}
       </div>
+
+      <Sheet open={filtersOpen} onClose={() => setFiltersOpen(false)} title="Filters">
+        <div className="flex flex-col gap-4">
+          <Selects
+            state={state}
+            onChange={onChange}
+            categories={categories}
+            confidences={confidences}
+            difficulties={difficulties}
+          />
+        </div>
+      </Sheet>
+    </>
+  )
+}
+
+/** The same three Selects, drawn in the toolbar on desktop and in a sheet on mobile. */
+function Selects({
+  state,
+  onChange,
+  categories,
+  confidences,
+  difficulties,
+}: {
+  state: ToolbarState
+  onChange: (next: Partial<ToolbarState>) => void
+  categories: CategoryOption[]
+  confidences: CategoryOption[]
+  difficulties: CategoryOption[]
+}) {
+  return (
+    <>
+      <Select
+        label="Category"
+        options={categories}
+        value={state.category}
+        unsetValue="all"
+        onChange={(category) => onChange({ category })}
+        filterable
+      />
+      <Select
+        label="Confidence"
+        options={confidences}
+        value={state.confidence}
+        unsetValue="any"
+        onChange={(confidence) => onChange({ confidence })}
+      />
+      <Select
+        label="Difficulty"
+        options={difficulties}
+        value={state.difficulty}
+        unsetValue="any"
+        onChange={(difficulty) => onChange({ difficulty })}
+      />
     </>
   )
 }

@@ -24,6 +24,20 @@ export const CONFIDENCE_LABEL: Record<Confidence, string> = {
   strong: 'Strong',
 }
 
+/**
+ * A topic the weak-topics destination is about.
+ *
+ * The product spec fixes this: Weak Topics shows confidence = 'new' OR
+ * confidence = 'weak'. One definition, used by the rail count, the library
+ * subtitle, the weak page, the session summary and the mobile "Weak" chip.
+ *
+ * It lives here rather than in library.ts because search-filter.ts needs it, and
+ * library.ts already imports search-filter — the other arrangement is a cycle.
+ */
+export function needsReview(topic: Pick<Topic, 'confidence'>): boolean {
+  return topic.confidence === 'weak' || isNeverPracticed(topic)
+}
+
 /** The three answers the practice screen offers, in its own words. */
 export type Grade = 'didnt-know' | 'partly' | 'knew-it'
 

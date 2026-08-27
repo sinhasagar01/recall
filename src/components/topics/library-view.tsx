@@ -8,6 +8,7 @@ import { TopicSheet } from '@/components/topics/topic-sheet'
 import { Button } from '@/components/ui/button'
 import { StateBlock } from '@/components/ui/state-block'
 import { Toast } from '@/components/ui/toast'
+import { signOut } from '@/app/(auth)/actions'
 import {
   categoryOptions,
   confidenceOptions,
@@ -18,8 +19,13 @@ import {
 import { filterTopics, type QuickFilter } from '@/lib/domain/search-filter'
 import type { Confidence, Difficulty, Topic } from '@/lib/domain/types'
 
-const GRID = 'grid grid-cols-[repeat(auto-fill,minmax(292px,1fr))] gap-3'
-const QUICK_FILTERS: QuickFilter[] = ['never-practiced', 'recently-added', 'recently-practiced']
+const GRID = 'grid grid-cols-1 gap-3 md:grid-cols-[repeat(auto-fill,minmax(292px,1fr))]'
+const QUICK_FILTERS: QuickFilter[] = [
+  'never-practiced',
+  'needs-review',
+  'recently-added',
+  'recently-practiced',
+]
 
 /*
   Filter state lives in the URL, so a filtered view is shareable and survives a
@@ -68,7 +74,21 @@ export function LibraryView({ topics, readAt }: { topics: Topic[]; readAt: strin
   const [saved, setSaved] = useState<string | null>(null)
 
   const at = new Date(readAt)
-  const state = readState(new URLSearchParams(searchParams.toString()))
+  const params = new URLSearchParams(searchParams.toString())
+  const state = readState(params)
+
+  /*
+    The mobile FAB lives in the layout and the sheet's state lives here, so it links
+    to `?add=1` rather than reaching across the tree for a setter. Consistent with
+    the filters, which already live in the URL, and it works from any page.
+  */
+  const addRequested = params.get('add') === '1'
+  const sheetOpen = adding || addRequested
+
+  const closeSheet = () => {
+    setAdding(false)
+    if (addRequested) writeState(state)
+  }
 
   const update = (next: Partial<ToolbarState>) => writeState({ ...state, ...next })
 
@@ -128,13 +148,28 @@ export function LibraryView({ topics, readAt }: { topics: Topic[]; readAt: strin
     <>
       <div className="mb-[22px] flex items-start justify-between gap-5">
         <div>
-          <h1 className="font-display text-page-title font-medium tracking-[-0.022em]">
+          <h1 className="font-display text-[24px] font-medium tracking-[-0.022em] md:text-page-title">
             My knowledge
           </h1>
           <p className="mt-1 font-mono text-[11.5px] text-ink-3">{subtitle()}</p>
         </div>
+
+        {/*
+          Sign out has no home on mobile — the rail is gone and the mock's tab bar
+          has two destinations plus the FAB, with no room for it. It sits here,
+          beside the title on the default destination, so it is always one tap away.
+        */}
+        <form action={signOut} className="md:hidden">
+          <button
+            type="submit"
+            className="cursor-pointer rounded-md px-2 py-1 text-label text-ink-2 hover:bg-surface-2 hover:text-ink"
+          >
+            Sign out
+          </button>
+        </form>
+
         {topics.length > 0 ? (
-          <Button variant="primary" onClick={() => openAdd('')}>
+          <Button variant="primary" onClick={() => openAdd('')} className="hidden md:inline-flex">
             + Add topic
           </Button>
         ) : null}
@@ -235,8 +270,8 @@ export function LibraryView({ topics, readAt }: { topics: Topic[]; readAt: strin
       {/* Remounted per prefill, so the title arrives via a state initialiser. */}
       <TopicSheet
         key={prefillTitle}
-        open={adding}
-        onClose={() => setAdding(false)}
+        open={sheetOpen}
+        onClose={closeSheet}
         onSaved={setSaved}
         categories={categoryOptions(topics)}
         initialTitle={prefillTitle}
