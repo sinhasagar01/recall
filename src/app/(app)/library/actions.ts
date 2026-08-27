@@ -1,10 +1,36 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { insertTopic } from '@/lib/data/topics'
+import { insertTopic, setMentalModelImagePath } from '@/lib/data/topics'
 import type { Difficulty } from '@/lib/domain/types'
 
-export type SaveTopicResult = { error: string; title?: undefined } | { error: null; title: string }
+export type SaveTopicResult =
+  | { error: string; title?: undefined; id?: undefined }
+  | { error: null; title: string; id: string }
+
+/**
+ * Step three of insert -> upload -> patch.
+ *
+ * Separate from createTopic on purpose: the upload happens in the browser between
+ * them, and a failed upload must leave the row exactly as it was saved. Nothing here
+ * can roll a topic back.
+ */
+export async function attachMentalModelImage(
+  id: string,
+  path: string | null,
+): Promise<{ error: string | null; orphanedPath: string | null }> {
+  try {
+    const { orphanedPath } = await setMentalModelImagePath(id, path)
+    revalidatePath(`/topic/${id}`)
+    revalidatePath('/library')
+    return { error: null, orphanedPath }
+  } catch (cause) {
+    return {
+      error: cause instanceof Error ? cause.message : 'The image could not be attached.',
+      orphanedPath: null,
+    }
+  }
+}
 
 const DIFFICULTIES: Difficulty[] = ['easy', 'medium', 'hard']
 
@@ -29,14 +55,9 @@ export async function createTopic(formData: FormData): Promise<SaveTopicResult> 
 
   try {
     /*
-      ── The image seam ──────────────────────────────────────────────────────
-      insertTopic RETURNS the row, because saving with an image is three steps:
-      insert, upload to {user_id}/{topic.id}/{filename}, then patch
-      mental_model_image_path. The upload needs the id, which only exists now.
-
-      Phase 10 slots in between these two lines. A failed upload must leave the
-      topic saved and report the real reason — so the insert stays committed and
-      only the patch is retried. Nothing here assumes one atomic write.
+      Step one of three. The upload runs in the browser once this returns the id,
+      then attachMentalModelImage patches the path. A failed upload leaves the row
+      exactly as saved — there is no rollback path, by design.
     */
     const topic = await insertTopic({
       title,
@@ -47,11 +68,10 @@ export async function createTopic(formData: FormData): Promise<SaveTopicResult> 
       difficulty,
     })
 
-    // PHASE 10: upload the image, then patch topic.mental_model_image_path.
-
     revalidatePath('/library')
 
-    return { error: null, title: topic.title }
+    // The id the upload needs only exists now, which is why this is three steps.
+    return { error: null, title: topic.title, id: topic.id }
   } catch (cause) {
     // The real reason, never a generic message. DESIGN.md section 5.
     return { error: cause instanceof Error ? cause.message : 'The topic could not be saved.' }

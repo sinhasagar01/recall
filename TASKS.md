@@ -349,9 +349,36 @@ in components.
 
 ## Phase 10 — image upload
 
-- [ ] Upload, replace, remove; signed URLs
-- [ ] Partial-failure handling: the topic saves, the banner states the real reason
-- [ ] `ARCHITECTURE.md` gains the add-topic-with-image data flow
+- [x] Upload, replace, remove; signed URLs resolved during the server render
+- [x] Dropzone with drag state, indeterminate upload bar, cancel, attached state
+- [x] Partial-failure handling: the topic saves, the banner states the real reason
+- [x] The Visual register and Lightbox are real, on detail and on the practice reveal
+- [x] Delete removes the object first, then the row
+- [x] Bucket-level size and mime limits — the server-side rule, with 3 pgTAP assertions
+- [x] `ARCHITECTURE.md` gains the full data flow
+- [x] 7 Playwright specs, written and run red before any of it existed
+
+### The one new migration, and why phase 1 missed it
+
+`*_mental_models_bucket_limits.sql` sets `file_size_limit` and `allowed_mime_types`.
+Phase 1 specified the private bucket and its four RLS policies, and RLS answers *who*
+may write, never *what*. Nothing could upload until now, so the shape of an acceptable
+upload had never come up. No new policies, no new tables.
+
+### A latent flaw phase 10 exposed in phase 1's tests
+
+Two storage assertions counted objects across the whole bucket while running as
+`postgres`, which has BYPASSRLS. They were only ever correct because the bucket was
+empty; the moment real uploads existed they started counting them. Now scoped to the
+fixture user's folder. The bug was always there — nothing before this phase could
+reveal it.
+
+### Storage isolation
+
+Object paths are `{user_id}/{topic_id}/{filename}` and every spec-created topic has a
+fresh uuid, so two runs cannot collide. Specs that upload also delete their topic,
+which removes the object first by construction. The seed purges the fixture users'
+folders, because objects survive a `db reset` and rows do not.
 
 ## Phase 11 — e2e, a11y, docs
 

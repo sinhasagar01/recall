@@ -148,3 +148,61 @@ export async function recordPractice(
 
   if (error) fail('Saving your grade', error)
 }
+
+const BUCKET = 'mental-models'
+const SIGNED_URL_SECONDS = 60 * 60
+
+/**
+ * A signed URL for a private object, created during the server render — so it is in
+ * the first paint and nothing has to resolve client-side. That is what keeps the
+ * detail page from shifting while an image appears.
+ *
+ * Returns null rather than throwing: a missing or unreadable object should degrade
+ * to "no visual", not take the whole topic page down.
+ */
+export async function signedImageUrl(path: string | null): Promise<string | null> {
+  if (path === null) return null
+
+  const supabase = await createClient()
+  const { data, error } = await supabase.storage
+    .from(BUCKET)
+    .createSignedUrl(path, SIGNED_URL_SECONDS)
+
+  return error ? null : data.signedUrl
+}
+
+/**
+ * Removes a storage object. The ONLY way one can be removed — no SQL statement or
+ * trigger can, because storage.protect_objects_delete forbids it.
+ */
+export async function removeMentalModelImage(path: string): Promise<void> {
+  const supabase = await createClient()
+  const { error } = await supabase.storage.from(BUCKET).remove([path])
+  if (error) fail('Removing the image', error)
+}
+
+/**
+ * Patches the path after an upload, and cleans up whatever it replaced.
+ *
+ * Returns whether the previous object survived: on a replace the new object is
+ * already uploaded and the row already points at it, so a failed cleanup is an
+ * orphan rather than a broken topic. An orphan is acceptable; leaking one silently
+ * on every replace is not, so the caller is told and says so.
+ */
+export async function setMentalModelImagePath(
+  id: string,
+  path: string | null,
+): Promise<{ orphanedPath: string | null }> {
+  const supabase = await createClient()
+
+  const existing = await getTopic(id)
+  const previous = existing?.mental_model_image_path ?? null
+
+  const { error } = await supabase.from('topics').update({ mental_model_image_path: path }).eq('id', id)
+  if (error) fail('Saving the image', error)
+
+  if (previous === null || previous === path) return { orphanedPath: null }
+
+  const { error: removeError } = await supabase.storage.from(BUCKET).remove([previous])
+  return { orphanedPath: removeError ? previous : null }
+}

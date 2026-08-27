@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
-import { deleteTopicRow, updateTopic } from '@/lib/data/topics'
+import { deleteTopicRow, getTopic, removeMentalModelImage, updateTopic } from '@/lib/data/topics'
 import type { Difficulty } from '@/lib/domain/types'
 import type { SaveTopicResult } from '@/app/(app)/library/actions'
 
@@ -36,7 +36,7 @@ export async function saveTopicEdits(id: string, formData: FormData): Promise<Sa
     revalidatePath(`/topic/${id}`)
     revalidatePath('/library')
 
-    return { error: null, title: topic.title }
+    return { error: null, title: topic.title, id: topic.id }
   } catch (cause) {
     return { error: cause instanceof Error ? cause.message : 'The changes could not be saved.' }
   }
@@ -44,24 +44,26 @@ export async function saveTopicEdits(id: string, formData: FormData): Promise<Sa
 
 export async function deleteTopic(id: string): Promise<{ error: string } | void> {
   try {
+    const topic = await getTopic(id)
     /*
       ── Delete order, from ARCHITECTURE.md ───────────────────────────────────
-      PHASE 10 slots the storage removal in HERE, ahead of the row:
+      The object goes FIRST. A failure here leaves the row intact and the whole
+      operation retryable. Deleting the row first would orphan an object that
+      nothing references and nothing can find, because the only record of its
+      path was the row just deleted.
 
-          await removeMentalModelImage(topic.mental_model_image_path)
-
-      The object must go first. A failure there leaves the row intact and the
-      whole operation retryable; deleting the row first orphans an object that
-      nothing references any more and nothing can find, because the path it lived
-      at was only recorded on the row that is now gone.
-
-      Storage objects cannot be removed by SQL or by a trigger — see the binding
-      constraint in ARCHITECTURE.md — so this ordering is the application's job
-      and cannot be delegated to the database.
+      Storage objects cannot be removed by SQL or by a trigger, so this ordering
+      is the application's job and cannot be delegated to the database.
     */
+    if (topic?.mental_model_image_path) {
+      await removeMentalModelImage(topic.mental_model_image_path)
+    }
+
     await deleteTopicRow(id)
   } catch (cause) {
-    return { error: cause instanceof Error ? cause.message : 'The topic could not be deleted.' }
+    const reason = cause instanceof Error ? cause.message : 'The topic could not be deleted.'
+    // Said plainly: the topic is still here, and trying again is safe.
+    return { error: `${reason} The topic was kept — try again.` }
   }
 
   revalidatePath('/library')

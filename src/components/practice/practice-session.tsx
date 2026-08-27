@@ -20,7 +20,13 @@ const GRADES = [
   { grade: 'knew-it', label: 'Knew it', hint: '' },
 ] as const satisfies readonly { grade: Grade; label: string; hint: string }[]
 
-export function PracticeSession({ queue }: { queue: Topic[] }) {
+export function PracticeSession({
+  queue,
+  imageUrls,
+}: {
+  queue: Topic[]
+  imageUrls: Record<string, string>
+}) {
   const [index, setIndex] = useState(0)
   const [revealed, setRevealed] = useState(false)
   const [answer, setAnswer] = useState('')
@@ -125,6 +131,19 @@ export function PracticeSession({ queue }: { queue: Topic[] }) {
           {/* The same two components the detail page imports. */}
           <Definition>{topic.definition}</Definition>
           {topic.mental_model ? <MentalModel>{topic.mental_model}</MentalModel> : null}
+
+          {imageUrls[topic.id] ? (
+            <RegisterSection title="Visual">
+              <figure className="mt-2.5 aspect-16/7 overflow-hidden rounded-md border border-rule bg-surface-2">
+                {/* eslint-disable-next-line @next/next/no-img-element -- signed storage URL */}
+                <img
+                  src={imageUrls[topic.id]}
+                  alt={topic.mental_model_image_path?.split('/').pop() ?? 'Diagram'}
+                  className="size-full object-contain"
+                />
+              </figure>
+            </RegisterSection>
+          ) : null}
 
           <div className="mt-[38px] border-t border-rule pt-6">
             <p className="mb-3.5 font-display text-card-title font-medium">

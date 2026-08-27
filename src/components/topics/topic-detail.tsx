@@ -23,9 +23,12 @@ import type { Topic } from '@/lib/domain/types'
 export function TopicDetail({
   topic,
   categories,
+  imageUrl,
 }: {
   topic: Topic
   categories: CategoryOption[]
+  /** Signed during the server render, so it is present at first paint. */
+  imageUrl: string | null
 }) {
   const [editing, setEditing] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
@@ -77,24 +80,28 @@ export function TopicDetail({
       <Definition>{topic.definition}</Definition>
       {topic.mental_model ? <MentalModel>{topic.mental_model}</MentalModel> : null}
 
-      {/*
-        Unreachable until phase 10: nothing can set mental_model_image_path yet,
-        so this never renders today. `src` awaits the signed-URL read that phase 10
-        adds to the data layer.
-      */}
-      {topic.mental_model_image_path ? (
+      {imageUrl !== null ? (
         <RegisterSection title="Visual">
           <figure className="mt-2.5 overflow-hidden rounded-md border border-rule bg-surface-2">
             <button
               type="button"
               onClick={() => setZoomed(true)}
-              className="block w-full cursor-zoom-in"
+              aria-label={`Enlarge ${imageName(topic)}`}
+              /*
+                The box is reserved by aspect-ratio, so decoding the image cannot
+                shift the page either — the URL was already resolved server-side.
+              */
+              className="block aspect-16/9 w-full cursor-zoom-in"
             >
               {/* eslint-disable-next-line @next/next/no-img-element -- signed storage URL */}
-              <img src={topic.mental_model_image_path} alt="" className="w-full" />
+              <img
+                src={imageUrl}
+                alt={imageName(topic)}
+                className="size-full object-contain"
+              />
             </button>
             <figcaption className="flex justify-between gap-2.5 border-t border-rule px-3 py-2 font-mono text-mono text-ink-3">
-              <span>{topic.mental_model_image_path.split('/').pop()}</span>
+              <span>{imageName(topic)}</span>
               <span>Click to enlarge</span>
             </figcaption>
           </figure>
@@ -170,18 +177,22 @@ export function TopicDetail({
         {deletionSummary(topic)}
       </Modal>
 
-      {topic.mental_model_image_path ? (
+      {imageUrl !== null ? (
         <Lightbox
           open={zoomed}
           onClose={() => setZoomed(false)}
-          src={topic.mental_model_image_path}
-          alt={topic.mental_model_image_path.split('/').pop() ?? 'Diagram'}
+          src={imageUrl}
+          alt={imageName(topic)}
         />
       ) : null}
 
       {saved ? <Toast message="Changes saved" /> : null}
     </article>
   )
+}
+
+function imageName(topic: Topic): string {
+  return topic.mental_model_image_path?.split('/').pop() ?? 'Diagram'
 }
 
 function Stat({

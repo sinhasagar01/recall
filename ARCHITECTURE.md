@@ -227,6 +227,64 @@ per request rather than issuing the same select twice. It returns `readAt` along
 the rows: relative times are relative to *the read*, and taking the clock there keeps
 `Date.now()` out of render, where it is impure and would drift between the two.
 
+## The mental-model image
+
+### Server-side validation lives on the bucket
+
+`file_size_limit` and `allowed_mime_types` on the `mental-models` bucket are the rule.
+A browser `accept=` attribute and a size check in JavaScript are affordances for the
+person using the form; the bucket's limits apply to every caller, including one that
+never loads our JavaScript.
+
+Phase 1 gave the bucket its four RLS policies, and **RLS answers who may write, never
+what**. Nothing could upload until phase 10, so the shape of an acceptable upload had
+not come up. `*_mental_models_bucket_limits.sql` adds only those two columns — no new
+policies, no new tables. `MAX_IMAGE_BYTES` and `ALLOWED_IMAGE_TYPES` in
+`src/lib/domain/mental-model-image.ts` are the single source, quoted by the migration
+and asserted against it in pgTAP.
+
+### Upload goes browser-direct
+
+`src/lib/data/mental-model-image.ts` is the second module in the data layer and the
+only one that runs in the browser — `topics.ts` is `server-only`. Uploading direct to
+Storage avoids routing megabytes through a Server Action, which would also need its
+body limit raised. RLS still applies: the insert policy checks that the first path
+segment is the caller's own user id.
+
+### What the storage client cannot do
+
+`upload()` takes `cacheControl | contentType | upsert | metadata` — **no progress
+callback and no abort signal**. Two consequences, both stated rather than faked:
+
+- The progress bar is **indeterminate**. A percentage would be invented.
+- **Cancel is app-level**: the upload is marked abandoned and, when it resolves, the
+  object it created is deleted. The request cannot be stopped, so nothing is left
+  behind instead.
+
+### The three orderings
+
+**Save**: insert row → upload → patch path. The object path needs the topic id, so
+the upload cannot come first. From the moment the row exists it is **saved**: no
+failure below rolls it back, and the banner names the real reason — the file, its real
+size, the real limit.
+
+**Replace**: upload new → patch path → remove old. If the removal fails the topic
+already points at a valid new object, so the cost is an orphan rather than a broken
+topic. An orphan is acceptable; leaking one silently on every replace is not, so
+`setMentalModelImagePath` returns `orphanedPath` and the sheet says the previous file
+could not be removed.
+
+**Delete**: object → row. A failure removing the object leaves the row intact and the
+operation retryable, and the user is told "The topic was kept — try again." The
+reverse would orphan an object whose only recorded path was the row just deleted.
+
+### No layout shift
+
+Signed URLs are created during the **server render** — on the detail page and for the
+whole practice queue at once — so they are in the first paint and nothing resolves
+client-side. The figure reserves its box with `aspect-ratio`, so decode cannot shift it
+either. The card shows no image at all, only `Model ✓`.
+
 ## Not found and ownership are the same thing
 
 `getTopic` uses `.maybeSingle()` and returns `Topic | null`. RLS returns zero rows

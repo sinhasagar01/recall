@@ -1,5 +1,5 @@
 begin;
-select plan(17);
+select plan(20);
 
 -- ---------------------------------------------------------------------------
 -- Local helpers, same discipline as topics_test.sql: created inside this
@@ -85,6 +85,29 @@ select is(
   'storage.objects carries our four mental-models policies, one per command');
 
 -- ===========================================================================
+-- Bucket constraints
+--
+-- Phase 1 gave the bucket its four RLS policies, and RLS is about WHO may write,
+-- not WHAT. Nothing could upload until phase 10, so the shape of an acceptable
+-- upload had never come up. These limits are the server-side rule; a browser
+-- `accept=` attribute is only an affordance.
+-- ===========================================================================
+select is(
+  (select file_size_limit from storage.buckets where id = 'mental-models'),
+  (5 * 1024 * 1024)::bigint,
+  'the bucket caps uploads at 5 MB, matching MAX_IMAGE_BYTES');
+
+select is(
+  (select allowed_mime_types from storage.buckets where id = 'mental-models'),
+  ARRAY['image/png', 'image/jpeg', 'image/webp'],
+  'the bucket accepts png, jpeg and webp, matching ALLOWED_IMAGE_TYPES');
+
+select isnt(
+  (select file_size_limit from storage.buckets where id = 'mental-models'),
+  null::bigint,
+  'the size limit is set, not left to the project default');
+
+-- ===========================================================================
 -- Path ownership. The object path is {user_id}/{topic_id}/{filename}, so the
 -- first path segment is what the policies key on.
 -- ===========================================================================
@@ -164,7 +187,18 @@ select is(tests_rows_affected(
 
 select tests_logout();
 
-select is((select count(*)::int from storage.objects where bucket_id = 'mental-models'), 1,
+/*
+  Scoped to this test's own folder.
+
+  These two assertions run as postgres, which has BYPASSRLS, so an unscoped count
+  sees EVERY object in the bucket. That was invisible while nothing could upload;
+  phase 10 made real uploads possible and the counts started including them. The
+  bug was here all along — the assertion was only correct because the bucket
+  happened to be empty.
+*/
+select is((select count(*)::int from storage.objects
+           where bucket_id = 'mental-models'
+             and name like '00000000-0000-0000-0000-0000000000aa/%'), 1,
   'user A''s object is untouched after user B''s and anon''s attempts');
 
 -- ===========================================================================
@@ -186,7 +220,9 @@ select tests_logout();
 -- ===========================================================================
 -- Final state
 -- ===========================================================================
-select is((select count(*)::int from storage.objects where bucket_id = 'mental-models'), 0,
+select is((select count(*)::int from storage.objects
+           where bucket_id = 'mental-models'
+             and name like '00000000-0000-0000-0000-0000000000aa/%'), 0,
   'no mental-models objects remain after user A deleted their own');
 
 select * from finish();

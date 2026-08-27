@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState, useTransition } from 'react'
+import { useMemo, useRef, useState, useTransition } from 'react'
 import { Button } from '@/components/ui/button'
 import { Field } from '@/components/ui/field'
 import { Kbd } from '@/components/ui/kbd'
@@ -11,7 +11,9 @@ import { TagsInput } from '@/components/ui/tags-input'
 import { suggestCategory, UNCATEGORIZED } from '@/lib/domain/category-suggest'
 import { DIFFICULTY_LABEL, type CategoryOption } from '@/lib/domain/library'
 import type { Difficulty } from '@/lib/domain/types'
-import { createTopic, type SaveTopicResult } from '@/app/(app)/library/actions'
+import { attachMentalModelImage, createTopic, type SaveTopicResult } from '@/app/(app)/library/actions'
+import { ImageField, type PickedImage } from '@/components/topics/image-field'
+import { discardUploadedImage, uploadMentalModelImage } from '@/lib/data/mental-model-image'
 import { saveTopicEdits } from '@/app/(app)/topic/[id]/actions'
 import type { Topic } from '@/lib/domain/types'
 
@@ -57,6 +59,13 @@ export function TopicSheet({
   const [difficulty, setDifficulty] = useState<Difficulty>(topic?.difficulty ?? 'medium')
   const [error, setError] = useState<string | null>(null)
   const [isSaving, startSaving] = useTransition()
+
+  const [picked, setPicked] = useState<PickedImage>(null)
+  const [existingImage, setExistingImage] = useState(topic?.mental_model_image_path ?? null)
+  const [uploading, setUploading] = useState(false)
+  const [imageError, setImageError] = useState<string | null>(null)
+  const [orphanNote, setOrphanNote] = useState<string | null>(null)
+  const cancelledRef = useRef(false)
 
   /*
     The Suggested group comes from the phase 2 keyword heuristic. No AI, no keys —
@@ -108,6 +117,50 @@ export function TopicSheet({
       if (result.error !== null) {
         setError(result.error)
         return
+      }
+
+      /*
+        ── insert / update, THEN upload, THEN patch ────────────────────────────
+        The object path needs the topic id, so the upload cannot happen until the
+        row exists. From here on the topic is SAVED: nothing below may roll it
+        back, and every failure reports the real reason instead.
+      */
+      const cleared = existingImage === null && picked === null && topic?.mental_model_image_path
+
+      if (picked !== null) {
+        setUploading(true)
+        cancelledRef.current = false
+        const uploaded = await uploadMentalModelImage(result.id, picked.file)
+        setUploading(false)
+
+        if (cancelledRef.current) {
+          // Cancelled while in flight. `upload()` takes no abort signal, so the
+          // request could not be stopped — the object it created is removed
+          // instead, which leaves nothing behind either way.
+          if (uploaded.path) await discardUploadedImage(uploaded.path)
+        } else if (uploaded.error !== null) {
+          setImageError(uploaded.error)
+          onSaved(result.title)
+          return // The topic stays saved and the sheet stays open, showing why.
+        } else {
+          const attached = await attachMentalModelImage(result.id, uploaded.path)
+          if (attached.error !== null) {
+            setImageError(attached.error)
+            onSaved(result.title)
+            return
+          }
+          if (attached.orphanedPath !== null) {
+            // Recorded rather than leaked silently.
+            setOrphanNote('The previous file could not be removed from storage.')
+          }
+        }
+      } else if (cleared) {
+        const attached = await attachMentalModelImage(result.id, null)
+        if (attached.error !== null) {
+          setImageError(attached.error)
+          onSaved(result.title)
+          return
+        }
       }
 
       onSaved(result.title)
@@ -231,27 +284,48 @@ export function TopicSheet({
           <input key={tag} type="hidden" name="tags" value={tag} />
         ))}
 
-        <div className="mb-[18px]">
-          <span className="mb-1.5 block text-label font-medium text-ink">
-            Visual
-            <span className="ml-1.5 font-mono text-mono font-normal text-ink-3">
-              optional · png, jpeg, webp · 5 mb
-            </span>
-          </span>
-          {/* Renders, does not upload. Phase 10 wires it to the seam in actions.ts. */}
+        {imageError ? (
           <div
-            aria-disabled="true"
-            title="Image upload arrives in a later phase"
-            className="flex items-center gap-3 rounded-md border border-dashed border-rule-strong bg-surface-2 p-[18px] text-label text-ink-2 opacity-70"
+            role="alert"
+            className="mb-5 flex items-start gap-3 rounded-md border border-flag bg-flag-soft px-4 py-3.5 text-option text-flag"
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-              <rect x="3" y="4" width="18" height="16" rx="2" />
-              <circle cx="9" cy="10" r="1.6" />
-              <path d="m4 17 5-5 4 4 3-2 4 4" />
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true" className="mt-0.5 shrink-0">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 7v6" />
+              <path d="M12 16.5v.5" />
             </svg>
-            Diagrams arrive in a later phase.
+            <div>
+              <div className="font-medium">The topic saved. The image didn&rsquo;t.</div>
+              <div className="mt-0.5 text-ink-2">{imageError}</div>
+            </div>
           </div>
-        </div>
+        ) : null}
+
+        {orphanNote ? (
+          <p role="status" className="mb-4 font-mono text-[11.5px] text-ink-3">
+            {orphanNote}
+          </p>
+        ) : null}
+
+        <ImageField
+          picked={picked}
+          existingName={existingImage === null ? null : (existingImage.split('/').pop() ?? null)}
+          onPick={(file) => {
+            setImageError(null)
+            setPicked({ file, previewUrl: URL.createObjectURL(file) })
+          }}
+          onClear={() => {
+            setPicked(null)
+            setExistingImage(null)
+            setImageError(null)
+          }}
+          uploading={uploading}
+          onCancel={() => {
+            cancelledRef.current = true
+            setPicked(null)
+          }}
+          error={imageError}
+        />
       </form>
     </Sheet>
   )

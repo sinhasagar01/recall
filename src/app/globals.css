@@ -90,6 +90,17 @@
   --text-mono-xs: 9.5px;
 }
 
+/* The indeterminate upload bar. Reduced motion collapses it to a static track,
+   which is fine: the "Uploading" label carries the meaning on its own. */
+@keyframes indeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(300%);
+  }
+}
+
 @keyframes skeleton-pulse {
   0%,
   100% {

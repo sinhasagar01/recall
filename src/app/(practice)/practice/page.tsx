@@ -1,8 +1,9 @@
 import Link from 'next/link'
 import { PracticeSession } from '@/components/practice/practice-session'
 import { StateBlock } from '@/components/ui/state-block'
-import { listTopics } from '@/lib/data/topics'
+import { listTopics, signedImageUrl } from '@/lib/data/topics'
 import { needsReview } from '@/lib/domain/library'
+import type { Topic } from '@/lib/domain/types'
 import {
   canPracticeBelowMinimum,
   meetsPracticeMinimum,
@@ -42,12 +43,12 @@ export default async function PracticePage({ searchParams }: PageProps<'/practic
         />
       )
     }
-    return <PracticeSession queue={chosen} />
+    return <PracticeSession queue={chosen} imageUrls={await imageUrls(chosen)} />
   }
 
   if (scope === 'weak') {
     const weak = orderForPractice(topics.filter(needsReview), { shuffle: seededShuffle(readAt) })
-    if (weak.length > 0) return <PracticeSession queue={weak} />
+    if (weak.length > 0) return <PracticeSession queue={weak} imageUrls={await imageUrls(weak)} />
   }
 
   const overridden = all === '1'
@@ -98,7 +99,20 @@ export default async function PracticePage({ searchParams }: PageProps<'/practic
     )
   }
 
-  return <PracticeSession queue={queue} />
+  return <PracticeSession queue={queue} imageUrls={await imageUrls(queue)} />
+}
+
+/*
+  Signed on the server, for the whole queue at once. Signing during the reveal
+  would leave a hole in the layout at the exact moment attention is on the answer.
+*/
+async function imageUrls(queue: Topic[]): Promise<Record<string, string>> {
+  const entries = await Promise.all(
+    queue
+      .filter((topic) => topic.mental_model_image_path !== null)
+      .map(async (topic) => [topic.id, await signedImageUrl(topic.mental_model_image_path)] as const),
+  )
+  return Object.fromEntries(entries.filter(([, url]) => url !== null) as [string, string][])
 }
 
 function BackToLibrary() {

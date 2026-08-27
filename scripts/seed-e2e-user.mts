@@ -166,3 +166,29 @@ if (strongError) {
   process.exit(1)
 }
 console.log(`Nothing-needs-review user reset: ${strongEmail}`)
+
+/*
+  Storage isolation.
+
+  Rows vanish with a db reset; objects do not. Paths are
+  {user_id}/{topic_id}/{filename} and every spec-created topic gets a fresh uuid, so
+  two runs can never collide on a name — but the fixture users would slowly
+  accumulate files from runs whose topics were never deleted. Purge their folders
+  here, the same way their rows are reset.
+
+  The main user's objects are removed by the specs themselves: anything they upload
+  belongs to a topic they also delete, and deleting a topic removes the object first.
+*/
+for (const userId of [emptyUserId, fewUserId, strongUserId]) {
+  const { data: folders } = await admin.storage.from('mental-models').list(userId)
+  const paths = (folders ?? []).flatMap((folder) => folder.name)
+
+  for (const topicFolder of paths) {
+    const { data: files } = await admin.storage
+      .from('mental-models')
+      .list(`${userId}/${topicFolder}`)
+    const keys = (files ?? []).map((file) => `${userId}/${topicFolder}/${file.name}`)
+    if (keys.length > 0) await admin.storage.from('mental-models').remove(keys)
+  }
+}
+console.log('Fixture users\' storage folders purged')
