@@ -1,0 +1,175 @@
+# Recall — design contract
+
+`design-reference.html` is the visual source of truth. Open it, use the tab bar to
+switch screens. Anything below that contradicts the HTML: the HTML wins.
+
+Direction: **Ledger structure** (hairline rules, 6px radius, tight density, serif
+titles) with an **indigo palette**.
+
+---
+
+## 1. Tokens
+
+Put these in `globals.css` as CSS custom properties and map them into Tailwind
+theme config. Do not hardcode hex values in components.
+
+### Color
+
+| Token | Value | Use |
+| --- | --- | --- |
+| `--bg` | `#E9EAF0` | app background |
+| `--surface` | `#FFFFFF` | cards, sheets, inputs, popovers |
+| `--surface-2` | `#F5F5FA` | rail, chips, recall textarea, hover |
+| `--surface-3` | `#EDEEF4` | skeletons |
+| `--ink` | `#12131A` | primary text, filled confidence ticks |
+| `--ink-2` | `#53555F` | body copy, secondary text |
+| `--ink-3` | `#83858F` | mono labels, placeholders, meta |
+| `--rule` | `#E1E1E9` | hairlines, card borders |
+| `--rule-strong` | `#C9C9D4` | input borders, dashed states |
+| `--accent` | `#3F3AC7` | primary action, mental-model rule, strong |
+| `--accent-soft` | `#EDECFB` | mental-model panel, selected option, banner |
+| `--accent-ink` | `#2E2A9E` | text on accent-soft, primary hover |
+| `--flag` | `#B4325C` | weak confidence, destructive, errors |
+| `--flag-soft` | `#FBEBF1` | error banners and panels |
+
+`--flag` is the only alarm color. Never use it for anything that isn't weak
+confidence, a destructive action, or an error.
+
+### Type
+
+| Role | Family | Where |
+| --- | --- | --- |
+| Display | `Newsreader` (serif) | topic titles, page titles, prompts, stat values |
+| Body | `IBM Plex Sans` | definitions, descriptions, buttons, form labels |
+| Utility | `IBM Plex Mono` | eyebrows, counts, chips, tags, meta, kbd hints |
+
+The split is meaningful: serif = knowledge, sans = reading, mono = system.
+Categories, counts and timestamps are system. Concepts are not.
+
+Scale: page title 29px · detail title 34px · practice prompt 31px · card title
+19px · body 14.5px · register body 15.5px · mental model 17.5px · mono utility
+10.5–12px. Display weight 500, tracking −0.02em.
+
+### Shape and depth
+
+`--radius: 6px` · `--radius-lg: 10px` (cards, sheets, popovers, modals) ·
+`--radius-sm: 4px` (listbox options). Two shadows only: `--shadow` for cards,
+`--shadow-pop` for popovers and modals. Nothing else gets a shadow.
+
+---
+
+## 2. Signature components
+
+These three carry the product. Build them first, as primitives, before any page.
+
+### ConfidenceMeter
+
+Three ticks, filled by state. `new` = 0 filled, dashed borders. `weak` = 1 filled,
+`--flag`. `okay` = 2 filled, `--ink`. `strong` = 3 filled, `--accent`.
+
+Confidence is encoded by **fill count**, not hue. Only weak and strong carry
+color. Never render this as red/amber/green — the library should not scold its
+owner on every card.
+
+Props: `confidence`, `showLabel`. Labels: `Never practiced` (not "New"), `Weak`,
+`Okay`, `Strong`.
+
+### The two registers
+
+Definition and mental model must never look like two paragraphs of the same
+thing. Definition: sans, 15.5px, `--ink`, max 66ch, no container. Mental model:
+`--accent-soft` panel, 2px `--accent` left rule, serif, 17.5px, `--accent-ink`,
+mono eyebrow in `--accent`.
+
+This separation is the product. It appears on topic detail and on practice
+reveal, identically.
+
+### Select (listbox)
+
+Not a native `<select>`. Trigger button + popover. Requirements:
+
+- Trigger shows the current value; gets `--accent-soft` background and `--accent`
+  border when set to anything other than "All"/"Any".
+- Options carry a right-aligned count from the user's own data.
+- Selected option: `--accent-soft` background, checkmark at left.
+- Category variant adds a filter input and an `Suggested from your topic` group.
+- Keyboard: `↑↓` move, `↵` select, `Esc` close, focus returns to trigger.
+  `role="listbox"` / `role="option"` / `aria-selected` / `aria-expanded`.
+
+Counts and grouping are the reason this isn't a native select. Keep them.
+
+---
+
+## 3. Screen and state inventory
+
+Every row is a screen in `design-reference.html`. All 21 must exist in the build.
+
+| Area | States |
+| --- | --- |
+| Auth | sign in · sign in with error · sign up · sign up submitting |
+| Library | loaded · loading (skeleton) · empty · no search results · load error |
+| Add topic | form · saving · success toast · image-failed partial success |
+| Edit | form with existing image · replace/remove image · saved toast |
+| Detail | full · visual lightbox · delete confirmation |
+| Practice | recall · reveal + grade · session complete · too few topics |
+| Weak | list · empty |
+| Mobile | library · add (full screen) · practice (no tab bar) |
+
+Skeletons must match real card geometry so nothing shifts when data lands.
+
+---
+
+## 4. Behaviour the mock encodes
+
+1. **Skip in practice writes nothing.** No confidence change, no
+   `practice_count`, no `last_practiced_at`.
+2. **Grades persist on selection, not at session end.** Ending early keeps
+   everything already graded. The mock says this in the UI; keep the line.
+3. **Practice needs 3 topics**, with a visible "Practice the N anyway"
+   override. A hard floor is not acceptable in a personal tool.
+4. **Image failure never blocks the topic.** Insert the row, then upload, then
+   patch the path. On upload failure the row stays and the banner explains the
+   actual reason (size, type, network) — never a generic message.
+5. **No-results offers `+ Add "<query>"`.** Searching for something absent is the
+   most common moment you want to save it.
+6. **Delete confirmation names what dies**, including the practice count.
+7. **Card shows `Model ✓`** when `mental_model` is non-empty. It's the strongest
+   reason to open a card.
+8. **Mobile has two destinations plus add.** Weak topics is a filter chip on
+   Library, and the three filter selects collapse behind one `Filters` chip.
+
+---
+
+## 5. Copy rules
+
+Sentence case everywhere. Active voice. An action keeps its name through the
+whole flow — the button that says "Save topic" produces a toast that says
+"Saved".
+
+Prefer `Never practiced` to `Last practiced: Never`. Errors state what happened
+and what to do; they never apologize and are never vague. Empty screens are
+invitations, not apologies.
+
+---
+
+## 6. Accessibility floor
+
+Not optional, not polish-phase:
+
+- Visible focus ring on every interactive element (`--accent`, 2px, 2px offset).
+- Listbox and modal keyboard support, focus trap in sheets and modals, focus
+  restored on close.
+- `prefers-reduced-motion` disables the skeleton pulse and the spinner
+  animation.
+- Practice grade buttons reachable by `1` / `2` / `3`.
+- Color never carries meaning alone — confidence has a text label and a fill
+  count; errors have an icon and text.
+
+---
+
+## 7. Out of scope
+
+The mock shows a few things beyond the original spec. Ship them only if the core
+loop is done: search-term highlighting in card titles, "Review the 2 you missed"
+on the session-complete screen, undo on the edit toast, per-option counts in the
+difficulty select.
