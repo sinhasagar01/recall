@@ -18,6 +18,8 @@ const email = process.env.E2E_USER_EMAIL
 const password = process.env.E2E_USER_PASSWORD
 const emptyEmail = process.env.E2E_EMPTY_USER_EMAIL
 const emptyPassword = process.env.E2E_EMPTY_USER_PASSWORD
+const fewEmail = process.env.E2E_FEW_USER_EMAIL
+const fewPassword = process.env.E2E_FEW_USER_PASSWORD
 
 const missing = [
   ['NEXT_PUBLIC_SUPABASE_URL', url],
@@ -26,6 +28,8 @@ const missing = [
   ['E2E_USER_PASSWORD', password],
   ['E2E_EMPTY_USER_EMAIL', emptyEmail],
   ['E2E_EMPTY_USER_PASSWORD', emptyPassword],
+  ['E2E_FEW_USER_EMAIL', fewEmail],
+  ['E2E_FEW_USER_PASSWORD', fewPassword],
 ]
   .filter(([, value]) => !value)
   .map(([name]) => name)
@@ -80,6 +84,7 @@ async function upsertUser(userEmail: string, userPassword: string): Promise<stri
 
 await upsertUser(email!, password!)
 const emptyUserId = await upsertUser(emptyEmail!, emptyPassword!)
+const fewUserId = await upsertUser(fewEmail!, fewPassword!)
 
 /*
   Test isolation.
@@ -98,3 +103,29 @@ if (clearError) {
   process.exit(1)
 }
 console.log(`Empty-library user cleared: ${emptyEmail}`)
+
+/*
+  The too-few-topics user: exactly two, always. Reset from scratch each run so the
+  count is not one topic away from correct after a spec that went sideways. Two is
+  below the practice minimum of three, which is the state under test.
+*/
+await admin.from('topics').delete().eq('user_id', fewUserId)
+
+const { error: fewError } = await admin.from('topics').insert([
+  {
+    user_id: fewUserId,
+    title: 'The event loop',
+    definition: 'Microtasks drain before the next macrotask.',
+  },
+  {
+    user_id: fewUserId,
+    title: 'Specificity',
+    definition: 'Which selector wins when two of them apply.',
+  },
+])
+
+if (fewError) {
+  console.error(`Could not seed the two-topic user: ${fewError.message}`)
+  process.exit(1)
+}
+console.log(`Two-topic user reset: ${fewEmail}`)

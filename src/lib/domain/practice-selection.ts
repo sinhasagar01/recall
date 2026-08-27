@@ -85,3 +85,45 @@ export function selectPracticeSession(topics: Topic[], { shuffle }: { shuffle: S
 
   return ordered.slice(0, PRACTICE_SESSION_SIZE)
 }
+
+/**
+ * A deterministic shuffle, seeded from a string.
+ *
+ * Phase 2 injected the shuffle but never implemented one, because nothing
+ * consumed it yet. The obvious implementation — Math.random — cannot be used
+ * here: reading a random source during render is impure, on the server and
+ * inside a `useState` initialiser alike, and the project's lint config rejects it.
+ *
+ * Seeding from data the request already carries (the `readAt` the data layer
+ * returns) keeps this pure and unit-testable while still giving a different order
+ * to every session.
+ *
+ * mulberry32 over an FNV-1a hash of the seed. Not cryptographic, and it does not
+ * need to be — it is deciding the order of flashcards.
+ */
+export function seededShuffle(seed: string): Shuffle {
+  return <T,>(items: T[]): T[] => {
+    let hash = 2166136261
+    for (let index = 0; index < seed.length; index += 1) {
+      hash ^= seed.charCodeAt(index)
+      hash = Math.imul(hash, 16777619)
+    }
+
+    let state = hash >>> 0
+    const random = () => {
+      state = (state + 0x6d2b79f5) >>> 0
+      let t = state
+      t = Math.imul(t ^ (t >>> 15), t | 1)
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+    }
+
+    // Fisher-Yates, on a copy.
+    const shuffled = [...items]
+    for (let index = shuffled.length - 1; index > 0; index -= 1) {
+      const swap = Math.floor(random() * (index + 1))
+      ;[shuffled[index], shuffled[swap]] = [shuffled[swap], shuffled[index]]
+    }
+    return shuffled
+  }
+}

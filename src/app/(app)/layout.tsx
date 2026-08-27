@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { Kbd } from '@/components/ui/kbd'
 import { Wordmark } from '@/components/ui/wordmark'
 import { listTopics } from '@/lib/data/topics'
@@ -34,10 +35,10 @@ export default async function AppLayout({ children }: LayoutProps<'/'>) {
             <span>Library</span>
             <span className="font-mono text-mono-sm text-ink-3">{topics.length}</span>
           </span>
-          <span className={navItem} aria-disabled="true" title="Practice arrives in a later phase">
+          <Link href="/practice" className={`${navItem} hover:bg-surface hover:text-ink`}>
             <span>Practice</span>
             <span className="font-mono text-mono-sm text-ink-3">{queued} queued</span>
-          </span>
+          </Link>
           <span className={navItem} aria-disabled="true" title="Weak topics arrives in a later phase">
             <span>Weak topics</span>
             <span className="font-mono text-mono-sm text-flag">{review}</span>

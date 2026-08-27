@@ -299,6 +299,59 @@ Fixed with `categoryOf(topic)` in `category-suggest.ts`, used by `filterTopics`,
 `topicPath` and `categoryOptions` alike — so the label a card shows is exactly the
 value a filter matches.
 
+## Practice
+
+`/practice` lives in its own route group with a layout that has **no rail**.
+Retrieval practice only works if there is nothing on screen to glance at that gives
+the answer away, and a sidebar reading "Weak topics 11" while you try to remember one
+of them is exactly that. `proxy.ts` guards the path, not the group, so the move costs
+no auth work.
+
+Three ways in, distinguished by the URL:
+
+| URL | Session | Floor |
+|---|---|---|
+| `/practice` | auto-selected by `selectPracticeSession` | applies |
+| `/practice?topic=<id>` | one topic, chosen from its detail page | **does not apply** |
+| `/practice?all=1` | the override from the too-few screen | waived |
+
+The floor exists to stop an *auto-selected* session from being re-reading the same
+card. Choosing one card deliberately is not that, so it is not subject to it.
+
+### Skip has no code path to the server
+
+There is no skip action. Skipping advances the queue in the browser and never reaches
+the server at all — which is a stronger guarantee that it writes nothing than an
+action that returns null would be. The e2e spec grades a topic *first*, so all three
+values are away from their defaults, then skips and asserts each is unchanged;
+sabotaging skip to write flips `Strong` to `Okay` and fails it.
+
+### Grading awaits the write
+
+Rather than advancing optimistically. The entire value of the screen is trusting the
+confidence record, and an optimistic advance puts a failed write two cards behind the
+user. A failure keeps the card on screen with the real reason; the grades already
+saved are unaffected, and the UI says so.
+
+### Keeping the library correct without a mid-session reload
+
+`gradeTopic` revalidates `/library` and `/topic/<id>` — never `/practice`. Nothing
+re-renders mid-session; those routes are simply marked stale, so arriving at the
+library afterwards shows the new confidence and corrected rail counts.
+
+### The typed answer is ephemeral
+
+It lives in component state, is shown back during the reveal, and is sent nowhere. No
+table, no column, no action parameter.
+
+### Randomness without impurity
+
+`selectPracticeSession` takes an injected shuffle, and phase 2 shipped none because
+nothing consumed it. `Math.random()` cannot be used here: reading a random source
+during render is impure, on the server and inside a `useState` initialiser alike, and
+the lint config rejects it. `seededShuffle(readAt)` seeds from data the request
+already carries — pure, unit-testable, and still different every session.
+
 ## The component layer
 
 `src/components/ui` holds the primitives from DESIGN.md section 2. Nothing in there

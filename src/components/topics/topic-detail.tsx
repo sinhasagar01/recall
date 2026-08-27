@@ -103,12 +103,16 @@ export function TopicDetail({
 
       <RegisterSection title="Recall history">
         <div className="mt-3 grid grid-cols-3 gap-px overflow-hidden rounded-md border border-rule bg-rule">
-          <Stat label="Confidence">
+          <Stat label="Confidence" testId="stat-confidence">
             <ConfidenceMeter confidence={topic.confidence} />
             {CONFIDENCE_LABEL[topic.confidence]}
           </Stat>
-          <Stat label="Times practiced">{topic.practice_count}</Stat>
-          <Stat label="Last practiced">{formatShortDate(topic.last_practiced_at)}</Stat>
+          <Stat label="Times practiced" testId="stat-practice-count">
+            {topic.practice_count}
+          </Stat>
+          <Stat label="Last practiced" testId="stat-last-practiced">
+            {formatShortDate(topic.last_practiced_at)}
+          </Stat>
         </div>
       </RegisterSection>
 
@@ -122,9 +126,13 @@ export function TopicDetail({
       ) : null}
 
       <div className="mt-[34px] flex items-center gap-2.5 border-t border-rule pt-5">
-        <Button variant="primary" size="lg" disabled title="Practice arrives in a later phase">
+        {/* A deliberate single-topic session: not subject to the 3-topic floor. */}
+        <Link
+          href={`/practice?topic=${topic.id}`}
+          className="inline-flex cursor-pointer items-center rounded-md border border-accent bg-accent px-[18px] py-3 text-body font-medium text-white hover:border-accent-ink hover:bg-accent-ink"
+        >
           Practice this
-        </Button>
+        </Link>
         <Button onClick={() => setEditing(true)}>Edit</Button>
         <span className="flex-1" />
         <Button variant="danger-quiet" onClick={() => setConfirmingDelete(true)}>
@@ -176,11 +184,22 @@ export function TopicDetail({
   )
 }
 
-function Stat({ label, children }: { label: string; children: React.ReactNode }) {
+function Stat({
+  label,
+  testId,
+  children,
+}: {
+  label: string
+  testId: string
+  children: React.ReactNode
+}) {
   return (
     <div className="bg-surface px-4 py-3.5">
       <div className="font-mono text-[10px] tracking-[0.12em] text-ink-3 uppercase">{label}</div>
-      <div className="mt-[5px] flex items-center gap-2 font-display text-card-title font-medium">
+      <div
+        data-testid={testId}
+        className="mt-[5px] flex items-center gap-2 font-display text-card-title font-medium"
+      >
         {children}
       </div>
     </div>

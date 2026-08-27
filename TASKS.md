@@ -294,9 +294,32 @@ and the meter and the filter would have been free to disagree about the word for
 
 ## Phase 8 — practice
 
-- [ ] Recall · reveal + grade · session complete · too few topics (with override)
-- [ ] Grades persist per answer, not at session end
-- [ ] Grade buttons reachable by `1` / `2` / `3`
+- [x] Recall · reveal + grade · session complete · too few topics (with override)
+- [x] Grades persist per answer, not at session end — the write is awaited before advancing
+- [x] Grade buttons reachable by `1` / `2` / `3`; Space reveals; all inert while typing
+- [x] Skip writes nothing — there is no skip action to call
+- [x] The typed answer is ephemeral, in component state only
+- [x] `/practice` in its own route group, no rail
+- [x] 6 Playwright specs, written and run red before the pages existed
+- [x] The rail's Practice entry and the detail page's "Practice this" are now links
+
+### Deferred conversions — updated
+
+- ~~card is an `<article>`~~ done (phase 6) · ~~toolbar inert~~ done (phase 7)
+- ~~rail Practice entry~~ and ~~"Practice this"~~ — **done**, both are links now.
+- The rail's **Weak topics** entry is still an `aria-disabled` span. Phase 9.
+- The Visual section and Lightbox remain unreachable until phase 10.
+
+### Deferred by DESIGN.md section 7
+
+"Review the N you missed" on the completion screen: skipped. It needs a second queue
+path — a session seeded from a previous session's results — which is not free.
+
+### New domain functions
+
+`seededShuffle` and `sessionTally` / `sessionSummary`. See ARCHITECTURE.md for why
+phase 2 could not have written the shuffle: it had no consumer, and the obvious
+implementation is impure in exactly the places this needs to call it.
 
 ## Phase 9 — weak topics
 

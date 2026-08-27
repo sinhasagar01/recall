@@ -3,7 +3,7 @@ import 'server-only'
 import { cache } from 'react'
 
 import { toTopic } from '@/lib/data/topic-mapping'
-import type { Difficulty, Topic } from '@/lib/domain/types'
+import type { Confidence, Difficulty, Topic } from '@/lib/domain/types'
 import { createClient } from '@/lib/supabase/server'
 
 /**
@@ -135,4 +135,16 @@ export async function deleteTopicRow(id: string): Promise<void> {
   const { error } = await supabase.from('topics').delete().eq('id', id)
 
   if (error) fail('Deleting the topic', error)
+}
+
+/** Writes one graded answer. The update itself is computed by the domain layer. */
+export async function recordPractice(
+  id: string,
+  update: { confidence: Confidence; practice_count: number; last_practiced_at: string },
+): Promise<void> {
+  const supabase = await createClient()
+
+  const { error } = await supabase.from('topics').update(update).eq('id', id)
+
+  if (error) fail('Saving your grade', error)
 }

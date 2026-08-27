@@ -4,6 +4,7 @@ import {
   PRACTICE_SESSION_SIZE,
   canPracticeBelowMinimum,
   meetsPracticeMinimum,
+  seededShuffle,
   selectPracticeSession,
 } from '@/lib/domain/practice-selection'
 import { makeTopic } from '@/lib/domain/topic-fixture'
@@ -199,5 +200,47 @@ describe('selectPracticeSession — uniform libraries', () => {
     const snapshot = titles(topics)
     selectPracticeSession(topics, { shuffle: reverseShuffle })
     expect(titles(topics)).toEqual(snapshot)
+  })
+})
+
+describe('seededShuffle', () => {
+  /*
+    Phase 2 defined the Shuffle type and injected it, but shipped no
+    implementation because nothing consumed one. Phase 8 is the first consumer,
+    and it cannot use Math.random: reading a random source during render is
+    impure, on the server and inside a state initialiser alike. Seeding from data
+    the request already carries keeps it pure and testable.
+  */
+  const items = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
+
+  it('is a permutation — nothing gained, lost or duplicated', () => {
+    const shuffled = seededShuffle('seed-1')(items)
+    expect([...shuffled].sort()).toEqual([...items].sort())
+    expect(shuffled).toHaveLength(items.length)
+  })
+
+  it('gives the same order for the same seed, every time', () => {
+    expect(seededShuffle('seed-1')(items)).toEqual(seededShuffle('seed-1')(items))
+  })
+
+  it('gives a different order for a different seed', () => {
+    expect(seededShuffle('seed-1')(items)).not.toEqual(seededShuffle('seed-2')(items))
+  })
+
+  it('does not actually leave the order alone', () => {
+    // A "shuffle" that returned its input would satisfy every test above.
+    const seeds = ['a', 'b', 'c', 'd', 'e'].map((seed) => seededShuffle(seed)(items))
+    expect(seeds.some((order) => !order.every((item, index) => item === items[index]))).toBe(true)
+  })
+
+  it('does not mutate its input', () => {
+    const original = [...items]
+    seededShuffle('seed-1')(items)
+    expect(items).toEqual(original)
+  })
+
+  it('handles empty and single-item lists', () => {
+    expect(seededShuffle('s')([])).toEqual([])
+    expect(seededShuffle('s')(['only'])).toEqual(['only'])
   })
 })
