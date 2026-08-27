@@ -1,3 +1,5 @@
+import { Button } from '@/components/ui/button'
+import { Wordmark } from '@/components/ui/wordmark'
 import { signOut } from '../(auth)/actions'
 
 /*
@@ -10,19 +12,15 @@ export default function AppLayout({ children }: LayoutProps<'/'>) {
   return (
     <div className="grid min-h-screen grid-cols-1 md:grid-cols-[228px_1fr]">
       <aside className="hidden flex-col gap-5 border-r border-rule bg-surface-2 p-5 md:flex">
-        <div className="flex items-baseline gap-[7px] px-2">
-          <span className="font-display text-wordmark font-semibold tracking-[-0.02em]">Recall</span>
-          <span className="size-[5px] rounded-full bg-accent" />
+        <div className="px-2">
+          <Wordmark />
         </div>
 
         <div className="mt-auto">
           <form action={signOut}>
-            <button
-              type="submit"
-              className="rounded-md py-2 text-body text-ink-2 hover:text-ink"
-            >
+            <Button type="submit" variant="ghost">
               Sign out
-            </button>
+            </Button>
           </form>
         </div>
       </aside>

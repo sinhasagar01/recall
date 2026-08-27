@@ -177,6 +177,15 @@ Not optional, not polish-phase:
 - Color never carries meaning alone — confidence has a text label and a fill
   count; errors have an icon and text.
 
+**The mock is not authoritative on field-error markup (phase 3).** `design-reference.html`
+nests the error inside `<label class="field">`, which folds the error text into the input's
+accessible name — a screen reader then reads the whole error as part of the field's label,
+every time it is focused. The build instead uses an explicit `htmlFor`/`id` pair with the
+error as a sibling of the input, wired with `aria-invalid` on the input,
+`aria-describedby` pointing at the error, and `role="alert"` on the error so it is
+announced when it appears. Visually identical to the mock; correct for assistive
+technology. Where the two disagree, this is the rule.
+
 ---
 
 ## 7. Out of scope

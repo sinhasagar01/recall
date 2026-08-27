@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "border-accent-on-rounded",
+        "value": "*",
+        "files": [
+          "src/components/ui/select.tsx"
+        ],
+        "createdAt": "2026-08-27T14:33:19.997Z",
+        "reason": "Kbd keycap copied verbatim from design-reference.html .kbd (border:1px var(--rule); border-bottom-width:2px; border-radius:4px). Border is --rule, not accent; the heavier bottom edge on a small radius is the keycap idiom. DESIGN.md: where anything contradicts the reference HTML, the HTML wins."
+      }
+    ]
+  }
+}

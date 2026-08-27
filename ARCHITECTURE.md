@@ -182,6 +182,39 @@ documents for this position. The library page calls `getUser()`, which asks the 
 server and is authoritative, because it is deciding what to render for a real user
 rather than performing an optimistic route check.
 
+## The component layer
+
+`src/components/ui` holds the primitives from DESIGN.md section 2. Nothing in there
+imports Supabase, and nothing imports from `src/lib/data` — a primitive takes props
+and renders. `ConfidenceMeter` imports the `Confidence` union from
+`src/lib/domain/types`, which is a type, not a dependency on the domain layer.
+
+Two shared pieces exist so the components that need them cannot disagree:
+
+- **`use-focus-trap.ts`** — Sheet and Modal share one focus trap. Two traps is how
+  they drift apart, and a half-working trap is worse than none, because it looks
+  correct until someone tabs.
+- **`scrim.tsx`** — one definition of what "clicking outside" means. It closes on
+  *click*, not mousedown, and only when the press also *started* on the scrim.
+  Closing on mousedown makes the trailing click land on an element that no longer
+  exists, and the browser then resets focus to `<body>`, undoing the focus restore
+  the trap just performed. Requiring the press to start there too means a text
+  selection dragged out of the dialog and released over the scrim does not close it.
+
+### The breakpoint
+
+The reference goes mobile at **860px** (`@media (max-width:860px)`), not Tailwind's
+default 768px. `--breakpoint-md` is overridden in the `@theme` block so `md:`
+everywhere means the breakpoint the mock actually uses, and the layout flips all at
+once rather than in pieces.
+
+### Deriving instead of syncing
+
+`Select` clamps its active index at read time rather than correcting it in an effect,
+and sets it directly in the open handler. Effects that call `setState` to keep one
+piece of state consistent with another cost an extra render pass for a value that was
+derivable — the project's ESLint config rejects them.
+
 ## Test layers
 
 Four layers. Each covers something the others structurally cannot. **A Supabase

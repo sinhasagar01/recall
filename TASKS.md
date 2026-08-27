@@ -132,22 +132,56 @@ the copy stays there rather than moving into the component.
 The rail in `src/app/(app)/layout.tsx` is a stub: wordmark and sign out only. Phase 5 adds
 the nav with counts and the `+ Add topic` button.
 
-### Known gap
+### Known gap — verified manually in phase 11, not automated
 
 The `headers` argument that `setAll` receives in @supabase/ssr 0.12.5 is wired, but no test
 asserts it. It only fires when the session is genuinely refreshed, and the local JWT lives
 an hour (`jwt_expiry = 3600`), so no e2e run inside that window triggers it. Probed: on a
 normal navigation with a valid session, no `Set-Cookie` is written at all — so nothing is
-being dropped. Lowering `jwt_expiry` locally would make it assertable, at the cost of
-constant refreshes in ordinary development.
+being dropped.
+
+Automating it would mean permanently lowering `jwt_expiry`, which would force constant
+refreshes in ordinary development. It is a **phase 11 manual check** instead:
+
+1. Lower `jwt_expiry` in `supabase/config.toml` to a few seconds
+2. `supabase stop && supabase start`
+3. Run the reload spec and wait past the expiry so a refresh actually happens
+4. Confirm the response carries `Set-Cookie` **and** the cache headers
+   (`Cache-Control: private, no-cache, no-store, must-revalidate, max-age=0`,
+   `Expires: 0`, `Pragma: no-cache`)
+5. Restore `config.toml` and restart the stack
+
+Do not lower `jwt_expiry` before phase 11.
 
 ## Phase 4 — UI primitives
 
-- [ ] Select (listbox: trigger + popover, counts, grouping, full keyboard support) — first
-- [ ] ConfidenceMeter (fill count, not hue; `Never practiced` / `Weak` / `Okay` / `Strong`)
-- [ ] The two registers — definition vs mental model
-- [ ] Button, Field, Chip, Sheet, Modal, Toast, Skeleton
-- [ ] Interaction-model tests (Vitest jsdom) for Select keyboard, Sheet/Modal focus trap and restore, ConfidenceMeter states
+- [x] ConfidenceMeter (fill count, not hue; `Never practiced` / `Weak` / `Okay` / `Strong`)
+- [x] Select (listbox: trigger + popover, counts, grouping, filtering, full keyboard support)
+- [x] The two registers — Definition and MentalModel
+- [x] Button (primary/secondary/ghost/danger/danger-quiet, two sizes, loading, disabled)
+- [x] Field, Wordmark, AuthCard — extracted from the phase 3 auth screens
+- [x] Chip + QuickFilterChip, Skeleton, Toast, Sheet, Modal, Scrim, useFocusTrap
+- [x] 41 interaction-model tests: Select keyboard/selection/filtering/focus return,
+      Sheet and Modal trap/restore/Escape/scrim, ConfidenceMeter states and labels
+- [x] Auth pages and the rail refactored onto the primitives; the phase 3 Playwright
+      specs pass unchanged, which is the proof the refactor lost nothing
+- [x] Token layer extended: `--breakpoint-md: 860px` to match the reference, the mono
+      scale, `--text-option`, and the skeleton pulse keyframes
+
+### Deliberately not built
+
+No test for Chip, Skeleton, Wordmark, Button, Field, Toast or the registers — they are
+presentational and have no interaction model, which is the layer-2 boundary in
+ARCHITECTURE.md.
+
+`.kbd` exists in the reference but is not in DESIGN.md's component list, so it is
+inlined in Select's footer rather than shipped as an unlisted primitive. Phase 5 can
+extract it if the rail's keyboard hints need it.
+
+### For phase 5
+
+The rail in `src/app/(app)/layout.tsx` still has only the wordmark and sign out. It
+needs the nav with counts, the `+ Add topic` button and the keyboard hints.
 
 ## Phase 5 — library and add topic
 

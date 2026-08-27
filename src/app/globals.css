@@ -59,6 +59,17 @@
   --font-body: var(--font-plex-sans), system-ui, sans-serif;
   --font-mono: var(--font-plex-mono), ui-monospace, monospace;
 
+  /*
+    The reference goes mobile at 860px (design-reference.html:
+    `@media (max-width:860px)`), not at Tailwind's default 768px. Overriding `md`
+    means `md:` everywhere in the app means the breakpoint the mock actually uses,
+    so the layout flips all at once instead of in pieces.
+  */
+  --breakpoint-md: 860px;
+
+  /* The skeleton pulse from the reference: opacity 1 -> .55 -> 1 over 1.5s. */
+  --animate-skeleton: skeleton-pulse 1.5s ease-in-out infinite;
+
   /* The scale from DESIGN.md section 1. */
   --text-detail-title: 34px;
   --text-prompt: 31px;
@@ -69,9 +80,24 @@
   --text-model: 17.5px;
   --text-register: 15.5px;
   --text-body: 14.5px;
+  --text-option: 13.5px;
   --text-label: 13px;
   --text-meta: 12.5px;
+  /* DESIGN.md calls mono utility 10.5-12px; these are the three sizes it uses. */
+  --text-mono-md: 12px;
+  --text-mono-sm: 11px;
   --text-mono: 10.5px;
+  --text-mono-xs: 9.5px;
+}
+
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
 }
 
 @layer base {
