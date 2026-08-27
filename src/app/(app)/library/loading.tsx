@@ -1,5 +1,4 @@
 import { TopicCardSkeleton } from '@/components/topics/topic-card'
-import { LibraryToolbar } from '@/components/topics/library-toolbar'
 
 /* Geometry matches TopicCard exactly, so nothing shifts when the data lands. */
 const SKELETON_WIDTHS: [string, string][] = [
@@ -21,7 +20,17 @@ export default function LibraryLoading() {
         </div>
       </div>
 
-      <LibraryToolbar />
+      {/*
+        A placeholder, not the real toolbar: filtering something that has not
+        loaded yet is meaningless, and a live control here would accept input and
+        then be replaced mid-keystroke when the data lands.
+      */}
+      <div className="mb-[26px] flex flex-wrap items-center gap-2.5" aria-hidden="true">
+        <div className="animate-skeleton h-[42px] min-w-[240px] flex-1 rounded-md bg-surface-3" />
+        <div className="animate-skeleton h-[38px] w-[130px] rounded-md bg-surface-3" />
+        <div className="animate-skeleton h-[38px] w-[130px] rounded-md bg-surface-3" />
+        <div className="animate-skeleton h-[38px] w-[130px] rounded-md bg-surface-3" />
+      </div>
 
       <div className="grid grid-cols-[repeat(auto-fill,minmax(292px,1fr))] gap-3">
         {SKELETON_WIDTHS.map((widths, index) => (

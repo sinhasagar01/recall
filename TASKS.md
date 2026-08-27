@@ -216,14 +216,81 @@ specs use the main user and assert on a unique title they generate, never on a g
 count — so the four Playwright workers stay independent and no database reset is
 needed.
 
+## Working rule — end-to-end tests are written first
+
+Playwright specs are **written and run red before the page exists**. Selectors start
+deliberately rough and are tightened once the DOM lands; the point of the red run is
+that the feature is genuinely absent, not that the assertions are already perfect.
+
+**A retroactive red run is not evidence of test-first and must not be presented as
+one.** Phase 5 wrote its Playwright specs after the pages. The red run still caught two
+real bugs, but it proved nothing about the order of work, and saying otherwise would
+have been a false claim about the process. This rule binds every later phase.
+
 ## Phase 6 — topic detail
 
-- [ ] Detail (full), edit form, delete confirmation naming the practice count, lightbox
+- [x] `/topic/[id]` as a server component: breadcrumb, title, chips, difficulty,
+      the two registers, Visual, Recall history, action bar
+- [x] The card converted from `<article>` to a link to the detail route
+- [x] Edit through the SAME sheet in a second mode — `TopicSheet`, not a fork
+- [x] Delete confirmation naming what actually dies, built from what the topic holds
+- [x] Lightbox on the phase 4 focus trap — one trap in the codebase, not two
+- [x] Not-found and another user's topic render identically, asserted end to end
+- [x] 7 Playwright specs, written and run red before the pages existed
+
+### Deferred conversions — updated
+
+- ~~The topic card is an `<article>`~~ — **done**, it is now a link to `/topic/[id]`.
+- **"Practice this" on the detail action bar is disabled**, like the rail's Practice
+  entry. Phase 8 wires both.
+- The rail's Practice and Weak topics entries are still `aria-disabled` spans.
+- The toolbar is still inert; phase 7 wires it.
+- **The Visual section and the Lightbox are unreachable through the UI.** Nothing can
+  set `mental_model_image_path` until phase 10, so the section never renders today.
+  Playwright asserts its absence; a jsdom test drives the Lightbox directly. Phase 10
+  adds the signed-URL read and the section becomes reachable.
+
+### Where the delete-order seam is
+
+`(app)/topic/[id]/actions.ts`, marked in `deleteTopic` ahead of `deleteTopicRow`. See
+ARCHITECTURE.md, "Deleting a topic: the object goes first".
+
+### Test isolation, continued
+
+Every spec creates its own uniquely-titled topic and touches only that, so the delete
+spec cannot race the others: it deletes a row no other spec knows about. The empty
+user is still never written to — the ownership spec signs in as them only to read.
 
 ## Phase 7 — search and filters
 
-- [ ] Wired to the phase 2 functions; no rules re-implemented in components
-- [ ] No-results state offering `+ Add "<query>"`
+- [x] Toolbar enabled: search, three Selects with real counts, three quick-filter chips, Clear
+- [x] Wired to the phase 2 functions; no rules re-implemented in components
+- [x] No-results state, distinct from the empty library, offering `Search all N topics`
+      and `+ Add "<query>"` which opens the sheet prefilled
+- [x] Filter state in the URL via `window.history.replaceState` — shareable, reload-safe,
+      no history entry per keystroke
+- [x] 8 Playwright specs, written and run red before the wiring existed
+
+### Decisions
+
+- **Counts: full library**, not the filtered set. The reference shows "All categories 48"
+  while a query matching nothing is active.
+- **Chips carry counts** rather than being disabled at zero. "Recently added 0" explains
+  itself; a disabled chip only says no. With a 7-day window that case is common.
+- **Search-term highlighting: skipped.** DESIGN.md section 7 lists it as deferred, and it
+  is not free — it needs a match-splitting function and its own tests.
+
+### New domain functions, and why phase 2 did not have them
+
+`categoryOf` plus a fix to `filterTopics` so "Uncategorized" is selectable — see
+ARCHITECTURE.md, "The gap phase 2 could not have seen". `confidenceOptions` and
+`difficultyOptions` exist because the Selects need per-option counts and counting in a
+component would be a comparison in a component; both delegate to `filterTopics`, so they
+add no matching logic.
+
+`CONFIDENCE_LABEL` moved from `confidence-meter.tsx` into `src/lib/domain/confidence.ts`.
+Wiring the confidence select would otherwise have produced a second copy of the label map,
+and the meter and the filter would have been free to disagree about the word for `new`.
 
 ## Phase 8 — practice
 

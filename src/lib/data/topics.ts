@@ -82,3 +82,57 @@ export async function insertTopic(input: NewTopic): Promise<Topic> {
 
   return toTopic(data)
 }
+
+/**
+ * One topic, or null.
+ *
+ * `maybeSingle` rather than `single`: RLS returns zero rows both for an id that
+ * does not exist AND for one belonging to somebody else, and those two must stay
+ * indistinguishable. A branch that could tell them apart would leak which ids are
+ * real. There is deliberately no user_id filter and no 403 path.
+ */
+export const getTopic = cache(async (id: string): Promise<Topic | null> => {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase.from('topics').select('*').eq('id', id).maybeSingle()
+
+  if (error) fail('Loading the topic', error)
+
+  return data === null ? null : toTopic(data)
+})
+
+export type TopicEdit = NewTopic
+
+export async function updateTopic(id: string, input: TopicEdit): Promise<Topic> {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('topics')
+    .update(input)
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) fail('Saving your changes', error)
+
+  return toTopic(data)
+}
+
+/**
+ * Deletes the ROW only.
+ *
+ * Named `deleteTopicRow`, not `deleteTopic`, because the row is not the only
+ * thing a topic owns. ARCHITECTURE.md: a mental-model image can only be removed
+ * through the Storage API, and it must go FIRST — a failure there leaves the row
+ * intact and the whole operation retryable, whereas deleting the row first
+ * orphans an object that nothing references and nothing can find.
+ *
+ * The caller owns that order. See (app)/topic/[id]/actions.ts.
+ */
+export async function deleteTopicRow(id: string): Promise<void> {
+  const supabase = await createClient()
+
+  const { error } = await supabase.from('topics').delete().eq('id', id)
+
+  if (error) fail('Deleting the topic', error)
+}

@@ -1,3 +1,4 @@
+import { categoryOf } from '@/lib/domain/category-suggest'
 import { isNeverPracticed } from '@/lib/domain/confidence'
 import type { Confidence, Difficulty, Topic } from '@/lib/domain/types'
 
@@ -74,7 +75,7 @@ export function filterTopics(topics: Topic[], filters: TopicFilters, now: Date):
 
   return topics.filter((topic) => {
     if (!matchesQuery(topic, query)) return false
-    if (category !== null && topic.category !== category) return false
+    if (category !== null && categoryOf(topic) !== category) return false
     if (confidence !== null && topic.confidence !== confidence) return false
     if (difficulty !== null && topic.difficulty !== difficulty) return false
     return quickFilters.every((quick) => QUICK_FILTERS[quick](topic, now))

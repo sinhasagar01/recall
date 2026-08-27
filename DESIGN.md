@@ -168,6 +168,17 @@ Skeletons must match real card geometry so nothing shifts when data lands.
 5. **No-results offers `+ Add "<query>"`.** Searching for something absent is the
    most common moment you want to save it.
 6. **Delete confirmation names what dies**, including the practice count.
+   **The mock's wording here is illustrative, not literal.** It reads "This removes
+   the topic, its mental model, its attached diagram, and 3 practice results" for
+   every topic — but naming a diagram that is not attached, or a practice count that
+   is zero, names something that does not die, which contradicts this very rule. The
+   sentence is assembled from what the topic actually holds (`deletionSummary` in
+   `src/lib/domain/library.ts`).
+
+   **The same caution applies anywhere the mock hardcodes data-dependent copy**:
+   counts, timestamps, category and confidence tallies, "N queued", "last practiced
+   2 days ago". Those numbers are fixtures chosen to make a screenshot read well. The
+   rule they illustrate is real; the values are not.
 7. **Card shows `Model ✓`** when `mental_model` is non-empty. It's the strongest
    reason to open a card.
 8. **Mobile has two destinations plus add.** Weak topics is a filter chip on

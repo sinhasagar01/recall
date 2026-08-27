@@ -13,6 +13,17 @@ export function isNeverPracticed(topic: Pick<Topic, 'confidence'>): boolean {
   return topic.confidence === 'new'
 }
 
+/**
+ * The label for each confidence, defined once and imported by both the meter and
+ * the filter options. DESIGN.md: "Never practiced", never "New".
+ */
+export const CONFIDENCE_LABEL: Record<Confidence, string> = {
+  new: 'Never practiced',
+  weak: 'Weak',
+  okay: 'Okay',
+  strong: 'Strong',
+}
+
 /** The three answers the practice screen offers, in its own words. */
 export type Grade = 'didnt-know' | 'partly' | 'knew-it'
 

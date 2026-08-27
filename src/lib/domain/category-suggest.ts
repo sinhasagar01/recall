@@ -3,6 +3,17 @@ import { normaliseText } from '@/lib/domain/search-filter'
 export const UNCATEGORIZED = 'Uncategorized'
 
 /**
+ * A topic's category as the UI names it.
+ *
+ * `category` is nullable, and every surface that shows one shows "Uncategorized"
+ * for null. This is the single place that translation happens, so the label a
+ * card displays is exactly the value a filter matches on.
+ */
+export function categoryOf(topic: { category: string | null }): string {
+  return topic.category ?? UNCATEGORIZED
+}
+
+/**
  * The vocabulary design-reference.html uses in its category selects. `category`
  * is free text in the schema, so this is what the heuristic can *suggest*, not
  * a set the user is confined to.

@@ -50,7 +50,7 @@ test('a topic with a mental model shows Model ✓ on its card', async ({ page })
   await page.getByLabel(/Mental model/).fill('Like an editor diffing two drafts.')
   await page.getByRole('button', { name: 'Save topic' }).click()
 
-  const card = page.locator('article').filter({ hasText: title })
+  const card = page.getByRole('link', { name: new RegExp(title) })
   await expect(card).toBeVisible()
   await expect(card.getByText('Model ✓')).toBeVisible()
 })
@@ -64,7 +64,7 @@ test('a topic without a mental model does not show Model ✓', async ({ page }) 
   await page.getByLabel('Definition').fill('A definition and nothing more.')
   await page.getByRole('button', { name: 'Save topic' }).click()
 
-  const card = page.locator('article').filter({ hasText: title })
+  const card = page.getByRole('link', { name: new RegExp(title) })
   await expect(card).toBeVisible()
   await expect(card.getByText('Model ✓')).toHaveCount(0)
 })
@@ -101,19 +101,3 @@ test('a save that fails surfaces the reason instead of failing silently', async 
   await expect(page.getByRole('dialog', { name: 'Add topic' })).toBeVisible()
 })
 
-test('the toolbar is visibly inert rather than silently doing nothing', async ({ page }) => {
-  await signIn(page, EMAIL, PASSWORD)
-
-  // The toolbar only exists once there is something to filter, and this spec may
-  // run before any other has added a topic — so it makes its own.
-  await openAddSheet(page)
-  await page.getByLabel('Topic', { exact: true }).fill(uniqueTitle('Toolbar'))
-  await page.getByLabel('Definition').fill('So the library is not empty.')
-  await page.getByRole('button', { name: 'Save topic' }).click()
-  await expect(page.getByRole('dialog', { name: 'Add topic' })).not.toBeVisible()
-
-  // A search box that accepts text and discards it is worse than one that says
-  // it is not ready.
-  await expect(page.getByRole('searchbox', { name: 'Search your knowledge' })).toBeDisabled()
-  await expect(page.getByText('Search and filters arrive in the next phase.')).toBeVisible()
-})

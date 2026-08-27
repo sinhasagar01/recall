@@ -4,11 +4,11 @@ import { revalidatePath } from 'next/cache'
 import { insertTopic } from '@/lib/data/topics'
 import type { Difficulty } from '@/lib/domain/types'
 
-export type CreateTopicResult = { error: string; title?: undefined } | { error: null; title: string }
+export type SaveTopicResult = { error: string; title?: undefined } | { error: null; title: string }
 
 const DIFFICULTIES: Difficulty[] = ['easy', 'medium', 'hard']
 
-export async function createTopic(formData: FormData): Promise<CreateTopicResult> {
+export async function createTopic(formData: FormData): Promise<SaveTopicResult> {
   const title = String(formData.get('title') ?? '').trim()
   const definition = String(formData.get('definition') ?? '').trim()
   const mentalModel = String(formData.get('mental_model') ?? '').trim()

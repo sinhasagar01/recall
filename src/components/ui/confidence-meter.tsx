@@ -1,3 +1,4 @@
+import { CONFIDENCE_LABEL } from '@/lib/domain/confidence'
 import type { Confidence } from '@/lib/domain/types'
 
 /*
@@ -7,13 +8,6 @@ import type { Confidence } from '@/lib/domain/types'
   meaning on its own.
 */
 const FILLED: Record<Confidence, number> = { new: 0, weak: 1, okay: 2, strong: 3 }
-
-export const CONFIDENCE_LABEL: Record<Confidence, string> = {
-  new: 'Never practiced',
-  weak: 'Weak',
-  okay: 'Okay',
-  strong: 'Strong',
-}
 
 const TICK_ON: Record<Confidence, string> = {
   new: '',

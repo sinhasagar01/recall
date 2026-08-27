@@ -90,6 +90,17 @@ assertions were run against the previous schema first and reported
 **The rule: if a column enumerates its legal values, it almost certainly wants NOT NULL
 too.** A CHECK says what a value may be, never that there must be one.
 
+## What "needs review" means
+
+`needsReview` is one predicate with several callers: the rail's count, the library
+subtitle, and (phase 9) the Weak Topics page itself.
+
+**The rule comes from the product spec: Weak Topics shows `confidence = 'new'` OR
+`confidence = 'weak'`.** The mock's numbers happen to agree — its confidence select
+reads Never practiced 4 and Weak 7, and its weak page reads "11 topics" — but that
+agreement is a consequence of the rule, not the reason for it. A count that lined up
+by coincidence would be a bad thing to build on.
+
 ## One definition of "never practiced"
 
 `isNeverPracticed()` in `src/lib/domain/confidence.ts` is the only definition, and
@@ -215,6 +226,78 @@ this way. `revalidatePath('/library')` is what updates the list without a reload
 per request rather than issuing the same select twice. It returns `readAt` alongside
 the rows: relative times are relative to *the read*, and taking the clock there keeps
 `Date.now()` out of render, where it is impure and would drift between the two.
+
+## Not found and ownership are the same thing
+
+`getTopic` uses `.maybeSingle()` and returns `Topic | null`. RLS returns zero rows
+both for an id that does not exist and for one belonging to another user, so the two
+take the identical path to `notFound()`. There is no `user_id` filter in the query and
+no 403 branch anywhere — a status that distinguished "exists but not yours" from "does
+not exist" would tell an attacker which ids are real.
+
+Asserted end to end rather than in pgTAP, because the leak would be in the HTTP
+surface: a spec creates a topic as one user, signs in as another, and asserts that its
+url and a random uuid render the same page.
+
+## Deleting a topic: the object goes first
+
+`deleteTopicRow` is named for what it does — the row is not the only thing a topic
+owns. The ordering lives in `(app)/topic/[id]/actions.ts`, with the storage removal
+marked ahead of the row deletion for phase 10:
+
+1. remove the storage object through the Storage API
+2. delete the row
+
+That order is not arbitrary. A failure at step 1 leaves the row intact and the whole
+operation retryable. Deleting the row first orphans an object that nothing references
+and nothing can find, because the only record of its path was the row just deleted.
+And per the binding constraint above, no SQL statement or trigger can remove a storage
+object, so this sequencing is the application's job and cannot be pushed into the
+database.
+
+`redirect()` sits outside the try/catch: it signals by throwing, and catching it would
+swallow the navigation and report a failure that did not happen.
+
+## Search and filtering: wiring, not logic
+
+The library renders from **one** `filterTopics` call. Every rule it applies —
+partial case-insensitive matching across title, definition, mental model, category
+and tags, AND composition, the recency window — was written and tested in phase 2,
+before any of this UI existed. No component contains a comparison that decides
+whether a topic matches.
+
+Counts are built the same way: each quick-filter chip's count is
+`filterTopics(topics, {quickFilters:[q]}, now).length`, and `confidenceOptions` /
+`difficultyOptions` delegate to `filterTopics` too. A count is therefore, by
+construction, exactly what selecting that option yields — it cannot drift from the
+thing it describes.
+
+**Counts reflect the full library, not the filtered set.** The reference settles it:
+with a query matching nothing and a category filter active, its category select still
+reads "All categories 48".
+
+### Filter state lives in the URL
+
+Written with `window.history.replaceState`, the documented Next pattern that updates
+the URL without reloading the page while staying in sync with `useSearchParams`. So a
+filtered view is shareable and survives a reload, at no server round-trip and with no
+history entry per keystroke.
+
+`replaceState` for every control, not only the input: the toolbar is one continuous
+act of narrowing, and stepping back through half-typed queries and intermediate filter
+states is not history worth keeping.
+
+### The gap phase 2 could not have seen
+
+`filterTopics` could not express "category is null" — the filter treated `null` as
+*unset*, so the "Uncategorized" option had nothing to send. Phase 2 had no UI
+enumerating categories, so a topic without one never needed to be selectable;
+`categoryOptions` (phase 5) introduced "Uncategorized" as a display label, and phase 7
+was the first time that label had to round-trip back into a filter.
+
+Fixed with `categoryOf(topic)` in `category-suggest.ts`, used by `filterTopics`,
+`topicPath` and `categoryOptions` alike — so the label a card shows is exactly the
+value a filter matches.
 
 ## The component layer
 

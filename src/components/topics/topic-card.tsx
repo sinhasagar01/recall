@@ -1,16 +1,18 @@
+import Link from 'next/link'
 import { ConfidenceMeter } from '@/components/ui/confidence-meter'
 import { topicPath } from '@/lib/domain/library'
 import type { Topic } from '@/lib/domain/types'
 
 /*
-  The reference draws this as a <button> because it opens the topic. There is no
-  detail route until phase 6, and a button that does nothing is worse than a card
-  that does not claim to be interactive — so it is an <article> here and becomes a
-  link in phase 6. Recorded in TASKS.md.
+  A link, now that /topic/[id] exists. The reference draws it as a button; a link
+  is the honest element for something that navigates, and it gets middle-click,
+  open-in-new-tab and the browser's own affordances for free.
 */
 export function TopicCard({ topic, timestamp }: { topic: Topic; timestamp?: string }) {
   return (
-    <article className="flex flex-col gap-[9px] rounded-lg border border-rule bg-surface p-5 shadow-card">
+    <Link
+      href={`/topic/${topic.id}`}
+      className="flex flex-col gap-[9px] rounded-lg border border-rule bg-surface p-5 shadow-card hover:border-rule-strong">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="font-display text-card-title leading-[1.28] font-medium tracking-[-0.01em]">
@@ -34,7 +36,7 @@ export function TopicCard({ topic, timestamp }: { topic: Topic; timestamp?: stri
           </span>
         ) : null}
       </div>
-    </article>
+    </Link>
   )
 }
 

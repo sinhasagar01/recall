@@ -9,33 +9,52 @@ import { Select } from '@/components/ui/select'
 import { Sheet } from '@/components/ui/sheet'
 import { TagsInput } from '@/components/ui/tags-input'
 import { suggestCategory, UNCATEGORIZED } from '@/lib/domain/category-suggest'
-import type { CategoryOption } from '@/lib/domain/library'
+import { DIFFICULTY_LABEL, type CategoryOption } from '@/lib/domain/library'
 import type { Difficulty } from '@/lib/domain/types'
-import { createTopic, type CreateTopicResult } from '@/app/(app)/library/actions'
+import { createTopic, type SaveTopicResult } from '@/app/(app)/library/actions'
+import { saveTopicEdits } from '@/app/(app)/topic/[id]/actions'
+import type { Topic } from '@/lib/domain/types'
 
-const DIFFICULTIES = [
-  { value: 'easy', label: 'Easy' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'hard', label: 'Hard' },
-] as const satisfies readonly { value: Difficulty; label: string }[]
+const DIFFICULTIES = (['easy', 'medium', 'hard'] as const).map((value) => ({
+  value,
+  label: DIFFICULTY_LABEL[value],
+}))
 
-export function AddTopicSheet({
+/**
+ * One sheet, two modes.
+ *
+ * Passing a `topic` puts it in edit mode. Forking a second sheet would mean two
+ * places to keep the category suggestions, the tag rules and the difficulty
+ * control in step, and they would not stay in step.
+ *
+ * The caller remounts this with a `key` when the topic changes, so the prefilled
+ * state comes from useState initialisers rather than an effect syncing props into
+ * state after the fact.
+ */
+export function TopicSheet({
   open,
   onClose,
   onSaved,
   categories,
+  topic,
+  initialTitle = '',
 }: {
   open: boolean
   onClose: () => void
   onSaved: (title: string) => void
   categories: CategoryOption[]
+  topic?: Topic
+  /** Prefills a NEW topic — the "+ Add “query”" path out of no-results. */
+  initialTitle?: string
 }) {
-  const [title, setTitle] = useState('')
-  const [definition, setDefinition] = useState('')
-  const [mentalModel, setMentalModel] = useState('')
-  const [category, setCategory] = useState(UNCATEGORIZED)
-  const [tags, setTags] = useState<string[]>([])
-  const [difficulty, setDifficulty] = useState<Difficulty>('medium')
+  const editing = topic !== undefined
+
+  const [title, setTitle] = useState(topic?.title ?? initialTitle)
+  const [definition, setDefinition] = useState(topic?.definition ?? '')
+  const [mentalModel, setMentalModel] = useState(topic?.mental_model ?? '')
+  const [category, setCategory] = useState(topic?.category ?? UNCATEGORIZED)
+  const [tags, setTags] = useState<string[]>(topic?.tags ?? [])
+  const [difficulty, setDifficulty] = useState<Difficulty>(topic?.difficulty ?? 'medium')
   const [error, setError] = useState<string | null>(null)
   const [isSaving, startSaving] = useTransition()
 
@@ -64,7 +83,7 @@ export function AddTopicSheet({
     return [suggested, ...rest, ...uncategorized]
   }, [categories, title, definition])
 
-  const reset = () => {
+  const clear = () => {
     setTitle('')
     setDefinition('')
     setMentalModel('')
@@ -82,7 +101,9 @@ export function AddTopicSheet({
   const submit = (formData: FormData) => {
     setError(null)
     startSaving(async () => {
-      const result: CreateTopicResult = await createTopic(formData)
+      const result: SaveTopicResult = editing
+        ? await saveTopicEdits(topic.id, formData)
+        : await createTopic(formData)
 
       if (result.error !== null) {
         setError(result.error)
@@ -90,7 +111,8 @@ export function AddTopicSheet({
       }
 
       onSaved(result.title)
-      reset()
+      // An edit keeps what it edited on screen; a new topic clears the form.
+      if (!editing) clear()
       onClose()
     })
   }
@@ -99,7 +121,7 @@ export function AddTopicSheet({
     <Sheet
       open={open}
       onClose={onClose}
-      title="Add topic"
+      title={editing ? 'Edit topic' : 'Add topic'}
       footer={
         <>
           <Button
@@ -110,7 +132,7 @@ export function AddTopicSheet({
             loading={isSaving}
             loadingLabel="Saving…"
           >
-            Save topic
+            {editing ? 'Save changes' : 'Save topic'}
           </Button>
           <span className="font-mono text-[11.5px] text-ink-3">
             <Kbd>⌘</Kbd> <Kbd>↵</Kbd> to save

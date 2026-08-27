@@ -222,3 +222,32 @@ describe('filterTopics — composition', () => {
     expect(titles(topics)).toEqual(snapshot)
   })
 })
+
+describe('filterTopics — the Uncategorized case', () => {
+  /*
+    Phase 2 could not have seen this: it had no UI enumerating categories, so a
+    topic with no category never needed to be selectable. `categoryOptions`
+    (phase 5) introduced "Uncategorized" as a display label, and phase 7 is the
+    first time that label has to round-trip back into a filter.
+  */
+  const topics = [
+    topic('react', { category: 'React' }),
+    topic('bare-a', { category: null }),
+    topic('bare-b', { category: null }),
+  ]
+
+  it('selects the topics that have no category at all', () => {
+    expect(titles(filterTopics(topics, { category: 'Uncategorized' }, NOW))).toEqual([
+      'bare-a',
+      'bare-b',
+    ])
+  })
+
+  it('still treats a null filter as unset, not as a search for null', () => {
+    expect(filterTopics(topics, { category: null }, NOW)).toHaveLength(3)
+  })
+
+  it('does not sweep uncategorised topics into a named category', () => {
+    expect(titles(filterTopics(topics, { category: 'React' }, NOW))).toEqual(['react'])
+  })
+})
