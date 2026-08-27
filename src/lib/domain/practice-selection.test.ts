@@ -4,14 +4,18 @@ import {
   PRACTICE_SESSION_SIZE,
   canPracticeBelowMinimum,
   meetsPracticeMinimum,
+  noShuffle,
+  orderForPractice,
   seededShuffle,
   selectPracticeSession,
 } from '@/lib/domain/practice-selection'
 import { makeTopic } from '@/lib/domain/topic-fixture'
 import type { Topic } from '@/lib/domain/types'
 
-/** Randomness is injected. `noShuffle` keeps ties in input order. */
-const noShuffle = <T>(items: T[]): T[] => items
+/*
+  `noShuffle` is imported rather than declared here: phase 9 gave it a real home in
+  the module, and a local copy would be free to drift from the one the app uses.
+*/
 /** `reverseShuffle` proves a tie-break actually reached the shuffle. */
 const reverseShuffle = <T>(items: T[]): T[] => [...items].reverse()
 
@@ -242,5 +246,49 @@ describe('seededShuffle', () => {
   it('handles empty and single-item lists', () => {
     expect(seededShuffle('s')([])).toEqual([])
     expect(seededShuffle('s')(['only'])).toEqual(['only'])
+  })
+})
+
+describe('orderForPractice', () => {
+  /*
+    Extracted in phase 9 so the weak-topics page could reuse the ordering.
+    selectPracticeSession could not serve that page: it caps at 10, and a list
+    page shows everything.
+  */
+  const many = (n: number) =>
+    Array.from({ length: n }, (_, i) =>
+      topic(`t${String(i).padStart(2, '0')}`, {
+        confidence: 'okay',
+        last_practiced_at: new Date(Date.UTC(2026, 0, i + 1)).toISOString(),
+      }),
+    )
+
+  it('returns everything, with no session cap', () => {
+    expect(orderForPractice(many(25), { shuffle: noShuffle })).toHaveLength(25)
+  })
+
+  it('orders exactly as a session does, before the cap', () => {
+    const topics = many(25)
+    expect(titles(orderForPractice(topics, { shuffle: noShuffle })).slice(0, PRACTICE_SESSION_SIZE)).toEqual(
+      titles(selectPracticeSession(topics, { shuffle: noShuffle })),
+    )
+  })
+
+  it('puts never-practiced ahead of weak, which is what the weak page needs', () => {
+    const topics = [
+      topic('weak-old', { confidence: 'weak', last_practiced_at: '2026-01-01T00:00:00.000Z' }),
+      topic('never', { confidence: 'new' }),
+      topic('weak-recent', { confidence: 'weak', last_practiced_at: '2026-06-01T00:00:00.000Z' }),
+    ]
+    expect(titles(orderForPractice(topics, { shuffle: noShuffle }))).toEqual([
+      'never',
+      'weak-old',
+      'weak-recent',
+    ])
+  })
+
+  it('noShuffle leaves ties exactly as they came', () => {
+    const tied = [topic('a'), topic('b'), topic('c')]
+    expect(titles(orderForPractice(tied, { shuffle: noShuffle }))).toEqual(['a', 'b', 'c'])
   })
 })

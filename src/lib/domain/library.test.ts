@@ -7,6 +7,7 @@ import {
   deletionSummary,
   formatRelativeTime,
   formatShortDate,
+  lastPracticedLabel,
   libraryStats,
   needsReview,
   topicPath,
@@ -272,5 +273,23 @@ describe('confidenceOptions and difficultyOptions', () => {
 
   it('reports zeroes for an empty library', () => {
     expect(confidenceOptions([], NOW).every((option) => option.count === 0)).toBe(true)
+  })
+})
+
+describe('lastPracticedLabel', () => {
+  it('says never practiced when it never has been', () => {
+    expect(lastPracticedLabel(makeTopic({ last_practiced_at: null }), NOW)).toBe('never practiced')
+  })
+
+  it('says when it last was', () => {
+    expect(lastPracticedLabel(makeTopic({ last_practiced_at: ago(12 * DAY) }), NOW)).toBe(
+      'last practiced 12 days ago',
+    )
+  })
+
+  it('reuses the shared relative-time wording', () => {
+    expect(lastPracticedLabel(makeTopic({ last_practiced_at: ago(1 * DAY) }), NOW)).toBe(
+      'last practiced Yesterday',
+    )
   })
 })

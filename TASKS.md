@@ -307,8 +307,10 @@ and the meter and the filter would have been free to disagree about the word for
 
 - ~~card is an `<article>`~~ done (phase 6) · ~~toolbar inert~~ done (phase 7)
 - ~~rail Practice entry~~ and ~~"Practice this"~~ — **done**, both are links now.
-- The rail's **Weak topics** entry is still an `aria-disabled` span. Phase 9.
-- The Visual section and Lightbox remain unreachable until phase 10.
+- ~~rail Weak topics entry~~ — **done**. The deferred-conversion list is empty.
+- Still open, and phase 10's actual scope rather than a conversion: the add/edit
+  dropzone renders disabled, and the Visual section and Lightbox stay unreachable
+  until something can set `mental_model_image_path`.
 
 ### Deferred by DESIGN.md section 7
 
@@ -323,7 +325,27 @@ implementation is impure in exactly the places this needs to call it.
 
 ## Phase 9 — weak topics
 
-- [ ] List and empty states
+- [x] `/weak` server component: page head with real counts, the ordering banner with
+      "Practice all N", the list rows, the per-row Practice button
+- [x] Empty state: "Nothing needs review", with "+ Add topic" and "Practice anyway"
+- [x] The rail's Weak topics entry is a link — **the deferred-conversion list is now empty**
+- [x] 7 Playwright specs, written and run red before the page existed
+
+### Two things reported rather than assumed
+
+**`selectPracticeSession` could not produce this list.** It caps at ten and shuffles
+ties. `orderForPractice` was extracted so the ordering has one definition; the session
+function is now that plus the slice, and its contract and tests are unchanged.
+
+**"Practice all N" did not follow from the existing URL scheme.** `?all=1` waives the
+floor over the whole library and `?topic=` is a single id; neither means "this subset".
+`?scope=weak` is one new case, waived on the same reasoning as `?topic=`.
+
+### One small domain addition
+
+`lastPracticedLabel(topic, now)` — the row's "never practiced" / "last practiced 12
+days ago" tail. Choosing between the two is a comparison, and comparisons do not live
+in components.
 
 ## Phase 10 — image upload
 

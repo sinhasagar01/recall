@@ -54,7 +54,19 @@ function compare(a: number, b: number): number {
  * by oldest last_practiced_at — `now` is the same for every topic and cancels
  * out — so taking one would be a lie about what this depends on.
  */
-export function selectPracticeSession(topics: Topic[], { shuffle }: { shuffle: Shuffle }): Topic[] {
+/** A shuffle that shuffles nothing, for callers wanting a stable order. */
+export const noShuffle: Shuffle = (items) => items
+
+/**
+ * The full practice order: never-practiced first, then weak, okay and strong, each
+ * by longest gap, with ties handed to the injected shuffle.
+ *
+ * Extracted so the weak-topics page can reuse the ordering without duplicating it.
+ * `selectPracticeSession` could not serve that page directly: it caps at
+ * PRACTICE_SESSION_SIZE, and a list page must show everything. Passing `noShuffle`
+ * also keeps a list page from reordering itself on every reload.
+ */
+export function orderForPractice(topics: Topic[], { shuffle }: { shuffle: Shuffle }): Topic[] {
   const ranked = topics.map((topic) => ({
     topic,
     bucket: BUCKET_ORDER[topic.confidence],
@@ -83,7 +95,12 @@ export function selectPracticeSession(topics: Topic[], { shuffle }: { shuffle: S
     start = end
   }
 
-  return ordered.slice(0, PRACTICE_SESSION_SIZE)
+  return ordered
+}
+
+/** One session's worth of the practice order. */
+export function selectPracticeSession(topics: Topic[], { shuffle }: { shuffle: Shuffle }): Topic[] {
+  return orderForPractice(topics, { shuffle }).slice(0, PRACTICE_SESSION_SIZE)
 }
 
 /**

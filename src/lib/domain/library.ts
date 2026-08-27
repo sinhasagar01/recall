@@ -186,3 +186,14 @@ export function difficultyOptions(topics: Topic[], now: Date): CategoryOption[] 
     'difficulty',
   )
 }
+
+/**
+ * The weak-list row's tail: "never practiced" or "last practiced 12 days ago".
+ *
+ * It lives here rather than in the row because deciding which of the two applies
+ * is a comparison, and comparisons do not go in components.
+ */
+export function lastPracticedLabel(topic: Topic, now: Date): string {
+  if (topic.last_practiced_at === null) return 'never practiced'
+  return `last practiced ${formatRelativeTime(topic.last_practiced_at, now)}`
+}

@@ -318,6 +318,36 @@ Three ways in, distinguished by the URL:
 The floor exists to stop an *auto-selected* session from being re-reading the same
 card. Choosing one card deliberately is not that, so it is not subject to it.
 
+### The ordering has one definition
+
+`orderForPractice(topics, {shuffle})` produces the full practice order.
+`selectPracticeSession` is that plus `.slice(0, PRACTICE_SESSION_SIZE)`.
+
+The split exists because the weak-topics page needed the same order and
+`selectPracticeSession` could not give it: the page shows every weak topic and the
+session caps at ten, and a list that shuffled its ties would reorder itself on every
+reload. Extracting was the alternative to writing the sort twice — two copies of
+"never-practiced first, then by longest gap" would have been free to disagree, and the
+one place that disagreement would show is the page whose whole job is that order.
+
+`noShuffle` is exported alongside them so callers wanting a stable order share one
+identity function rather than inlining their own.
+
+### The practice URL scheme
+
+| URL | Session | Floor |
+|---|---|---|
+| `/practice` | auto-selected | applies |
+| `/practice?topic=<id>` | one chosen topic | waived |
+| `/practice?all=1` | whole library, override | waived |
+| `/practice?scope=weak` | everything needing review | waived |
+
+`?scope=weak` was **added in phase 9** — it did not follow from the earlier three.
+`?all=1` waives the floor but practises the whole library, and `?topic=` is a single
+id; neither expresses "this subset". The floor is waived for it on the same reasoning
+as `?topic=`: it exists to stop an *auto-selected* session from being re-reading the
+same card, and a set the user picked is not that.
+
 ### Skip has no code path to the server
 
 There is no skip action. Skipping advances the queue in the browser and never reaches

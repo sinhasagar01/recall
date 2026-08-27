@@ -20,6 +20,8 @@ const emptyEmail = process.env.E2E_EMPTY_USER_EMAIL
 const emptyPassword = process.env.E2E_EMPTY_USER_PASSWORD
 const fewEmail = process.env.E2E_FEW_USER_EMAIL
 const fewPassword = process.env.E2E_FEW_USER_PASSWORD
+const strongEmail = process.env.E2E_STRONG_USER_EMAIL
+const strongPassword = process.env.E2E_STRONG_USER_PASSWORD
 
 const missing = [
   ['NEXT_PUBLIC_SUPABASE_URL', url],
@@ -30,6 +32,8 @@ const missing = [
   ['E2E_EMPTY_USER_PASSWORD', emptyPassword],
   ['E2E_FEW_USER_EMAIL', fewEmail],
   ['E2E_FEW_USER_PASSWORD', fewPassword],
+  ['E2E_STRONG_USER_EMAIL', strongEmail],
+  ['E2E_STRONG_USER_PASSWORD', strongPassword],
 ]
   .filter(([, value]) => !value)
   .map(([name]) => name)
@@ -85,6 +89,7 @@ async function upsertUser(userEmail: string, userPassword: string): Promise<stri
 await upsertUser(email!, password!)
 const emptyUserId = await upsertUser(emptyEmail!, emptyPassword!)
 const fewUserId = await upsertUser(fewEmail!, fewPassword!)
+const strongUserId = await upsertUser(strongEmail!, strongPassword!)
 
 /*
   Test isolation.
@@ -129,3 +134,35 @@ if (fewError) {
   process.exit(1)
 }
 console.log(`Two-topic user reset: ${fewEmail}`)
+
+/*
+  The nothing-needs-review user: every topic at okay or better, so /weak shows its
+  empty state for the reason the copy gives — not merely because the library is
+  empty. Reset from scratch each run.
+*/
+await admin.from('topics').delete().eq('user_id', strongUserId)
+
+const { error: strongError } = await admin.from('topics').insert([
+  {
+    user_id: strongUserId,
+    title: 'Flexbox main axis',
+    definition: 'Items lay out along the main axis, which flex-direction picks.',
+    confidence: 'strong',
+    practice_count: 4,
+    last_practiced_at: new Date('2026-06-01T00:00:00.000Z').toISOString(),
+  },
+  {
+    user_id: strongUserId,
+    title: 'Stacking contexts',
+    definition: 'A new context is formed by opacity, transform and a few others.',
+    confidence: 'okay',
+    practice_count: 2,
+    last_practiced_at: new Date('2026-06-02T00:00:00.000Z').toISOString(),
+  },
+])
+
+if (strongError) {
+  console.error(`Could not seed the nothing-needs-review user: ${strongError.message}`)
+  process.exit(1)
+}
+console.log(`Nothing-needs-review user reset: ${strongEmail}`)

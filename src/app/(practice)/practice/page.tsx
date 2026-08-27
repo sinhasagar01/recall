@@ -2,9 +2,11 @@ import Link from 'next/link'
 import { PracticeSession } from '@/components/practice/practice-session'
 import { StateBlock } from '@/components/ui/state-block'
 import { listTopics } from '@/lib/data/topics'
+import { needsReview } from '@/lib/domain/library'
 import {
   canPracticeBelowMinimum,
   meetsPracticeMinimum,
+  orderForPractice,
   PRACTICE_MINIMUM,
   seededShuffle,
   selectPracticeSession,
@@ -19,9 +21,13 @@ import {
                            stop an auto-selected session from being re-reading the
                            same card, and choosing one card is not that.
     /practice?all=1        the override from the too-few screen. Floor waived.
+    /practice?scope=weak   everything that needs review, from the weak page. A set
+                           the user chose, so the floor is waived for the same
+                           reason as ?topic= — this case did NOT follow from the
+                           earlier scheme and was added in phase 9.
 */
 export default async function PracticePage({ searchParams }: PageProps<'/practice'>) {
-  const { topic: topicId, all } = await searchParams
+  const { topic: topicId, all, scope } = await searchParams
   const { topics, readAt } = await listTopics()
 
   const chosen = typeof topicId === 'string' ? topics.filter((t) => t.id === topicId) : null
@@ -37,6 +43,11 @@ export default async function PracticePage({ searchParams }: PageProps<'/practic
       )
     }
     return <PracticeSession queue={chosen} />
+  }
+
+  if (scope === 'weak') {
+    const weak = orderForPractice(topics.filter(needsReview), { shuffle: seededShuffle(readAt) })
+    if (weak.length > 0) return <PracticeSession queue={weak} />
   }
 
   const overridden = all === '1'
