@@ -53,6 +53,9 @@ prefix.
 - [x] Signed-out (`anon`) coverage on both tables: select, insert, update, delete
 - [x] Enforcement verified: tests go red with RLS off, policies unkeyed, or opened to anon
 - [x] `db:types` script added, deliberately not run and not wired into `verify`
+- [x] Follow-up migration `*_topics_not_null.sql`: difficulty, confidence and tags
+      were missing NOT NULL. A CHECK passes on NULL, so an explicit null insert
+      succeeded. Written up in ARCHITECTURE.md, "A CHECK constraint does not imply NOT NULL"
 
 ### Things this phase discovered, worth not rediscovering
 
@@ -84,12 +87,22 @@ a privilege, so RLS stays in force.
 
 ## Phase 2 — domain layer
 
-- [ ] `practice-selection.ts` — never-practiced, then weak, then okay by longest gap, then strong by longest gap, then random. Session size 10, or everything if fewer
-- [ ] Practice minimum of 3 topics, with an explicit override path
-- [ ] `search-filter.ts` — partial, case-insensitive, across title, definition, mental_model, category, tags. `"recon"` finds `"React reconciliation"`
-- [ ] `confidence.ts` — didn't know → weak, partly → okay, knew it → strong; each increments `practice_count` and sets `last_practiced_at`. Skip records nothing
-- [ ] `category-suggest.ts` — keyword heuristic over title and definition. No AI API
-- [ ] Every one of the above unit tested first, no UI
+- [x] `types.ts` — `Topic` hand-written against the migration, not generated. No
+      nullable `difficulty`/`confidence`/`tags`, and no normalising helpers: the
+      schema was fixed instead of worked around
+- [x] `practice-selection.ts` — never-practiced, then weak, okay and strong each by longest gap, ties to an injected shuffle. Session size 10, or everything if fewer
+- [x] Practice minimum of 3 topics, with `canPracticeBelowMinimum` as the override path
+- [x] `search-filter.ts` — partial, case-insensitive, across title, definition, mental_model, category, tags. `"recon"` finds `"React reconciliation"`. Filters compose with AND
+- [x] `confidence.ts` — didn't know → weak, partly → okay, knew it → strong; each increments `practice_count` and sets `last_practiced_at`. Skip returns null
+- [x] `category-suggest.ts` — keyword heuristic over title and definition. No AI API
+- [x] Every one of the above unit tested first, no UI (99 tests)
+- [x] `isNeverPracticed` is one predicate with two callers; `RECENT_WINDOW_DAYS` is one constant with two callers
+
+### Decisions recorded in ARCHITECTURE.md
+
+Why `Topic` is hand-written rather than generated · what "never practiced" means and
+why it keys on confidence · why `selectPracticeSession` takes no clock · why the
+shuffle never goes inside the sort comparator.
 
 ## Phase 3 — auth
 

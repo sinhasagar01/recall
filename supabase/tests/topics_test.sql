@@ -1,5 +1,5 @@
 begin;
-select plan(53);
+select plan(59);
 
 -- ---------------------------------------------------------------------------
 -- Local helpers.
@@ -109,6 +109,28 @@ select throws_ok(
   $$insert into public.topics (user_id, title, definition, confidence)
     values ('00000000-0000-0000-0000-0000000000aa', 't', 'd', 'unsure')$$,
   '23514', null, 'confidence rejects a value outside new/weak/okay/strong');
+
+-- A CHECK constraint passes on NULL, so `check (difficulty in (...))` never
+-- stopped an explicit null. These three columns carry a default AND a NOT NULL;
+-- the default covers an omitted value, the NOT NULL covers an explicit null.
+select col_not_null('public'::name, 'topics'::name, 'difficulty'::name);
+select col_not_null('public'::name, 'topics'::name, 'confidence'::name);
+select col_not_null('public'::name, 'topics'::name, 'tags'::name);
+
+select throws_ok(
+  $$insert into public.topics (user_id, title, definition, difficulty)
+    values ('00000000-0000-0000-0000-0000000000aa', 't', 'd', null)$$,
+  '23502', null, 'difficulty rejects an explicit null');
+
+select throws_ok(
+  $$insert into public.topics (user_id, title, definition, confidence)
+    values ('00000000-0000-0000-0000-0000000000aa', 't', 'd', null)$$,
+  '23502', null, 'confidence rejects an explicit null');
+
+select throws_ok(
+  $$insert into public.topics (user_id, title, definition, tags)
+    values ('00000000-0000-0000-0000-0000000000aa', 't', 'd', null)$$,
+  '23502', null, 'tags rejects an explicit null');
 
 -- ===========================================================================
 -- Defaults — asserted behaviourally. Comparing the catalog's default *text*

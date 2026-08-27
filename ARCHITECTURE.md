@@ -36,6 +36,98 @@ import a Supabase client — not even a type from one.
 hands plain data to the domain layer; it does not make decisions. Components read
 from `src/lib/data` and render — they do not re-implement rules inline.
 
+## Why the Topic type is hand-written
+
+`src/lib/domain/types.ts` defines `Topic` by hand, matching the migration column
+for column. It is **not** generated from the database, and `npm run db:types` is
+deliberately not wired into anything.
+
+A generated file is shaped by Supabase — nested under `Database['public']['Tables']`,
+carrying `Row`/`Insert`/`Update` variants and Supabase's own type helpers. Importing
+it into `src/lib/domain` would put a Supabase-shaped type at the centre of the one
+layer whose whole purpose is not knowing Supabase exists. The rule would survive in
+the lint config and die in practice.
+
+Phase 5 maps the generated row type onto `Topic` **at the data boundary**, in
+`src/lib/data`. That is the only place allowed to know both shapes.
+
+Two consequences worth stating:
+
+- `difficulty`, `confidence` and `tags` are non-null, because a later migration
+  added the NOT NULL the originals were missing. See the next section — that
+  omission is worth recording, not just fixing.
+- Timestamps are ISO-8601 strings, and are compared by `Date.parse`, never
+  lexicographically. `2026-03-01T00:00:00+02:00` is *earlier* than
+  `2026-03-01T00:00:00Z` but sorts later as a string.
+
+If the migration changes, this file changes with it, and the pgTAP `columns_are`
+assertion is what catches a drift in the other direction.
+
+## A CHECK constraint does not imply NOT NULL
+
+`public.topics.difficulty`, `.confidence` and `.tags` originally carried a default,
+and the first two carried a CHECK — but none carried NOT NULL. That is not enough,
+for two reasons that are easy to conflate:
+
+- **A column default only covers an omitted value.** `insert ... (difficulty) values (null)`
+  states a value, so the default never applies.
+- **A CHECK constraint passes on NULL.** `check (difficulty in ('easy','medium','hard'))`
+  evaluates to NULL — not false — for a null input, and Postgres rejects a row only
+  when a CHECK is *false*. A null slipped straight through the very constraint that
+  looked like it was enumerating the legal values.
+
+The result was a null case that should never have existed, inherited by every
+consumer: the domain layer carried `Difficulty | null` and a pair of normalising
+functions that existed for nothing but that.
+
+Fixed by a forward migration (`*_topics_not_null.sql`) that backfills to the column
+defaults and then adds NOT NULL. The original migration was left exactly as applied.
+`topics_test.sql` now asserts both halves — `col_not_null` on the catalog, and that
+an insert explicitly setting each column to null is rejected with `23502`. Those
+assertions were run against the previous schema first and reported
+`caught: no exception`, which is what proved the hole was real and reachable.
+
+**The rule: if a column enumerates its legal values, it almost certainly wants NOT NULL
+too.** A CHECK says what a value may be, never that there must be one.
+
+## One definition of "never practiced"
+
+`isNeverPracticed()` in `src/lib/domain/confidence.ts` is the only definition, and
+both callers use it: the never-practiced bucket in practice selection, and the
+"Never practiced" quick filter on the library.
+
+**It means `confidence === 'new'`, not `last_practiced_at === null.`** The two can
+genuinely disagree, because Edit can set confidence directly without ever practising
+a topic. Confidence wins because DESIGN.md §2 labels the confidence value `new` as
+"Never practiced" and the mock's confidence select lists it *as* a confidence value —
+so a card's meter and the filter always agree. Keying on `last_practiced_at` would
+let a card visibly labelled "Weak" appear under a "Never practiced" filter.
+
+The other half of that disagreement is handled in practice selection: a topic with
+no `last_practiced_at` has an *infinitely long gap* and sorts first within its own
+bucket. A weak topic never practised outranks a weak topic last practised in March.
+It is the stalest thing in the bucket, not a tie left to the shuffle.
+
+## Determinism in the domain layer
+
+No function in `src/lib/domain` reads the clock or a random source. Time arrives as a
+`now: Date` parameter and randomness as an injected `shuffle`. A test that would pass
+at 3pm and fail at midnight means the function is wrong, not the test.
+
+Two details that matter more than they look:
+
+- **`selectPracticeSession` takes no clock.** Ordering by longest gap is identical to
+  ordering by oldest `last_practiced_at` — `now` is the same for every topic and
+  cancels out. An unused parameter would be a lie about what the function depends on.
+  `filterTopics` genuinely needs one, for the two recency filters.
+- **The shuffle never goes inside the sort comparator.** Randomness in a comparator
+  makes it non-transitive, and the result of `Array.prototype.sort` then becomes
+  implementation-defined — it can reorder across buckets entirely. Topics are sorted
+  by a total order first, then runs of exactly-equal keys are shuffled.
+
+`RECENT_WINDOW_DAYS` is a single exported constant used by both "recently added" and
+"recently practiced". Tests reference the constant, never the literal.
+
 ## Test layers
 
 Four layers. Each covers something the others structurally cannot. **A Supabase
