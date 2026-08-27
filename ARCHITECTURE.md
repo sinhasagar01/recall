@@ -66,6 +66,40 @@ business rules, and it is not a place to test rendering of whole screens.
 cheapest failure surfaces first. It is part of the gate but it is **not** a test
 layer — the count stays at four.
 
+## Binding constraint: deleting a mental-model image
+
+**A mental-model image can only be deleted through the Storage API, from
+application code.** SQL deletes cannot do it and neither can a database trigger.
+
+`storage.objects` carries a `BEFORE DELETE FOR EACH STATEMENT` trigger,
+`protect_objects_delete`, which raises unless the `storage.allow_delete_query`
+setting is on. Being statement-level, it fires even when RLS matches zero rows.
+The Storage API sets that setting; nothing in our schema does, and nothing in our
+schema should.
+
+The original brief implied a SQL cascade would clean up images. **That was wrong.**
+`on delete cascade` on `topics.user_id` removes *rows* when an auth user is
+deleted — it has never had any reach into `storage.objects`. There is no database
+mechanism that deletes an image.
+
+Consequences the application must carry:
+
+1. **Deleting a topic is a two-step operation**: remove the object through the
+   Storage API, then delete the row. It is not atomic and cannot be made atomic.
+2. **The failure case is real and must be handled**: the row is gone but the
+   object removal failed. Prefer deleting the object first — a failure there
+   leaves a consistent, retryable state, whereas deleting the row first and then
+   failing orphans an object nothing references.
+3. **Deleting an auth user orphans their objects.** The row cascade fires; the
+   images stay. Accepted for a single-user tool, and recorded here so it is not
+   mistaken for a bug later.
+
+This mirrors the add path, which is three steps for the same structural reason —
+the object path needs the topic id, so the row must exist first. Both directions
+are application-level sequences with partial-failure states, and DESIGN.md §4.4
+already requires the add path to report the real reason rather than a generic
+message. The delete path is held to the same standard.
+
 ## Running the gate
 
 ```bash

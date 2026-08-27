@@ -43,13 +43,44 @@ prefix.
 
 ## Phase 1 — schema, RLS, storage
 
-- [ ] pgTAP tests for the `topics` columns, defaults and check constraints — **written first**
-- [ ] pgTAP tests for the `updated_at` trigger
-- [ ] pgTAP RLS tests: two users, user B can neither read nor write user A's rows
-- [ ] pgTAP storage tests: user B cannot read or write user A's objects
-- [ ] Migration: `topics` table, trigger, indexes on `(user_id, created_at desc)` and `(user_id, confidence)`
-- [ ] Migration: RLS policies. `user_id` defaults to `auth.uid()`; clients never send it
-- [ ] Migration: private `mental-models` bucket + policies on `(storage.foldername(name))[1]`
+- [x] pgTAP tests for the `topics` columns, defaults and check constraints — **written first**
+- [x] pgTAP tests for the `updated_at` trigger
+- [x] pgTAP RLS tests: two users, user B can neither read nor write user A's rows
+- [x] pgTAP storage tests: user B cannot read or write user A's objects
+- [x] Migration: `topics` table, trigger, indexes on `(user_id, created_at desc)` and `(user_id, confidence)`
+- [x] Migration: RLS policies. `user_id` defaults to `auth.uid()`; clients never send it
+- [x] Migration: private `mental-models` bucket + policies on `(storage.foldername(name))[1]`
+- [x] Signed-out (`anon`) coverage on both tables: select, insert, update, delete
+- [x] Enforcement verified: tests go red with RLS off, policies unkeyed, or opened to anon
+- [x] `db:types` script added, deliberately not run and not wired into `verify`
+
+### Things this phase discovered, worth not rediscovering
+
+**`postgres` has `BYPASSRLS` on this stack** (it is not a superuser, but it bypasses
+anyway). pgTAP runs as `postgres`, so *every* RLS assertion is vacuous unless the test
+switches role. `tests_login_as()` sets both `role` and `request.jwt.claims`; the helpers
+live inside each test file's transaction and are rolled back, so nothing test-only ships.
+
+**`now()` is fixed for a whole transaction.** An insert followed by an update in the same
+transaction produces identical timestamps, so a naive `updated_at` trigger test passes
+with no trigger at all. The test inserts a backdated row so the update has somewhere to
+move. The trigger is `BEFORE UPDATE` only, which is what lets an insert carry explicit
+timestamps.
+
+**pgTAP overload resolution.** `col_type_is('public','topics','id','uuid')` silently binds
+to `(table, column, type, description)`, not `(schema, table, column, type)` — it looks for
+a column literally named `topics`. Schema/table/column arguments need explicit `::name`
+casts.
+
+**Data-modifying CTEs cannot sit in a subquery**, so "affected 0 rows" is measured with a
+`SECURITY INVOKER` helper using `GET DIAGNOSTICS`. Invoker rights are the point: the
+statement must run as the logged-in user so RLS applies.
+
+**Direct SQL deletes from `storage.objects` are blocked** by a statement-level trigger. This
+is a binding architectural constraint, not a test detail — it is written up in
+ARCHITECTURE.md, "Binding constraint: deleting a mental-model image". The storage test sets
+the `storage.allow_delete_query` setting the Storage API sets. It is a custom parameter, not
+a privilege, so RLS stays in force.
 
 ## Phase 2 — domain layer
 
