@@ -1,5 +1,13 @@
 import { defineConfig, devices } from '@playwright/test'
 
+// The specs sign in as the seeded user, whose credentials live in .env.local.
+// Next loads that file for the dev server itself; this process needs it too.
+try {
+  process.loadEnvFile('.env.local')
+} catch {
+  // Absent in CI, where the variables are set directly.
+}
+
 const baseURL = 'http://localhost:3000'
 
 export default defineConfig({

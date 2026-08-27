@@ -56,6 +56,18 @@ Scale: page title 29px · detail title 34px · practice prompt 31px · card titl
 `--radius-sm: 4px` (listbox options). Two shadows only: `--shadow` for cards,
 `--shadow-pop` for popovers and modals. Nothing else gets a shadow.
 
+**Implementation note (phase 3).** Tailwind v4 is CSS-first and its `@theme`
+namespaces have no bare keys, so two names differ from the table above:
+
+| This document | `@theme` token | Utility |
+| --- | --- | --- |
+| `--radius` (6px) | `--radius-md` | `rounded-md` |
+| `--shadow` | `--shadow-card` | `shadow-card` |
+
+`--radius-sm`, `--radius-lg` and `--shadow-pop` keep their names. Everything else in
+section 1 maps directly: colors become `--color-*`, families `--font-*`, and the type
+scale `--text-*`.
+
 ---
 
 ## 2. Signature components

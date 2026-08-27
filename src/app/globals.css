@@ -1,26 +1,112 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/*
+  The token layer. Values come from design-reference.html's `:root` and DESIGN.md
+  section 1 — copied, not reinterpreted. No component may use a raw hex.
+
+  Tailwind v4 is CSS-first: there is no tailwind.config.js. `@theme` both emits
+  these as custom properties and generates the utilities (`bg-surface`,
+  `text-ink-2`, `rounded-md`, `font-display`, `text-body`, ...).
+
+  There is one palette. The design contract does not define a dark theme, so the
+  scaffold's prefers-color-scheme block is deliberately gone rather than left to
+  invent colours nobody chose.
+*/
+@theme {
+  /* Surfaces */
+  --color-bg: #e9eaf0;
+  --color-surface: #ffffff;
+  --color-surface-2: #f5f5fa;
+  --color-surface-3: #edeef4;
+
+  /* Text */
+  --color-ink: #12131a;
+  --color-ink-2: #53555f;
+  --color-ink-3: #83858f;
+
+  /* Lines */
+  --color-rule: #e1e1e9;
+  --color-rule-strong: #c9c9d4;
+
+  /* Accent */
+  --color-accent: #3f3ac7;
+  --color-accent-soft: #edecfb;
+  --color-accent-ink: #2e2a9e;
+
+  /* The only alarm colour: weak confidence, destructive actions, errors. */
+  --color-flag: #b4325c;
+  --color-flag-soft: #fbebf1;
+
+  /*
+    DESIGN.md names these --radius / --radius-lg / --radius-sm. Tailwind v4 has no
+    bare `--radius` namespace, so the 6px default is --radius-md (`rounded-md`).
+    Recorded in DESIGN.md.
+  */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+
+  /* Two shadows only. Nothing else gets one. */
+  --shadow-card: 0 1px 2px rgba(18, 19, 26, 0.05), 0 1px 1px rgba(18, 19, 26, 0.03);
+  --shadow-pop: 0 4px 8px rgba(18, 19, 26, 0.06), 0 12px 32px rgba(18, 19, 26, 0.1);
+
+  /*
+    serif = knowledge, sans = reading, mono = system. The var() names are the ones
+    next/font generates in layout.tsx — a mismatch here fails silently to the
+    fallback, which is why they are written once and used everywhere.
+  */
+  --font-display: var(--font-newsreader), Georgia, serif;
+  --font-body: var(--font-plex-sans), system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+
+  /* The scale from DESIGN.md section 1. */
+  --text-detail-title: 34px;
+  --text-prompt: 31px;
+  --text-wordmark-lg: 30px;
+  --text-page-title: 29px;
+  --text-wordmark: 20px;
+  --text-card-title: 19px;
+  --text-model: 17.5px;
+  --text-register: 15.5px;
+  --text-body: 14.5px;
+  --text-label: 13px;
+  --text-meta: 12.5px;
+  --text-mono: 10.5px;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
   }
-}
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  body {
+    background: var(--color-bg);
+    color: var(--color-ink);
+    font-family: var(--font-body);
+    font-size: var(--text-body);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* DESIGN.md section 6: a visible focus ring on every interactive element. */
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: 3px;
+  }
+
+  /*
+    DESIGN.md section 6: reduced motion kills the spinner and skeleton animations.
+    Nothing depends on an animation to reach its end state — the spinner is
+    decorative and the button's text carries the meaning on its own.
+  */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
 }

@@ -106,12 +106,40 @@ shuffle never goes inside the sort comparator.
 
 ## Phase 3 — auth
 
-- [ ] `src/lib/supabase/` — browser, server-component and middleware clients via `@supabase/ssr`
-- [ ] Middleware refreshes the session cookie and guards `/library`, `/topic`, `/practice`, `/weak`
-- [ ] Sign in and sign up screens (email + password only)
-- [ ] **Seed script for a deterministic e2e test user.** Phase 11's Playwright specs need a
-      known user to exist; the seed script must create it against the local stack. E2E must
-      never depend on manually created data. Not phase 0 work — it needs the schema and auth
+- [x] `src/lib/supabase/{client,server,middleware}.ts` via `@supabase/ssr` 0.12.5
+- [x] `src/proxy.ts` refreshes the session cookie and guards `/library`, `/topic`, `/practice`, `/weak`
+- [x] Sign in and sign up screens (email + password only), matching the mock's copy and states
+- [x] Sign out, at the foot of the rail where the mock puts it
+- [x] Token layer: DESIGN.md section 1 in an `@theme` block, Tailwind v4, no `tailwind.config.js`
+- [x] `scripts/seed-e2e-user.mts` — deterministic, idempotent, safe to re-run. `test:e2e` runs it first
+- [x] 7 Playwright specs, including the reload-keeps-the-session case explicitly
+
+### What phase 4 must extract from the auth screens
+
+Sign-in and sign-up were built with local markup on purpose — the shared primitives are
+phase 4. Both screens currently duplicate:
+
+- **Button** — primary/block/large variant, the disabled state, and the spinner-plus-label
+  submitting state (`Create account` → `Creating account…`)
+- **Field** — label, optional mono hint, input, and the error row with its icon,
+  `aria-invalid` and `aria-describedby` wiring
+- **Wordmark** — name plus accent dot, at two sizes (20px in the rail, 30px on auth)
+- **The auth card shell** — mark, tagline, bordered box, alternate-action line
+
+The error message string lives in `src/app/(auth)/actions.ts`. When Field is extracted,
+the copy stays there rather than moving into the component.
+
+The rail in `src/app/(app)/layout.tsx` is a stub: wordmark and sign out only. Phase 5 adds
+the nav with counts and the `+ Add topic` button.
+
+### Known gap
+
+The `headers` argument that `setAll` receives in @supabase/ssr 0.12.5 is wired, but no test
+asserts it. It only fires when the session is genuinely refreshed, and the local JWT lives
+an hour (`jwt_expiry = 3600`), so no e2e run inside that window triggers it. Probed: on a
+normal navigation with a valid session, no `Set-Cookie` is written at all — so nothing is
+being dropped. Lowering `jwt_expiry` locally would make it assertable, at the cost of
+constant refreshes in ordinary development.
 
 ## Phase 4 — UI primitives
 

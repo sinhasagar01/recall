@@ -128,6 +128,60 @@ Two details that matter more than they look:
 `RECENT_WINDOW_DAYS` is a single exported constant used by both "recently added" and
 "recently practiced". Tests reference the constant, never the literal.
 
+## Auth: the three clients, and where the session actually lives
+
+`src/lib/supabase/{client,server,middleware}.ts` are the only modules in `src/` that
+import a Supabase client. `scripts/seed-e2e-user.mts` also does — it is tooling, not
+application code, and it is the only thing that touches the secret key.
+
+Versions this was written against: **@supabase/ssr 0.12.5**, **@supabase/supabase-js
+2.112.4**. Two details come from the installed package, not from memory, and both fail
+silently if you copy an older snippet:
+
+- **`setAll` takes a second argument, `headers`.** They are cache headers
+  (`Cache-Control: private, no-cache, no-store, …`) that must be written onto the
+  response so a CDN cannot serve one user's session cookie to another. An
+  implementation that ignores the parameter still typechecks.
+- **The deprecated `get`/`set`/`remove` cookie methods must not be used.** The
+  package's own JSDoc says they cause "random logouts, early session termination,
+  JSON parsing errors".
+
+### Next.js 16 renamed `middleware` to `proxy`
+
+The root convention file is **`src/proxy.ts`**, exporting a function named `proxy`.
+`middleware.ts` is deprecated in Next 16, and the edge runtime is not supported for
+proxy — it always runs on nodejs.
+
+It lives in `src/`, not the repository root, because the convention is that it sits
+*at the same level as `app`*. With `src/app`, a root-level file is silently ignored:
+the app still builds, sign-in still works, and only the route guards quietly do
+nothing. That is exactly how it failed here before being moved.
+
+### The rule that keeps the session alive
+
+`updateSession()` builds **one** response and never replaces it without carrying the
+cookies across:
+
+1. `setAll` writes each cookie to `request.cookies` (so the current render sees the
+   refreshed session), rebuilds the response from the updated request, then re-applies
+   every cookie and the cache headers to it.
+2. **Redirects copy the cookies from that response onto the redirect.** Constructing a
+   fresh `NextResponse.redirect()` after a refresh drops the new session — and only on
+   the redirect path, which is why it presents as an intermittent, unreproducible
+   logout.
+
+`src/lib/supabase/server.ts` swallows the error from `cookieStore.set` in a server
+component, which cannot set cookies. That is only safe *because* the proxy exists and
+has already performed the write. If the proxy stops matching a route, that `catch`
+turns a loud failure into a silent one.
+
+### getClaims vs getUser
+
+The proxy calls `getClaims()` — it triggers the refresh and is what the package
+documents for this position. The library page calls `getUser()`, which asks the auth
+server and is authoritative, because it is deciding what to render for a real user
+rather than performing an optimistic route check.
+
 ## Test layers
 
 Four layers. Each covers something the others structurally cannot. **A Supabase
