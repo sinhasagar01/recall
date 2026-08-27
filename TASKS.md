@@ -185,9 +185,36 @@ needs the nav with counts, the `+ Add topic` button and the keyboard hints.
 
 ## Phase 5 — library and add topic
 
-- [ ] Library: loaded, loading skeleton, empty, load error
-- [ ] Add topic: form, saving, success toast
-- [ ] The three-step insert → upload → patch seam, built before upload exists
+- [x] `db:types` generated and committed; row → domain mapping with a compile-time
+      divergence assertion (`TopicBoundaryIsSound`)
+- [x] `src/lib/data/topics.ts` — the only module reading or writing topics
+- [x] App shell: rail with three destinations, live counts, wordmark, add button,
+      keyboard hints, signed-in identity, sign out
+- [x] Library: loaded, loading skeleton, empty, load error
+- [x] Recently learned section, reusing the phase 2 `recently-added` filter
+- [x] Add topic: sheet, category Select with suggestions, tags, difficulty,
+      saving state, success toast, list updates without a reload
+- [x] The three-step insert → upload → patch seam, built before upload exists
+- [x] Toolbar rendered but genuinely disabled, with a visible note
+
+### Deliberate gaps, for later phases
+
+- **The topic card is an `<article>`, not a link.** There is no detail route until
+  phase 6, and a button that does nothing is worse than a card that does not claim to
+  be interactive. Phase 6 makes it a link to `/topic/[id]`.
+- **The rail's Practice and Weak topics entries are `aria-disabled` spans**, not links,
+  for the same reason. Phases 8 and 9 make them links.
+- **The toolbar is inert.** Phase 7 wires it to `search-filter.ts`.
+- **The dropzone renders and says so.** Phase 10 slots the upload into the marked seam
+  in `(app)/library/actions.ts`.
+
+### Test isolation
+
+A second seeded user, `E2E_EMPTY_USER_*`, that no spec ever writes to; the seed clears
+its topics on every run, so leftovers cannot defeat the empty-library spec. Add-topic
+specs use the main user and assert on a unique title they generate, never on a global
+count — so the four Playwright workers stay independent and no database reset is
+needed.
 
 ## Phase 6 — topic detail
 

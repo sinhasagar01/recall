@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { Kbd } from '@/components/ui/kbd'
 
 export type SelectOption = {
   value: string
@@ -273,12 +274,3 @@ export function Select({
   )
 }
 
-/* Inlined rather than shipped as a primitive: `.kbd` is in the reference but not
-   in DESIGN.md's component list. Phase 5 can extract it if the rail needs it. */
-function Kbd({ children }: { children: React.ReactNode }) {
-  return (
-    <kbd className="rounded-sm border border-b-2 border-rule bg-surface px-[5px] py-px font-mono text-mono text-ink-3">
-      {children}
-    </kbd>
-  )
-}

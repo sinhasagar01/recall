@@ -16,12 +16,16 @@ const url = process.env.NEXT_PUBLIC_SUPABASE_URL
 const secretKey = process.env.SUPABASE_SECRET_KEY
 const email = process.env.E2E_USER_EMAIL
 const password = process.env.E2E_USER_PASSWORD
+const emptyEmail = process.env.E2E_EMPTY_USER_EMAIL
+const emptyPassword = process.env.E2E_EMPTY_USER_PASSWORD
 
 const missing = [
   ['NEXT_PUBLIC_SUPABASE_URL', url],
   ['SUPABASE_SECRET_KEY', secretKey],
   ['E2E_USER_EMAIL', email],
   ['E2E_USER_PASSWORD', password],
+  ['E2E_EMPTY_USER_EMAIL', emptyEmail],
+  ['E2E_EMPTY_USER_PASSWORD', emptyPassword],
 ]
   .filter(([, value]) => !value)
   .map(([name]) => name)
@@ -43,29 +47,54 @@ if (listError) {
   process.exit(1)
 }
 
-const found = existing.users.find((user) => user.email === email)
+async function upsertUser(userEmail: string, userPassword: string): Promise<string> {
+  const found = existing.users.find((user) => user.email === userEmail)
 
-if (found) {
-  const { error } = await admin.auth.admin.updateUserById(found.id, {
-    password,
-    email_confirm: true,
-  })
-  if (error) {
-    console.error(`Could not reset the seeded user's password: ${error.message}`)
-    process.exit(1)
+  if (found) {
+    const { error } = await admin.auth.admin.updateUserById(found.id, {
+      password: userPassword,
+      email_confirm: true,
+    })
+    if (error) {
+      console.error(`Could not reset ${userEmail}: ${error.message}`)
+      process.exit(1)
+    }
+    console.log(`Seeded user already existed, password reset: ${userEmail}`)
+    return found.id
   }
-  console.log(`Seeded user already existed, password reset: ${email}`)
-} else {
-  const { error } = await admin.auth.admin.createUser({
-    email,
-    password,
+
+  const { data, error } = await admin.auth.admin.createUser({
+    email: userEmail,
+    password: userPassword,
     // Local email confirmation is off (supabase/config.toml, enable_confirmations
     // = false). Set explicitly anyway so the seed does not silently depend on it.
     email_confirm: true,
   })
-  if (error) {
-    console.error(`Could not create the seeded user: ${error.message}`)
+  if (error || !data.user) {
+    console.error(`Could not create ${userEmail}: ${error?.message}`)
     process.exit(1)
   }
-  console.log(`Seeded user created: ${email}`)
+  console.log(`Seeded user created: ${userEmail}`)
+  return data.user.id
 }
+
+await upsertUser(email!, password!)
+const emptyUserId = await upsertUser(emptyEmail!, emptyPassword!)
+
+/*
+  Test isolation.
+
+  The empty-library spec needs a user with no topics, and it must not be defeated
+  by rows another spec left behind. Rather than resetting the database between
+  runs — which would serialise the suite — a SECOND user exists that no spec ever
+  writes to, and its topics are cleared here on every run. That keeps the four
+  Playwright workers independent: add-topic specs use the main user and assert on
+  a unique title they generated, never on a global count.
+*/
+const { error: clearError } = await admin.from('topics').delete().eq('user_id', emptyUserId)
+
+if (clearError) {
+  console.error(`Could not clear the empty-library user's topics: ${clearError.message}`)
+  process.exit(1)
+}
+console.log(`Empty-library user cleared: ${emptyEmail}`)

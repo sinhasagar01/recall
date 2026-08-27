@@ -1,25 +1,17 @@
-import { createClient } from '@/lib/supabase/server'
+import { LibraryView } from '@/components/topics/library-view'
+import { listTopics } from '@/lib/data/topics'
 
 /*
-  A placeholder. Phase 5 builds the real library.
-  
-  It is a SERVER component reading the user on purpose: rendering the email here
-  is what proves the session cookie survived the round trip and is visible to the
-  server, which is the failure mode phase 3 exists to prevent. The Playwright spec
-  asserts on `signed-in-as` after a full reload.
+  A server component: the first paint carries the data, with no client waterfall
+  and no loading flash. Writes go through the server action in ./actions.ts, which
+  revalidates this path — which is how the list updates without a reload.
+
+  `readAt` comes from the read rather than from render: a component calling
+  Date.now() while rendering is impure, and would also drift between the rail and
+  the page.
 */
 export default async function LibraryPage() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { topics, readAt } = await listTopics()
 
-  return (
-    <div>
-      <h1 className="font-display text-page-title font-medium tracking-[-0.02em]">My knowledge</h1>
-      <p className="mt-2 text-body text-ink-2">
-        Signed in as <span data-testid="signed-in-as">{user?.email}</span>
-      </p>
-    </div>
-  )
+  return <LibraryView topics={topics} readAt={readAt} />
 }

@@ -50,6 +50,19 @@ Scale: page title 29px · detail title 34px · practice prompt 31px · card titl
 19px · body 14.5px · register body 15.5px · mental model 17.5px · mono utility
 10.5–12px. Display weight 500, tracking −0.02em.
 
+### Layout
+
+| Token | Value | Use |
+| --- | --- | --- |
+| `--breakpoint-md` | `860px` | the single point where the layout goes mobile |
+
+**`md:` in this codebase does not mean 768px.** Tailwind's default `md` breakpoint is
+overridden to **860px** in the `@theme` block, because 860px is where
+`design-reference.html` goes mobile (`@media (max-width:860px)`). Every responsive
+utility in the app therefore flips at 860, all at once. Do not introduce a second
+breakpoint: the rail, the card grid and the toolbar all change together or the layout
+comes apart in the middle.
+
 ### Shape and depth
 
 `--radius: 6px` · `--radius-lg: 10px` (cards, sheets, popovers, modals) ·
@@ -95,6 +108,16 @@ mono eyebrow in `--accent`.
 
 This separation is the product. It appears on topic detail and on practice
 reveal, identically.
+
+### Kbd
+
+A keycap: hairline `--rule` border with a 2px bottom edge, `--radius-sm`, mono
+10.5px, `--ink-3`, `--surface` background. The heavier bottom edge on a small radius
+is what makes it read as a key rather than a chip — keep both.
+
+Used in Select's footer (`↑↓ move · ↵ select · Esc`) and the rail's keyboard hints.
+Its absence from earlier drafts of this list was an omission in this document, not a
+signal that it should be inlined.
 
 ### Select (listbox)
 

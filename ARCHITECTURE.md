@@ -182,6 +182,40 @@ documents for this position. The library page calls `getUser()`, which asks the 
 server and is authoritative, because it is deciding what to render for a real user
 rather than performing an optimistic route check.
 
+## The data boundary
+
+`src/lib/data/topics.ts` is the only module that reads or writes topics, and
+`src/lib/data/topic-mapping.ts` is the only place a database row becomes a domain
+`Topic`. Everything above works in `Topic`s and never sees a row.
+
+**The boundary rule: identical shape, two columns narrowed.** `supabase gen types`
+widens `confidence` and `difficulty` to `string`, because a CHECK constraint does not
+narrow into TypeScript. Narrowing them is the only work the mapping does.
+
+`TopicBoundaryIsSound` in `topic-mapping.ts` asserts both directions of assignability
+between the generated row and the domain type, and `tsc --noEmit` runs first in
+`npm run verify`. A column added, renamed, or made nullable on either side fails the
+build there. Verified by renaming one domain field and watching the build break.
+
+`toTopic` **throws** on a confidence or difficulty outside its union, naming the row.
+That is unreachable while the CHECK holds; if it ever fires, the migration and
+`src/lib/domain/types.ts` have diverged, and coercing to a default would quietly
+misfile the topic instead of saying so.
+
+`src/lib/domain` still imports neither a Supabase client nor `database.types`. The
+generated file is committed so the boundary is checkable in CI without a database.
+
+### Reads through server components, writes through Server Actions
+
+Chosen over client-side mutation because the first paint carries data with no client
+waterfall, the publishable key and RLS stay on the server, and phase 3 already writes
+this way. `revalidatePath('/library')` is what updates the list without a reload.
+
+`listTopics` is wrapped in React's `cache()`, so the rail and the page share one query
+per request rather than issuing the same select twice. It returns `readAt` alongside
+the rows: relative times are relative to *the read*, and taking the clock there keeps
+`Date.now()` out of render, where it is impure and would drift between the two.
+
 ## The component layer
 
 `src/components/ui` holds the primitives from DESIGN.md section 2. Nothing in there

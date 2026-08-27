@@ -1,4 +1,5 @@
 import { createServerClient } from '@supabase/ssr'
+import type { Database } from '@/lib/database.types'
 import { NextResponse, type NextRequest } from 'next/server'
 
 /** Routes that require a session. */
@@ -31,7 +32,7 @@ const startsWithAny = (pathname: string, prefixes: string[]) =>
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
-  const supabase = createServerClient(
+  const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
     {
