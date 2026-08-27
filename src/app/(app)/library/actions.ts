@@ -5,8 +5,8 @@ import { insertTopic, setMentalModelImagePath } from '@/lib/data/topics'
 import type { Difficulty } from '@/lib/domain/types'
 
 export type SaveTopicResult =
-  | { error: string; title?: undefined; id?: undefined }
-  | { error: null; title: string; id: string }
+  | { error: string; title?: undefined; id?: undefined; userId?: undefined }
+  | { error: null; title: string; id: string; userId: string }
 
 /**
  * Step three of insert -> upload -> patch.
@@ -71,7 +71,7 @@ export async function createTopic(formData: FormData): Promise<SaveTopicResult> 
     revalidatePath('/library')
 
     // The id the upload needs only exists now, which is why this is three steps.
-    return { error: null, title: topic.title, id: topic.id }
+    return { error: null, title: topic.title, id: topic.id, userId: topic.user_id }
   } catch (cause) {
     // The real reason, never a generic message. DESIGN.md section 5.
     return { error: cause instanceof Error ? cause.message : 'The topic could not be saved.' }

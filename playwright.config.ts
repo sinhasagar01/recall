@@ -12,6 +12,8 @@ const baseURL = 'http://localhost:3000'
 
 export default defineConfig({
   testDir: './e2e',
+  // Signs the fixture users in once; see e2e/auth-state.ts.
+  globalSetup: './e2e/global-setup.ts',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,

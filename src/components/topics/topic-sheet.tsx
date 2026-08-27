@@ -130,7 +130,7 @@ export function TopicSheet({
       if (picked !== null) {
         setUploading(true)
         cancelledRef.current = false
-        const uploaded = await uploadMentalModelImage(result.id, picked.file)
+        const uploaded = await uploadMentalModelImage(result.userId, result.id, picked.file)
         setUploading(false)
 
         if (cancelledRef.current) {

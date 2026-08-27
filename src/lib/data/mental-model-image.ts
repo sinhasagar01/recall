@@ -17,6 +17,7 @@ export const BUCKET = 'mental-models'
 export type UploadOutcome = { path: string; error: null } | { path: null; error: string }
 
 export async function uploadMentalModelImage(
+  userId: string,
   topicId: string,
   file: File,
 ): Promise<UploadOutcome> {
@@ -25,12 +26,18 @@ export async function uploadMentalModelImage(
   const rejection = rejectImage(file)
   if (rejection !== null) return { path: null, error: rejectionMessage(file.name, rejection) }
 
+  /*
+    The user id comes from the row the server just wrote, NOT from a fresh
+    `getUser()` call here.
+
+    Supabase refresh tokens are single-use. An extra auth round-trip at this moment
+    races the one the server has already made, and the loser gets back no user — so
+    a perfectly valid session reported itself as expired, but only under concurrent
+    load. Reading the id off the row removes the round-trip and the race with it, and
+    the row is the authoritative source anyway: RLS wrote that user_id.
+  */
   const supabase = createClient()
-
-  const { data: auth } = await supabase.auth.getUser()
-  if (!auth.user) return { path: null, error: 'Your session expired. Sign in and try again.' }
-
-  const path = imagePath(auth.user.id, topicId, file.name)
+  const path = imagePath(userId, topicId, file.name)
 
   const { error } = await supabase.storage.from(BUCKET).upload(path, file, {
     contentType: file.type,

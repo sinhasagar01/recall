@@ -1,18 +1,15 @@
 import { expect, test, type Page } from '@playwright/test'
+import { signInAs } from './auth-state'
 
 const EMAIL = process.env.E2E_USER_EMAIL!
-const PASSWORD = process.env.E2E_USER_PASSWORD!
 const STRONG_EMAIL = process.env.E2E_STRONG_USER_EMAIL!
-const STRONG_PASSWORD = process.env.E2E_STRONG_USER_PASSWORD!
 
 const uniqueTitle = (label: string) =>
   `${label} ${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 
-async function signIn(page: Page, email: string, password: string) {
-  await page.goto('/sign-in')
-  await page.getByLabel('Email').fill(email)
-  await page.getByLabel('Password').fill(password)
-  await page.getByRole('button', { name: 'Sign in' }).click()
+/* Replays a session saved in global setup — see e2e/auth-state.ts. */
+async function signIn(page: Page, email: string) {
+  await signInAs(page, email === STRONG_EMAIL ? 'strong' : 'main')
   await expect(page).toHaveURL(/\/library/)
 }
 
@@ -37,7 +34,7 @@ async function gradeKnewIt(page: Page, id: string) {
 }
 
 test('the page lists new and weak topics and excludes okay and strong', async ({ page }) => {
-  await signIn(page, EMAIL, PASSWORD)
+  await signIn(page, EMAIL)
 
   // Asserted on two topics this spec owns, never on a total — other specs are
   // adding topics to the same user in parallel.
@@ -57,7 +54,7 @@ test('the page lists new and weak topics and excludes okay and strong', async ({
 })
 
 test('a topic graded strong leaves the page after a reload', async ({ page }) => {
-  await signIn(page, EMAIL, PASSWORD)
+  await signIn(page, EMAIL)
   const title = uniqueTitle('Leaving weak')
   const id = await addTopic(page, title)
 
@@ -71,7 +68,7 @@ test('a topic graded strong leaves the page after a reload', async ({ page }) =>
 })
 
 test('a row says never practiced until it has been', async ({ page }) => {
-  await signIn(page, EMAIL, PASSWORD)
+  await signIn(page, EMAIL)
   const title = uniqueTitle('Untouched')
   await addTopic(page, title)
 
@@ -82,7 +79,7 @@ test('a row says never practiced until it has been', async ({ page }) => {
 })
 
 test('the empty state shows when every topic is okay or better', async ({ page }) => {
-  await signIn(page, STRONG_EMAIL, STRONG_PASSWORD)
+  await signIn(page, STRONG_EMAIL)
 
   await page.goto('/weak')
 
@@ -92,7 +89,7 @@ test('the empty state shows when every topic is okay or better', async ({ page }
 })
 
 test('Practice all starts a session over the weak topics', async ({ page }) => {
-  await signIn(page, EMAIL, PASSWORD)
+  await signIn(page, EMAIL)
   const title = uniqueTitle('Queued from weak')
   await addTopic(page, title)
 
@@ -105,7 +102,7 @@ test('Practice all starts a session over the weak topics', async ({ page }) => {
 })
 
 test('a per-row Practice button opens that one topic', async ({ page }) => {
-  await signIn(page, EMAIL, PASSWORD)
+  await signIn(page, EMAIL)
   const title = uniqueTitle('One from the row')
   const id = await addTopic(page, title)
 
@@ -117,7 +114,7 @@ test('a per-row Practice button opens that one topic', async ({ page }) => {
 })
 
 test('the rail links to weak topics', async ({ page }) => {
-  await signIn(page, EMAIL, PASSWORD)
+  await signIn(page, EMAIL)
 
   await page.getByRole('link', { name: /Weak topics/ }).click()
 

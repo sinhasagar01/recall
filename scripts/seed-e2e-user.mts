@@ -86,7 +86,7 @@ async function upsertUser(userEmail: string, userPassword: string): Promise<stri
   return data.user.id
 }
 
-await upsertUser(email!, password!)
+const mainUserId = await upsertUser(email!, password!)
 const emptyUserId = await upsertUser(emptyEmail!, emptyPassword!)
 const fewUserId = await upsertUser(fewEmail!, fewPassword!)
 const strongUserId = await upsertUser(strongEmail!, strongPassword!)
@@ -179,7 +179,19 @@ console.log(`Nothing-needs-review user reset: ${strongEmail}`)
   The main user's objects are removed by the specs themselves: anything they upload
   belongs to a topic they also delete, and deleting a topic removes the object first.
 */
-for (const userId of [emptyUserId, fewUserId, strongUserId]) {
+/*
+  The general-purpose user is reset too.
+
+  Its specs each create their own uniquely-titled topic and never assert on a total,
+  so leftovers do not make them wrong — but they accumulate, run after run, until the
+  library is large enough that saving a topic outlasts a Playwright timeout. Left
+  alone this suite slowly poisons itself, and the failure looks like flakiness rather
+  than like the compounding it is.
+*/
+await admin.from('topics').delete().eq('user_id', mainUserId)
+console.log(`General-purpose user's topics cleared: ${email}`)
+
+for (const userId of [mainUserId, emptyUserId, fewUserId, strongUserId]) {
   const { data: folders } = await admin.storage.from('mental-models').list(userId)
   const paths = (folders ?? []).flatMap((folder) => folder.name)
 

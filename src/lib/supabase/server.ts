@@ -1,14 +1,23 @@
 import { createServerClient } from '@supabase/ssr'
 import type { Database } from '@/lib/database.types'
 import { cookies } from 'next/headers'
+import { cache } from 'react'
 
 /**
  * Server client, for server components, server actions and route handlers.
  *
- * A new client per request — never shared across requests, per the package's own
- * warning.
+ * One client per REQUEST, deduped with React's `cache()` — never shared across
+ * requests, per the package's own warning, but never duplicated within one either.
+ *
+ * That second half matters more than it looks. Supabase refresh tokens are
+ * single-use: if two clients in the same request both find an expired cookie, they
+ * both try to refresh, the second refresh fails because the first consumed the
+ * token, and it comes back with no user. The symptom is a page that renders while
+ * `getUser()` returns null — the rail showing an empty email on a signed-in user.
+ * It only appears under concurrent load, which is why the full parallel suite found
+ * it and nine phases of per-phase specs did not.
  */
-export async function createClient() {
+export const createClient = cache(async () => {
   const cookieStore = await cookies()
 
   return createServerClient<Database>(
@@ -34,4 +43,4 @@ export async function createClient() {
       },
     },
   )
-}
+})

@@ -382,7 +382,107 @@ folders, because objects survive a `db reset` and rows do not.
 
 ## Phase 11 — e2e, a11y, docs
 
-- [ ] Playwright covering the full flow, using the phase 3 seed user
-- [ ] Accessibility pass against DESIGN.md section 6
-- [ ] All 21 screens from `design-reference.html` present
-- [ ] `README.md` and `ARCHITECTURE.md` final
+- [x] `e2e/journey.spec.ts` — the definition of done, one user, the whole loop
+- [x] `e2e/a11y.spec.ts` — 8 checks against DESIGN.md section 6, driven by keyboard
+- [x] Screen-by-screen audit against `design-reference.html` (below)
+- [x] The deferred `jwt_expiry` manual check, performed and reported
+- [x] `README.md`, `ARCHITECTURE.md` and this file final
+
+### The screen audit
+
+`design-reference.html`'s tab bar carries **20** screens, not 21 — DESIGN.md's count is
+off by one. 19 are built; the twentieth is `mobile`, which is three frames.
+
+| # | Screen | Built | Note |
+|---|---|---|---|
+| 1 | signin (incl. error) | yes | Error markup diverges deliberately — see below |
+| 2 | signup (incl. submitting) | yes | |
+| 3 | library | yes | |
+| 4 | loading | yes | `loading.tsx`; skeletons match card geometry |
+| 5 | empty | yes | |
+| 6 | noresults | yes | Distinct from empty; offers `Search all N` and `+ Add "q"` |
+| 7 | loaderror | yes | `error.tsx`, showing the real error |
+| 8 | add | yes | |
+| 9 | addfail | yes | Real reason, real size, real limit |
+| 10 | edit | yes | With existing image, Replace and Remove |
+| 11 | detail | yes | |
+| 12 | lightbox | yes | |
+| 13 | delete | yes | Copy derived, not literal — see below |
+| 14 | practice-q | yes | |
+| 15 | practice-a | yes | |
+| 16 | practice-done | yes | Minus "Review the N you missed" (DESIGN.md §7) |
+| 17 | practice-thin | yes | With the override |
+| 18 | weak | yes | |
+| 19 | weak-empty | yes | |
+| 20 | **mobile** | **no** | The one genuine gap. See below |
+
+### Deliberate divergences, as decisions
+
+| Divergence | Reason |
+|---|---|
+| Field errors sit outside the `<label>` | The mock nests them, which folds the error text into the input's accessible name. Explicit `htmlFor`/`id` plus `aria-invalid`, `aria-describedby` and `role="alert"`. Visually identical |
+| Delete copy is derived, not literal | The mock names a diagram and a practice count unconditionally. Naming something that is not there contradicts the same document's rule that the confirmation names what *actually* dies |
+| The lightbox's Esc chip is a real button | The mock shows a hint. A hint is not an affordance — pointer users had nothing to click and the control had no accessible name |
+| The upload bar is indeterminate | `storage-js` `upload()` exposes no progress callback. A percentage would be invented |
+| The topic card is a link, not a button | It navigates. A link gets middle-click, open-in-new-tab and the browser's own affordances free |
+| No search-term highlighting | DESIGN.md §7 defers it, and it is not free — it needs a match-splitting function and its own tests |
+
+### Deliberately not built
+
+- **Mobile navigation.** Below 860px the rail is hidden and nothing replaces it:
+  verified at 375px, Practice / Weak topics / Sign out are unreachable, though adding
+  and searching work and there is no horizontal overflow. The reference's mobile tab
+  bar, FAB and collapsed `Filters` chip are not built. **Reported for a decision, not
+  built quietly.**
+- From DESIGN.md §7: search-term highlighting, "Review the N you missed", undo on the
+  edit toast, per-option counts in the difficulty select.
+- No password reset, OAuth or profile management — the brief said email and password only.
+- No spaced repetition, scoring, streaks, charts or analytics.
+- One image per topic; no cropping, editing or annotation.
+- No `quiz_attempts`, `practice_sessions`, `categories` or analytics tables. One table.
+
+### The `jwt_expiry` check, performed
+
+Lowered to 5s, stack restarted, a real refresh driven past expiry, config restored and
+the stack restarted again. Observed on the refreshing response:
+
+```
+set-cookie    : present
+cache-control : no-cache, must-revalidate
+expires       : 0
+pragma        : no-cache
+session       : survived
+```
+
+`Expires` and `Pragma` are the package's. **`Cache-Control` is Next's**, not the
+package's `private, no-cache, no-store, must-revalidate, max-age=0`. Not cacheable
+without revalidation either way, but `private` and `no-store` are absent. Recorded in
+ARCHITECTURE.md as a known gap rather than fought — see "What I would fix next".
+
+---
+
+## What I would fix next, in order
+
+Reported rather than built, because Phase 11 adds no scope.
+
+1. **End-to-end tests against `next build && next start`, not `next dev`.** Phase 0
+   chose `next dev` for speed. It compiles routes on demand in a single process, and
+   the first run after a code change is measurably slower (1.9m against 40s warm) and
+   is where the residual failures cluster. A warm server runs the suite in ~24s with
+   57/57 green. Changing this reverses a phase 0 decision and needs its own pass.
+2. **Mobile navigation.** The largest real gap. Needs the tab bar, the FAB, and the
+   `Filters` chip that collapses the three selects. A day's work, and the reference
+   already specifies it.
+3. **`Cache-Control` on session refresh.** Next replaces the package's header. Worth
+   understanding before deploying behind a shared cache; harmless on Vercel, where
+   responses are already per-user.
+4. **Orphaned storage objects on a failed replace.** Currently surfaced to the user but
+   never collected. A periodic sweep comparing `storage.objects` against
+   `topics.mental_model_image_path` would close it.
+5. **`listTopics` fetches every row.** This bit during phase 11: the fixture user had
+   accumulated 288 topics across the build, and the library got slow enough that saving
+   a topic outlasted a 15s test timeout. The seed now resets it, but the unbounded
+   fetch is still there. Fine for a personal library of hundreds;
+   pagination or a server-side filter would be needed in the thousands.
+6. **The practice queue is computed per request.** Two tabs practising at once would
+   each get their own queue and could grade the same topic twice.

@@ -547,3 +547,125 @@ npm run verify
 through `scripts/test-db.sh`, which checks the local stack is running and exits
 with a one-line message if it is not; without that guard the Supabase CLI spins
 indefinitely rather than reporting the problem.
+
+---
+
+# Traps this build hit
+
+Each of these cost real time to find, and most of them fail *silently* — which is why
+they are written down rather than left in a commit message.
+
+### `postgres` has BYPASSRLS
+
+pgTAP runs as `postgres`, which on a Supabase stack bypasses row-level security on
+**every** table, not just ones it owns. A policy test that forgets to switch role
+passes whether or not the policy exists. Every RLS assertion sets both the role and
+`request.jwt.claims`, and the suite was verified by disabling RLS and watching it go
+red.
+
+### `now()` is fixed for a whole transaction
+
+An insert followed by an update inside one transaction produces *identical*
+timestamps, so a naive `updated_at` trigger test passes with no trigger at all. The
+test inserts a backdated row so the update has somewhere to move.
+
+### A CHECK constraint does not imply NOT NULL
+
+`check (difficulty in ('easy','medium','hard'))` evaluates to NULL — not false — for a
+null value, and a row is rejected only on false. A null slipped through the very
+constraint that looked like it was enumerating the legal values. A column default only
+ever covers an *omitted* value, never an explicit null. **If a column enumerates its
+legal values, it almost certainly wants NOT NULL too.**
+
+### pgTAP overload resolution binds the wrong function
+
+`col_type_is('public','topics','id','uuid')` silently binds to
+`(table, column, type, description)` rather than `(schema, table, column, type)` — it
+looks for a column literally named `topics`. The tell is failing test names echoing the
+*type* string. Schema, table and column arguments need explicit `::name` casts.
+
+### A clean `db reset` does not prove a migration did anything
+
+A migration file left at 0 bytes by an interrupted write was applied without complaint
+and its version recorded. The ledger said applied; the schema was unchanged. Verify
+against `information_schema`, not against the `Applying migration …` line.
+
+### `storage.protect_objects_delete` forbids SQL deletes
+
+A storage object cannot be removed by SQL or by a trigger. The trigger is
+`BEFORE DELETE FOR EACH STATEMENT`, so it fires even when RLS matches zero rows.
+Deleting a topic is therefore a two-step application operation, object first — see
+"Deleting a topic" above. Tests set `storage.allow_delete_query`, which is what the
+Storage API itself does.
+
+### Next 16 renamed `middleware` to `proxy`, and it must sit beside `app`
+
+`middleware.ts` is deprecated. The convention file is `proxy.ts`, exporting `proxy`,
+and it belongs at the same level as `app` — so `src/proxy.ts`, not the repository
+root. A root-level file is **silently ignored**: the app builds, sign-in works, and
+only the route guards quietly stop existing.
+
+### `@supabase/ssr` 0.12.5 passes cache headers as a second argument
+
+`setAll(cookiesToSet, headers)`. Ignoring the second parameter still typechecks. The
+deprecated `get`/`set`/`remove` cookie methods cause, in the package's own words,
+"random logouts, early session termination, JSON parsing errors".
+
+### Randomness and clocks are impure during render
+
+`Math.random()` and `Date.now()` in a render — on the server *or* inside a `useState`
+initialiser — are rejected by the lint config, and rightly. `seededShuffle` takes its
+seed from the `readAt` the data layer already returns, and relative times are relative
+to the read rather than to whenever a component happened to render.
+
+### Randomness must not go inside a sort comparator
+
+It makes the comparator non-transitive, and `Array.prototype.sort` then becomes
+implementation-defined — it can reorder across buckets entirely. Sort by a total order
+first, then shuffle runs of exactly-equal keys.
+
+### An unscoped count in a test is only correct while the table is empty
+
+Two storage assertions counted objects across the whole bucket as `postgres`. They
+passed for nine phases and broke the moment real uploads existed. Scope test counts to
+the fixture's own rows.
+
+### Supabase's local auth rate limit is not adjustable, and it looks like flakiness
+
+`sign_in_sign_ups` defaults to **30 per five minutes per IP**. A suite that signs in
+once per spec passes that in a single run. Past the limit every sign-in fails and the
+browser simply sits on `/sign-in`, so whole spec files fail together, seemingly at
+random, and pass when run alone.
+
+Setting the value in `config.toml` does nothing: CLI 2.116 does not plumb it through —
+the auth container exposes `GOTRUE_RATE_LIMIT_TOKEN_REFRESH` and others, but nothing
+for sign-ins. The fix is to sign in less: `e2e/global-setup.ts` signs each fixture user
+in once and the specs replay the saved cookies, taking the suite from ~57 sign-ins a
+run to four.
+
+### One Supabase client per request, not per call site
+
+`createClient()` in `src/lib/supabase/server.ts` is wrapped in React's `cache()`.
+Without it, a single render built a separate client in the layout, in the data layer
+and in each action. Refresh tokens are single-use, so two clients meeting the same
+expired cookie both try to refresh, the second loses, and it returns **no user** — a
+signed-in person's email rendering blank. It only appears under concurrent load.
+
+The same reasoning removed two other auth round-trips: the image upload takes the user
+id from the row the server just wrote rather than calling `getUser()` again, and the
+rail reads the email from `getClaims()` — the token the proxy already verified — rather
+than asking the auth server a second time.
+
+### `role="alert"` is not unique
+
+Next renders a route announcer with `role="alert"`. Any assertion on an alert has to be
+scoped to the container it belongs to.
+
+### The observed limit of the cache-header fix
+
+Verified by lowering `jwt_expiry` to 5s and driving a real refresh. `Set-Cookie` is
+written, `Expires: 0` and `Pragma: no-cache` arrive intact — but `Cache-Control` reads
+`no-cache, must-revalidate`, which is **Next's** value, not the package's
+`private, no-cache, no-store, must-revalidate, max-age=0`. The response is still not
+cacheable without revalidation, but `private` and `no-store` are absent. Recorded as a
+known gap rather than fought.

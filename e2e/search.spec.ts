@@ -1,7 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-
-const EMAIL = process.env.E2E_USER_EMAIL!
-const PASSWORD = process.env.E2E_USER_PASSWORD!
+import { signInAs } from './auth-state'
 
 /*
   Search runs over the whole library, and the other specs are adding topics to the
@@ -10,11 +8,9 @@ const PASSWORD = process.env.E2E_USER_PASSWORD!
 */
 const token = () => `zq${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`
 
+/* Replays a session saved in global setup — see e2e/auth-state.ts. */
 async function signIn(page: Page) {
-  await page.goto('/sign-in')
-  await page.getByLabel('Email').fill(EMAIL)
-  await page.getByLabel('Password').fill(PASSWORD)
-  await page.getByRole('button', { name: 'Sign in' }).click()
+  await signInAs(page, 'main')
   await expect(page).toHaveURL(/\/library/)
 }
 

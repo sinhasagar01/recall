@@ -1,18 +1,15 @@
 import { expect, test, type Page } from '@playwright/test'
+import { signInAs } from './auth-state'
 
 const EMAIL = process.env.E2E_USER_EMAIL!
-const PASSWORD = process.env.E2E_USER_PASSWORD!
 const EMPTY_EMAIL = process.env.E2E_EMPTY_USER_EMAIL!
-const EMPTY_PASSWORD = process.env.E2E_EMPTY_USER_PASSWORD!
 
 const uniqueTitle = (label: string) =>
   `${label} ${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 
-async function signIn(page: Page, email: string, password: string) {
-  await page.goto('/sign-in')
-  await page.getByLabel('Email').fill(email)
-  await page.getByLabel('Password').fill(password)
-  await page.getByRole('button', { name: 'Sign in' }).click()
+/* Replays a session saved in global setup — see e2e/auth-state.ts. */
+async function signIn(page: Page, email: string) {
+  await signInAs(page, email === EMPTY_EMAIL ? 'empty' : 'main')
   await expect(page).toHaveURL(/\/library/)
 }
 
@@ -35,7 +32,7 @@ async function openTopic(page: Page, title: string) {
 }
 
 test('a topic opens from the library and shows both registers', async ({ page }) => {
-  await signIn(page, EMAIL, PASSWORD)
+  await signIn(page, EMAIL)
   const title = uniqueTitle('Reconciliation')
 
   await addTopic(page, {
@@ -54,7 +51,7 @@ test('a topic opens from the library and shows both registers', async ({ page })
 })
 
 test('the visual section is absent when the topic has no image', async ({ page }) => {
-  await signIn(page, EMAIL, PASSWORD)
+  await signIn(page, EMAIL)
   const title = uniqueTitle('No visual')
 
   await addTopic(page, { title, definition: 'Nothing attached to this one.' })
@@ -64,7 +61,7 @@ test('the visual section is absent when the topic has no image', async ({ page }
 })
 
 test('editing the title changes it on the detail page and in the library', async ({ page }) => {
-  await signIn(page, EMAIL, PASSWORD)
+  await signIn(page, EMAIL)
   const title = uniqueTitle('Before edit')
   const edited = uniqueTitle('After edit')
 
@@ -84,7 +81,7 @@ test('editing the title changes it on the detail page and in the library', async
 })
 
 test('deleting names what dies, then removes it for good', async ({ page }) => {
-  await signIn(page, EMAIL, PASSWORD)
+  await signIn(page, EMAIL)
   const title = uniqueTitle('Doomed')
 
   await addTopic(page, { title, definition: 'This one is going away.' })
@@ -109,7 +106,7 @@ test('deleting names what dies, then removes it for good', async ({ page }) => {
 })
 
 test('backing out of the delete keeps the topic', async ({ page }) => {
-  await signIn(page, EMAIL, PASSWORD)
+  await signIn(page, EMAIL)
   const title = uniqueTitle('Spared')
 
   await addTopic(page, { title, definition: 'This one survives.' })
@@ -123,7 +120,7 @@ test('backing out of the delete keeps the topic', async ({ page }) => {
 })
 
 test('an id that does not exist renders not-found', async ({ page }) => {
-  await signIn(page, EMAIL, PASSWORD)
+  await signIn(page, EMAIL)
 
   await page.goto('/topic/00000000-0000-0000-0000-0000000000ff')
 
@@ -136,7 +133,7 @@ test("another user's topic is indistinguishable from one that does not exist", a
     attacker which ids are real. RLS returns zero rows either way, so both paths
     must render the identical page.
   */
-  await signIn(page, EMAIL, PASSWORD)
+  await signIn(page, EMAIL)
   const title = uniqueTitle('Private')
   await addTopic(page, { title, definition: 'Belongs to the first user.' })
   await openTopic(page, title)
@@ -144,7 +141,7 @@ test("another user's topic is indistinguishable from one that does not exist", a
 
   await page.getByRole('button', { name: 'Sign out' }).click()
   await expect(page).toHaveURL(/\/sign-in/)
-  await signIn(page, EMPTY_EMAIL, EMPTY_PASSWORD)
+  await signIn(page, EMPTY_EMAIL)
 
   await page.goto(foreignUrl)
   await expect(page.getByRole('heading', { name: 'Topic not found' })).toBeVisible()

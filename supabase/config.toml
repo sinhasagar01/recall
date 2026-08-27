@@ -201,8 +201,17 @@ sms_sent = 30
 # Number of anonymous sign-ins that can be made per hour per IP address. Requires enable_anonymous_sign_ins = true.
 anonymous_users = 30
 # Number of sessions that can be refreshed in a 5 minute interval per IP address.
-token_refresh = 150
+# Raised for the local test stack: the e2e suite refreshes far more often in five
+# minutes than a person would. Verified applied — the auth container reports
+# GOTRUE_RATE_LIMIT_TOKEN_REFRESH=1000.
+token_refresh = 1000
 # Number of sign up and sign-in requests that can be made in a 5 minute interval per IP address (excludes anonymous users).
+#
+# NOTE: this value is NOT plumbed through by Supabase CLI 2.116 — the auth container
+# exposes GOTRUE_RATE_LIMIT_TOKEN_REFRESH and others, but nothing for sign-ins, so
+# changing it here has no effect. Left at the default rather than left looking
+# adjustable. The e2e suite works around the real limit by not signing in 57 times;
+# see TASKS.md, "What I would fix next".
 sign_in_sign_ups = 30
 # Number of OTP / Magic link verifications that can be made in a 5 minute interval per IP address.
 token_verifications = 30

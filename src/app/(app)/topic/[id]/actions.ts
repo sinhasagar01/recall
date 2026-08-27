@@ -36,7 +36,7 @@ export async function saveTopicEdits(id: string, formData: FormData): Promise<Sa
     revalidatePath(`/topic/${id}`)
     revalidatePath('/library')
 
-    return { error: null, title: topic.title, id: topic.id }
+    return { error: null, title: topic.title, id: topic.id, userId: topic.user_id }
   } catch (cause) {
     return { error: cause instanceof Error ? cause.message : 'The changes could not be saved.' }
   }

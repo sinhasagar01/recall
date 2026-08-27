@@ -15,8 +15,18 @@ import { signOut } from '../(auth)/actions'
   rows, so the rail can never disagree with what pressing Practice will queue.
 */
 export default async function AppLayout({ children }: LayoutProps<'/'>) {
+  /*
+    The email comes from getClaims(), not getUser().
+
+    getUser() asks the auth server, which is a SECOND round-trip on a request where
+    proxy.ts has already validated (and possibly refreshed) the session. Supabase
+    refresh tokens are single-use, so under concurrent load — Next prefetching, say —
+    that second call can lose the race and come back with no user, rendering a signed
+    in person's email as blank. getClaims() reads the token the proxy already
+    verified. This is display, not authorization: the proxy did the authorizing.
+  */
   const supabase = await createClient()
-  const [{ data }, { topics }] = await Promise.all([supabase.auth.getUser(), listTopics()])
+  const [{ data }, { topics }] = await Promise.all([supabase.auth.getClaims(), listTopics()])
 
   const queued = selectPracticeSession(topics, { shuffle: noShuffle }).length
   const review = topics.filter(needsReview).length
@@ -59,7 +69,7 @@ export default async function AppLayout({ children }: LayoutProps<'/'>) {
             survived a full reload and is visible to the server.
           */}
           <p className="truncate font-mono text-mono text-ink-3" data-testid="signed-in-as">
-            {data.user?.email}
+            {data?.claims.email}
           </p>
           <form action={signOut}>
             <button

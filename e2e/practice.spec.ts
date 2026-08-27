@@ -1,18 +1,15 @@
 import { expect, test, type Page } from '@playwright/test'
+import { signInAs } from './auth-state'
 
 const EMAIL = process.env.E2E_USER_EMAIL!
-const PASSWORD = process.env.E2E_USER_PASSWORD!
 const FEW_EMAIL = process.env.E2E_FEW_USER_EMAIL!
-const FEW_PASSWORD = process.env.E2E_FEW_USER_PASSWORD!
 
 const uniqueTitle = (label: string) =>
   `${label} ${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 
-async function signIn(page: Page, email: string, password: string) {
-  await page.goto('/sign-in')
-  await page.getByLabel('Email').fill(email)
-  await page.getByLabel('Password').fill(password)
-  await page.getByRole('button', { name: 'Sign in' }).click()
+/* Replays a session saved in global setup — see e2e/auth-state.ts. */
+async function signIn(page: Page, email: string) {
+  await signInAs(page, email === FEW_EMAIL ? 'few' : 'main')
   await expect(page).toHaveURL(/\/library/)
 }
 
@@ -41,7 +38,7 @@ async function recallHistory(page: Page, id: string) {
 }
 
 test('grading a topic records the new confidence, visible after a reload', async ({ page }) => {
-  await signIn(page, EMAIL, PASSWORD)
+  await signIn(page, EMAIL)
   const id = await addTopic(page, uniqueTitle('Graded'), 'A definition to recall.')
 
   await page.goto(`/practice?topic=${id}`)
@@ -57,7 +54,7 @@ test('grading a topic records the new confidence, visible after a reload', async
 })
 
 test('skipping writes nothing at all', async ({ page }) => {
-  await signIn(page, EMAIL, PASSWORD)
+  await signIn(page, EMAIL)
   const id = await addTopic(page, uniqueTitle('Skipped'), 'This one gets skipped.')
 
   /*
@@ -86,7 +83,7 @@ test('skipping writes nothing at all', async ({ page }) => {
 })
 
 test('ending a session early keeps everything already graded', async ({ page }) => {
-  await signIn(page, EMAIL, PASSWORD)
+  await signIn(page, EMAIL)
   const id = await addTopic(page, uniqueTitle('Early exit'), 'Graded before walking away.')
 
   await page.goto(`/practice?topic=${id}`)
@@ -102,7 +99,7 @@ test('ending a session early keeps everything already graded', async ({ page }) 
 })
 
 test('the typed answer is never persisted', async ({ page }) => {
-  await signIn(page, EMAIL, PASSWORD)
+  await signIn(page, EMAIL)
   const id = await addTopic(page, uniqueTitle('Ephemeral'), 'The answer is not stored.')
   const secret = `scratch-${Date.now()}`
 
@@ -120,7 +117,7 @@ test('the typed answer is never persisted', async ({ page }) => {
 test('a library below the minimum offers the override, which starts a session anyway', async ({
   page,
 }) => {
-  await signIn(page, FEW_EMAIL, FEW_PASSWORD)
+  await signIn(page, FEW_EMAIL)
 
   await page.goto('/practice')
 
@@ -134,7 +131,7 @@ test('a library below the minimum offers the override, which starts a session an
 })
 
 test('a deliberate single-topic session is not subject to the floor', async ({ page }) => {
-  await signIn(page, FEW_EMAIL, FEW_PASSWORD)
+  await signIn(page, FEW_EMAIL)
 
   await page.getByRole('link', { name: /The event loop/ }).click()
   await expect(page).toHaveURL(/\/topic\//)

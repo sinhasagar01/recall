@@ -1,7 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-
-const EMAIL = process.env.E2E_USER_EMAIL!
-const PASSWORD = process.env.E2E_USER_PASSWORD!
+import { signInAs } from './auth-state'
 
 const uniqueTitle = (label: string) =>
   `${label} ${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
@@ -18,11 +16,9 @@ const PNG_1X1 = Buffer.from(
 
 const png = (name: string) => ({ name, mimeType: 'image/png', buffer: PNG_1X1 })
 
+/* Replays a session saved in global setup — see e2e/auth-state.ts. */
 async function signIn(page: Page) {
-  await page.goto('/sign-in')
-  await page.getByLabel('Email').fill(EMAIL)
-  await page.getByLabel('Password').fill(PASSWORD)
-  await page.getByRole('button', { name: 'Sign in' }).click()
+  await signInAs(page, 'main')
   await expect(page).toHaveURL(/\/library/)
 }
 

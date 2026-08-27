@@ -1,9 +1,8 @@
 import { expect, test, type Page } from '@playwright/test'
+import { signInAs } from './auth-state'
 
 const EMAIL = process.env.E2E_USER_EMAIL!
-const PASSWORD = process.env.E2E_USER_PASSWORD!
 const EMPTY_EMAIL = process.env.E2E_EMPTY_USER_EMAIL!
-const EMPTY_PASSWORD = process.env.E2E_EMPTY_USER_PASSWORD!
 
 /**
  * Every spec asserts on a title it generated itself, never on a global count, so
@@ -12,11 +11,9 @@ const EMPTY_PASSWORD = process.env.E2E_EMPTY_USER_PASSWORD!
  */
 const uniqueTitle = (label: string) => `${label} ${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 
-async function signIn(page: Page, email: string, password: string) {
-  await page.goto('/sign-in')
-  await page.getByLabel('Email').fill(email)
-  await page.getByLabel('Password').fill(password)
-  await page.getByRole('button', { name: 'Sign in' }).click()
+/* Replays a session saved in global setup — see e2e/auth-state.ts. */
+async function signIn(page: Page, email: string) {
+  await signInAs(page, email === EMPTY_EMAIL ? 'empty' : 'main')
   await expect(page).toHaveURL(/\/library/)
 }
 
@@ -26,7 +23,7 @@ async function openAddSheet(page: Page) {
 }
 
 test('a topic saved with only a title and definition appears without a reload', async ({ page }) => {
-  await signIn(page, EMAIL, PASSWORD)
+  await signIn(page, EMAIL)
   const title = uniqueTitle('Event loop')
 
   await openAddSheet(page)
@@ -41,7 +38,7 @@ test('a topic saved with only a title and definition appears without a reload', 
 })
 
 test('a topic with a mental model shows Model ✓ on its card', async ({ page }) => {
-  await signIn(page, EMAIL, PASSWORD)
+  await signIn(page, EMAIL)
   const title = uniqueTitle('Reconciliation')
 
   await openAddSheet(page)
@@ -56,7 +53,7 @@ test('a topic with a mental model shows Model ✓ on its card', async ({ page })
 })
 
 test('a topic without a mental model does not show Model ✓', async ({ page }) => {
-  await signIn(page, EMAIL, PASSWORD)
+  await signIn(page, EMAIL)
   const title = uniqueTitle('No model')
 
   await openAddSheet(page)
@@ -70,7 +67,7 @@ test('a topic without a mental model does not show Model ✓', async ({ page }) 
 })
 
 test('a user with no topics sees the empty state', async ({ page }) => {
-  await signIn(page, EMPTY_EMAIL, EMPTY_PASSWORD)
+  await signIn(page, EMPTY_EMAIL)
 
   await expect(page.getByRole('heading', { name: 'Nothing here yet' })).toBeVisible()
   await expect(page.getByText('Nothing saved yet')).toBeVisible()
@@ -78,7 +75,7 @@ test('a user with no topics sees the empty state', async ({ page }) => {
 })
 
 test('a save that fails surfaces the reason instead of failing silently', async ({ page }) => {
-  await signIn(page, EMAIL, PASSWORD)
+  await signIn(page, EMAIL)
   await openAddSheet(page)
 
   /*
