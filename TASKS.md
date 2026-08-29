@@ -452,32 +452,36 @@ session       : survived
 `Expires` and `Pragma` are the package's. **`Cache-Control` is Next's**, not the
 package's `private, no-cache, no-store, must-revalidate, max-age=0`. Not cacheable
 without revalidation either way, but `private` and `no-store` are absent. Recorded in
-ARCHITECTURE.md as a known gap rather than fought — see "What I would fix next".
+ARCHITECTURE.md as a known gap rather than fought — tracked as issue #9.
 
 ---
 
-## What I would fix next, in order
+## The backlog lives in GitHub issues
 
-Reported rather than built, because Phase 11 adds no scope.
+Everything this build knew it was leaving undone is tracked at
+[github.com/sinhasagar01/recall/issues](https://github.com/sinhasagar01/recall/issues),
+so there is one place to look and nothing to keep in step by hand.
 
-1. **End-to-end tests against `next build && next start`, not `next dev`.** Phase 0
-   chose `next dev` for speed. It compiles routes on demand in a single process, and
-   the first run after a code change is measurably slower (1.9m against 40s warm) and
-   is where the residual failures cluster. A warm server runs the suite in ~24s with
-   57/57 green. Changing this reverses a phase 0 decision and needs its own pass.
-2. **`Cache-Control` on session refresh.** Next replaces the package's header. Worth
-   understanding before deploying behind a shared cache; harmless on Vercel, where
-   responses are already per-user.
-3. **Orphaned storage objects on a failed replace.** Currently surfaced to the user but
-   never collected. A periodic sweep comparing `storage.objects` against
-   `topics.mental_model_image_path` would close it.
-4. **`listTopics` fetches every row.** This bit during phase 11: the fixture user had
-   accumulated 288 topics across the build, and the library got slow enough that saving
-   a topic outlasted a 15s test timeout. The seed now resets it, but the unbounded
-   fetch is still there. Fine for a personal library of hundreds;
-   pagination or a server-side filter would be needed in the thousands.
-5. **The practice queue is computed per request.** Two tabs practising at once would
-   each get their own queue and could grade the same topic twice.
+| Label | Means |
+| --- | --- |
+| `blocks-multiuser` | Ship before a second real person signs up |
+| `blocks-public` | Ship before the app is public |
+| `scale` | Works now, breaks as data grows |
+| `billing` | Paid tiers and entitlements |
+| `tech-debt` | A known compromise, recorded deliberately |
+
+The two that carry the most weight are
+[#1 account deletion must remove storage objects](https://github.com/sinhasagar01/recall/issues/1)
+— a compliance failure rather than a missing feature, and the one item worth blocking a
+second signup on — and
+[#4 paginate the library and move filtering server-side](https://github.com/sinhasagar01/recall/issues/4),
+which is the ceiling on the current design and carries the two non-obvious parts of that
+work.
+
+**This file stays the historical record.** It says what each phase decided and why, what
+was deliberately not built, and what the build discovered along the way. It is not the
+to-do list, and nothing below should be updated to reflect work done later — the point of
+it is that it describes the twelve phases as they happened.
 
 ---
 

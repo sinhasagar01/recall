@@ -109,10 +109,20 @@ The seed also purges those users' storage folders: rows disappear with a
 
 ## Known gaps
 
-Deliberate, and listed in full with reasoning in TASKS.md. The ones worth knowing before
-you use this:
+Tracked as [GitHub issues](https://github.com/sinhasagar01/recall/issues) rather than
+listed here, so there is one place to look. Labels say when each one matters:
+`blocks-multiuser`, `blocks-public`, `scale`, `billing`, `tech-debt`.
 
-- **`Cache-Control` on a session refresh is Next's, not the Supabase package's.** See
-  ARCHITECTURE.md — `Expires` and `Pragma` arrive intact, `Cache-Control` is replaced.
-- No password reset, no OAuth, no profile management. Email and password only.
-- One image per topic. No cropping, editing or annotation.
+Two are worth knowing before you use this:
+
+- **Deleting an account does not yet delete its images**
+  ([#1](https://github.com/sinhasagar01/recall/issues/1)). Rows cascade; storage objects
+  cannot be removed by SQL, so they need an application-level sweep. Fine for one user,
+  a compliance problem with more.
+- **The library page loads every topic you own**
+  ([#4](https://github.com/sinhasagar01/recall/issues/4)). Comfortable to roughly a
+  thousand topics; filtering happens in the browser.
+
+Deliberately out of scope, and not going to change: email and password only — no OAuth,
+no profile management. One image per topic, no cropping or annotation. No spaced
+repetition, scoring, streaks or analytics. One table.
