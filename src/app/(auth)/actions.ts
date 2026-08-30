@@ -1,16 +1,17 @@
 'use server'
 
 import { redirect } from 'next/navigation'
+import { authFailureMessage } from '@/lib/domain/auth-errors'
 import { createClient } from '@/lib/supabase/server'
 
 export type AuthState = { error: string | null }
 
 /*
-  The copy is the mock's, verbatim. DESIGN.md: errors say what happened and what to
-  do; they never apologise and are never vague. Supabase's own message
-  ("Invalid login credentials") is neither, so it is not surfaced.
+  Sign-in failures are classified in src/lib/domain/auth-errors.ts, which is pure
+  and unit-tested. Collapsing every failure into the credentials line — as this
+  did originally — meant an unreachable database told people their password was
+  wrong, and sent them to reset a password that was never the problem.
 */
-const CREDENTIALS_REJECTED = "That email and password don't match an account."
 
 export async function signIn(_previous: AuthState, formData: FormData): Promise<AuthState> {
   const supabase = await createClient()
@@ -20,7 +21,7 @@ export async function signIn(_previous: AuthState, formData: FormData): Promise<
     password: String(formData.get('password') ?? ''),
   })
 
-  if (error) return { error: CREDENTIALS_REJECTED }
+  if (error) return { error: authFailureMessage(error) }
 
   redirect('/library')
 }
