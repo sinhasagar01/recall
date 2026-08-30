@@ -555,6 +555,34 @@ indefinitely rather than reporting the problem.
 Each of these cost real time to find, and most of them fail *silently* — which is why
 they are written down rather than left in a commit message.
 
+### RLS and GRANT are two gates, and only one fails loudly
+
+A role needs **both** a table privilege and a policy that admits it. They fail in
+opposite directions, which is what makes this hard to diagnose:
+
+| Missing | Symptom |
+|---|---|
+| `GRANT` | `permission denied for table topics` — loud, nothing works |
+| policy | **zero rows, no error** — quiet, and it looks like the data vanished |
+
+The local stack hides the first one. Supabase's default ACLs grant
+`arwdDxtm` to `anon`, `authenticated` and `service_role` for every new table in
+`public`, so a migration that creates a table and its policies appears complete. A
+hosted project does not guarantee those defaults apply to a table a migration created,
+and the app then fails on deploy with a permission error against a schema that passes
+every local test.
+
+That is exactly what happened here: phase 1 verified the default ACLs by probe and
+relied on them, and `*_topics_grants.sql` was added later to make the privilege
+explicit rather than inherited.
+
+The lesson is narrower than "always grant": **test the gate you inherited, not just the
+one you wrote.** Phase 1 asserted the policies exhaustively — cross-user isolation, anon
+coverage, twenty assertions — and asserted the privileges not at all, so nothing local
+could have caught it. `topics_test.sql` now checks all four privileges with
+`has_table_privilege`. Revoking them fails 33 of its 63 assertions, because every RLS
+test depends on `authenticated` being able to reach the table in the first place.
+
 ### `postgres` has BYPASSRLS
 
 pgTAP runs as `postgres`, which on a Supabase stack bypasses row-level security on

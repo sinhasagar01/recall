@@ -1,5 +1,5 @@
 begin;
-select plan(59);
+select plan(63);
 
 -- ---------------------------------------------------------------------------
 -- Local helpers.
@@ -219,6 +219,33 @@ delete from auth.users where id = '00000000-0000-0000-0000-0000000000aa';
 select is((select count(*)::int from public.topics
            where user_id = '00000000-0000-0000-0000-0000000000aa'), 0,
   'deleting the auth user deletes their topics');
+
+-- ===========================================================================
+-- Table privileges
+--
+-- RLS and GRANT are two independent gates, and only one of them fails loudly.
+-- Without the GRANT: "permission denied for table topics" — obvious. With the
+-- GRANT but no policy: zero rows and no error — which reads like the data
+-- vanished.
+--
+-- Everything below the RLS heading tests the second gate. This tests the first.
+-- The local stack grants these through Supabase's default ACLs for new tables in
+-- `public`, but a hosted project does not guarantee it — which is why
+-- *_topics_grants.sql exists. Asserted so a fresh database fails here rather
+-- than in production.
+--
+-- Asked per privilege rather than with table_privs_are(), which asserts an exact
+-- set: pinning the full default ACL would make this fail on any platform change
+-- that has nothing to do with what the app needs.
+-- ===========================================================================
+select ok(has_table_privilege('authenticated', 'public.topics', 'SELECT'),
+  'authenticated may SELECT topics');
+select ok(has_table_privilege('authenticated', 'public.topics', 'INSERT'),
+  'authenticated may INSERT topics');
+select ok(has_table_privilege('authenticated', 'public.topics', 'UPDATE'),
+  'authenticated may UPDATE topics');
+select ok(has_table_privilege('authenticated', 'public.topics', 'DELETE'),
+  'authenticated may DELETE topics');
 
 -- ===========================================================================
 -- RLS
