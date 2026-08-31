@@ -24,10 +24,23 @@ export default defineConfig({
     trace: 'on-first-retry',
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  /*
+    Production output, not `next dev`.
+
+    `next dev` compiles routes on demand in a single process, so the first request
+    to each route pays for compilation. That made a cold run take 1.5-1.9m against
+    ~30s warm, and the failures clustered in the cold runs — a red result meant
+    either a real bug or a slow compile, which is the worst thing a test suite can
+    mean. `test:e2e` builds first and this serves the built output.
+
+    `reuseExistingServer: false` on purpose: silently reusing whatever is already on
+    :3000 — a stale dev server, say — is exactly the ambiguity this change removes.
+    If the port is busy, failing loudly is the correct outcome.
+  */
   webServer: {
-    command: 'npm run dev',
+    command: 'npm run start',
     url: baseURL,
-    reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
+    reuseExistingServer: false,
+    timeout: 180_000,
   },
 })

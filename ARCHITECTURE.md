@@ -689,11 +689,17 @@ than asking the auth server a second time.
 Next renders a route announcer with `role="alert"`. Any assertion on an alert has to be
 scoped to the container it belongs to.
 
-### The observed limit of the cache-header fix
+### The observed limit of the cache-header fix (since closed)
 
 Verified by lowering `jwt_expiry` to 5s and driving a real refresh. `Set-Cookie` is
 written, `Expires: 0` and `Pragma: no-cache` arrive intact — but `Cache-Control` reads
 `no-cache, must-revalidate`, which is **Next's** value, not the package's
-`private, no-cache, no-store, must-revalidate, max-age=0`. The response is still not
-cacheable without revalidation, but `private` and `no-store` are absent. Recorded as a
-known gap rather than fought.
+`private, no-cache, no-store, must-revalidate, max-age=0`. The response was still not
+cacheable without revalidation, but `private` and `no-store` were absent.
+
+**Closed by setting the header directly.** `next.config.ts` puts
+`private, no-store, max-age=0, must-revalidate` on `/library`, `/practice`, `/weak` and
+`/topic/*`. Every one of those renders one person's private data, so none of them should
+ever sit in a cache that serves more than one person — the header is right on its own
+merits, and it does not depend on a refresh having happened, which the package's version
+did. `/sign-in` keeps its cacheable header: it holds nothing private.

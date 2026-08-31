@@ -452,7 +452,7 @@ session       : survived
 `Expires` and `Pragma` are the package's. **`Cache-Control` is Next's**, not the
 package's `private, no-cache, no-store, must-revalidate, max-age=0`. Not cacheable
 without revalidation either way, but `private` and `no-store` are absent. Recorded in
-ARCHITECTURE.md as a known gap rather than fought — tracked as issue #9.
+ARCHITECTURE.md, and closed in issue #9 by setting the header directly.
 
 ---
 
