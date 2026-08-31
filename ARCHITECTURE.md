@@ -427,6 +427,24 @@ saved are unaffected, and the UI says so.
 re-renders mid-session; those routes are simply marked stale, so arriving at the
 library afterwards shows the new confidence and corrected rail counts.
 
+### The practice queue is per-request, deliberately
+
+`selectPracticeSession` runs on each request and the queue lives in client state. There
+is no session record and no `practice_sessions` table — that was a deliberate constraint,
+and it holds.
+
+The consequence, accepted rather than fixed: two tabs practising at once each build their
+own queue, so the same topic can be graded twice in what feels like one session. The cost
+is `practice_count` incremented twice for one review, and confidence set by whichever
+grade landed last.
+
+Supabase Realtime would narrow this — the second tab could drop a card once the first
+graded it — but the event arrives *after* the write, so it is not a lock, and it would
+add a publication migration, authorization config, a subscription lifecycle, reconnection
+handling and a stale-UI failure mode when the socket drops. That is a lot of machinery to
+prevent an occasional off-by-one for a single user. If live sync ever becomes a feature
+worth having in its own right, this resolves as a side effect.
+
 ### The typed answer is ephemeral
 
 It lives in component state, is shown back during the reveal, and is sent nowhere. No

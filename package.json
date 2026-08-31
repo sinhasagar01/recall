@@ -12,6 +12,7 @@
     "test:watch": "vitest",
     "test:db": "./scripts/test-db.sh",
     "seed:e2e": "node scripts/seed-e2e-user.mts",
+    "sweep:orphans": "node scripts/sweep-orphans.mts",
     "test:e2e": "npm run seed:e2e && npm run build && playwright test",
     "db:types": "supabase gen types typescript --local > src/lib/database.types.ts",
     "verify": "npm run typecheck && npm run test && npm run test:db && npm run test:e2e"

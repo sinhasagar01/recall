@@ -83,6 +83,7 @@ That is the whole gate: a typecheck, then all four test layers.
 | `npm run test:e2e` | seeds the fixture users, then Playwright against `next dev` |
 | `npm run verify` | all of the above, in that order |
 | `npm run seed:e2e` | the fixture users on their own |
+| `npm run sweep:orphans` | list storage objects no topic points at; `-- --delete` to remove them |
 | `npm run db:types` | regenerate `src/lib/database.types.ts` after a migration |
 
 `test:db` needs the stack running and says so if it is not. `test:e2e` starts
