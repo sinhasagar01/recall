@@ -148,7 +148,7 @@ test('deleting a topic removes its image too', async ({ page }) => {
   const src = await page.getByRole('img', { name: /dies-too\.png/ }).getAttribute('src')
   expect(src).toBeTruthy()
 
-  await page.getByRole('button', { name: 'Delete' }).click()
+  await page.getByRole('button', { name: 'Delete', exact: true }).click()
   await page.getByRole('dialog').getByRole('button', { name: 'Delete topic' }).click()
   await expect(page).toHaveURL(/\/library/)
 

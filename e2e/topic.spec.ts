@@ -88,7 +88,7 @@ test('deleting names what dies, then removes it for good', async ({ page }) => {
   await openTopic(page, title)
   const url = page.url()
 
-  await page.getByRole('button', { name: 'Delete' }).click()
+  await page.getByRole('button', { name: 'Delete', exact: true }).click()
   const modal = page.getByRole('dialog', { name: new RegExp(`Delete .${title}.\\?`) })
   await expect(modal).toBeVisible()
   // DESIGN.md: the confirmation names what dies, including the practice count.
@@ -112,7 +112,7 @@ test('backing out of the delete keeps the topic', async ({ page }) => {
   await addTopic(page, { title, definition: 'This one survives.' })
   await openTopic(page, title)
 
-  await page.getByRole('button', { name: 'Delete' }).click()
+  await page.getByRole('button', { name: 'Delete', exact: true }).click()
   await page.getByRole('button', { name: 'Keep it' }).click()
 
   await expect(page.getByRole('dialog')).toHaveCount(0)

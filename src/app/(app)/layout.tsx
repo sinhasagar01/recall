@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { DeleteAccount } from '@/components/topics/delete-account'
 import { Kbd } from '@/components/ui/kbd'
 import { Wordmark } from '@/components/ui/wordmark'
 import { listTopics } from '@/lib/data/topics'
@@ -79,6 +80,8 @@ export default async function AppLayout({ children }: LayoutProps<'/'>) {
               Sign out
             </button>
           </form>
+          {/* Irreversible, so it sits apart from Sign out and reads quieter. */}
+          <DeleteAccount topics={topics} />
         </div>
       </aside>
 

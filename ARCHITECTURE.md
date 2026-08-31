@@ -285,6 +285,30 @@ whole practice queue at once — so they are in the first paint and nothing reso
 client-side. The figure reserves its box with `aspect-ratio`, so decode cannot shift it
 either. The card shows no image at all, only `Model ✓`.
 
+## Deleting an account
+
+The same ordering rule as deleting one topic, for the same reason: **storage objects
+first, then the auth row.** A failure removing images leaves the account intact and the
+whole operation retryable; the reverse orphans every image the account owned with
+nothing left pointing at them, and no SQL statement or trigger can reach a storage
+object to clean up afterwards. Topics are not deleted explicitly — `on delete cascade`
+on `topics.user_id` handles them, and never had any reach into storage.
+
+### Where admin privilege lives
+
+`src/lib/data/account.ts` is the only module in the app that uses the secret key, and it
+does one thing: `auth.admin.deleteUser`. Supabase does not expose self-deletion through
+the client SDK, so this cannot be done with the user's own session.
+
+Everything else runs as the user. Listing and removing their images uses their own
+session, because the phase 1 storage policies already permit deleting objects under
+their own `{user_id}/` prefix. Admin privilege therefore touches exactly one call rather
+than the whole operation.
+
+Who is being deleted comes from `supabase.auth.getUser()` on the server, never from
+anything the browser sent. And `deleteAuthUser` throws loudly when `SUPABASE_SECRET_KEY`
+is absent: a silent no-op there would report a deleted account that still exists.
+
 ## Not found and ownership are the same thing
 
 `getTopic` uses `.maybeSingle()` and returns `Topic | null`. RLS returns zero rows

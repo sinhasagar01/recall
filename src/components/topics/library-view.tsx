@@ -3,6 +3,7 @@
 import { useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 import { LibraryToolbar, type ToolbarState } from '@/components/topics/library-toolbar'
+import { DeleteAccount } from '@/components/topics/delete-account'
 import { TopicCard } from '@/components/topics/topic-card'
 import { TopicSheet } from '@/components/topics/topic-sheet'
 import { Button } from '@/components/ui/button'
@@ -159,14 +160,18 @@ export function LibraryView({ topics, readAt }: { topics: Topic[]; readAt: strin
           has two destinations plus the FAB, with no room for it. It sits here,
           beside the title on the default destination, so it is always one tap away.
         */}
-        <form action={signOut} className="md:hidden">
-          <button
-            type="submit"
-            className="cursor-pointer rounded-md px-2 py-1 text-label text-ink-2 hover:bg-surface-2 hover:text-ink"
-          >
-            Sign out
-          </button>
-        </form>
+        <div className="flex items-center gap-3 md:hidden">
+          <form action={signOut}>
+            <button
+              type="submit"
+              className="cursor-pointer rounded-md px-2 py-1 text-label text-ink-2 hover:bg-surface-2 hover:text-ink"
+            >
+              Sign out
+            </button>
+          </form>
+          {/* The rail is hidden below the breakpoint, so deletion needs a home here. */}
+          <DeleteAccount topics={topics} />
+        </div>
 
         {topics.length > 0 ? (
           <Button variant="primary" onClick={() => openAdd('')} className="hidden md:inline-flex">

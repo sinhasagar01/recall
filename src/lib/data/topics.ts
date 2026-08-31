@@ -206,3 +206,34 @@ export async function setMentalModelImagePath(
   const { error: removeError } = await supabase.storage.from(BUCKET).remove([previous])
   return { orphanedPath: removeError ? previous : null }
 }
+
+/**
+ * Removes every mental-model image belonging to the signed-in user.
+ *
+ * Runs under the USER's own session, not an admin one: the phase 1 storage
+ * policies already let someone delete objects under their own `{user_id}/`
+ * prefix, so account deletion needs admin privilege for exactly one call — the
+ * auth row — and not for this.
+ */
+export async function removeAllOwnImages(userId: string): Promise<number> {
+  const supabase = await createClient()
+  const paths: string[] = []
+
+  const { data: topicFolders, error } = await supabase.storage.from(BUCKET).list(userId)
+  if (error) fail('Listing your images', error)
+
+  for (const folder of topicFolders ?? []) {
+    if (folder.id !== null) continue // a file directly under the user prefix
+    const { data: files } = await supabase.storage.from(BUCKET).list(`${userId}/${folder.name}`)
+    for (const file of files ?? []) {
+      if (file.id !== null) paths.push(`${userId}/${folder.name}/${file.name}`)
+    }
+  }
+
+  if (paths.length === 0) return 0
+
+  const { error: removeError } = await supabase.storage.from(BUCKET).remove(paths)
+  if (removeError) fail('Removing your images', removeError)
+
+  return paths.length
+}
