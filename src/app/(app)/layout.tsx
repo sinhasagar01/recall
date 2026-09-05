@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { DeleteAccount } from '@/components/topics/delete-account'
 import { GlobalKeys } from '@/components/topics/global-keys'
+import { RailNav } from '@/components/topics/rail-nav'
 import { Kbd } from '@/components/ui/kbd'
 import { Wordmark } from '@/components/ui/wordmark'
 import { railCounts } from '@/lib/data/library'
@@ -36,8 +37,6 @@ export default async function AppLayout({ children }: LayoutProps<'/'>) {
   */
   const queued = practiceQueueSize(counts.total)
 
-  const navItem = 'flex items-center justify-between gap-2 rounded-md px-2.5 py-2 text-option text-ink-2'
-
   return (
     <div className="grid min-h-screen grid-cols-1 md:grid-cols-[212px_1fr]">
       {/*
@@ -50,20 +49,7 @@ export default async function AppLayout({ children }: LayoutProps<'/'>) {
           <Wordmark />
         </div>
 
-        <nav className="flex flex-col gap-0.5">
-          <span className={`${navItem} bg-surface text-ink`} aria-current="page">
-            <span>Library</span>
-            <span className="font-mono text-mono-sm text-ink-3">{counts.total}</span>
-          </span>
-          <Link href="/practice" className={`${navItem} hover:bg-surface hover:text-ink`}>
-            <span>Practice</span>
-            <span className="font-mono text-mono-sm text-ink-3">{queued} queued</span>
-          </Link>
-          <Link href="/weak" className={`${navItem} hover:bg-surface hover:text-ink`}>
-            <span>Weak topics</span>
-            <span className="font-mono text-mono-sm text-flag">{counts.needsReview}</span>
-          </Link>
-        </nav>
+        <RailNav total={counts.total} queued={queued} needsReview={counts.needsReview} />
 
         <div className="mt-auto flex flex-col gap-2.5 px-2">
           <p className="font-mono text-mono leading-[1.9] text-ink-3">

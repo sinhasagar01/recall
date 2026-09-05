@@ -126,3 +126,31 @@ test('the rail links to weak topics', async ({ page }) => {
   await expect(page).toHaveURL(/\/weak/)
   await expect(page.getByRole('heading', { name: 'Weak topics', level: 1 })).toBeVisible()
 })
+
+/*
+  The two empty states are different questions and must not share an answer.
+
+  With no topics at all the page used to read "Every topic is at okay or better",
+  which is a sentence about topics that do not exist — the same conflation the
+  library page has always avoided (DESIGN.md 4.6).
+*/
+test('an empty library and a library with nothing weak say different things', async ({ page }) => {
+  // The empty fixture user owns nothing, ever.
+  await signInAs(page, 'empty')
+  await page.goto('/weak')
+
+  await expect(page.getByRole('heading', { name: 'Nothing to review yet' })).toBeVisible()
+  await expect(page.getByText('Nothing saved yet')).toBeVisible()
+  await expect(page.getByText('Every topic is at okay or better')).toHaveCount(0)
+  // One action: practice would only be able to refuse.
+  await expect(page.getByRole('link', { name: 'Practice anyway' })).toHaveCount(0)
+  await expect(page.getByRole('link', { name: '+ Add your first topic' })).toBeVisible()
+
+  // The other state: topics exist, none of them need review.
+  await signInAs(page, 'strong')
+  await page.goto('/weak')
+
+  await expect(page.getByRole('heading', { name: 'Nothing needs review' })).toBeVisible()
+  await expect(page.getByText('Every topic is at okay or better')).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Practice anyway' })).toBeVisible()
+})
