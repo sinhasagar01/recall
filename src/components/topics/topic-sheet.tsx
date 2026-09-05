@@ -56,6 +56,7 @@ export function TopicSheet({
   const [mentalModel, setMentalModel] = useState(topic?.mental_model ?? '')
   const [category, setCategory] = useState(topic?.category ?? UNCATEGORIZED)
   const [tags, setTags] = useState<string[]>(topic?.tags ?? [])
+  const isEdit = topic !== undefined
   const [difficulty, setDifficulty] = useState<Difficulty>(topic?.difficulty ?? 'medium')
   const [error, setError] = useState<string | null>(null)
   const [isSaving, startSaving] = useTransition()
@@ -256,7 +257,18 @@ export function TopicSheet({
           />
         </div>
 
-        <div className="mb-[18px] grid grid-cols-1 gap-3.5 md:grid-cols-2">
+        {/*
+          Difficulty is an EDIT-only control — issue #14. Nothing reads it when
+          choosing what to practise, so asking at capture charged a decision at
+          the moment that most needs to be cheap. A new topic takes the column
+          default; you set difficulty later, once you have met the topic.
+
+          The row collapses to one column when it is absent, so Category is not
+          left sitting in half a grid.
+        */}
+        <div
+          className={`mb-[18px] grid grid-cols-1 gap-3.5 ${isEdit ? 'md:grid-cols-2' : ''}`}
+        >
           <div>
             <span className="mb-1.5 block text-label font-medium text-ink">Category</span>
             <input type="hidden" name="category" value={category} />
@@ -270,13 +282,15 @@ export function TopicSheet({
             />
           </div>
 
-          <Segmented
-            legend="Difficulty"
-            name="difficulty"
-            options={DIFFICULTIES}
-            value={difficulty}
-            onChange={setDifficulty}
-          />
+          {isEdit ? (
+            <Segmented
+              legend="Difficulty"
+              name="difficulty"
+              options={DIFFICULTIES}
+              value={difficulty}
+              onChange={setDifficulty}
+            />
+          ) : null}
         </div>
 
         <TagsInput label="Tags" hint="optional" tags={tags} onChange={setTags} />

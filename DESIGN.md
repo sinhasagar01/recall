@@ -250,7 +250,22 @@ note existed. The bolded phrase opening each rule is its name.*
     single-user tool argues for this, not against it — there is no administrator
     and no second factor, only the emailed reset link.
 
-12. **Mobile has two destinations plus add.** Weak topics is a filter chip on
+12. **Difficulty is set on edit, not at capture.** The add sheet does not ask for
+    it; a new topic takes the column default. The edit sheet does, and the toolbar
+    filter is unchanged.
+
+    Nothing reads it when choosing what to practise — the queue orders by
+    confidence bucket then staleness, and `difficulty` appears nowhere in
+    `practice-selection.ts`. Asking for it while saving charged a decision at the
+    moment that most needs to be cheap, for a field the product then ignored.
+    `confidence` already answers "how hard is this for me", and answers it from
+    what happened rather than from a guess made before you had tried.
+
+    **This diverges from the reference, which shows the control on both sheets**
+    (`design-reference.html`, the `add` and `edit` screens). The column stays, so
+    the decision is reversible by putting the control back.
+
+13. **Mobile has two destinations plus add.** Weak topics is a filter chip on
    Library, and the three filter selects collapse behind one `Filters` chip.
 
 ---

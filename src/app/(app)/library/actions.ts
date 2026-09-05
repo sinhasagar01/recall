@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { listLibrary, type Cursor } from '@/lib/data/library'
 import { insertTopic, setMentalModelImagePath } from '@/lib/data/topics'
 import type { TopicFilters } from '@/lib/domain/search-filter'
-import type { Difficulty, Topic } from '@/lib/domain/types'
+import type { Topic } from '@/lib/domain/types'
 
 export type SaveTopicResult =
   | { error: string; title?: undefined; id?: undefined; userId?: undefined }
@@ -34,14 +34,12 @@ export async function attachMentalModelImage(
   }
 }
 
-const DIFFICULTIES: Difficulty[] = ['easy', 'medium', 'hard']
 
 export async function createTopic(formData: FormData): Promise<SaveTopicResult> {
   const title = String(formData.get('title') ?? '').trim()
   const definition = String(formData.get('definition') ?? '').trim()
   const mentalModel = String(formData.get('mental_model') ?? '').trim()
   const category = String(formData.get('category') ?? '').trim()
-  const rawDifficulty = String(formData.get('difficulty') ?? 'medium')
 
   /*
     Validated here as well as in the browser. `required` on an input is a
@@ -51,10 +49,12 @@ export async function createTopic(formData: FormData): Promise<SaveTopicResult> 
   if (title === '') return { error: 'Give the topic a title so you can find it again.' }
   if (definition === '') return { error: 'A topic needs a definition. What is it?' }
 
-  const difficulty = DIFFICULTIES.includes(rawDifficulty as Difficulty)
-    ? (rawDifficulty as Difficulty)
-    : 'medium'
-
+  /*
+    No difficulty. It is not asked for at capture any more (issue #14) — nothing
+    reads it when choosing what to practise, so it was charging a decision at the
+    moment that most needs to be cheap. The column default applies, and it is set
+    later from the edit sheet if it is worth setting at all.
+  */
   try {
     /*
       Step one of three. The upload runs in the browser once this returns the id,
@@ -67,7 +67,6 @@ export async function createTopic(formData: FormData): Promise<SaveTopicResult> 
       mental_model: mentalModel === '' ? null : mentalModel,
       category: category === '' ? null : category,
       tags: formData.getAll('tags').map(String),
-      difficulty,
     })
 
     revalidatePath('/library')

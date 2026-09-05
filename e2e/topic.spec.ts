@@ -150,3 +150,65 @@ test("another user's topic is indistinguishable from one that does not exist", a
   await page.goto('/topic/00000000-0000-0000-0000-0000000000ff')
   await expect(page.getByRole('heading', { name: 'Topic not found' })).toBeVisible()
 })
+
+/*
+  Difficulty is set from the edit sheet, never at capture — issue #14.
+
+  Nothing reads it when choosing what to practise: the practice queue orders by
+  confidence bucket then staleness, and `difficulty` appears nowhere in
+  practice-selection.ts. So asking for it while saving charged a decision at the
+  moment that most needs to be cheap, for a field the product then ignored.
+
+  It is still a real field: it filters, and it can be set deliberately once you
+  have met the topic and have an opinion worth recording.
+*/
+test('adding a topic does not ask for difficulty, and it defaults to medium', async ({ page }) => {
+  await signIn(page, EMAIL)
+
+  await page.getByRole('button', { name: /Add (topic|your first topic)/ }).first().click()
+
+  const sheet = page.getByRole('dialog')
+  // The fieldset, by role — `getByText('Difficulty')` matches more than one node.
+  await expect(sheet.getByRole('group', { name: 'Difficulty' })).toHaveCount(0)
+  // The fields that do belong at capture are all still there.
+  await expect(sheet.getByLabel('Topic', { exact: true })).toBeVisible()
+  await expect(sheet.getByLabel('Definition')).toBeVisible()
+  await expect(sheet.getByText('Category')).toBeVisible()
+
+  const title = uniqueTitle('Defaulted difficulty')
+  await sheet.getByLabel('Topic', { exact: true }).fill(title)
+  await sheet.getByLabel('Definition').fill('Saved without being asked.')
+  await sheet.getByRole('button', { name: 'Save topic' }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 15_000 })
+
+  // The column default, not a value the form sent.
+  await page.getByRole('link', { name: new RegExp(title) }).first().click()
+  await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible()
+  await expect(page.getByText('Medium', { exact: true })).toBeVisible()
+})
+
+test('editing a topic can set its difficulty, and it sticks', async ({ page }) => {
+  await signIn(page, EMAIL)
+  const title = uniqueTitle('Set difficulty later')
+  await addTopic(page, { title, definition: 'Difficulty comes later.' })
+  await openTopic(page, title)
+
+  await page.getByRole('button', { name: 'Edit' }).click()
+  const sheet = page.getByRole('dialog')
+
+  // Present here, where the decision is a considered one.
+  await expect(sheet.getByRole('group', { name: 'Difficulty' })).toBeVisible()
+  /*
+    The label, not the input. Segmented's radios are `sr-only` — the visible,
+    clickable thing is the label wrapping each one, which is also what a user
+    hits. Clicking the input directly waits forever for a hidden element.
+  */
+  await sheet.getByText('Hard', { exact: true }).click()
+  await expect(sheet.getByRole('radio', { name: 'Hard' })).toBeChecked()
+  await sheet.getByRole('button', { name: 'Save changes' }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 15_000 })
+
+  await expect(page.getByText('Hard', { exact: true })).toBeVisible()
+  await page.reload()
+  await expect(page.getByText('Hard', { exact: true })).toBeVisible()
+})

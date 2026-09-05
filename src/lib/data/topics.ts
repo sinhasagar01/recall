@@ -27,7 +27,6 @@ export interface NewTopic {
   mental_model: string | null
   category: string | null
   tags: string[]
-  difficulty: Difficulty
 }
 
 /** Supabase errors carry a code worth showing — the mock's error state shows one. */
@@ -73,7 +72,18 @@ export const getTopic = cache(async (id: string): Promise<Topic | null> => {
   return data === null ? null : toTopic(data)
 })
 
-export type TopicEdit = NewTopic
+/**
+ * Editing can set difficulty; adding cannot — issue #14.
+ *
+ * The field is never read by practice selection, so asking for it at capture
+ * charged a decision at the moment that most needs to be cheap. A new topic
+ * takes the column default and difficulty becomes something you set later, once
+ * you have met the topic and have an opinion worth recording.
+ *
+ * Expressed in the type rather than by remembering: `NewTopic` has no
+ * `difficulty`, so the add path cannot send one even by accident.
+ */
+export type TopicEdit = NewTopic & { difficulty: Difficulty }
 
 export async function updateTopic(id: string, input: TopicEdit): Promise<Topic> {
   const supabase = await createClient()
