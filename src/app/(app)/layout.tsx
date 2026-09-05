@@ -89,7 +89,7 @@ export default async function AppLayout({ children }: LayoutProps<'/'>) {
           {/*
             Beside Sign out, in the account foot — not a fourth nav entry. The
             mobile tab bar is two destinations plus the add button and stays that
-            way (DESIGN.md section 4.12).
+            way (DESIGN.md, "Mobile has two destinations plus add").
           */}
           <Link href="/settings" className={`${footLink} hover:text-ink`}>
             Settings
@@ -115,7 +115,7 @@ export default async function AppLayout({ children }: LayoutProps<'/'>) {
 
       {/*
         The tab bar replaces the rail below --breakpoint-md. Two destinations plus
-        the FAB: Weak topics is a filter chip on Library, per DESIGN.md section 4.12,
+        the FAB: Weak topics is a filter chip on Library, per DESIGN.md, "Mobile has two destinations plus add",
         not a third tab. /practice sits in its own route group, so it never renders
         this at all — that screen is meant to have nothing to glance at.
       */}

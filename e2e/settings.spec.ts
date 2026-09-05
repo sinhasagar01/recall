@@ -6,7 +6,7 @@ import { CREDENTIALS, signInAs } from './auth-state'
 
   The page is reachable from the account foot rather than from the nav: the
   mobile tab bar is two destinations plus the add button and stays that way
-  (DESIGN.md section 4.12). So it is asserted where it actually lives — the rail
+  (DESIGN.md, "Mobile has two destinations plus add"). So it is asserted where it actually lives — the rail
   foot on desktop, the library head on a phone — not as a fourth nav entry.
 
   Its way back to the library is covered by e2e/wayfinding.spec.ts, which

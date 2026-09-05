@@ -132,7 +132,7 @@ test('the rail links to weak topics', async ({ page }) => {
 
   With no topics at all the page used to read "Every topic is at okay or better",
   which is a sentence about topics that do not exist — the same conflation the
-  library page has always avoided (DESIGN.md 4.6).
+  library page has always avoided (DESIGN.md, "No-results offers").
 */
 test('an empty library and a library with nothing weak say different things', async ({ page }) => {
   // The empty fixture user owns nothing, ever.

@@ -22,7 +22,7 @@ export default async function WeakPage() {
     library total is how many exist at all. Without the second, a library with no
     topics rendered "Every topic is at okay or better" — a sentence about topics
     that do not exist. The library page has always kept empty-library and
-    no-results apart (DESIGN.md 4.6); this page had not.
+    no-results apart (DESIGN.md, "No-results offers"); this page had not.
 
     railCounts is cache()d and the layout called it for this same request, so the
     second read costs nothing.

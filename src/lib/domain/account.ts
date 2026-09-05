@@ -3,7 +3,7 @@ import type { Topic } from '@/lib/domain/types'
 /**
  * What deleting an account actually destroys, named.
  *
- * The same rule as deleting a single topic (DESIGN.md section 4.8): name what
+ * The same rule as deleting a single topic (DESIGN.md, "Delete confirmation names what dies"): name what
  * dies, and nothing that does not. An account with no images should not be told
  * its images are going.
  */

@@ -7,7 +7,7 @@ import { useId } from 'react'
  * The error sits OUTSIDE the label and is wired with aria-invalid,
  * aria-describedby and role="alert". design-reference.html nests it inside the
  * label, which folds the error text into the input's accessible name — see
- * DESIGN.md section 6, where the mock is explicitly not authoritative on this.
+ * DESIGN.md, "Accessibility floor", where the mock is explicitly not authoritative on this.
  */
 export function Field({
   label,

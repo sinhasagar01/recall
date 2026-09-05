@@ -109,7 +109,7 @@ both callers use it: the never-practiced bucket in practice selection, and the
 
 **It means `confidence === 'new'`, not `last_practiced_at === null.`** The two can
 genuinely disagree, because Edit can set confidence directly without ever practising
-a topic. Confidence wins because DESIGN.md §2 labels the confidence value `new` as
+a topic. Confidence wins because DESIGN.md, "Signature components" labels the confidence value `new` as
 "Never practiced" and the mock's confidence select lists it *as* a confidence value —
 so a card's meter and the filter always agree. Keying on `last_practiced_at` would
 let a card visibly labelled "Weak" appear under a "Never practiced" filter.
@@ -522,7 +522,7 @@ already carries — pure, unit-testable, and still different every session.
 
 ## The component layer
 
-`src/components/ui` holds the primitives from DESIGN.md section 2. Nothing in there
+`src/components/ui` holds the primitives from DESIGN.md, "Signature components". Nothing in there
 imports Supabase, and nothing imports from `src/lib/data` — a primitive takes props
 and renders. `ConfidenceMeter` imports the `Confidence` union from
 `src/lib/domain/types`, which is a type, not a dependency on the domain layer.
@@ -613,7 +613,7 @@ Consequences the application must carry:
 
 This mirrors the add path, which is three steps for the same structural reason —
 the object path needs the topic id, so the row must exist first. Both directions
-are application-level sequences with partial-failure states, and DESIGN.md §4.4
+are application-level sequences with partial-failure states, and DESIGN.md, "Image failure never blocks the topic"
 already requires the add path to report the real reason rather than a generic
 message. The delete path is held to the same standard.
 
@@ -1196,3 +1196,18 @@ done
 
 `supabase stop && supabase start` resyncs them. Nothing in the application is wrong when
 this happens, which is exactly why it is worth recognising quickly.
+
+### DESIGN.md rules are referenced by name, not number
+
+`DESIGN.md, "Accessibility floor"` and `DESIGN.md, "Delete confirmation names what
+dies"` — never `section 6` or `section 4.8`.
+
+The rules in section 4 are a numbered list, so inserting one renumbers every rule
+after it, and every reference to those rules across the codebase. That happened four
+times — the mobile-tab-bar rule alone moved from 4.8 to 4.9 to 4.10 to 4.11 to 4.12,
+dragging code comments with it each time — before the numbers were dropped.
+
+The bolded phrase opening each rule is its name, and each name used as a reference is
+unique in the file, so a grep finds the rule. `TASKS.md` still carries numeric
+references and is deliberately left alone: it is the historical record of the twelve
+phases and says so, and its references describe what those numbers were at the time.

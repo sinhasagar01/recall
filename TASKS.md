@@ -575,3 +575,32 @@ confirmed hosted.
 The size and mime limits were not driven from the browser here — they have pgTAP
 coverage locally and the hosted bucket carries identical values, but an oversized or
 wrong-typed upload has not been attempted against the cloud.
+
+## Shipped after the review
+
+The product review (walking the deployed app, not the source) produced three fixes and
+three issues. What has shipped since:
+
+| | |
+| --- | --- |
+| Rail wayfinding | Library was a `<span aria-current="page">` on every page, so `/weak` had no way back on desktop and the rail claimed the wrong location. All three entries are links and `aria-current` follows the route |
+| Weak page zero-topics state | It said "Every topic is at okay or better" to someone with no topics. Split, the way the library page always split empty from no-results |
+| Sticky rail | It scrolled away with the page. Sticky at `h-screen` from `md` up, foot pinned. The reference does not specify this — see DESIGN.md |
+| Settled-but-quiet (#13) | Confidence never decays, so `/weak` emptied permanently. A second list beside the first: settled, and not practised in 60 days. The grade is untouched |
+| Export (#15) | Every topic as a zip — `library.md` to read, `library.json` for a machine, and the images. There was no way out at all, and the hosting has no automated backups |
+| Settings | Two things: change a password (requiring the current one) and export. In the account foot, not a nav entry |
+
+Each carries its own regression. The wayfinding one is the notable one: it asserts the
+general property — from every route in the `(app)` group, a visible link to the library
+exists — by enumerating the route group rather than naming remembered screens. Twelve
+phases missed the defect because every existing spec asserted a link it already knew
+about.
+
+### The backlog now
+
+| Issue | |
+| --- | --- |
+| [#14](https://github.com/sinhasagar01/recall/issues/14) | Demote difficulty out of the add-topic form. It is set at capture and never read by practice selection |
+| [#7](https://github.com/sinhasagar01/recall/issues/7) | Subscriptions, Stripe webhook, quota enforcement. Only when there is something to bill for |
+
+#13 closed with the settled-but-quiet list; #15 closes with export.

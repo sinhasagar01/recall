@@ -12,7 +12,7 @@ export type SelectOption = {
 }
 
 /**
- * The listbox from DESIGN.md section 2. Not a native <select>: a trigger button
+ * The listbox from DESIGN.md, "Signature components". Not a native <select>: a trigger button
  * plus a popover, because the options carry counts and grouping that a native
  * select cannot show.
  *

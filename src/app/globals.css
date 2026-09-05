@@ -70,7 +70,7 @@
   /* The skeleton pulse from the reference: opacity 1 -> .55 -> 1 over 1.5s. */
   --animate-skeleton: skeleton-pulse 1.5s ease-in-out infinite;
 
-  /* The scale from DESIGN.md section 1. */
+  /* The scale from DESIGN.md, "Tokens". */
   --text-detail-title: 34px;
   --text-prompt: 31px;
   --text-wordmark-lg: 30px;
@@ -125,7 +125,7 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  /* DESIGN.md section 6: a visible focus ring on every interactive element. */
+  /* DESIGN.md, "Accessibility floor": a visible focus ring on every interactive element. */
   :focus-visible {
     outline: 2px solid var(--color-accent);
     outline-offset: 2px;
@@ -133,7 +133,7 @@
   }
 
   /*
-    DESIGN.md section 6: reduced motion kills the spinner and skeleton animations.
+    DESIGN.md, "Accessibility floor": reduced motion kills the spinner and skeleton animations.
     Nothing depends on an animation to reach its end state — the spinner is
     decorative and the button's text carries the meaning on its own.
   */

@@ -75,7 +75,7 @@ export async function createTopic(formData: FormData): Promise<SaveTopicResult> 
     // The id the upload needs only exists now, which is why this is three steps.
     return { error: null, title: topic.title, id: topic.id, userId: topic.user_id }
   } catch (cause) {
-    // The real reason, never a generic message. DESIGN.md section 5.
+    // The real reason, never a generic message. DESIGN.md, "Copy rules".
     return { error: cause instanceof Error ? cause.message : 'The topic could not be saved.' }
   }
 }

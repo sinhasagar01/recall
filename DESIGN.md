@@ -158,6 +158,12 @@ Skeletons must match real card geometry so nothing shifts when data lands.
 
 ## 4. Behaviour the mock encodes
 
+*Cross-references name a rule rather than numbering it — `DESIGN.md, "Mobile has two
+destinations plus add"`, not `section 4.12`. Inserting a rule renumbers every rule
+after it, and those numbers were chased through code comments four times before this
+note existed. The bolded phrase opening each rule is its name.*
+
+
 1. **Skip in practice writes nothing.** No confidence change, no
    `practice_count`, no `last_practiced_at`.
 2. **Grades persist on selection, not at session end.** Ending early keeps

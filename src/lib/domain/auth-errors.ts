@@ -2,7 +2,7 @@
  * Turning a sign-in failure into something true.
  *
  * The bug this replaces: every failure became "That email and password don't
- * match an account." — including an unreachable database. DESIGN.md section 5
+ * match an account." — including an unreachable database. DESIGN.md, "Copy rules"
  * says errors state what happened and what to do, and are never vague; telling
  * someone their password is wrong when the service is down is exactly that, and
  * it sends them to reset a password that was never the problem.

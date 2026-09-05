@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 import { signInAs } from './auth-state'
 
 /*
-  DESIGN.md section 6, verified rather than asserted.
+  DESIGN.md, "Accessibility floor", verified rather than asserted.
 
   These drive the app with the keyboard only and inspect computed styles, so a
   regression in the focus ring or the reduced-motion rule fails here rather than
