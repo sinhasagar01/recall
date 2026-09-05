@@ -1100,6 +1100,22 @@ export SUPABASE_AUTH_SMTP_PASSWORD='<the Resend API key>'
 supabase config push
 ```
 
+### How to check a push landed — and how not to
+
+`supabase config push` reading back **`Remote Auth config is up to date`** is the check.
+It compares the stored config through the Management API, which is the only thing that
+actually knows.
+
+Do not try to infer it from the outside. `additional_redirect_urls` in particular looks
+testable through `/auth/v1/verify?...&redirect_to=`, and is not: that endpoint honours a
+`redirect_to` whose host matches **`site_url`** and falls back otherwise, so every URL on
+the site_url host appears to work and every other URL appears to be rejected, whatever the
+allow-list contains. Reading it as an allow-list probe reports a failure that is not there,
+twice, convincingly.
+
+The one thing no external probe can answer is what is in the redirect allow-list. That is
+a dashboard read, or a `config push` that reports no diff.
+
 ### `minimum_password_length` was 6 and the form said 8
 
 The sign-up form asks for eight characters and enforces it with `minlength`, while the
