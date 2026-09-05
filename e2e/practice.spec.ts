@@ -142,3 +142,22 @@ test('a deliberate single-topic session is not subject to the floor', async ({ p
   await expect(page.getByRole('button', { name: 'Reveal answer' })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Not enough to practice yet' })).toHaveCount(0)
 })
+
+/*
+  The session has no rail — deliberately, because a sidebar reading "Weak topics
+  15" while you are trying to recall one of them gives the answer away. That makes
+  the way out the only way out, and it used to be an underlined word at 11.5px
+  after the counter.
+*/
+test('Escape leaves a practice session, and the exit says so', async ({ page }) => {
+  await signInAs(page, 'main')
+  await page.goto('/practice')
+
+  await expect(page.getByRole('button', { name: 'Reveal answer' })).toBeVisible()
+
+  // The control names its own shortcut.
+  await expect(page.getByRole('link', { name: /End session/ })).toBeVisible()
+
+  await page.keyboard.press('Escape')
+  await expect(page).toHaveURL(/\/library/)
+})

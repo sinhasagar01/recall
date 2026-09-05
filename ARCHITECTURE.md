@@ -1121,3 +1121,40 @@ a dashboard read, or a `config push` that reports no diff.
 The sign-up form asks for eight characters and enforces it with `minlength`, while the
 config allowed six — so the server would have accepted a password the UI refused. Settled
 at 8 in both local and production rather than left disagreeing.
+
+## Navigation felt slow, and it was not the database
+
+Reported after the app had real content in it. Measured before changing anything:
+the rail's count query runs in **0.188 ms** against a real account, Vercel serves from
+`bom1` and Supabase lives in `ap-south-1` — the same region — and unauthenticated
+responses return in 130–200 ms.
+
+The cause was that only `/library` had a `loading.tsx`. Next holds the **previous** page
+on screen for the whole server render, so clicking "Weak topics" looked like nothing had
+happened until the page swapped. `/weak`, `/practice` and `/topic/[id]` now have loading
+boundaries whose geometry matches the real content.
+
+The rail's three separate count requests became one `rail_counts` RPC at the same time.
+Three round trips per navigation is not what made it feel slow, but it was three round
+trips for one number each.
+
+**The lesson is that "slow" was a rendering-feedback problem wearing a performance
+costume.** Every measurement pointed away from the thing that was actually wrong.
+
+### The rail advertised three shortcuts that did not exist
+
+`N`, `/` and `P` were rendered as `Kbd` hints from phase 4 onward and nothing implemented
+them. They came from `design-reference.html`, which is exactly the trap DESIGN.md names
+for the mock's other decoration — the rule it illustrates is real, the values are not.
+
+They are implemented now, in `components/topics/global-keys.tsx`, mounted once in the
+`(app)` layout. Not in the practice group: a session has its own keys and `P` there means
+nothing.
+
+`isTyping` moved to `components/ui/is-typing.ts` and is shared with the practice keys. Two
+handlers deciding separately whether a keystroke belongs to a field is how one of them
+ends up grading a card while someone types the word "three".
+
+A client shortcut does not exist until React hydrates, so a keystroke immediately after
+load is genuinely ignored. The spec retries with `toPass` rather than asserting against
+that race.

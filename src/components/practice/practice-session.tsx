@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { usePracticeKeys } from '@/components/practice/use-practice-keys'
 import { Button } from '@/components/ui/button'
 import { Chip } from '@/components/ui/chip'
@@ -73,9 +74,14 @@ export function PracticeSession({
   */
   const skip = () => advance()
 
+  const router = useRouter()
+
   usePracticeKeys({
     onReveal: !done && !revealed ? () => setRevealed(true) : undefined,
     onGrade: !done && revealed && !isSaving ? (i) => grade(GRADES[i].grade) : undefined,
+    // Unconditional: leaving is always available. Grades already saved on
+    // selection, so nothing is lost by going.
+    onExit: () => router.push('/library'),
   })
 
   if (done) return <Complete results={results} count={queue.length} />
@@ -93,12 +99,25 @@ export function PracticeSession({
             />
           ))}
         </div>
-        <span className="font-mono text-[11.5px] text-ink-3">
-          {index + 1} / {queue.length} ·{' '}
-          <Link href="/library" className="text-accent-ink underline">
-            End session
+        {/*
+          The way out, said plainly.
+
+          This was an underlined word at 11.5px after the counter, which is not an
+          exit anyone finds when they want one — the screen has no rail, so it is
+          the only way back and it read as decoration. It is now a control, and it
+          names its shortcut the way the rest of the app does.
+        */}
+        <div className="flex items-center gap-3">
+          <span className="font-mono text-[11.5px] text-ink-3">
+            {index + 1} / {queue.length}
+          </span>
+          <Link
+            href="/library"
+            className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-rule-strong bg-surface px-3 py-1.5 text-label font-medium text-ink-2 hover:border-ink-3 hover:text-ink"
+          >
+            End session <Kbd>Esc</Kbd>
           </Link>
-        </span>
+        </div>
       </div>
 
       <div className="mb-1 flex items-center gap-2">

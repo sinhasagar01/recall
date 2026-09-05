@@ -187,25 +187,11 @@ export interface RailCounts {
 export const railCounts = cache(async (): Promise<RailCounts> => {
   const supabase = await createClient()
 
-  const [total, review, images] = await Promise.all([
-    supabase.from('topics').select('*', { count: 'exact', head: true }),
-    supabase
-      .from('topics')
-      .select('*', { count: 'exact', head: true })
-      .in('confidence', [...REVIEW_CONFIDENCES]),
-    supabase
-      .from('topics')
-      .select('*', { count: 'exact', head: true })
-      .not('mental_model_image_path', 'is', null),
-  ])
+  const { data, error } = await supabase.rpc('rail_counts', {
+    p_review_confidences: [...REVIEW_CONFIDENCES],
+  })
 
-  if (total.error) fail('Counting your topics', total.error)
-  if (review.error) fail('Counting your topics', review.error)
-  if (images.error) fail('Counting your topics', images.error)
+  if (error) fail('Counting your topics', error)
 
-  return {
-    total: total.count ?? 0,
-    needsReview: review.count ?? 0,
-    withImages: images.count ?? 0,
-  }
+  return data as unknown as RailCounts
 })

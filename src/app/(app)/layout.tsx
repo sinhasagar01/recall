@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { DeleteAccount } from '@/components/topics/delete-account'
+import { GlobalKeys } from '@/components/topics/global-keys'
 import { Kbd } from '@/components/ui/kbd'
 import { Wordmark } from '@/components/ui/wordmark'
 import { railCounts } from '@/lib/data/library'
@@ -39,6 +40,11 @@ export default async function AppLayout({ children }: LayoutProps<'/'>) {
 
   return (
     <div className="grid min-h-screen grid-cols-1 md:grid-cols-[212px_1fr]">
+      {/*
+        Mounted once for the whole group, so N, / and P work on the library, the
+        weak list and a topic. The rail below has advertised them since phase 4.
+      */}
+      <GlobalKeys />
       <aside className="hidden flex-col gap-[26px] border-r border-rule bg-surface-2 px-3.5 py-[22px] md:flex">
         <div className="px-2">
           <Wordmark />

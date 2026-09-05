@@ -11,6 +11,7 @@ import { StateBlock } from '@/components/ui/state-block'
 import { Toast } from '@/components/ui/toast'
 import { signOut } from '@/app/(auth)/actions'
 import { loadMoreTopics } from '@/app/(app)/library/actions'
+import { SEARCH_INPUT_ID } from '@/components/topics/global-keys'
 import type { Cursor, LibraryData } from '@/lib/data/library'
 import {
   categoryOptionsFromCounts,
@@ -195,6 +196,23 @@ export function LibraryView({
     to `?add=1` rather than reaching across the tree for a setter. Consistent with
     the filters, which already live in the URL, and it works from any page.
   */
+  /*
+    Arriving from `/` pressed on another page. The param is consumed on mount and
+    stripped, so a reload or a shared URL does not steal focus a second time.
+  */
+  const focusRequested = params.get('focus') === 'search'
+
+  useEffect(() => {
+    if (!focusRequested) return
+    const input = document.getElementById(SEARCH_INPUT_ID)
+    if (input instanceof HTMLInputElement) input.focus()
+
+    const next = new URLSearchParams(window.location.search)
+    next.delete('focus')
+    const query = next.toString()
+    window.history.replaceState(null, '', query === '' ? window.location.pathname : `?${query}`)
+  }, [focusRequested])
+
   const addRequested = params.get('add') === '1'
   const sheetOpen = adding || addRequested
 

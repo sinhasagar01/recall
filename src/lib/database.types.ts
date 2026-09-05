@@ -165,6 +165,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      rail_counts: { Args: { p_review_confidences: string[] }; Returns: Json }
       topic_search_normalise: { Args: { p_value: string }; Returns: string }
       topic_search_pattern: { Args: { p_query: string }; Returns: string }
       topic_search_text: {

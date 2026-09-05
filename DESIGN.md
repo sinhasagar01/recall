@@ -226,7 +226,11 @@ Not optional, not polish-phase:
   restored on close.
 - `prefers-reduced-motion` disables the skeleton pulse and the spinner
   animation.
-- Practice grade buttons reachable by `1` / `2` / `3`.
+- Practice grade buttons reachable by `1` / `2` / `3`, and `Esc` leaves a session
+  at any point. The session has no rail, so its exit is the only way back and has
+  to be a visible control rather than a word in the meta line.
+- The rail's `N` / `/` / `P` hints are real shortcuts, not decoration. Every one is
+  inert while the caret is in a field.
 - Color never carries meaning alone — confidence has a text label and a fill
   count; errors have an icon and text.
 

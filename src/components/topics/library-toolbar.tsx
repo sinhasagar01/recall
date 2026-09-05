@@ -1,5 +1,6 @@
 'use client'
 
+import { SEARCH_INPUT_ID } from '@/components/topics/global-keys'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { QuickFilterChip } from '@/components/ui/chip'
@@ -65,6 +66,8 @@ export function LibraryToolbar({
             </svg>
           </span>
           <input
+            /* Targeted by the `/` shortcut; see components/topics/global-keys.tsx. */
+            id={SEARCH_INPUT_ID}
             type="search"
             aria-label="Search your knowledge"
             placeholder="Search your knowledge…"
