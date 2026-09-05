@@ -938,6 +938,26 @@ unprompted and returned in 2ms. A needle of one or two characters produces no tr
 and falls back to a scan, bounded by one user's rows under RLS. That is a real limit,
 not a bug to be surprised by later.
 
+### There is deliberately no GIN index on `tags`
+
+Tags are searched, not filtered. `matchesQuery` treats each tag as one more field to
+match a substring against, so `topic_search_text` folds them into `search_text` and the
+trigram index serves them like any other field. There is no `tags @> ARRAY[...]` anywhere,
+and no tag filter in `TopicFilters` or the UI — a tag appears in the editing input and as
+decoration in a card's path line, and that is all.
+
+Issue #5 proposed `create index topics_tags_idx on public.topics using gin (tags)` on the
+reasoning that it would be needed once filtering moved into SQL. Filtering did move, in
+#4, but through the trigram index rather than array containment, so the index would index
+a column no query filters on. Measured at 50,000 rows, the plan for a tag search is
+byte-identical with and without it — the same `Bitmap Index Scan on
+topics_search_text_trgm_idx` either way.
+
+**What would change this**: an exact tag filter. `tags @> ARRAY['react']` is a different
+query shape that the trigram index cannot serve, and a GIN index on `tags` is exactly what
+it needs. The index should arrive with that feature, not ahead of it — an index no query
+uses tends to survive for years because nobody can prove it is safe to drop.
+
 ## The practice ordering, in SQL
 
 Issue #12. The weak page and the practice page both read every topic the user owned and
