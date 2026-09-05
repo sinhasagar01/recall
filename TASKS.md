@@ -524,3 +524,54 @@ the first focusable element, so opening "Add topic" put the caret on Close and a
 keyboard user typed their title into a button. The focus trap now focuses the first
 form *control* when the dialog has one, falling back to the first action otherwise —
 so the delete confirmation still lands on "Keep it". Two component tests pin both.
+
+---
+
+## Verified against the hosted project
+
+Added after the twelve phases, and kept separate from them deliberately — the phase
+sections above are the historical record and are not edited to reflect later work.
+
+### The storage path is no longer untested in the cloud
+
+Phase 10 built upload, replace and remove, and its seven Playwright specs have always
+run against the local stack. Nothing had ever exercised that path against the hosted
+project, which was noticed during the product review: no seeded topic carried an image,
+so the reviewer could not reach a lightbox at all.
+
+Driven end to end on https://airlocklab.com, with the bucket inspected directly rather
+than the UI believed:
+
+| Step | Result |
+| --- | --- |
+| Upload | Accepted, dropzone showed the filename with Replace and Remove, saved |
+| Signed URL | Resolved in the browser — the image loaded at its real dimensions, not a broken box |
+| Lightbox | Opened, carried its `Esc` button, closed on `Esc` |
+| Replace | New object stored, row patched, **old object deleted** — the bucket held only the new file |
+| Remove | Object deleted **and** `mental_model_image_path` cleared |
+
+No HTTP errors and no console errors throughout. Bucket-wide afterwards: one object,
+one row pointing at it, zero orphans.
+
+### The hosted storage policies match local
+
+Same private bucket, same 5 MB `file_size_limit`, same `png/jpeg/webp`
+`allowed_mime_types`, and all four policies present. Probed against another account's
+object path:
+
+```
+anonymous direct read        -> 400
+anonymous signed-URL request -> 400  {"error":"not_found","message":"Object not found"}
+public-bucket read           -> 400
+```
+
+The middle one is the one worth having: it answers **not found** rather than forbidden,
+so another user's object is indistinguishable from one that does not exist. That is the
+same enumeration-safe behaviour `supabase/tests/storage_test.sql` asserts locally, now
+confirmed hosted.
+
+### What this does not cover
+
+The size and mime limits were not driven from the browser here — they have pgTAP
+coverage locally and the hosted bucket carries identical values, but an oversized or
+wrong-typed upload has not been attempted against the cloud.

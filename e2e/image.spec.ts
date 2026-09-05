@@ -83,7 +83,24 @@ test('removing the image makes the Visual section disappear', async ({ page }) =
   await expect(page.getByText('Visual', { exact: true })).toBeVisible()
 
   await page.getByRole('button', { name: 'Edit' }).click()
-  await page.getByRole('button', { name: 'Remove' }).click()
+
+  /*
+    `exact: true`, and it matters.
+
+    Playwright matches an accessible name as a case-insensitive SUBSTRING unless
+    you say otherwise, and the edit dialog contains two controls that match
+    "Remove":
+
+      the dropzone's       "Remove"                  — the one this test wants
+      each tag chip's      "Remove tag <name>"       — an aria-label on the x
+
+    This test passes without `exact` only because the topic it creates carries no
+    tags. Add one to the fixture and `.first()` starts clicking the chip, the
+    image survives, and the failure reads as "remove is broken" rather than "the
+    selector is wrong". That mistake cost an hour during the hosted-storage
+    verification, against the real app, where it looked like a product bug.
+  */
+  await page.getByRole('button', { name: 'Remove', exact: true }).click()
   await page.getByRole('button', { name: 'Save changes' }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 15_000 })
 
