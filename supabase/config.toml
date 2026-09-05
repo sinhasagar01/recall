@@ -497,6 +497,24 @@ sign_in_sign_ups = 30
 token_verifications = 30
 web3 = 30
 
+# Both of these are leaks from the local defaults, caught by reading the diff the
+# CLI prints before it pushes. Neither was a deliberate change, and both weakened
+# production:
+#
+#   * TOTP is enrolled and verifiable on the hosted project. Recall has no MFA
+#     screen, so nobody can have enrolled through the app — but a factor added
+#     any other way is real, and turning verification off would stop honouring
+#     it. Held where production already is.
+#   * The email OTP is 8 digits there and 6 locally. Recall confirms with a link
+#     rather than a numeric code, so this changes nothing in practice, which is
+#     also why there is no reason to accept a shorter one.
+#
+# They are here rather than fixed in the local config because local should keep
+# its own defaults; this block is what production is.
+[remotes.production.auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
+
 [remotes.production.auth.email]
 enable_signup = true
 double_confirm_changes = true
@@ -505,7 +523,7 @@ secure_password_change = false
 # One second is a local testing convenience. A minute between emails to the same
 # address is the real guard against someone using sign-up as a mail cannon.
 max_frequency = "60s"
-otp_length = 6
+otp_length = 8
 otp_expiry = 3600
 
 # Declared explicitly rather than left to the merge. Whether the CLI omits unset
