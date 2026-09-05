@@ -224,7 +224,27 @@ Skeletons must match real card geometry so nothing shifts when data lands.
     gap, and `.rail__foot{margin-top:auto}`. Those were already matched and are
     unchanged.
 
-11. **Mobile has two destinations plus add.** Weak topics is a filter chip on
+11. **Settings holds two things and lives in the account foot.** Changing a
+    password while signed in, and export. Nothing else — no theme (the design is
+    light-only), no profile fields, no placeholders for what does not exist.
+
+    It is **not** a nav destination. It sits beside Sign out in the rail foot, and
+    beside Sign out in the library head on mobile, because that is where the
+    account surface already is. A fourth nav entry would break the next rule.
+
+    **The reference has no settings screen**, so nothing here is read off it. The
+    page is composed from what other screens already are: the library's page head,
+    the topic detail page's `RegisterSection`, and the auth screens' Field and
+    Button. No new visual pattern for a page holding two controls.
+
+    **Changing a password requires the current one.** Supabase would accept the
+    change on session validity alone; that would make an unlocked laptop an
+    account takeover rather than a nuisance, since whoever set the new password
+    keeps access after the laptop is locked and the owner does not. Being a
+    single-user tool argues for this, not against it — there is no administrator
+    and no second factor, only the emailed reset link.
+
+12. **Mobile has two destinations plus add.** Weak topics is a filter chip on
    Library, and the three filter selects collapse behind one `Filters` chip.
 
 ---

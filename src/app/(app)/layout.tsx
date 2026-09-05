@@ -37,6 +37,8 @@ export default async function AppLayout({ children }: LayoutProps<'/'>) {
   */
   const queued = practiceQueueSize(counts.total)
 
+  const footLink = 'cursor-pointer rounded-md text-left text-option text-ink-3'
+
   return (
     <div className="grid min-h-screen grid-cols-1 md:grid-cols-[212px_1fr]">
       {/*
@@ -84,6 +86,15 @@ export default async function AppLayout({ children }: LayoutProps<'/'>) {
           <p className="truncate font-mono text-mono text-ink-3" data-testid="signed-in-as">
             {data?.claims.email}
           </p>
+          {/*
+            Beside Sign out, in the account foot — not a fourth nav entry. The
+            mobile tab bar is two destinations plus the add button and stays that
+            way (DESIGN.md section 4.12).
+          */}
+          <Link href="/settings" className={`${footLink} hover:text-ink`}>
+            Settings
+          </Link>
+
           <form action={signOut}>
             <button
               type="submit"
@@ -104,7 +115,7 @@ export default async function AppLayout({ children }: LayoutProps<'/'>) {
 
       {/*
         The tab bar replaces the rail below --breakpoint-md. Two destinations plus
-        the FAB: Weak topics is a filter chip on Library, per DESIGN.md section 4.11,
+        the FAB: Weak topics is a filter chip on Library, per DESIGN.md section 4.12,
         not a third tab. /practice sits in its own route group, so it never renders
         this at all — that screen is meant to have nothing to glance at.
       */}

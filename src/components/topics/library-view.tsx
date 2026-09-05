@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { LibraryToolbar, type ToolbarState } from '@/components/topics/library-toolbar'
@@ -280,6 +281,10 @@ export function LibraryView({
           beside the title on the default destination, so it is always one tap away.
         */}
         <div className="flex items-center gap-3 md:hidden">
+          {/* The rail is hidden here, so the account surface lives in this head. */}
+          <Link href="/settings" className="rounded-md px-2 py-1 text-label text-ink-2 hover:bg-surface-2 hover:text-ink">
+            Settings
+          </Link>
           <form action={signOut}>
             <button
               type="submit"

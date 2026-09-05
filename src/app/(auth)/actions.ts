@@ -168,3 +168,55 @@ export async function signOut() {
   await supabase.auth.signOut()
   redirect('/sign-in')
 }
+
+export type PasswordState = { error: string | null; changed: boolean }
+
+/**
+ * Changes the password of the signed-in user, after proving they know it.
+ *
+ * ── Why the current password is required ────────────────────────────────────
+ * Supabase will change a password on session validity alone. Relying on that
+ * would mean an unlocked laptop is an account takeover rather than a nuisance:
+ * whoever is sitting at it sets a new password, keeps access after the laptop is
+ * locked, and locks the owner out. Reauthenticating turns that back into a
+ * temporary problem.
+ *
+ * Being a single-user personal tool argues FOR this, not against it. There is no
+ * administrator, no support desk and no second factor — the only route back is
+ * the emailed reset link.
+ *
+ * The check is a real sign-in, which rotates the session cookie. That is
+ * harmless: it is the same user signing in as themselves, and they stay signed
+ * in. On a wrong password nothing is written and the existing session stands.
+ */
+export async function changePassword(
+  _previous: PasswordState,
+  formData: FormData,
+): Promise<PasswordState> {
+  const currentPassword = String(formData.get('currentPassword') ?? '')
+  const newPassword = String(formData.get('newPassword') ?? '')
+
+  const supabase = await createClient()
+
+  const { data } = await supabase.auth.getClaims()
+  const email = data?.claims?.email
+  if (typeof email !== 'string') {
+    return { error: 'You are not signed in.', changed: false }
+  }
+
+  const { error: wrongPassword } = await supabase.auth.signInWithPassword({
+    email,
+    password: currentPassword,
+  })
+
+  if (wrongPassword) {
+    // Deliberately not authFailureMessage: the only thing being checked here is
+    // the password, and the account is known to exist.
+    return { error: "That isn't your current password.", changed: false }
+  }
+
+  const { error } = await supabase.auth.updateUser({ password: newPassword })
+  if (error) return { error: authFailureMessage(error), changed: false }
+
+  return { error: null, changed: true }
+}

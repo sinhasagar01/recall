@@ -3,7 +3,7 @@ import type { Database } from '@/lib/database.types'
 import { NextResponse, type NextRequest } from 'next/server'
 
 /** Routes that require a session. */
-const GUARDED = ['/library', '/topic', '/practice', '/weak']
+const GUARDED = ['/library', '/topic', '/practice', '/weak', '/settings']
 
 /** Routes a signed-in user has no reason to see. */
 const AUTH_ROUTES = ['/sign-in', '/sign-up']
