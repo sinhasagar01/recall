@@ -6,9 +6,15 @@ import { deleteAuthUser } from '@/lib/data/account'
 import { removeAllOwnImages } from '@/lib/data/topics'
 import { createClient } from '@/lib/supabase/server'
 
-export type AuthState = { error: string | null }
+/*
+  `email` is echoed back so a rejected form can refill it. React resets an
+  uncontrolled form once its action resolves, so without this a mistyped password
+  also clears an address that was correct, and the whole form is retyped to fix
+  one field. The password is deliberately never echoed.
+*/
+export type AuthState = { error: string | null; email?: string }
 
-export type SignUpState = { error: string | null; pendingFor: string | null }
+export type SignUpState = { error: string | null; pendingFor: string | null; email?: string }
 
 /*
   Sign-in failures are classified in src/lib/domain/auth-errors.ts, which is pure
@@ -18,14 +24,15 @@ export type SignUpState = { error: string | null; pendingFor: string | null }
 */
 
 export async function signIn(_previous: AuthState, formData: FormData): Promise<AuthState> {
+  const email = String(formData.get('email') ?? '')
   const supabase = await createClient()
 
   const { error } = await supabase.auth.signInWithPassword({
-    email: String(formData.get('email') ?? ''),
+    email,
     password: String(formData.get('password') ?? ''),
   })
 
-  if (error) return { error: authFailureMessage(error) }
+  if (error) return { error: authFailureMessage(error), email }
 
   redirect('/library')
 }
@@ -107,7 +114,7 @@ export async function signUp(
 
   // Supabase's sign-up messages are specific and actionable ("Password should be
   // at least 6 characters", "User already registered"), so they are shown as-is.
-  if (error) return { error: error.message, pendingFor: null }
+  if (error) return { error: error.message, pendingFor: null, email }
 
   /*
     With confirmation required, signUp returns a user but NO session. Branching on

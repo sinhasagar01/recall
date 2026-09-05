@@ -40,12 +40,20 @@ export default function SignUpPage() {
     >
       <form action={formAction}>
         <Field
+          /*
+            Keyed on the echoed address so a rejected submit remounts the input.
+            defaultValue is applied on mount only, and React resets the form when
+            the action resolves — restoring the OLD default — so without the key
+            the field renders with the right prop and the wrong value.
+          */
+          key={state.email ?? ''}
           label="Email"
           name="email"
           type="email"
           autoComplete="email"
           placeholder="you@example.com"
           required
+          defaultValue={state.email}
         />
         <Field
           label="Password"

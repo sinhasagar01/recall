@@ -808,3 +808,30 @@ same way.
 
 Follow every such click with `await expect(page).toHaveURL(…)`. The wait is the
 assertion that the navigation happened, so it is worth having on its own merits.
+
+### `defaultValue` alone cannot refill a field after a Server Action
+
+React resets an uncontrolled form once its action resolves. That is usually what you
+want — but it means a rejected sign-in clears the email along with the password, so one
+mistyped character costs two fields.
+
+Echoing the address back in the action's state is only half the fix. `defaultValue` is
+applied on **mount**, and the reset restores the value the input was mounted with, so a
+re-render carrying the new default produces a field with the right prop and the wrong
+value. The input has to be remounted, which is what `key={state.email ?? ''}` on the
+sign-in and sign-up email fields is for.
+
+The password is never echoed back, and there is no spec for the sign-up half: its error
+path cannot be provoked from a browser. A short password stops at `minlength`, an
+address that already exists returns success rather than an error (Supabase does not
+confirm which addresses are registered), and GoTrue accepts anything the browser's
+`type="email"` accepts. The path is real — "Error sending confirmation email" arrives
+through it — it just is not reachable from a test.
+
+### Running `playwright test` directly tests the last build, not your edit
+
+`webServer` runs `npm run start`, deliberately (see `playwright.config.ts` for why). The
+`test:e2e` script builds first; `npx playwright test` does not. Editing a component and
+running Playwright straight afterwards silently exercises stale output, and the failure
+looks like a broken fix rather than a stale one. Build first, or go through `npm run
+verify`.

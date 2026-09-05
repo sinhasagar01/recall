@@ -36,6 +36,30 @@ test('a wrong password shows the error and stays on the page', async ({ page }) 
 })
 
 /*
+  Getting a password wrong is the common case, not the exceptional one, and it
+  should cost exactly one field. React resets an uncontrolled form once its
+  action resolves, so without the action echoing the address back, a typo in the
+  password also wipes an email that was correct.
+*/
+test('a rejected sign-in keeps the email and clears only the password', async ({ page }) => {
+  await signIn(page, EMAIL, 'definitely-not-the-password')
+  await expect(page.getByText("That email and password don't match an account.")).toBeVisible()
+
+  await expect(page.getByLabel('Email')).toHaveValue(EMAIL)
+  // The password is never echoed back.
+  await expect(page.getByLabel('Password')).toHaveValue('')
+})
+
+/*
+  Sign-up gets the same treatment but no spec here, because its error path cannot
+  be reached through the UI: a short password stops at minlength, an existing
+  address returns success rather than an error (Supabase does not confirm which
+  addresses are registered), and GoTrue accepts addresses the browser accepts.
+  The path is real — "Error sending confirmation email" comes back through it —
+  it just cannot be provoked from a browser without breaking the mail server.
+*/
+
+/*
   Sign-up itself is covered by email-auth.spec.ts, which asserts the whole
   confirmation round-trip: that creating an account does NOT sign you in, that
   the emailed link does, and that an unconfirmed account is told why it cannot.
