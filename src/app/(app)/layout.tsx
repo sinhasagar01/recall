@@ -44,7 +44,24 @@ export default async function AppLayout({ children }: LayoutProps<'/'>) {
         weak list and a topic. The rail below has advertised them since phase 4.
       */}
       <GlobalKeys />
-      <aside className="hidden flex-col gap-[26px] border-r border-rule bg-surface-2 px-3.5 py-[22px] md:flex">
+      {/*
+        Sticky from `md` up, so the rail stays put while the library scrolls.
+
+        `self-start` matters: a grid item stretches to its row by default, so
+        without it the rail would be as tall as the whole page and `top-0` would
+        have nothing to hold — it would scroll away exactly as before. Pinned to
+        `h-screen` instead, with `overflow-y-auto` for the day its own content is
+        taller than the viewport.
+
+        The foot keeps its `mt-auto`, which is what design-reference.html
+        specifies (`.rail__foot{margin-top:auto}`) and is now doing real work: it
+        pins sign-out and the hints to the bottom of the viewport rather than to
+        the bottom of a column of unknown length.
+
+        Every class is `md:`-prefixed. Below 860px the rail is `hidden` and the
+        tab bar is already fixed; nothing about mobile changes.
+      */}
+      <aside className="hidden flex-col gap-[26px] border-r border-rule bg-surface-2 px-3.5 py-[22px] md:sticky md:top-0 md:flex md:h-screen md:self-start md:overflow-y-auto">
         <div className="px-2">
           <Wordmark />
         </div>

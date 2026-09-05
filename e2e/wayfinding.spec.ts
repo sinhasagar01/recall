@@ -105,3 +105,53 @@ test.describe('the rail says where you are', () => {
     expect(marked.join(' ')).toMatch(/Library/)
   })
 })
+
+test.describe('the rail stays put', () => {
+  test.use({ viewport: { width: 1280, height: 900 } })
+
+  /*
+    The rail used to scroll away with the page, so on a long library the three
+    destinations, sign out and the keyboard hints were all somewhere above you.
+    It is sticky from `md` up now.
+
+    Scrolling is done by scrolling the LAST card into view rather than by a
+    programmatic window.scrollTo: Next restores scroll position once a navigation
+    settles, and a scroll issued before that lands is quietly undone — scrollY
+    reads 0 and the assertion passes for the wrong reason.
+  */
+  test('the rail is still visible at the bottom of a long library', async ({ page }) => {
+    await signInAs(page, 'large')
+
+    const rail = page.getByRole('complementary')
+    await expect(rail).toBeVisible()
+    const before = await rail.boundingBox()
+
+    const cards = page.locator('a[href^="/topic/"]')
+    await expect(cards.nth(20)).toBeAttached()
+    await cards.last().scrollIntoViewIfNeeded()
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(400)
+
+    // Still on screen, and in the same place on screen rather than dragged up.
+    await expect(rail).toBeInViewport()
+    await expect(page.getByRole('link', { name: /^Library/ })).toBeInViewport()
+    await expect(page.getByRole('button', { name: 'Sign out' })).toBeInViewport()
+
+    const after = await rail.boundingBox()
+    expect(Math.round(after!.y)).toBe(Math.round(before!.y))
+  })
+
+  test('below the breakpoint nothing about the rail changes', async ({ page }) => {
+    // The rail is display:none on a phone, and the tab bar was already fixed.
+    await page.setViewportSize({ width: 390, height: 844 })
+    await signInAs(page, 'large')
+
+    await expect(page.getByRole('complementary')).toBeHidden()
+
+    const cards = page.locator('a[href^="/topic/"]')
+    await expect(cards.nth(20)).toBeAttached()
+    await cards.last().scrollIntoViewIfNeeded()
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(400)
+
+    await expect(page.getByRole('link', { name: 'Library' }).last()).toBeInViewport()
+  })
+})
