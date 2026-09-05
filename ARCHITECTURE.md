@@ -1044,3 +1044,64 @@ library, an ordered page for the weak list and a practice session, and counts fo
 the toolbar and the category select. It was removed rather than left in place because it
 was the easy thing to reach for, and reaching for it is what put an unbounded read on five
 pages.
+
+## Production configuration is in the repo
+
+`supabase/config.toml` ends with a `[remotes.production]` block. Everything above it
+configures the local stack; that block overrides it for the hosted project, and
+`supabase config push` applies the result.
+
+It exists because production auth settings used to live only in the dashboard, and that
+cost two debugging sessions inside a week: sign-ups left switched off after email
+confirmation shipped, and an unverified Resend sender that failed every auth email with a
+550. Neither was reviewable in a diff, and neither would have survived recreating the
+project.
+
+### `config push` sends the merged config, not the overrides
+
+A field the remote block does not name does **not** keep its dashboard value — it gets the
+local one. That is the whole reason the block restates fields that look redundant.
+
+The local values that must never reach production are the ones raised for the test suite:
+`email_sent = 1000` an hour would burn a month of Resend's free tier in an afternoon, and
+`max_frequency = "1s"` removes the guard against using sign-up as a mail cannon. Both are
+overridden; so is `token_refresh`, raised for the same reason.
+
+### A mistyped `project_id` silently applies nothing
+
+Remotes are matched by `project_id` against the linked ref. If it does not match, the CLI
+does not warn — it applies no override at all and pushes the local values. Confirmed by
+setting a wrong ref: no error, no override.
+
+So the confirmation is the line the CLI prints:
+
+```
+Loading config override: [remotes.production]
+```
+
+If that line is absent, the block did not apply. It does validate what it parses — two
+remotes sharing a `project_id` is a hard error — but a ref matching nothing is not.
+
+### SMTP is declared explicitly, on purpose
+
+`v1UpdateAuthServiceConfig` is a `PATCH`, so fields absent from the body are not cleared.
+But whether the CLI *omits* SMTP when the local config has no `[auth.email.smtp]` block,
+or sends it empty, decides whether a push wipes the dashboard's SMTP settings and silently
+breaks every auth email. That could not be determined without pushing and finding out.
+
+Naming the SMTP fields in the remote block makes the question moot: the push sets them to
+the right values either way.
+
+The password is not in the repo. It is `env(SUPABASE_AUTH_SMTP_PASSWORD)`, exported at
+push time:
+
+```
+export SUPABASE_AUTH_SMTP_PASSWORD='<the Resend API key>'
+supabase config push
+```
+
+### `minimum_password_length` was 6 and the form said 8
+
+The sign-up form asks for eight characters and enforces it with `minlength`, while the
+config allowed six — so the server would have accepted a password the UI refused. Settled
+at 8 in both local and production rather than left disagreeing.

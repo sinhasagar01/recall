@@ -91,12 +91,34 @@ That is the whole gate: a typecheck, then all four test layers.
 | `npm run gen:parity` | regenerate the library parity test; `-- --check` fails if stale |
 | `npm run sweep:orphans` | list storage objects no topic points at; `-- --delete` to remove them |
 | `npm run db:types` | regenerate `src/lib/database.types.ts` after a migration |
+| `supabase config push` | apply `[remotes.production]` to the hosted project (see below) |
 
 `test:db` needs the stack running and says so if it is not. `test:e2e` starts
 `next dev` itself and reuses one already running.
 
 See ARCHITECTURE.md for what belongs in each layer — the short version is that a rule
 needing a database to test is in the wrong one.
+
+## Production configuration
+
+Production auth settings — site URL, redirect allow-list, whether sign-up is open,
+rate limits, SMTP — live in the `[remotes.production]` block at the end of
+`supabase/config.toml`, not in the dashboard.
+
+`config push` applies the **merged** config, so a field the block does not name gets the
+local value, not the dashboard's. The local rate limits are raised for the test suite and
+would be actively harmful in production; they are overridden for that reason.
+
+The SMTP password is the one thing not in the repo:
+
+```bash
+export SUPABASE_AUTH_SMTP_PASSWORD='<the Resend API key>'
+supabase config push
+```
+
+Check the output says `Loading config override: [remotes.production]`. Without that line
+the override did not apply and the local values went up — a `project_id` that matches
+nothing fails silently.
 
 ## The seeded users
 
