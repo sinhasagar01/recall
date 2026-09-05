@@ -94,7 +94,12 @@ test('Practice all starts a session over the weak topics', async ({ page }) => {
   await addTopic(page, title)
 
   await page.goto('/weak')
-  await page.getByRole('link', { name: /Practice all \d+/ }).click()
+  /*
+    The button says what it does. It only claims "all" while the backlog fits a
+    session; past that it reads "Practice 10 of N", because the session is capped
+    like every other one.
+  */
+  await page.getByRole('link', { name: /Practice (all \d+|\d+ of \d+)/ }).click()
 
   await expect(page.getByRole('button', { name: 'Reveal answer' })).toBeVisible()
   // A chosen set, so the three-topic floor does not apply to it.

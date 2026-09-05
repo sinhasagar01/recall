@@ -135,6 +135,36 @@ export type Database = {
           user_id: string
         }[]
       }
+      practice_ordered_page: {
+        Args: {
+          p_bucket_order: string[]
+          p_confidences?: string[]
+          p_cursor_bucket?: number
+          p_cursor_created_at?: string
+          p_cursor_id?: string
+          p_cursor_staleness?: string
+          p_limit?: number
+          p_seed?: string
+        }
+        Returns: {
+          bucket: number
+          category: string
+          confidence: string
+          created_at: string
+          definition: string
+          difficulty: string
+          id: string
+          last_practiced_at: string
+          mental_model: string
+          mental_model_image_path: string
+          practice_count: number
+          staleness: string
+          tags: string[]
+          title: string
+          updated_at: string
+          user_id: string
+        }[]
+      }
       topic_search_normalise: { Args: { p_value: string }; Returns: string }
       topic_search_pattern: { Args: { p_query: string }; Returns: string }
       topic_search_text: {
@@ -147,6 +177,7 @@ export type Database = {
         }
         Returns: string
       }
+      weak_counts: { Args: { p_confidences: string[] }; Returns: Json }
     }
     Enums: {
       [_ in never]: never

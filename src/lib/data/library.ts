@@ -146,6 +146,26 @@ export const listLibrary = cache(
   },
 )
 
+/**
+ * The unfiltered counts, for surfaces that need the tallies but not the library.
+ *
+ * Named to avoid colliding with the domain's `libraryCounts`, which computes the
+ * same shape from an array in local mode. Topic detail uses this for the edit
+ * sheet's category select, which is the only reason it used to read every topic.
+ */
+export const libraryTotals = cache(async (): Promise<LibraryCounts> => {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase.rpc('library_counts', {
+    p_now: new Date().toISOString(),
+    p_recent_window_days: RECENT_WINDOW_DAYS,
+  })
+
+  if (error) fail('Counting your topics', error)
+
+  return data as unknown as LibraryCounts
+})
+
 export interface RailCounts {
   total: number
   needsReview: number

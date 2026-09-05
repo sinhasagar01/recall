@@ -3,6 +3,20 @@ import type { Confidence, Topic } from '@/lib/domain/types'
 export const PRACTICE_SESSION_SIZE = 10
 export const PRACTICE_MINIMUM = 3
 
+/**
+ * The weak page's practice button.
+ *
+ * "Practice all N" was the one entry point that ignored the session size, so it
+ * promised something the session no longer delivers. The count stays — the point
+ * of the button is partly to show how much is waiting — but "all" is only claimed
+ * when it is true.
+ */
+export function practiceWeakLabel(weakTotal: number): string {
+  return weakTotal <= PRACTICE_SESSION_SIZE
+    ? `Practice all ${weakTotal}`
+    : `Practice ${PRACTICE_SESSION_SIZE} of ${weakTotal}`
+}
+
 /** Enough topics for an ordinary session. */
 export function meetsPracticeMinimum(topicCount: number): boolean {
   return topicCount >= PRACTICE_MINIMUM
@@ -27,6 +41,18 @@ const BUCKET_ORDER: Record<Confidence, number> = {
 }
 
 /**
+ * The bucket order as a sequence, derived from BUCKET_ORDER rather than retyped.
+ *
+ * The ordering now runs in SQL (see the 20260905160000 migration), and this is
+ * what is passed to it — so the order lives in one place and a database function
+ * cannot hold a stale copy of it. Deriving it from the record means reordering
+ * the buckets above reorders the query too.
+ */
+export const BUCKET_SEQUENCE: readonly Confidence[] = (
+  Object.keys(BUCKET_ORDER) as Confidence[]
+).sort((a, b) => BUCKET_ORDER[a] - BUCKET_ORDER[b])
+
+/**
  * Ordering position within a bucket. A topic with no last_practiced_at has an
  * infinitely long gap, so it sorts first — it is the stalest thing in the
  * bucket, not a tie to be shuffled. That case is reachable: editing a topic can
@@ -45,6 +71,18 @@ function compare(a: number, b: number): number {
   if (a === b) return 0
   return a < b ? -1 : 1
 }
+
+/*
+  ── orderForPractice and selectPracticeSession are now the specification ────
+  Production no longer calls them: public.practice_ordered_page does the ordering,
+  so the weak page and a practice session are one bounded query rather than the
+  whole library read and sorted in the browser.
+
+  They stay because they are what that SQL is checked against. The unseeded
+  ordering is asserted id-for-id against orderForPractice over the shared corpus,
+  and BUCKET_SEQUENCE above is passed into the query, so this file remains the
+  single definition of the rule. They are specification, not dead code.
+*/
 
 /**
  * The session queue: never-practiced first, then weak, okay and strong, each by

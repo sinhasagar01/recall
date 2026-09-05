@@ -1,16 +1,14 @@
 import Link from 'next/link'
 import { PracticeSession } from '@/components/practice/practice-session'
 import { StateBlock } from '@/components/ui/state-block'
-import { listTopics, signedImageUrl } from '@/lib/data/topics'
-import { needsReview } from '@/lib/domain/library'
+import { railCounts } from '@/lib/data/library'
+import { practiceQueue } from '@/lib/data/practice'
+import { getTopic, signedImageUrl } from '@/lib/data/topics'
 import type { Topic } from '@/lib/domain/types'
 import {
   canPracticeBelowMinimum,
   meetsPracticeMinimum,
-  orderForPractice,
   PRACTICE_MINIMUM,
-  seededShuffle,
-  selectPracticeSession,
 } from '@/lib/domain/practice-selection'
 
 /*
@@ -29,12 +27,18 @@ import {
 */
 export default async function PracticePage({ searchParams }: PageProps<'/practice'>) {
   const { topic: topicId, all, scope } = await searchParams
-  const { topics, readAt } = await listTopics()
 
-  const chosen = typeof topicId === 'string' ? topics.filter((t) => t.id === topicId) : null
+  /*
+    The queue is built by the query now, not by reading the library and ordering it
+    here. See src/lib/data/practice.ts and the 20260905160000 migration: the same
+    bucket-then-staleness ordering, with the tie-break seeded from the read.
+  */
+  const readAt = new Date().toISOString()
 
-  if (chosen !== null) {
-    if (chosen.length === 0) {
+  const chosen = typeof topicId === 'string' ? await getTopic(topicId) : null
+
+  if (typeof topicId === 'string') {
+    if (chosen === null) {
       return (
         <StateBlock
           title="Topic not found"
@@ -43,22 +47,31 @@ export default async function PracticePage({ searchParams }: PageProps<'/practic
         />
       )
     }
-    return <PracticeSession queue={chosen} imageUrls={await imageUrls(chosen)} />
+    const one = [chosen]
+    return <PracticeSession queue={one} imageUrls={await imageUrls(one)} />
   }
 
   if (scope === 'weak') {
-    const weak = orderForPractice(topics.filter(needsReview), { shuffle: seededShuffle(readAt) })
+    /*
+      A chosen set, so the three-topic floor still does not apply — the same
+      reasoning as "Practice this" from a topic's detail page, established in
+      phase 9. What HAS changed is the size: this used to queue every topic that
+      needed review, which was the one entry point ignoring the session size. Ten
+      at a time is what a session has always meant.
+    */
+    const weak = await practiceQueue({ seed: readAt, weakOnly: true })
     if (weak.length > 0) return <PracticeSession queue={weak} imageUrls={await imageUrls(weak)} />
   }
 
   const overridden = all === '1'
+  const { total } = await railCounts()
 
-  if (!meetsPracticeMinimum(topics.length) && !overridden) {
+  if (!meetsPracticeMinimum(total) && !overridden) {
     return (
       <StateBlock
         eyebrow="Practice"
         title="Not enough to practice yet"
-        body={`You have ${topics.length} ${topics.length === 1 ? 'topic' : 'topics'} saved. Practice starts at ${PRACTICE_MINIMUM} — below that it's just re-reading the same card.`}
+        body={`You have ${total} ${total === 1 ? 'topic' : 'topics'} saved. Practice starts at ${PRACTICE_MINIMUM} — below that it's just re-reading the same card.`}
         action={
           <>
             <Link
@@ -71,12 +84,12 @@ export default async function PracticePage({ searchParams }: PageProps<'/practic
               A hard floor that cannot be overridden is the kind of thing that
               makes a personal tool annoying.
             */}
-            {canPracticeBelowMinimum(topics.length) ? (
+            {canPracticeBelowMinimum(total) ? (
               <Link
                 href="/practice?all=1"
                 className="inline-flex cursor-pointer items-center rounded-md border border-rule-strong bg-surface px-[18px] py-3 text-body font-medium text-ink hover:border-ink-3"
               >
-                Practice the {topics.length} anyway
+                Practice the {total} anyway
               </Link>
             ) : null}
           </>
@@ -85,8 +98,9 @@ export default async function PracticePage({ searchParams }: PageProps<'/practic
     )
   }
 
-  // Seeded from the read, not from a clock or Math.random — see seededShuffle.
-  const queue = selectPracticeSession(topics, { shuffle: seededShuffle(readAt) })
+  // Seeded from the read, not from a clock or Math.random — same property the
+  // injected seededShuffle had, now satisfied by the query's md5 tie-break.
+  const queue = await practiceQueue({ seed: readAt })
 
   if (queue.length === 0) {
     return (

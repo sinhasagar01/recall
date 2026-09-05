@@ -164,6 +164,17 @@ Skeletons must match real card geometry so nothing shifts when data lands.
    everything already graded. The mock says this in the UI; keep the line.
 3. **Practice needs 3 topics**, with a visible "Practice the N anyway"
    override. A hard floor is not acceptable in a personal tool.
+
+   **A session is `PRACTICE_SESSION_SIZE` topics, from every entry point.**
+   "Practice all" on the weak page used to queue everything that needed review —
+   the one door that ignored the session size. Ten at a time is what a session has
+   always meant, so the button says what it does: `Practice all 7` while the
+   backlog fits a session, `Practice 10 of 47` once it does not. The count stays
+   either way, because seeing how much is waiting is half the point of the button.
+
+   The 3-topic floor still does not apply to it, or to "Practice this" from a
+   topic: those are sets you chose, and the floor exists to stop an *auto-selected*
+   session from being re-reading the same card.
 4. **Image failure never blocks the topic.** Insert the row, then upload, then
    patch the path. On upload failure the row stays and the banner explains the
    actual reason (size, type, network) — never a generic message.

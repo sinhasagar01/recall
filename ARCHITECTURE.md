@@ -938,8 +938,89 @@ unprompted and returned in 2ms. A needle of one or two characters produces no tr
 and falls back to a scan, bounded by one user's rows under RLS. That is a real limit,
 not a bug to be surprised by later.
 
-### What still reads the whole library
+## The practice ordering, in SQL
 
-`listTopics` is unchanged and still unbounded. The weak, practice and topic-detail pages
-use it. Each needs a different purpose-built query, and they were deliberately left out
-of #4 rather than folded in — tracked separately.
+Issue #12. The weak page and the practice page both read every topic the user owned and
+ordered them in the browser with `orderForPractice`. Confidence starts at `new` and
+`needsReview` is `weak or new`, so a freshly imported library is **entirely** weak — the
+weak page loaded all of it, and the practice page loaded all of it to pick ten.
+
+`public.practice_ordered_page` holds the ordering once and serves both, differing only in
+whether a seed is passed:
+
+- **The weak page** passes none. The tie-break term is null for every row and the order
+  falls through to `created_at desc, id desc`, which is what `noShuffle` produced over
+  `listTopics`' ordering. Stable across reloads, which a list page has to be.
+- **A practice session** passes the read timestamp, so ties are shuffled, and asks for
+  `PRACTICE_SESSION_SIZE` rows.
+
+`NEVER` is `-Infinity` in the domain and `timestamptz` has `'-infinity'`, so
+`coalesce(last_practiced_at, '-infinity')` is an exact counterpart — and it makes the
+keyset cursor a plain comparison instead of null-juggling.
+
+### An md5 tie-break is the specification, not a relaxation of it
+
+`Shuffle` has been an injected parameter since phase 2:
+`selectPracticeSession(topics, { shuffle })`. The domain specifies **that** ties are
+broken, never **which** permutation — `noShuffle` and `seededShuffle` are already two
+implementations of it. `md5(seed || id)` is a third: deterministic, seeded from the read,
+uniform across a tie group.
+
+This matters for how the next section reads. Practice-selection parity is property-based
+rather than id-for-id, and that is **not** a weaker guarantee accepted under duress — it
+is the injection point being used for exactly what it exists for. A second implementation
+of an injectable rule cannot be checked by comparing it to the first; it is checked
+against the rule.
+
+### Parity: id-for-id where the query is deterministic, properties where it is not
+
+The **unseeded** ordering is deterministic, so pgTAP asserts it equals
+`orderForPractice(topics.filter(needsReview), { shuffle: noShuffle })` id for id, from the
+same corpus and the same generator as #4.
+
+The **seeded** selection is asserted through nine properties in
+`supabase/tests/practice_ordering_test.sql`: bucket order, staleness within a bucket,
+never-practised sorting first rather than tying, same seed same session, different seed
+different session, every tie-group member reachable, no member dominating, and the session
+size at both ends of the cap.
+
+Since there is no id-for-id backstop underneath them, each property was shown failing
+against a deliberately perturbed ordering before being accepted. That pass caught a real
+hole: with only three weak topics carrying distinct stamps, dropping staleness from the
+ordering still ran green, because a wrong order of three rows has a fair chance of
+matching the right one. The fixture now carries twelve.
+
+### What this bounds, and what it does not
+
+Measured on a synthetic 20,000-topic library, all `new` and never practised — one tie
+group containing everything:
+
+```
+Limit (actual rows=10)
+  ->  Sort  Sort Method: top-N heapsort  Memory: 27kB
+        ->  Seq Scan on topics (actual rows=20000)
+Execution Time: 24.650 ms
+```
+
+**Rows read: 20,000. Rows returned: 10.** The `LIMIT` does not bound the scan, and it
+cannot: selecting ten uniformly from a tie group of twenty thousand has to touch twenty
+thousand rows somewhere, and `md5(seed || id)` changes per seed so no index can serve it.
+
+What changed is *where* that happens. It used to be twenty thousand rows crossing the wire
+and being parsed into objects in Node; it is now a sequential scan and a 27kB heap inside
+Postgres, with ten rows crossing the wire. The pathology was never the scan.
+
+### `orderForPractice` is now specification, not dead code
+
+Production no longer calls `orderForPractice` or `selectPracticeSession` — SQL does the
+ordering. They stay because they are what that SQL is checked against, and `BUCKET_ORDER`
+stays as the single definition of bucket order, passed into the query as `BUCKET_SEQUENCE`
+so a database function cannot hold a stale copy of it.
+
+### There is no longer a "read every topic" function
+
+`listTopics` is gone. Every caller now has a purpose-built query: a keyset page for the
+library, an ordered page for the weak list and a practice session, and counts for the rail,
+the toolbar and the category select. It was removed rather than left in place because it
+was the easy thing to reach for, and reaching for it is what put an unbounded read on five
+pages.

@@ -121,15 +121,12 @@ Tracked as [GitHub issues](https://github.com/sinhasagar01/recall/issues) rather
 listed here, so there is one place to look. Labels say when each one matters:
 `blocks-multiuser`, `blocks-public`, `scale`, `billing`, `tech-debt`.
 
-Two are worth knowing before you use this:
+One is worth knowing before you use this:
 
-- **Deleting an account does not yet delete its images**
-  ([#1](https://github.com/sinhasagar01/recall/issues/1)). Rows cascade; storage objects
-  cannot be removed by SQL, so they need an application-level sweep. Fine for one user,
-  a compliance problem with more.
-- **The weak, practice and topic pages still load every topic you own.** The library
-  itself no longer does — past 500 topics it paginates and filters in SQL — but those
-  three were deliberately left out of that change and still read the whole library.
+- **A practice session scans your whole backlog to pick ten.** Not a bug and not
+  fixable: choosing ten at random from a group of equally-stale topics has to consider
+  all of them. It happens inside Postgres now rather than by shipping every topic to the
+  browser — 20,000 topics take about 25ms and ten rows cross the wire.
 
 Deliberately out of scope, and not going to change: email and password only — no OAuth,
 no profile management. One image per topic, no cropping or annotation. No spaced

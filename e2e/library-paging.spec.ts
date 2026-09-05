@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { signInAs } from './auth-state'
 import { LOCAL_MODE_MAX, SERVER_PAGE_SIZE } from '../src/lib/domain/library-paging'
+import { PRACTICE_SESSION_SIZE } from '../src/lib/domain/practice-selection'
 
 /*
   The library is read two ways, and which one you get depends only on how many
@@ -96,4 +97,49 @@ test('a library under the threshold still filters without a round trip', async (
 
   // Local mode is the whole point: narrowing must not ask the server for the list.
   expect(libraryRequests).toBe(0)
+})
+
+/*
+  The weak page and a practice session, past the threshold.
+
+  The `large` fixture holds 501 topics with confidence cycling through all four
+  values, so roughly half need review — far more than one page or one session.
+  Before #12 both routes read every topic the user owned to render.
+*/
+test.describe('the weak page and practice, on a large library', () => {
+  test.beforeEach(async ({ page }) => {
+    await signInAs(page, 'large')
+  })
+
+  test('the weak list paginates instead of rendering everything', async ({ page }) => {
+    await page.goto('/weak')
+
+    const rows = page.getByRole('listitem')
+    await expect(rows).toHaveCount(SERVER_PAGE_SIZE)
+
+    await page.getByRole('button', { name: 'Load more' }).click()
+    await expect(rows).toHaveCount(SERVER_PAGE_SIZE * 2)
+
+    // Each row appears once: the cursor carries bucket, staleness and id.
+    const titles = await rows.allInnerTexts()
+    const names = titles.map((text) => text.split('\n')[0])
+    expect(new Set(names).size).toBe(names.length)
+  })
+
+  test('the practice button offers a session, not the whole backlog', async ({ page }) => {
+    await page.goto('/weak')
+
+    // More than a session is waiting, so the button stops claiming "all".
+    const practice = page.getByRole('link', { name: /Practice \d+ of \d+/ })
+    await expect(practice).toBeVisible()
+
+    await practice.click()
+    await expect(page.getByRole('button', { name: 'Reveal answer' })).toBeVisible()
+
+    // Capped at a session, like every other entry point. The progress dots carry
+    // the queue length as their accessible name.
+    await expect(
+      page.getByRole('img', { name: `Topic 1 of ${PRACTICE_SESSION_SIZE}` }),
+    ).toBeVisible()
+  })
 })

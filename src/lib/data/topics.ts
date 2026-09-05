@@ -35,55 +35,16 @@ function fail(action: string, error: { code?: string; message: string }): never 
   throw new Error(`${action} failed: ${error.code ?? 'unknown'} · ${error.message}`)
 }
 
-export interface TopicsRead {
-  topics: Topic[]
-  /**
-   * When the rows were read. Relative times ("2h ago", "Recently learned") are
-   * relative to THIS, not to whenever a component happened to render — and
-   * reading the clock here keeps it out of render, where it would be impure.
-   */
-  readAt: string
-}
-
 /*
-  cache() dedupes within a single request, so callers within one request share a
-  single query and one readAt instead of issuing the same select twice.
+  There is deliberately no "read every topic" function here any more.
 
-  ── This is the remaining unbounded read ────────────────────────────────────
-  It loads every topic the user owns. The library page and the rail no longer use
-  it (see src/lib/data/library.ts); the weak, practice and topic-detail pages
-  still do. Each needs a different purpose-built query and they are tracked
-  separately — see the follow-up to issue #4.
-
-  The column list is explicit rather than `*` so the generated `search_text`
-  column, which exists only for the trigram index, is never sent to the client.
+  listTopics used to be it, and every page reached for it because it was the easy
+  thing to reach for. Issues #4 and #12 replaced the last of its callers with
+  purpose-built queries — a keyset page for the library, an ordered page for the
+  weak list and a practice session, and counts for the rail and the category
+  select. Adding it back would give the next page an unbounded read to find.
 */
-export const listTopics = cache(async (): Promise<TopicsRead> => {
-  const supabase = await createClient()
 
-  // RLS scopes this to the signed-in user; there is no user_id filter here on
-  // purpose, because one would imply the policy might not be doing its job.
-  const { data, error } = await supabase
-    .from('topics')
-    .select(
-      'id, user_id, title, definition, mental_model, mental_model_image_path, category, tags, difficulty, confidence, practice_count, last_practiced_at, created_at, updated_at',
-    )
-    .order('created_at', { ascending: false })
-
-  if (error) fail('Loading your topics', error)
-
-  return { topics: data.map(toTopic), readAt: new Date().toISOString() }
-})
-
-/**
- * Inserts the row and returns it.
- *
- * It returns the created topic because saving with an image is three steps, not
- * one: insert the row, upload to `{user_id}/{topic_id}/{filename}`, then patch
- * `mental_model_image_path`. The upload needs the topic id, which only exists
- * after the insert. Phase 10 fills the middle step in; the shape is already here
- * so nothing has to be restructured for it.
- */
 export async function insertTopic(input: NewTopic): Promise<Topic> {
   const supabase = await createClient()
 
