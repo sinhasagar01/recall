@@ -64,7 +64,12 @@ the real values. Nothing else needs configuring.
 npm run dev
 ```
 
-Open http://localhost:3000, create an account, and add a topic.
+Open http://localhost:3000 and create an account.
+
+Sign-up sends a confirmation email, and locally that email goes to **Mailpit**, not to a
+real inbox. Open http://127.0.0.1:54324, click the message, follow its link, and you land
+on the library signed in. Password resets arrive the same way. Nothing else needs
+configuring — the local stack runs its own SMTP catcher.
 
 ## Tests
 

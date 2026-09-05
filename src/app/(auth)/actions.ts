@@ -8,6 +8,8 @@ import { createClient } from '@/lib/supabase/server'
 
 export type AuthState = { error: string | null }
 
+export type SignUpState = { error: string | null; pendingFor: string | null }
+
 /*
   Sign-in failures are classified in src/lib/domain/auth-errors.ts, which is pure
   and unit-tested. Collapsing every failure into the credentials line — as this
@@ -28,17 +30,91 @@ export async function signIn(_previous: AuthState, formData: FormData): Promise<
   redirect('/library')
 }
 
-export async function signUp(_previous: AuthState, formData: FormData): Promise<AuthState> {
+export type ResetState = { error: string | null; sentTo: string | null }
+
+/**
+ * Sends a password-reset link.
+ *
+ * It reports the same thing whether or not the address has an account. A
+ * different response would turn this form into a way to discover which addresses
+ * are registered, and Supabase deliberately does not distinguish either.
+ */
+export async function requestPasswordReset(
+  _previous: ResetState,
+  formData: FormData,
+): Promise<ResetState> {
+  const email = String(formData.get('email') ?? '').trim()
+
+  if (email === '') return { error: 'Enter the email address you signed up with.', sentTo: null }
+
   const supabase = await createClient()
 
-  const { error } = await supabase.auth.signUp({
-    email: String(formData.get('email') ?? ''),
+  /*
+    No redirectTo. The recovery template in supabase/templates already builds the
+    link from {{ .SiteURL }} and carries `next=/reset-password/update`, so passing
+    one here only risks disagreeing with it — and an empty or relative value is
+    rejected outright as not being in the allow-list.
+  */
+  const { error } = await supabase.auth.resetPasswordForEmail(email)
+
+  /*
+    Only genuine send failures surface. "No such user" does not reach here —
+    Supabase does not report it — and if it ever did, saying so would leak exactly
+    what this deliberately hides.
+  */
+  if (error && error.status !== 400) {
+    return { error: authFailureMessage(error), sentTo: null }
+  }
+
+  return { error: null, sentTo: email }
+}
+
+/** Changes the password of whoever the reset link signed in. */
+export async function setNewPassword(
+  _previous: AuthState,
+  formData: FormData,
+): Promise<AuthState> {
+  const password = String(formData.get('password') ?? '')
+
+  if (password.length < 8) return { error: 'Use at least 8 characters.' }
+
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  // The link establishes the session. Without one, it expired or was already used.
+  if (!user) return { error: 'That link has expired. Ask for a new one.' }
+
+  const { error } = await supabase.auth.updateUser({ password })
+  if (error) return { error: error.message }
+
+  redirect('/library')
+}
+
+export async function signUp(
+  _previous: SignUpState,
+  formData: FormData,
+): Promise<SignUpState> {
+  const email = String(formData.get('email') ?? '').trim()
+  const supabase = await createClient()
+
+  const { data, error } = await supabase.auth.signUp({
+    email,
     password: String(formData.get('password') ?? ''),
   })
 
   // Supabase's sign-up messages are specific and actionable ("Password should be
   // at least 6 characters", "User already registered"), so they are shown as-is.
-  if (error) return { error: error.message }
+  if (error) return { error: error.message, pendingFor: null }
+
+  /*
+    With confirmation required, signUp returns a user but NO session. Branching on
+    the session rather than on config means this is correct in both environments:
+    confirmation on, and confirmation off where it signs straight in.
+  */
+  if (data.session === null) return { error: null, pendingFor: email }
 
   redirect('/library')
 }

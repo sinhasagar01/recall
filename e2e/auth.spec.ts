@@ -3,9 +3,6 @@ import { expect, test } from '@playwright/test'
 const EMAIL = process.env.E2E_USER_EMAIL ?? ''
 const PASSWORD = process.env.E2E_USER_PASSWORD ?? ''
 
-/** Unique per run, so sign-up is repeatable without cleanup. */
-const freshEmail = () => `signup-${Date.now()}-${process.pid}@recall.test`
-
 test.beforeAll(() => {
   if (!EMAIL || !PASSWORD) {
     throw new Error('E2E_USER_EMAIL and E2E_USER_PASSWORD must be set. Run: npm run seed:e2e')
@@ -38,14 +35,13 @@ test('a wrong password shows the error and stays on the page', async ({ page }) 
   await expect(page).toHaveURL(/\/sign-in/)
 })
 
-test('signing up creates an account and lands on the library', async ({ page }) => {
-  await page.goto('/sign-up')
-  await page.getByLabel('Email').fill(freshEmail())
-  await page.getByLabel('Password').fill('a-long-enough-password')
-  await page.getByRole('button', { name: 'Create account' }).click()
-
-  await expect(page).toHaveURL(/\/library/)
-})
+/*
+  Sign-up itself is covered by email-auth.spec.ts, which asserts the whole
+  confirmation round-trip: that creating an account does NOT sign you in, that
+  the emailed link does, and that an unconfirmed account is told why it cannot.
+  A test here that only checked "lands on the library" would be a strict subset
+  of those, and would have to be kept in step with them for nothing.
+*/
 
 test('a signed-in user visiting sign-in is sent to the library', async ({ page }) => {
   await signIn(page, EMAIL, PASSWORD)

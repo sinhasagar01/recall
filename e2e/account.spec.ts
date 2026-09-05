@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { signUpConfirmed } from './mailbox'
 
 /*
   Account deletion destroys the account it runs against, so this spec creates its
@@ -16,11 +17,7 @@ test('deleting an account removes its topics and its images, for good', async ({
   const password = 'a-long-enough-password'
   const title = `Doomed account topic ${stamp}`
 
-  await page.goto('/sign-up')
-  await page.getByLabel('Email').fill(email)
-  await page.getByLabel('Password').fill(password)
-  await page.getByRole('button', { name: 'Create account' }).click()
-  await expect(page).toHaveURL(/\/library/)
+  await signUpConfirmed(page, email, password)
 
   // Something to destroy: a topic, and an image belonging to it.
   await page.getByRole('button', { name: /Add (topic|your first topic)/ }).first().click()
@@ -68,11 +65,7 @@ test('backing out of account deletion changes nothing', async ({ page }) => {
   const email = `spared-${stamp}@recall.test`
   const password = 'a-long-enough-password'
 
-  await page.goto('/sign-up')
-  await page.getByLabel('Email').fill(email)
-  await page.getByLabel('Password').fill(password)
-  await page.getByRole('button', { name: 'Create account' }).click()
-  await expect(page).toHaveURL(/\/library/)
+  await signUpConfirmed(page, email, password)
 
   await page.getByRole('button', { name: 'Delete account' }).click()
   await page.getByRole('button', { name: 'Keep my account' }).click()

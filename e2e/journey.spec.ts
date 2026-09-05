@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { signUpConfirmed } from './mailbox'
 
 /*
   The definition of done.
@@ -24,11 +25,7 @@ test('the whole product, end to end, as one person', async ({ page }) => {
   const title = `Reconciliation ${stamp}`
 
   // ── sign up ───────────────────────────────────────────────────────────────
-  await page.goto('/sign-up')
-  await page.getByLabel('Email').fill(email)
-  await page.getByLabel('Password').fill(password)
-  await page.getByRole('button', { name: 'Create account' }).click()
-  await expect(page).toHaveURL(/\/library/)
+  await signUpConfirmed(page, email, password)
 
   // A brand new account starts empty, and says so.
   await expect(page.getByRole('heading', { name: 'Nothing here yet' })).toBeVisible()

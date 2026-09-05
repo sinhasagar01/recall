@@ -157,6 +157,39 @@ silently if you copy an older snippet:
   package's own JSDoc says they cause "random logouts, early session termination,
   JSON parsing errors".
 
+### Email confirmation and password reset
+
+Both are the same shape: the auth server emails a link, the app exchanges what is in
+that link for a session. One route handler, `src/app/auth/confirm/route.ts`, does the
+exchange for both, because there is nothing type-specific about it — it reads
+`token_hash` and `type`, calls `verifyOtp`, and forwards to `next`.
+
+**The stock email templates cannot be used.** They link to Supabase's own `/verify`
+endpoint, which redirects with the tokens in a URL *fragment*. A fragment never reaches
+the server, so an SSR app gets a confirmed user and no session. The templates in
+`supabase/templates/` link to `/auth/confirm?token_hash=…&type=…` instead, which is a
+normal query string the route handler can read.
+
+`next` is checked to be a relative path before it is used. It arrives from a URL, so
+without that check the confirmation link is an open redirect.
+
+Sign-up therefore no longer signs you in, and `signUp` returns `pendingFor` rather than
+redirecting — `data.session === null` is how the client distinguishes "account created,
+go and check your email" from a session it can use.
+
+The reset request deliberately reports the same thing for an address that exists and one
+that does not. Anything else turns the form into a way to enumerate registered accounts.
+Supabase does not distinguish either, so the only work here is not undoing that.
+
+**No `redirectTo`.** The template already builds its link from `{{ .SiteURL }}` and
+carries its own `next`. Passing `redirectTo` as well means two sources of truth for the
+same URL, and an empty or relative value is rejected outright as not being in the
+allow-list — which surfaces as a reset that silently never sends.
+
+Locally the mail goes to Mailpit on :54324, and the e2e specs read it there over the
+Mailpit API and follow the real link. Nothing about the email path is stubbed. In
+production SMTP is Resend, configured in the hosted project rather than in this repo.
+
 ### Next.js 16 renamed `middleware` to `proxy`
 
 The root convention file is **`src/proxy.ts`**, exporting a function named `proxy`.
@@ -745,3 +778,33 @@ cacheable without revalidation, but `private` and `no-store` were absent.
 ever sit in a cache that serves more than one person — the header is right on its own
 merits, and it does not depend on a refresh having happened, which the package's version
 did. `/sign-in` keeps its cacheable header: it holds nothing private.
+
+### Custom email templates are fetched over HTTP, from inside the Docker network
+
+The auth container does not read `supabase/templates/*.html` off disk. The CLI serves
+them through Kong and gives GoTrue a URL, so a template failure looks like this in
+`docker logs`:
+
+```
+templatemailer: template type "recovery": Get "http://supabase_kong_recall:8088/email/recovery.html": connection refused
+```
+
+Two consequences. Editing a template needs the stack running to take effect, and that
+host:port is only resolvable *inside* the Docker network — curling it from the Mac
+returns nothing, which is correct and not the fault. Diagnose from the container logs
+and from whether the mail actually lands in Mailpit, never from the host.
+
+### A client-side `Link` click returns before the page changes
+
+Playwright's `.click()` on a `next/link` resolves as soon as the click lands, not when
+the transition commits. Anything chained straight onto it runs against the *old* page.
+
+This is worse than a plain race, because the locators frequently still match. Filling
+`Email` immediately after clicking "Forgotten your password?" fills sign-in's own Email
+field, which is then discarded when `/reset-password` mounts — so the form submits
+empty, no request is made, and the failure surfaces much later as a missing heading with
+nothing in any log to explain it. Server actions that redirect (`Sign out`) behave the
+same way.
+
+Follow every such click with `await expect(page).toHaveURL(…)`. The wait is the
+assertion that the navigation happened, so it is worth having on its own merits.

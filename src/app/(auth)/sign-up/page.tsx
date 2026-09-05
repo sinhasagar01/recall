@@ -5,12 +5,26 @@ import { useActionState } from 'react'
 import { AuthCard } from '@/components/ui/auth-card'
 import { Button } from '@/components/ui/button'
 import { Field } from '@/components/ui/field'
-import { signUp, type AuthState } from '../actions'
+import { CheckInbox } from '@/components/ui/check-inbox'
+import { signUp, type SignUpState } from '../actions'
 
-const initialState: AuthState = { error: null }
+const initialState: SignUpState = { error: null, pendingFor: null }
 
 export default function SignUpPage() {
   const [state, formAction, isPending] = useActionState(signUp, initialState)
+
+  /*
+    Confirmation required: the account exists but is not usable until the emailed
+    link is followed, so there is nowhere to send them yet.
+  */
+  if (state.pendingFor) {
+    return (
+      <CheckInbox
+        address={state.pendingFor}
+        body="Click the link we've sent to finish creating your account. It won't work until you do."
+      />
+    )
+  }
 
   return (
     <AuthCard

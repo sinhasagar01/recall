@@ -21,6 +21,10 @@ export default function SignInPage() {
           <Link href="/sign-up" className="text-accent-ink underline">
             Create one
           </Link>
+          <br />
+          <Link href="/reset-password" className="text-accent-ink underline">
+            Forgotten your password?
+          </Link>
         </>
       }
     >
