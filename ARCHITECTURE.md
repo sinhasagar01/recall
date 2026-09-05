@@ -1158,3 +1158,41 @@ ends up grading a card while someone types the word "three".
 A client shortcut does not exist until React hydrates, so a keystroke immediately after
 load is genuinely ignored. The spec retries with `toPass` rather than asserting against
 that race.
+
+### A programmatic scroll right after a navigation is silently undone
+
+Next restores scroll position once a navigation settles. A `window.scrollTo` issued
+before that lands is reverted, `scrollY` reads 0, and an assertion like "the rail is
+still visible after scrolling" passes — because nothing scrolled and the rail never
+left the viewport.
+
+This is the same shape as the storage assertions that only passed while the bucket was
+empty: a test that is green for a reason unrelated to the thing it claims to check. It
+cost three rounds before the scroll was instrumented rather than assumed.
+
+Scroll by pulling the target into view — `locator.scrollIntoViewIfNeeded()` — which
+waits for the page rather than racing it, and is also faster. Verified by un-stickying
+the rail and confirming the assertion then fails with `viewport ratio 0`.
+
+## Environmental notes
+
+Not traps in the code — things about the machine that present as code failures.
+
+### Container clock drift shows up as `PGRST303 · JWT issued at future`
+
+The local stack's containers can drift apart by a second or so, typically after the host
+sleeps. `supabase_auth_recall` running ahead of `supabase_rest_recall` is enough:
+PostgREST allows no leeway on a JWT's `iat`, so a token minted a moment ago looks
+future-dated and the request fails.
+
+It presents as random 500s from reads that were fine a minute earlier —
+`Loading your topics failed: PGRST303`. Compare the container clocks:
+
+```bash
+for c in $(docker ps --format '{{.Names}}' | grep supabase); do
+  printf '%-28s %s\n' "$c" "$(docker exec "$c" date -u +%FT%TZ)"
+done
+```
+
+`supabase stop && supabase start` resyncs them. Nothing in the application is wrong when
+this happens, which is exactly why it is worth recognising quickly.

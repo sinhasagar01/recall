@@ -210,7 +210,21 @@ Skeletons must match real card geometry so nothing shifts when data lands.
    rule they illustrate is real; the values are not.
 9. **Card shows `Model ✓`** when `mental_model` is non-empty. It's the strongest
    reason to open a card.
-10. **Mobile has two destinations plus add.** Weak topics is a filter chip on
+10. **The rail is sticky; the reference does not say so.** From `md` up it holds
+    at the top of the viewport at `h-screen`, with `self-start` so the grid does
+    not stretch it (a stretched rail is as tall as the page, and `top-0` then has
+    nothing to hold), `overflow-y-auto` for the day its own content is taller than
+    the viewport, and the foot's `margin-top:auto` pinning sign out and the hints
+    to the bottom of the viewport.
+
+    **This is a decision taken here, not a rule read off the reference.**
+    `design-reference.html` renders `.rail` as a plain grid column and says nothing
+    about stickiness — its screens are short enough that the question never arises
+    in them. What it does specify is the composition: the flex column, the 26px
+    gap, and `.rail__foot{margin-top:auto}`. Those were already matched and are
+    unchanged.
+
+11. **Mobile has two destinations plus add.** Weak topics is a filter chip on
    Library, and the three filter selects collapse behind one `Filters` chip.
 
 ---
