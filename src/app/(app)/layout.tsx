@@ -87,7 +87,7 @@ export default async function AppLayout({ children }: LayoutProps<'/'>) {
 
       {/*
         The tab bar replaces the rail below --breakpoint-md. Two destinations plus
-        the FAB: Weak topics is a filter chip on Library, per DESIGN.md section 4.9,
+        the FAB: Weak topics is a filter chip on Library, per DESIGN.md section 4.10,
         not a third tab. /practice sits in its own route group, so it never renders
         this at all — that screen is meant to have nothing to glance at.
       */}

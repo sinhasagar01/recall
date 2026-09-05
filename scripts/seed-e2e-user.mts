@@ -146,8 +146,17 @@ console.log(`Two-topic user reset: ${fewEmail}`)
   The nothing-needs-review user: every topic at okay or better, so /weak shows its
   empty state for the reason the copy gives — not merely because the library is
   empty. Reset from scratch each run.
+
+  It also straddles the staleness window, which makes it the month-two fixture:
+  one topic settled long enough ago to have gone quiet, one settled recently. Both
+  stamps are RELATIVE. They used to be absolute dates that happened to be far
+  enough in the past to read as stale, which would have quietly stopped being true
+  as the calendar moved — the fixture would have decayed instead of the data.
 */
 await admin.from('topics').delete().eq('user_id', strongUserId)
+
+const daysAgo = (days: number) =>
+  new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString()
 
 const { error: strongError } = await admin.from('topics').insert([
   {
@@ -156,7 +165,8 @@ const { error: strongError } = await admin.from('topics').insert([
     definition: 'Items lay out along the main axis, which flex-direction picks.',
     confidence: 'strong',
     practice_count: 4,
-    last_practiced_at: new Date('2026-06-01T00:00:00.000Z').toISOString(),
+    // Comfortably past STALE_WINDOW_DAYS: this is the one that has gone quiet.
+    last_practiced_at: daysAgo(120),
   },
   {
     user_id: strongUserId,
@@ -164,7 +174,8 @@ const { error: strongError } = await admin.from('topics').insert([
     definition: 'A new context is formed by opacity, transform and a few others.',
     confidence: 'okay',
     practice_count: 2,
-    last_practiced_at: new Date('2026-06-02T00:00:00.000Z').toISOString(),
+    // Comfortably inside it: settled, and recent enough to leave alone.
+    last_practiced_at: daysAgo(10),
   },
 ])
 

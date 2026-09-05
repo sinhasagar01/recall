@@ -144,6 +144,7 @@ export type Database = {
           p_cursor_id?: string
           p_cursor_staleness?: string
           p_limit?: number
+          p_practised_before?: string
           p_seed?: string
         }
         Returns: {
@@ -178,7 +179,14 @@ export type Database = {
         }
         Returns: string
       }
-      weak_counts: { Args: { p_confidences: string[] }; Returns: Json }
+      weak_counts: {
+        Args: {
+          p_confidences: string[]
+          p_practised_before?: string
+          p_settled_confidences?: string[]
+        }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never

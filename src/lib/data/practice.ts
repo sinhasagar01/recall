@@ -3,7 +3,8 @@ import 'server-only'
 import { cache } from 'react'
 
 import { toTopic, type TopicRow } from '@/lib/data/topic-mapping'
-import { REVIEW_CONFIDENCES } from '@/lib/domain/library-counts'
+import { STALE_WINDOW_DAYS } from '@/lib/domain/confidence'
+import { REVIEW_CONFIDENCES, SETTLED_CONFIDENCES } from '@/lib/domain/library-counts'
 import { SERVER_PAGE_SIZE } from '@/lib/domain/library-paging'
 import { BUCKET_SEQUENCE, PRACTICE_SESSION_SIZE } from '@/lib/domain/practice-selection'
 import type { Confidence, Topic } from '@/lib/domain/types'
@@ -38,6 +39,12 @@ function fail(action: string, error: { code?: string; message: string }): never 
 
 const BUCKETS = [...BUCKET_SEQUENCE]
 const REVIEW = [...REVIEW_CONFIDENCES] as Confidence[]
+const SETTLED = [...SETTLED_CONFIDENCES] as Confidence[]
+
+/** The instant a settled topic stops counting as known. Mirrors `isStale`. */
+function staleCutoff(readAt: string): string {
+  return new Date(Date.parse(readAt) - STALE_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString()
+}
 
 function cursorOf(rows: OrderedRow[]): WeakCursor | null {
   const last = rows.at(-1)
@@ -55,6 +62,10 @@ export interface WeakPage {
   nextCursor: WeakCursor | null
   total: number
   neverPracticed: number
+  /** Settled topics that have gone quiet — see issue #13 and `isStale`. */
+  stale: Topic[]
+  staleTotal: number
+  staleCursor: WeakCursor | null
   /** Relative times are relative to the read, never to render. */
   readAt: string
 }
@@ -70,7 +81,15 @@ export const weakPage = cache(async (cursor: WeakCursor | null = null): Promise<
   const supabase = await createClient()
   const readAt = new Date().toISOString()
 
-  const [page, counts] = await Promise.all([
+  const cutoff = staleCutoff(readAt)
+
+  /*
+    Three reads, one round trip each, in parallel: what needs review, what has
+    settled and gone quiet, and the counts for both. The stale query is the same
+    ordering with a different confidence set and a cutoff — see the
+    20260905200000 migration for why it is the same function rather than a second.
+  */
+  const [page, stalePage, counts] = await Promise.all([
     supabase.rpc('practice_ordered_page', {
       p_bucket_order: BUCKETS,
       p_confidences: REVIEW,
@@ -80,20 +99,39 @@ export const weakPage = cache(async (cursor: WeakCursor | null = null): Promise<
       p_cursor_id: cursor?.id ?? undefined,
       p_limit: SERVER_PAGE_SIZE,
     }),
-    supabase.rpc('weak_counts', { p_confidences: REVIEW }),
+    supabase.rpc('practice_ordered_page', {
+      p_bucket_order: BUCKETS,
+      p_confidences: SETTLED,
+      p_practised_before: cutoff,
+      p_limit: SERVER_PAGE_SIZE,
+    }),
+    supabase.rpc('weak_counts', {
+      p_confidences: REVIEW,
+      p_settled_confidences: SETTLED,
+      p_practised_before: cutoff,
+    }),
   ])
 
   if (page.error) fail('Loading your weak topics', page.error)
+  if (stalePage.error) fail('Loading your settled topics', stalePage.error)
   if (counts.error) fail('Counting your weak topics', counts.error)
 
   const rows = page.data as unknown as OrderedRow[]
-  const summary = counts.data as unknown as { total: number; neverPracticed: number }
+  const staleRows = stalePage.data as unknown as OrderedRow[]
+  const summary = counts.data as unknown as {
+    total: number
+    neverPracticed: number
+    stale: number
+  }
 
   return {
     topics: rows.map(toTopic),
     nextCursor: rows.length === SERVER_PAGE_SIZE ? cursorOf(rows) : null,
     total: summary.total,
     neverPracticed: summary.neverPracticed,
+    stale: staleRows.map(toTopic),
+    staleTotal: summary.stale,
+    staleCursor: staleRows.length === SERVER_PAGE_SIZE ? cursorOf(staleRows) : null,
     readAt,
   }
 })

@@ -55,6 +55,15 @@ export const REVIEW_CONFIDENCES: readonly Confidence[] = CONFIDENCE_VALUES.filte
   needsReview({ confidence }),
 )
 
+/**
+ * The confidences that count as settled — the complement of REVIEW_CONFIDENCES,
+ * derived the same way rather than listed. Together the two partition the
+ * library, which is what lets the weak page show both halves without overlap.
+ */
+export const SETTLED_CONFIDENCES: readonly Confidence[] = CONFIDENCE_VALUES.filter(
+  (confidence) => !needsReview({ confidence }),
+)
+
 /** The most recent practice stamp in the library, or null if nothing has been. */
 export function latestPracticedAt(topics: Topic[]): string | null {
   let latest: string | null = null

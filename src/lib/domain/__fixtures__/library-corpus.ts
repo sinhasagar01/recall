@@ -143,6 +143,38 @@ export const CORPUS: Topic[] = [
     last_practiced_at: ago(0, 30 * 60 * 1000),
   }),
 
+  // ── the staleness boundary, for issue #13 ───────────────────────────────
+  // Settled topics on both sides of STALE_WINDOW_DAYS, plus the case the app
+  // cannot currently reach: settled with no practice stamp at all.
+  topic({
+    title: 'Settled just inside the stale window',
+    definition: 'Practised exactly sixty days ago.',
+    confidence: 'strong',
+    practice_count: 4,
+    last_practiced_at: ago(60),
+  }),
+  topic({
+    title: 'Settled just outside the stale window',
+    definition: 'A millisecond past sixty days.',
+    confidence: 'strong',
+    practice_count: 4,
+    last_practiced_at: ago(60, 1),
+  }),
+  topic({
+    title: 'Okay and long gone',
+    definition: 'Half known, and not looked at in months.',
+    confidence: 'okay',
+    practice_count: 1,
+    last_practiced_at: ago(200),
+  }),
+  topic({
+    title: 'Settled but never practised',
+    definition: 'Unreachable through the app; an absent stamp is an infinite gap.',
+    confidence: 'strong',
+    practice_count: 0,
+    last_practiced_at: null,
+  }),
+
   // ── a shared created_at, so the keyset cursor needs its id tiebreak ──────
   topic({ title: 'Tie one', definition: 'Same created_at as the next row.', created_at: ago(3) }),
   topic({ title: 'Tie two', definition: 'Same created_at as the previous row.', created_at: ago(3) }),

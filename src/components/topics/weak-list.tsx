@@ -21,11 +21,14 @@ export function WeakList({
   initialCursor,
   total,
   readAt,
+  scope = 'weak',
 }: {
   initial: Topic[]
   initialCursor: WeakCursor | null
   total: number
   readAt: string
+  /** Which half of the page this list is: what needs review, or what has gone quiet. */
+  scope?: 'weak' | 'stale'
 }) {
   const [topics, setTopics] = useState(initial)
   const [cursor, setCursor] = useState(initialCursor)
@@ -37,7 +40,7 @@ export function WeakList({
     if (cursor === null) return
 
     startLoading(async () => {
-      const page = await loadMoreWeak(cursor)
+      const page = await loadMoreWeak(cursor, scope)
       setTopics((previous) => [...previous, ...page.topics])
       setCursor(page.nextCursor)
     })
@@ -78,7 +81,20 @@ export function WeakList({
 
       {cursor === null ? null : (
         <div className="mt-9 flex flex-col items-center gap-2">
-          <Button onClick={loadMore} loading={isLoading} loadingLabel="Loading…">
+          {/*
+            Two of these can be on the weak page at once — one per list — and
+            "Load more" twice is ambiguous to anyone not looking at which heading
+            it sits under. The visible label stays short; the accessible name says
+            which list it belongs to.
+          */}
+          <Button
+            onClick={loadMore}
+            loading={isLoading}
+            loadingLabel="Loading…"
+            aria-label={
+              scope === 'stale' ? 'Load more settled topics' : 'Load more topics that need review'
+            }
+          >
             Load more
           </Button>
           <p className="font-mono text-[11.5px] text-ink-3">

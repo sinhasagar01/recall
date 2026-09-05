@@ -107,7 +107,7 @@ export function LibraryToolbar({
         "no" — and after a quiet fortnight the 7-day window makes that common.
       */}
       <div className="mt-[-14px] mb-[22px] flex flex-wrap gap-1.5">
-        {/* Weak is a chip here, not a destination — DESIGN.md section 4.9. */}
+        {/* Weak is a chip here, not a destination — DESIGN.md section 4.10. */}
         <span className="md:hidden">
           <QuickFilterChip
             pressed={state.quickFilters.includes('needs-review')}

@@ -186,7 +186,17 @@ Skeletons must match real card geometry so nothing shifts when data lands.
    in use produces both, never one of each.
 6. **No-results offers `+ Add "<query>"`.** Searching for something absent is the
    most common moment you want to save it.
-7. **Delete confirmation names what dies**, including the practice count.
+7. **The weak page asks two questions.** What needs review, and what has settled
+   but gone quiet — `okay` or `strong`, and not practised in 60 days. Confidence
+   does not decay, so the first list empties permanently once everything has been
+   graded; the second is what the page has to say in month two. The stale copy is
+   a question, not a verdict: the grade stays as you left it.
+
+   **The rail badge counts only the first.** Folding stale topics into the flag
+   number would make one number mean two things, and make it grow while you have
+   done nothing wrong.
+
+8. **Delete confirmation names what dies**, including the practice count.
    **The mock's wording here is illustrative, not literal.** It reads "This removes
    the topic, its mental model, its attached diagram, and 3 practice results" for
    every topic — but naming a diagram that is not attached, or a practice count that
@@ -198,9 +208,9 @@ Skeletons must match real card geometry so nothing shifts when data lands.
    counts, timestamps, category and confidence tallies, "N queued", "last practiced
    2 days ago". Those numbers are fixtures chosen to make a screenshot read well. The
    rule they illustrate is real; the values are not.
-8. **Card shows `Model ✓`** when `mental_model` is non-empty. It's the strongest
+9. **Card shows `Model ✓`** when `mental_model` is non-empty. It's the strongest
    reason to open a card.
-9. **Mobile has two destinations plus add.** Weak topics is a filter chip on
+10. **Mobile has two destinations plus add.** Weak topics is a filter chip on
    Library, and the three filter selects collapse behind one `Filters` chip.
 
 ---

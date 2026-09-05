@@ -79,3 +79,54 @@ export function practiceUpdateFor(
     last_practiced_at: now.toISOString(),
   }
 }
+
+/**
+ * How long a settled topic can go untouched before it stops counting as known.
+ *
+ * Separate from RECENT_WINDOW_DAYS, and deliberately at the other end of the
+ * scale: that one answers "did this just happen", this one answers "was this so
+ * long ago that you probably cannot do it any more". Sharing a constant between
+ * the two would tie a 7-day question to a 60-day one.
+ */
+export const STALE_WINDOW_DAYS = 60
+
+const STALE_WINDOW_MS = STALE_WINDOW_DAYS * 24 * 60 * 60 * 1000
+
+/** Not on the weak page: graded, and graded better than weak. */
+export function isSettled(topic: Pick<Topic, 'confidence'>): boolean {
+  return !needsReview(topic)
+}
+
+/**
+ * Settled once, and long enough ago that it is worth checking again.
+ *
+ * This exists because confidence does not decay — grading something "knew it"
+ * removes it from the weak page for good, so a library that is entirely graded
+ * has an empty weak page and nothing to say. Rather than expiring the grade,
+ * which would be spaced repetition by another name and would make things
+ * reappear because a clock moved, the grade stays honest and this asks a
+ * different question alongside it.
+ *
+ * Only settled topics can be stale. Anything that still needs review is already
+ * on that page, and listing it twice would be worse than not listing it.
+ */
+export function isStale(
+  topic: Pick<Topic, 'confidence' | 'last_practiced_at'>,
+  now: Date,
+): boolean {
+  if (!isSettled(topic)) return false
+
+  /*
+    No stamp is an infinite gap, not a zero one — the same reading
+    orderForPractice gives it. Unreachable through the app today, since
+    confidence only moves through grading and grading always stamps.
+  */
+  if (topic.last_practiced_at === null) return true
+
+  const parsed = Date.parse(topic.last_practiced_at)
+  if (Number.isNaN(parsed)) return true
+
+  // Strictly greater: the boundary belongs to the settled side, mirroring
+  // RECENT_WINDOW_DAYS where "recent" is `gap <= window`.
+  return now.getTime() - parsed > STALE_WINDOW_MS
+}

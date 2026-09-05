@@ -114,10 +114,15 @@ test.describe('the weak page and practice, on a large library', () => {
   test('the weak list paginates instead of rendering everything', async ({ page }) => {
     await page.goto('/weak')
 
-    const rows = page.getByRole('listitem')
+    /*
+      The first list, specifically. The page carries two now — what needs review,
+      and the "Settled, but quiet" section below it — and this fixture populates
+      both, because its okay and strong topics have never been practised.
+    */
+    const rows = page.locator('ul').first().getByRole('listitem')
     await expect(rows).toHaveCount(SERVER_PAGE_SIZE)
 
-    await page.getByRole('button', { name: 'Load more' }).click()
+    await page.getByRole('button', { name: 'Load more topics that need review' }).click()
     await expect(rows).toHaveCount(SERVER_PAGE_SIZE * 2)
 
     // Each row appears once: the cursor carries bucket, staleness and id.

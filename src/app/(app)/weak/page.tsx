@@ -2,7 +2,9 @@ import Link from 'next/link'
 import { WeakList } from '@/components/topics/weak-list'
 import { StateBlock } from '@/components/ui/state-block'
 import { railCounts } from '@/lib/data/library'
-import { weakPage } from '@/lib/data/practice'
+import { weakPage, type WeakCursor } from '@/lib/data/practice'
+import { STALE_WINDOW_DAYS } from '@/lib/domain/confidence'
+import type { Topic } from '@/lib/domain/types'
 import { practiceWeakLabel } from '@/lib/domain/practice-selection'
 
 /*
@@ -25,7 +27,7 @@ export default async function WeakPage() {
     railCounts is cache()d and the layout called it for this same request, so the
     second read costs nothing.
   */
-  const [{ topics, nextCursor, total, neverPracticed, readAt }, library] = await Promise.all([
+  const [{ topics, nextCursor, total, neverPracticed, stale, staleTotal, staleCursor, readAt }, library] = await Promise.all([
     weakPage(),
     railCounts(),
   ])
@@ -91,7 +93,15 @@ export default async function WeakPage() {
             </>
           }
         />
-      ) : (
+      ) : null}
+
+      {total === 0 && !libraryIsEmpty ? (
+        <div className="mt-9">
+          <StaleSection topics={stale} cursor={staleCursor} total={staleTotal} readAt={readAt} />
+        </div>
+      ) : null}
+
+      {total > 0 ? (
         <>
           <div className="mb-5 flex items-center gap-4 rounded-lg border border-accent bg-accent-soft px-5 py-4">
             <div className="flex-1">
@@ -120,8 +130,67 @@ export default async function WeakPage() {
             total={total}
             readAt={readAt}
           />
+
+          <StaleSection
+            topics={stale}
+            cursor={staleCursor}
+            total={staleTotal}
+            readAt={readAt}
+          />
         </>
-      )}
+      ) : null}
     </>
+  )
+}
+
+/**
+ * Settled, and quiet for long enough that it is worth checking.
+ *
+ * Confidence does not decay — see issue #13. Grading something "knew it" removes
+ * it from the list above for good, so a library that has been fully graded shows
+ * an empty weak page and has nothing to say. This asks a second question beside
+ * the first rather than expiring the grade, which would make things reappear
+ * because a clock moved.
+ *
+ * No section-level practice button on purpose: the rows carry their own, and a
+ * batch entry point would need a new session scope for a list you are meant to
+ * browse rather than drill.
+ */
+function StaleSection({
+  topics,
+  cursor,
+  total,
+  readAt,
+}: {
+  topics: Topic[]
+  cursor: WeakCursor | null
+  total: number
+  readAt: string
+}) {
+  if (total === 0) return null
+
+  return (
+    <section className="mt-[38px]">
+      <div className="mb-4 flex items-center gap-3">
+        <span className="font-mono text-mono font-medium tracking-[0.16em] text-ink-3 uppercase">
+          Settled, but quiet
+        </span>
+        <span className="h-px flex-1 bg-rule" />
+      </div>
+
+      <p className="mb-4 font-mono text-[11.5px] text-ink-3">
+        {total} {total === 1 ? 'topic you knew' : 'topics you knew'} and haven&rsquo;t
+        practiced in {STALE_WINDOW_DAYS} days. Still marked okay or strong — this is a
+        question, not a verdict.
+      </p>
+
+      <WeakList
+        scope="stale"
+        initial={topics}
+        initialCursor={cursor}
+        total={total}
+        readAt={readAt}
+      />
+    </section>
   )
 }

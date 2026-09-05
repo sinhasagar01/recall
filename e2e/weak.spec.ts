@@ -154,3 +154,46 @@ test('an empty library and a library with nothing weak say different things', as
   await expect(page.getByText('Every topic is at okay or better')).toBeVisible()
   await expect(page.getByRole('link', { name: 'Practice anyway' })).toBeVisible()
 })
+
+/*
+  Settled, but quiet — issue #13.
+
+  Confidence does not decay, so grading something "knew it" removes it from the
+  list above for good. A fully-graded library therefore shows an empty weak page
+  and has nothing to say, which is what happens to anyone in month two. The
+  section asks a second question beside the first rather than expiring the grade.
+
+  The `strong` fixture straddles the window on purpose: one topic practised 120
+  days ago, one 10 days ago, and neither needs review.
+*/
+test('a settled library still has something to say', async ({ page }) => {
+  await signInAs(page, 'strong')
+  await page.goto('/weak')
+
+  // The first question still answers "nothing".
+  await expect(page.getByRole('heading', { name: 'Nothing needs review' })).toBeVisible()
+
+  // The second one does not.
+  await expect(page.getByText('Settled, but quiet')).toBeVisible()
+  // The copy uses a typographic apostrophe, so match the part that matters.
+  await expect(page.getByText(/practiced in 60 days/)).toBeVisible()
+
+  // Only the topic past the window, and it keeps its own practice button.
+  // Scoped to the section: this page can carry two lists.
+  const rows = page.locator('section').getByRole('listitem')
+  await expect(rows).toHaveCount(1)
+  await expect(rows.first()).toContainText('Flexbox main axis')
+  await expect(rows.first().getByRole('link', { name: 'Practice' })).toBeVisible()
+  await expect(page.getByText('Stacking contexts')).toHaveCount(0)
+})
+
+test('the rail badge still counts only what needs review', async ({ page }) => {
+  // Deliberate: folding stale topics into the flag count would make one number
+  // mean two things, and make it grow while you have done nothing wrong.
+  await signInAs(page, 'strong')
+  await page.goto('/weak')
+
+  await expect(page.getByText('Settled, but quiet')).toBeVisible()
+  const badge = page.getByRole('link', { name: /Weak topics/ }).first()
+  await expect(badge).toContainText('0')
+})
