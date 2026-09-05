@@ -1,7 +1,7 @@
 'use client'
 
-import { useSearchParams } from 'next/navigation'
-import { useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import { LibraryToolbar, type ToolbarState } from '@/components/topics/library-toolbar'
 import { DeleteAccount } from '@/components/topics/delete-account'
 import { TopicCard } from '@/components/topics/topic-card'
@@ -10,15 +10,21 @@ import { Button } from '@/components/ui/button'
 import { StateBlock } from '@/components/ui/state-block'
 import { Toast } from '@/components/ui/toast'
 import { signOut } from '@/app/(auth)/actions'
+import { loadMoreTopics } from '@/app/(app)/library/actions'
+import type { Cursor, LibraryData } from '@/lib/data/library'
 import {
-  categoryOptions,
-  confidenceOptions,
-  difficultyOptions,
+  categoryOptionsFromCounts,
+  confidenceOptionsFromCounts,
+  difficultyOptionsFromCounts,
   formatRelativeTime,
-  libraryStats,
+  libraryStatsFromCounts,
 } from '@/lib/domain/library'
-import { filterTopics, type QuickFilter } from '@/lib/domain/search-filter'
+import { libraryCounts } from '@/lib/domain/library-counts'
+import { filterTopics, type QuickFilter, type TopicFilters } from '@/lib/domain/search-filter'
 import type { Confidence, Difficulty, Topic } from '@/lib/domain/types'
+
+/** How long typing settles before server mode asks the database. */
+const SEARCH_DEBOUNCE_MS = 250
 
 const GRID = 'grid grid-cols-1 gap-3 md:grid-cols-[repeat(auto-fill,minmax(292px,1fr))]'
 const QUICK_FILTERS: QuickFilter[] = [
@@ -48,7 +54,7 @@ function readState(params: URLSearchParams): ToolbarState {
   }
 }
 
-function writeState(state: ToolbarState) {
+function stateToParams(state: ToolbarState): string {
   const params = new URLSearchParams()
   if (state.query) params.set('q', state.query)
   if (state.category !== 'all') params.set('category', state.category)
@@ -56,8 +62,18 @@ function writeState(state: ToolbarState) {
   if (state.difficulty !== 'any') params.set('difficulty', state.difficulty)
   for (const quick of state.quickFilters) params.append('quick', quick)
 
-  const query = params.toString()
-  window.history.replaceState(null, '', query === '' ? window.location.pathname : `?${query}`)
+  return params.toString()
+}
+
+/** The toolbar's sentinels ("all", "any") are absences; the domain says null. */
+function toFilters(state: ToolbarState): TopicFilters {
+  return {
+    query: state.query,
+    category: state.category === 'all' ? null : state.category,
+    confidence: state.confidence === 'any' ? null : (state.confidence as Confidence),
+    difficulty: state.difficulty === 'any' ? null : (state.difficulty as Difficulty),
+    quickFilters: state.quickFilters,
+  }
 }
 
 const CLEARED: ToolbarState = {
@@ -68,15 +84,111 @@ const CLEARED: ToolbarState = {
   quickFilters: [],
 }
 
-export function LibraryView({ topics, readAt }: { topics: Topic[]; readAt: string }) {
+export function LibraryView({
+  data,
+  account,
+}: {
+  data: LibraryData
+  account: { topics: number; images: number }
+}) {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const [adding, setAdding] = useState(false)
   const [prefillTitle, setPrefillTitle] = useState('')
   const [saved, setSaved] = useState<string | null>(null)
 
-  const at = new Date(readAt)
+  const at = new Date(data.readAt)
   const params = new URLSearchParams(searchParams.toString())
   const state = readState(params)
+  const filters = toFilters(state)
+
+  /*
+    Pages fetched by "Load more", kept in client state rather than the URL: the
+    filters are what should be shareable, not how far someone happened to scroll.
+    Cleared whenever the server sends a fresh read — a new readAt means new
+    filters, and pages fetched under the old ones no longer belong to this list.
+  */
+  const [loaded, setLoaded] = useState<{
+    readAt: string
+    topics: Topic[]
+    nextCursor: Cursor | null
+  } | null>(null)
+  const [isLoadingMore, startLoadingMore] = useTransition()
+
+  /*
+    Stamped with the readAt they were fetched under and discarded during render
+    when the server sends a newer one, rather than cleared from an effect. A new
+    readAt means new filters, and pages fetched under the old ones do not belong in
+    this list — dropping them while rendering avoids a frame that shows them.
+  */
+  const more = loaded?.readAt === data.readAt ? loaded : null
+  const appended = more?.topics ?? []
+  const nextCursor = more ? more.nextCursor : data.mode === 'server' ? data.nextCursor : null
+
+  const loadMore = () => {
+    if (nextCursor === null) return
+
+    startLoadingMore(async () => {
+      const page = await loadMoreTopics(filters, nextCursor)
+      setLoaded({
+        readAt: data.readAt,
+        topics: [...appended, ...page.topics],
+        nextCursor: page.nextCursor,
+      })
+    })
+  }
+
+  /*
+    ── The only place the two reading modes differ ─────────────────────────────
+    Rows and counts are chosen together, in one expression. In local mode both
+    come from the domain functions over the whole library; in server mode both
+    come from SQL. They cannot be taken from different modes, because there is one
+    branch and it yields both.
+
+    That matters because of the rule phase 7 established: a count and the list it
+    describes come from the same computation, so a filter reading 12 cannot yield
+    11 rows. A hybrid is exactly where that guarantee would be lost.
+
+    supabase/tests/library_parity_test.sql asserts the two branches produce the
+    same rows AND the same counts over a shared corpus.
+  */
+  const { counts, rows } =
+    data.mode === 'local'
+      ? {
+          counts: libraryCounts(data.topics, filters, at),
+          rows: filterTopics(data.topics, filters, at),
+        }
+      : { counts: data.counts, rows: [...data.topics, ...appended] }
+
+  /*
+    The URL is written immediately in both modes with history.replaceState — the
+    documented Next pattern that updates the address bar without a reload while
+    staying in sync with useSearchParams. That is what keeps the search input
+    responsive (it is controlled by the URL) and the view shareable, and it is why
+    there is no history entry per keystroke.
+
+    Local mode stops there: it already has every topic, so narrowing is a re-render
+    and nothing is fetched. Server mode has to ask the database, so it additionally
+    schedules a navigation once typing settles. The explicit href matters —
+    replaceState bypassed the router, so its own idea of the current URL is stale,
+    and handing it the address we just wrote is what makes it fetch.
+  */
+  const refetch = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [isFetching, startFetching] = useTransition()
+
+  useEffect(() => () => clearTimeout(refetch.current ?? undefined), [])
+
+  const writeState = (next: ToolbarState) => {
+    const query = stateToParams(next)
+    window.history.replaceState(null, '', query === '' ? window.location.pathname : `?${query}`)
+
+    if (data.mode === 'local') return
+
+    clearTimeout(refetch.current ?? undefined)
+    refetch.current = setTimeout(() => {
+      startFetching(() => router.replace(window.location.pathname + window.location.search, { scroll: false }))
+    }, SEARCH_DEBOUNCE_MS)
+  }
 
   /*
     The mobile FAB lives in the layout and the sheet's state lives here, so it links
@@ -93,24 +205,6 @@ export function LibraryView({ topics, readAt }: { topics: Topic[]; readAt: strin
 
   const update = (next: Partial<ToolbarState>) => writeState({ ...state, ...next })
 
-  /*
-    The whole of search and filtering, in one call to the phase 2 function. Every
-    rule it applies — partial case-insensitive matching across five fields, AND
-    composition, the recency window — was written and tested before any of this
-    existed. There is no comparison in this component.
-  */
-  const visible = filterTopics(
-    topics,
-    {
-      query: state.query,
-      category: state.category === 'all' ? null : state.category,
-      confidence: state.confidence === 'any' ? null : (state.confidence as Confidence),
-      difficulty: state.difficulty === 'any' ? null : (state.difficulty as Difficulty),
-      quickFilters: state.quickFilters,
-    },
-    at,
-  )
-
   const isFiltered =
     state.query !== '' ||
     state.category !== 'all' ||
@@ -118,21 +212,28 @@ export function LibraryView({ topics, readAt }: { topics: Topic[]; readAt: strin
     state.difficulty !== 'any' ||
     state.quickFilters.length > 0
 
-  const stats = libraryStats(topics)
+  const stats = libraryStatsFromCounts(counts)
 
   /*
     Counts come from the FULL library, never the filtered set. The reference is
     explicit: with a query matching nothing and a category selected, its category
-    select still reads "All categories 48".
+    select still reads "All categories 48". Only `matching` narrows.
   */
-  const quickCounts = Object.fromEntries(
-    QUICK_FILTERS.map((quick) => [quick, filterTopics(topics, { quickFilters: [quick] }, at).length]),
-  ) as Record<QuickFilter, number>
+  const quickCounts = counts.quick
 
-  // Recently learned only splits the unfiltered library; a filtered result is one list.
-  const recent = isFiltered ? [] : filterTopics(topics, { quickFilters: ['recently-added'] }, at)
+  /*
+    "Recently learned" splits the unfiltered library into what arrived this week
+    and everything else — and in server mode the client does not have the
+    unfiltered library, only a page of it. Splitting a page would produce a heading
+    that describes the page rather than the library, and rows would move under it
+    as you paged. So the split is local mode only; server mode renders one list,
+    which is already newest-first.
+  */
+  const recent = data.mode === 'local' && !isFiltered
+    ? filterTopics(data.topics, { quickFilters: ['recently-added'] }, at)
+    : []
   const recentIds = new Set(recent.map((topic) => topic.id))
-  const rest = visible.filter((topic) => !recentIds.has(topic.id))
+  const rest = rows.filter((topic) => !recentIds.has(topic.id))
 
   const openAdd = (title: string) => {
     setPrefillTitle(title)
@@ -140,9 +241,9 @@ export function LibraryView({ topics, readAt }: { topics: Topic[]; readAt: strin
   }
 
   const subtitle = () => {
-    if (topics.length === 0) return 'Nothing saved yet'
-    if (isFiltered) return `${visible.length} of ${stats.total} topics match`
-    return `${stats.total} ${stats.total === 1 ? 'topic' : 'topics'} · ${stats.needsReview} need review · last practiced ${formatRelativeTime(stats.lastPracticedAt, at)}`
+    if (counts.total === 0) return 'Nothing saved yet'
+    if (isFiltered) return `${counts.matching} of ${counts.total} topics match`
+    return `${counts.total} ${counts.total === 1 ? 'topic' : 'topics'} · ${counts.needsReview} need review · last practiced ${formatRelativeTime(stats.lastPracticedAt, at)}`
   }
 
   return (
@@ -170,17 +271,17 @@ export function LibraryView({ topics, readAt }: { topics: Topic[]; readAt: strin
             </button>
           </form>
           {/* The rail is hidden below the breakpoint, so deletion needs a home here. */}
-          <DeleteAccount topics={topics} />
+          <DeleteAccount topics={account.topics} images={account.images} />
         </div>
 
-        {topics.length > 0 ? (
+        {counts.total > 0 ? (
           <Button variant="primary" onClick={() => openAdd('')} className="hidden md:inline-flex">
             + Add topic
           </Button>
         ) : null}
       </div>
 
-      {topics.length === 0 ? (
+      {counts.total === 0 ? (
         <StateBlock
           eyebrow="Empty library"
           title="Nothing here yet"
@@ -197,13 +298,13 @@ export function LibraryView({ topics, readAt }: { topics: Topic[]; readAt: strin
             state={state}
             onChange={update}
             onClear={() => writeState(CLEARED)}
-            categories={categoryOptions(topics)}
-            confidences={confidenceOptions(topics, at)}
-            difficulties={difficultyOptions(topics, at)}
+            categories={categoryOptionsFromCounts(counts.byCategory, counts.total)}
+            confidences={confidenceOptionsFromCounts(counts.byConfidence, counts.total)}
+            difficulties={difficultyOptionsFromCounts(counts.byDifficulty, counts.total)}
             quickCounts={quickCounts}
           />
 
-          {visible.length === 0 ? (
+          {rows.length === 0 ? (
             /*
               Distinct from the empty library: there ARE topics, this search has
               none. Conflating the two would tell someone their library is empty
@@ -230,7 +331,7 @@ export function LibraryView({ topics, readAt }: { topics: Topic[]; readAt: strin
                 <>
                   {/* Drops the filters, keeps the query — "search ALL topics". */}
                   <Button onClick={() => writeState({ ...CLEARED, query: state.query })}>
-                    Search all {stats.total} topics
+                    Search all {counts.total} topics
                   </Button>
                   {state.query === '' ? null : (
                     <Button variant="primary" onClick={() => openAdd(state.query)}>
@@ -241,7 +342,15 @@ export function LibraryView({ topics, readAt }: { topics: Topic[]; readAt: strin
               }
             />
           ) : (
-            <>
+            <div
+              /*
+                Server mode only: narrowing is a round trip, so the results on
+                screen are briefly the previous query's. Dimming and aria-busy say
+                so, rather than letting stale rows look current.
+              */
+              aria-busy={isFetching}
+              className={isFetching ? 'opacity-60 transition-opacity' : undefined}
+            >
               <div className={GRID}>
                 {rest.map((topic) => (
                   <TopicCard key={topic.id} topic={topic} />
@@ -267,7 +376,18 @@ export function LibraryView({ topics, readAt }: { topics: Topic[]; readAt: strin
                   </div>
                 </>
               ) : null}
-            </>
+
+              {nextCursor === null ? null : (
+                <div className="mt-9 flex flex-col items-center gap-2">
+                  <Button onClick={loadMore} loading={isLoadingMore} loadingLabel="Loading…">
+                    Load more
+                  </Button>
+                  <p className="font-mono text-[11.5px] text-ink-3">
+                    Showing {rows.length} of {counts.matching}
+                  </p>
+                </div>
+              )}
+            </div>
           )}
         </>
       )}
@@ -278,7 +398,7 @@ export function LibraryView({ topics, readAt }: { topics: Topic[]; readAt: strin
         open={sheetOpen}
         onClose={closeSheet}
         onSaved={setSaved}
-        categories={categoryOptions(topics)}
+        categories={categoryOptionsFromCounts(counts.byCategory, counts.total)}
         initialTitle={prefillTitle}
       />
 

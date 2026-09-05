@@ -1,8 +1,10 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { listLibrary, type Cursor } from '@/lib/data/library'
 import { insertTopic, setMentalModelImagePath } from '@/lib/data/topics'
-import type { Difficulty } from '@/lib/domain/types'
+import type { TopicFilters } from '@/lib/domain/search-filter'
+import type { Difficulty, Topic } from '@/lib/domain/types'
 
 export type SaveTopicResult =
   | { error: string; title?: undefined; id?: undefined; userId?: undefined }
@@ -76,4 +78,25 @@ export async function createTopic(formData: FormData): Promise<SaveTopicResult> 
     // The real reason, never a generic message. DESIGN.md section 5.
     return { error: cause instanceof Error ? cause.message : 'The topic could not be saved.' }
   }
+}
+
+/**
+ * The next keyset page, for the "Load more" button.
+ *
+ * Only reachable in server mode: under the local-mode threshold the client already
+ * has every topic and there is nothing to load. Filters stay in the URL, so a
+ * filtered view is still shareable; the accumulated pages are client state, which
+ * is why this returns rows instead of revalidating the page.
+ */
+export async function loadMoreTopics(
+  filters: TopicFilters,
+  cursor: Cursor,
+): Promise<{ topics: Topic[]; nextCursor: Cursor | null }> {
+  const data = await listLibrary(filters, cursor)
+
+  // listLibrary only returns local mode for an unfiltered first read, and this
+  // always passes a cursor. The branch is here because the type demands it.
+  if (data.mode === 'local') return { topics: data.topics, nextCursor: null }
+
+  return { topics: data.topics, nextCursor: data.nextCursor }
 }

@@ -9,8 +9,10 @@
  * NEXT_PUBLIC_ prefix. Run with: npm run seed:e2e
  */
 import { createClient } from '@supabase/supabase-js'
+import { LOCAL_MODE_MAX } from '../src/lib/domain/library-paging.ts'
 
 process.loadEnvFile('.env.local')
+
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL
 const secretKey = process.env.SUPABASE_SECRET_KEY
@@ -22,6 +24,8 @@ const fewEmail = process.env.E2E_FEW_USER_EMAIL
 const fewPassword = process.env.E2E_FEW_USER_PASSWORD
 const strongEmail = process.env.E2E_STRONG_USER_EMAIL
 const strongPassword = process.env.E2E_STRONG_USER_PASSWORD
+const largeEmail = process.env.E2E_LARGE_USER_EMAIL
+const largePassword = process.env.E2E_LARGE_USER_PASSWORD
 
 const missing = [
   ['NEXT_PUBLIC_SUPABASE_URL', url],
@@ -34,6 +38,8 @@ const missing = [
   ['E2E_FEW_USER_PASSWORD', fewPassword],
   ['E2E_STRONG_USER_EMAIL', strongEmail],
   ['E2E_STRONG_USER_PASSWORD', strongPassword],
+  ['E2E_LARGE_USER_EMAIL', largeEmail],
+  ['E2E_LARGE_USER_PASSWORD', largePassword],
 ]
   .filter(([, value]) => !value)
   .map(([name]) => name)
@@ -90,6 +96,7 @@ const mainUserId = await upsertUser(email!, password!)
 const emptyUserId = await upsertUser(emptyEmail!, emptyPassword!)
 const fewUserId = await upsertUser(fewEmail!, fewPassword!)
 const strongUserId = await upsertUser(strongEmail!, strongPassword!)
+const largeUserId = await upsertUser(largeEmail!, largePassword!)
 
 /*
   Test isolation.
@@ -180,6 +187,45 @@ console.log(`Nothing-needs-review user reset: ${strongEmail}`)
   belongs to a topic they also delete, and deleting a topic removes the object first.
 */
 /*
+  The over-the-threshold user: exactly one topic more than local mode allows, so
+  the library is read through SQL instead of being sent whole.
+
+  Both reading modes have to be exercised end to end, and the boundary is the only
+  place the mode is decided — a fixture that merely had "a lot" of topics would
+  test the same branch as one topic more or less. LOCAL_MODE_MAX + 1 is the
+  smallest library that is definitely in server mode.
+
+  The titles are deterministic and ordered so a spec can assert exactly which rows
+  a page and a cursor return.
+*/
+await admin.from('topics').delete().eq('user_id', largeUserId)
+
+const CONFIDENCES = ['new', 'weak', 'okay', 'strong'] as const
+const DIFFICULTIES = ['easy', 'medium', 'hard'] as const
+
+const largeTopics = Array.from({ length: LOCAL_MODE_MAX + 1 }, (_, index) => ({
+  user_id: largeUserId,
+  // Zero-padded so lexical order matches numeric order in an assertion.
+  title: `Bulk topic ${String(index).padStart(4, '0')}`,
+  definition: `Number ${index} of the over-the-threshold library.`,
+  category: index % 5 === 0 ? null : `Bucket ${index % 5}`,
+  tags: index % 7 === 0 ? ['bulk', `tag${index % 3}`] : [],
+  confidence: CONFIDENCES[index % CONFIDENCES.length],
+  difficulty: DIFFICULTIES[index % DIFFICULTIES.length],
+  // Strictly increasing, so `created_at desc` is a total order with no ties and a
+  // spec can name the first page exactly.
+  created_at: new Date(Date.UTC(2020, 0, 1) + index * 60_000).toISOString(),
+}))
+
+const { error: largeError } = await admin.from('topics').insert(largeTopics)
+
+if (largeError) {
+  console.error(`Could not seed the large-library user: ${largeError.message}`)
+  process.exit(1)
+}
+console.log(`Large-library user seeded with ${largeTopics.length} topics: ${largeEmail}`)
+
+/*
   The general-purpose user is reset too.
 
   Its specs each create their own uniquely-titled topic and never assert on a total,
@@ -191,7 +237,7 @@ console.log(`Nothing-needs-review user reset: ${strongEmail}`)
 await admin.from('topics').delete().eq('user_id', mainUserId)
 console.log(`General-purpose user's topics cleared: ${email}`)
 
-for (const userId of [mainUserId, emptyUserId, fewUserId, strongUserId]) {
+for (const userId of [mainUserId, emptyUserId, fewUserId, strongUserId, largeUserId]) {
   const { data: folders } = await admin.storage.from('mental-models').list(userId)
   const paths = (folders ?? []).flatMap((folder) => folder.name)
 

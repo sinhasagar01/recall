@@ -1,10 +1,16 @@
 import { CONFIDENCE_LABEL, needsReview } from '@/lib/domain/confidence'
+import {
+  CONFIDENCE_VALUES,
+  DIFFICULTY_VALUES,
+  type CategoryCount,
+  type LibraryCounts,
+} from '@/lib/domain/library-counts'
 
 // Re-exported so existing callers keep their import path.
 export { needsReview }
 import { categoryOf } from '@/lib/domain/category-suggest'
 import { filterTopics } from '@/lib/domain/search-filter'
-import type { Difficulty, Topic } from '@/lib/domain/types'
+import type { Confidence, Difficulty, Topic } from '@/lib/domain/types'
 
 /** The card's path line: "React · rendering". */
 export function topicPath(topic: Topic): string {
@@ -77,11 +83,71 @@ export function categoryOptions(topics: Topic[]): CategoryOption[] {
     counts.set(category, (counts.get(category) ?? 0) + 1)
   }
 
-  const sorted = [...counts.entries()]
-    .sort(([aLabel, aCount], [bLabel, bCount]) => bCount - aCount || aLabel.localeCompare(bLabel))
-    .map(([label, count]) => ({ value: label, label, count }))
+  return categoryOptionsFromCounts(
+    [...counts.entries()].map(([category, count]) => ({ category, count })),
+    topics.length,
+  )
+}
 
-  return [{ value: 'all', label: 'All categories', count: topics.length }, ...sorted]
+/*
+  ── Where counting stops and presentation begins ────────────────────────────
+  The four *FromCounts functions below turn a LibraryCounts into what the toolbar
+  renders. They are the shared half of the two reading modes: local mode counts
+  with filterTopics, server mode counts in SQL, and from here on the two are the
+  same code.
+
+  Ordering and labels deliberately stay on this side. categoryOptions sorts with
+  localeCompare, which a database collation will not reproduce, so asking SQL to
+  return options in display order would add a difference between the modes that
+  no amount of testing could remove. SQL returns integers; sorting happens here.
+*/
+
+/** Display order: most used first, ties broken by label. */
+export function categoryOptionsFromCounts(
+  byCategory: CategoryCount[],
+  total: number,
+): CategoryOption[] {
+  const sorted = [...byCategory]
+    .sort((a, b) => b.count - a.count || a.category.localeCompare(b.category))
+    .map(({ category, count }) => ({ value: category, label: category, count }))
+
+  return [{ value: 'all', label: 'All categories', count: total }, ...sorted]
+}
+
+export function confidenceOptionsFromCounts(
+  byConfidence: Record<Confidence, number>,
+  total: number,
+): CategoryOption[] {
+  return [
+    { value: ANY, label: 'Any confidence', count: total },
+    ...CONFIDENCE_VALUES.map((value) => ({
+      value,
+      label: CONFIDENCE_LABEL[value],
+      count: byConfidence[value],
+    })),
+  ]
+}
+
+export function difficultyOptionsFromCounts(
+  byDifficulty: Record<Difficulty, number>,
+  total: number,
+): CategoryOption[] {
+  return [
+    { value: ANY, label: 'Any difficulty', count: total },
+    ...DIFFICULTY_VALUES.map((value) => ({
+      value,
+      label: DIFFICULTY_LABEL[value],
+      count: byDifficulty[value],
+    })),
+  ]
+}
+
+export function libraryStatsFromCounts(counts: LibraryCounts): LibraryStats {
+  return {
+    total: counts.total,
+    needsReview: counts.needsReview,
+    lastPracticedAt: counts.lastPracticedAt,
+  }
 }
 
 export const DIFFICULTY_LABEL: Record<Difficulty, string> = {

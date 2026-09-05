@@ -12,7 +12,7 @@ export default async function globalSetup(config: FullConfig) {
   const browser = await chromium.launch()
 
   try {
-    for (const fixture of ['main', 'empty', 'few', 'strong'] as Fixture[]) {
+    for (const fixture of ['main', 'empty', 'few', 'strong', 'large'] as Fixture[]) {
       const { email, password } = CREDENTIALS[fixture]
       const context = await browser.newContext({ baseURL })
       const page = await context.newPage()

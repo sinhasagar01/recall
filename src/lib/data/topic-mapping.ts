@@ -1,7 +1,18 @@
 import type { Database } from '@/lib/database.types'
 import type { Confidence, Difficulty, Topic } from '@/lib/domain/types'
 
-export type TopicRow = Database['public']['Tables']['topics']['Row']
+/**
+ * `search_text` is omitted deliberately.
+ *
+ * It is a generated column that exists only so the trigram index has something to
+ * index — derived from columns the domain already has, never written, and never
+ * read by the application. Letting it through would make the boundary assertion
+ * below demand a field on the domain Topic that means nothing to the domain.
+ *
+ * Omitting it here is what keeps that assertion honest: every OTHER column
+ * difference still fails the build.
+ */
+export type TopicRow = Omit<Database['public']['Tables']['topics']['Row'], 'search_text'>
 
 /*
   ── The boundary rule ───────────────────────────────────────────────────────

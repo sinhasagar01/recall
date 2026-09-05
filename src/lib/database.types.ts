@@ -46,6 +46,7 @@ export type Database = {
           mental_model: string | null
           mental_model_image_path: string | null
           practice_count: number
+          search_text: string | null
           tags: string[]
           title: string
           updated_at: string
@@ -62,6 +63,7 @@ export type Database = {
           mental_model?: string | null
           mental_model_image_path?: string | null
           practice_count?: number
+          search_text?: string | null
           tags?: string[]
           title: string
           updated_at?: string
@@ -78,6 +80,7 @@ export type Database = {
           mental_model?: string | null
           mental_model_image_path?: string | null
           practice_count?: number
+          search_text?: string | null
           tags?: string[]
           title?: string
           updated_at?: string
@@ -90,7 +93,60 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      library_counts: {
+        Args: {
+          p_category?: string
+          p_confidence?: string
+          p_difficulty?: string
+          p_now: string
+          p_query?: string
+          p_quick?: string[]
+          p_recent_window_days: number
+        }
+        Returns: Json
+      }
+      library_page: {
+        Args: {
+          p_category?: string
+          p_confidence?: string
+          p_cursor_created_at?: string
+          p_cursor_id?: string
+          p_difficulty?: string
+          p_limit?: number
+          p_now: string
+          p_query?: string
+          p_quick?: string[]
+          p_recent_window_days: number
+        }
+        Returns: {
+          category: string
+          confidence: string
+          created_at: string
+          definition: string
+          difficulty: string
+          id: string
+          last_practiced_at: string
+          mental_model: string
+          mental_model_image_path: string
+          practice_count: number
+          tags: string[]
+          title: string
+          updated_at: string
+          user_id: string
+        }[]
+      }
+      topic_search_normalise: { Args: { p_value: string }; Returns: string }
+      topic_search_pattern: { Args: { p_query: string }; Returns: string }
+      topic_search_text: {
+        Args: {
+          p_category: string
+          p_definition: string
+          p_mental_model: string
+          p_tags: string[]
+          p_title: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never

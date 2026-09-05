@@ -167,9 +167,15 @@ Skeletons must match real card geometry so nothing shifts when data lands.
 4. **Image failure never blocks the topic.** Insert the row, then upload, then
    patch the path. On upload failure the row stays and the banner explains the
    actual reason (size, type, network) — never a generic message.
-5. **No-results offers `+ Add "<query>"`.** Searching for something absent is the
+5. **Search is instant up to 500 topics, and a round trip past that.** Under the
+   threshold the whole library is in the browser and narrowing is a re-render, with
+   no request. Past it the query goes to the database, debounced so it runs once
+   typing settles, and the results dim while it does — stale rows must not read as
+   current ones. The counts follow the list across that boundary: whichever mode is
+   in use produces both, never one of each.
+6. **No-results offers `+ Add "<query>"`.** Searching for something absent is the
    most common moment you want to save it.
-6. **Delete confirmation names what dies**, including the practice count.
+7. **Delete confirmation names what dies**, including the practice count.
    **The mock's wording here is illustrative, not literal.** It reads "This removes
    the topic, its mental model, its attached diagram, and 3 practice results" for
    every topic — but naming a diagram that is not attached, or a practice count that
@@ -181,9 +187,9 @@ Skeletons must match real card geometry so nothing shifts when data lands.
    counts, timestamps, category and confidence tallies, "N queued", "last practiced
    2 days ago". Those numbers are fixtures chosen to make a screenshot read well. The
    rule they illustrate is real; the values are not.
-7. **Card shows `Model ✓`** when `mental_model` is non-empty. It's the strongest
+8. **Card shows `Model ✓`** when `mental_model` is non-empty. It's the strongest
    reason to open a card.
-8. **Mobile has two destinations plus add.** Weak topics is a filter chip on
+9. **Mobile has two destinations plus add.** Weak topics is a filter chip on
    Library, and the three filter selects collapse behind one `Filters` chip.
 
 ---

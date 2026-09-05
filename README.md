@@ -88,6 +88,7 @@ That is the whole gate: a typecheck, then all four test layers.
 | `npm run test:e2e` | seeds the fixture users, then Playwright against `next dev` |
 | `npm run verify` | all of the above, in that order |
 | `npm run seed:e2e` | the fixture users on their own |
+| `npm run gen:parity` | regenerate the library parity test; `-- --check` fails if stale |
 | `npm run sweep:orphans` | list storage objects no topic points at; `-- --delete` to remove them |
 | `npm run db:types` | regenerate `src/lib/database.types.ts` after a migration |
 
@@ -99,7 +100,7 @@ needing a database to test is in the wrong one.
 
 ## The seeded users
 
-`npm run seed:e2e` creates four fixture accounts. Each exists so a specific state can
+`npm run seed:e2e` creates five fixture accounts. Each exists so a specific state can
 be tested without another spec's data getting in the way, and the seed resets them on
 every run so a half-finished run cannot poison the next one.
 
@@ -109,6 +110,7 @@ every run so a half-finished run cannot poison the next one.
 | `E2E_EMPTY_USER_*` | no topics, ever | The empty-library state. No spec writes to it, and the seed clears it, so leftovers cannot defeat the test |
 | `E2E_FEW_USER_*` | exactly 2 topics | The too-few-to-practise state and its override. Two is below the practice minimum of three |
 | `E2E_STRONG_USER_*` | 2 topics, okay and strong | "Nothing needs review", so the weak page's empty state is tested for the reason its copy gives rather than because the library is empty |
+| `E2E_LARGE_USER_*` | 501 topics | One more than the library sends whole, which is the smallest library that is definitely read through SQL. Both reading modes are covered end to end |
 
 The seed also purges those users' storage folders: rows disappear with a
 `supabase db reset`, objects do not.
@@ -125,9 +127,9 @@ Two are worth knowing before you use this:
   ([#1](https://github.com/sinhasagar01/recall/issues/1)). Rows cascade; storage objects
   cannot be removed by SQL, so they need an application-level sweep. Fine for one user,
   a compliance problem with more.
-- **The library page loads every topic you own**
-  ([#4](https://github.com/sinhasagar01/recall/issues/4)). Comfortable to roughly a
-  thousand topics; filtering happens in the browser.
+- **The weak, practice and topic pages still load every topic you own.** The library
+  itself no longer does — past 500 topics it paginates and filters in SQL — but those
+  three were deliberately left out of that change and still read the whole library.
 
 Deliberately out of scope, and not going to change: email and password only — no OAuth,
 no profile management. One image per topic, no cropping or annotation. No spaced

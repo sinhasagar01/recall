@@ -1,5 +1,5 @@
 begin;
-select plan(63);
+select plan(64);
 
 -- ---------------------------------------------------------------------------
 -- Local helpers.
@@ -69,11 +69,24 @@ select tests_create_user('00000000-0000-0000-0000-0000000000bb', 'b@recall.test'
 -- ===========================================================================
 select has_table('public'::name, 'topics'::name, 'topics table exists');
 
+-- search_text is the one column here that is not in the brief. It is derived,
+-- never written, and never read by the application: it exists so the trigram
+-- index has something to index. The domain Topic type deliberately does not
+-- carry it, and src/lib/data reads an explicit column list rather than *, so it
+-- cannot leak into the client. See the 20260905143000 migration.
 select columns_are('public'::name, 'topics'::name, ARRAY[
   'id', 'user_id', 'title', 'definition', 'mental_model',
   'mental_model_image_path', 'category', 'tags', 'difficulty', 'confidence',
-  'practice_count', 'last_practiced_at', 'created_at', 'updated_at'
-]::name[], 'topics has exactly the columns in the brief and no others');
+  'practice_count', 'last_practiced_at', 'created_at', 'updated_at',
+  'search_text'
+]::name[], 'topics has exactly the columns in the brief, plus the derived search_text');
+
+select is(
+  (select is_generated from information_schema.columns
+    where table_schema = 'public' and table_name = 'topics' and column_name = 'search_text'),
+  'ALWAYS',
+  'search_text is generated, so it cannot be written directly'
+);
 
 select col_type_is('public'::name, 'topics'::name, 'id'::name, 'uuid'::text);
 select col_type_is('public'::name, 'topics'::name, 'user_id'::name, 'uuid'::text);

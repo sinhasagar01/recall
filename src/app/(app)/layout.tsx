@@ -2,9 +2,8 @@ import Link from 'next/link'
 import { DeleteAccount } from '@/components/topics/delete-account'
 import { Kbd } from '@/components/ui/kbd'
 import { Wordmark } from '@/components/ui/wordmark'
-import { listTopics } from '@/lib/data/topics'
-import { needsReview } from '@/lib/domain/library'
-import { noShuffle, selectPracticeSession } from '@/lib/domain/practice-selection'
+import { railCounts } from '@/lib/data/library'
+import { practiceQueueSize } from '@/lib/domain/practice-selection'
 import { createClient } from '@/lib/supabase/server'
 import { signOut } from '../(auth)/actions'
 
@@ -27,10 +26,14 @@ export default async function AppLayout({ children }: LayoutProps<'/'>) {
     verified. This is display, not authorization: the proxy did the authorizing.
   */
   const supabase = await createClient()
-  const [{ data }, { topics }] = await Promise.all([supabase.auth.getClaims(), listTopics()])
+  const [{ data }, counts] = await Promise.all([supabase.auth.getClaims(), railCounts()])
 
-  const queued = selectPracticeSession(topics, { shuffle: noShuffle }).length
-  const review = topics.filter(needsReview).length
+  /*
+    Three counts rather than the whole library. This runs on every page in the
+    group, so reading every topic here made paginating the library page pointless
+    — the rail would have loaded what the page no longer did.
+  */
+  const queued = practiceQueueSize(counts.total)
 
   const navItem = 'flex items-center justify-between gap-2 rounded-md px-2.5 py-2 text-option text-ink-2'
 
@@ -44,7 +47,7 @@ export default async function AppLayout({ children }: LayoutProps<'/'>) {
         <nav className="flex flex-col gap-0.5">
           <span className={`${navItem} bg-surface text-ink`} aria-current="page">
             <span>Library</span>
-            <span className="font-mono text-mono-sm text-ink-3">{topics.length}</span>
+            <span className="font-mono text-mono-sm text-ink-3">{counts.total}</span>
           </span>
           <Link href="/practice" className={`${navItem} hover:bg-surface hover:text-ink`}>
             <span>Practice</span>
@@ -52,7 +55,7 @@ export default async function AppLayout({ children }: LayoutProps<'/'>) {
           </Link>
           <Link href="/weak" className={`${navItem} hover:bg-surface hover:text-ink`}>
             <span>Weak topics</span>
-            <span className="font-mono text-mono-sm text-flag">{review}</span>
+            <span className="font-mono text-mono-sm text-flag">{counts.needsReview}</span>
           </Link>
         </nav>
 
@@ -81,7 +84,7 @@ export default async function AppLayout({ children }: LayoutProps<'/'>) {
             </button>
           </form>
           {/* Irreversible, so it sits apart from Sign out and reads quieter. */}
-          <DeleteAccount topics={topics} />
+          <DeleteAccount topics={counts.total} images={counts.withImages} />
         </div>
       </aside>
 
@@ -92,7 +95,7 @@ export default async function AppLayout({ children }: LayoutProps<'/'>) {
 
       {/*
         The tab bar replaces the rail below --breakpoint-md. Two destinations plus
-        the FAB: Weak topics is a filter chip on Library, per DESIGN.md section 4.8,
+        the FAB: Weak topics is a filter chip on Library, per DESIGN.md section 4.9,
         not a third tab. /practice sits in its own route group, so it never renders
         this at all — that screen is meant to have nothing to glance at.
       */}

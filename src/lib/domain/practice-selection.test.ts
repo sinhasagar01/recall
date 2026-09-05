@@ -7,6 +7,7 @@ import {
   noShuffle,
   orderForPractice,
   seededShuffle,
+  practiceQueueSize,
   selectPracticeSession,
 } from '@/lib/domain/practice-selection'
 import { makeTopic } from '@/lib/domain/topic-fixture'
@@ -290,5 +291,36 @@ describe('orderForPractice', () => {
   it('noShuffle leaves ties exactly as they came', () => {
     const tied = [topic('a'), topic('b'), topic('c')]
     expect(titles(orderForPractice(tied, { shuffle: noShuffle }))).toEqual(['a', 'b', 'c'])
+  })
+})
+
+/*
+  The rail shows "N queued" on every page. It used to read the whole library and
+  call selectPracticeSession just to take the length of the result; it now counts
+  rows and calls practiceQueueSize. That shortcut is only valid while the length
+  of a session depends on nothing but how many topics exist — so that is asserted
+  directly, rather than assumed from reading the implementation.
+*/
+describe('practiceQueueSize', () => {
+  const confidences = ['new', 'weak', 'okay', 'strong'] as const
+
+  it.each([0, 1, 2, 3, 9, 10, 11, 47, 500])(
+    'equals the length of a real session for %i topics',
+    (count) => {
+      const topics = Array.from({ length: count }, (_, index) =>
+        topic(`Topic ${index}`, {
+          confidence: confidences[index % confidences.length],
+          last_practiced_at: index % 3 === 0 ? null : new Date(index * 86_400_000).toISOString(),
+        }),
+      )
+
+      expect(practiceQueueSize(topics.length)).toBe(
+        selectPracticeSession(topics, { shuffle: noShuffle }).length,
+      )
+    },
+  )
+
+  it('never exceeds one session', () => {
+    expect(practiceQueueSize(10_000)).toBe(PRACTICE_SESSION_SIZE)
   })
 })

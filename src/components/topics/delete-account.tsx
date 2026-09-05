@@ -4,15 +4,14 @@ import { useState, useTransition } from 'react'
 import { deleteAccount } from '@/app/(auth)/actions'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
-import { accountDeletionSummary } from '@/lib/domain/account'
-import type { Topic } from '@/lib/domain/types'
+import { accountDeletionSummaryFromCounts } from '@/lib/domain/account'
 
 /**
  * Deleting an account is irreversible and reaches storage the database cannot,
  * so the confirmation names what actually dies — counted from the real library,
  * not from fixed copy.
  */
-export function DeleteAccount({ topics }: { topics: Topic[] }) {
+export function DeleteAccount({ topics, images }: { topics: number; images: number }) {
   const [confirming, setConfirming] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isDeleting, startDeleting] = useTransition()
@@ -63,7 +62,7 @@ export function DeleteAccount({ topics }: { topics: Topic[] }) {
           </>
         }
       >
-        {accountDeletionSummary(topics)}
+        {accountDeletionSummaryFromCounts(topics, images)}
       </Modal>
     </>
   )

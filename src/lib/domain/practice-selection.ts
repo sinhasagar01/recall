@@ -99,6 +99,22 @@ export function orderForPractice(topics: Topic[], { shuffle }: { shuffle: Shuffl
 }
 
 /** One session's worth of the practice order. */
+/**
+ * How many topics a session would hold, from the library size alone.
+ *
+ * The rail shows "N queued" on every page and used to get it by reading every
+ * topic and calling selectPracticeSession. But that function orders the whole
+ * library and takes the first PRACTICE_SESSION_SIZE, so its LENGTH never depended
+ * on the ordering — only on how many topics exist. Counting rows is enough, and
+ * none of the bucket ordering or shuffling has to exist in SQL.
+ *
+ * practice-selection.test.ts asserts this equals selectPracticeSession(...).length
+ * for arbitrary libraries, so the shortcut cannot quietly stop being one.
+ */
+export function practiceQueueSize(total: number): number {
+  return Math.min(total, PRACTICE_SESSION_SIZE)
+}
+
 export function selectPracticeSession(topics: Topic[], { shuffle }: { shuffle: Shuffle }): Topic[] {
   return orderForPractice(topics, { shuffle }).slice(0, PRACTICE_SESSION_SIZE)
 }

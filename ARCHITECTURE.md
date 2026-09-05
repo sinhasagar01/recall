@@ -395,8 +395,13 @@ reads "All categories 48".
 
 Written with `window.history.replaceState`, the documented Next pattern that updates
 the URL without reloading the page while staying in sync with `useSearchParams`. So a
-filtered view is shareable and survives a reload, at no server round-trip and with no
-history entry per keystroke.
+filtered view is shareable and survives a reload, with no history entry per keystroke.
+
+**Whether that costs a round trip now depends on the size of the library** — see
+"Two ways to read the library" below. Under the threshold it does not, exactly as
+before. Past it, the URL is still written immediately (which is what keeps the search
+input responsive, since it is controlled by the URL) and a navigation is scheduled
+once typing settles.
 
 `replaceState` for every control, not only the input: the toolbar is one continuous
 act of narrowing, and stepping back through half-typed queries and intermediate filter
@@ -835,3 +840,106 @@ through it — it just is not reachable from a test.
 running Playwright straight afterwards silently exercises stale output, and the failure
 looks like a broken fix rather than a stale one. Build first, or go through `npm run
 verify`.
+
+## Two ways to read the library
+
+`listTopics` used to read every topic the user owned, and `filterTopics` narrowed the
+result in the browser. That is fine at a few hundred topics and unusable at twenty
+thousand — issue #4, and not hypothetical: the e2e fixture user reached 288 topics
+during the build and the library got slow enough to blow a 15s test timeout.
+
+`src/lib/data/library.ts` now picks between two modes:
+
+- **local** — the whole library, filtered and counted in the browser by the domain
+  functions. Identical to the old behaviour, including instant round-trip-free search.
+- **server** — one keyset page and a counts object, both from SQL.
+
+The choice is made by size alone. An unfiltered first read asks for `LOCAL_MODE_MAX + 1`
+rows; getting fewer back proves the whole library is in hand.
+
+### Why the modes cannot be mixed
+
+Phase 7 established that a toolbar count and the list it describes come from the same
+`filterTopics` call, so a filter reading 12 cannot yield 11 rows. A hybrid is precisely
+where that guarantee would be lost — a locally filtered list beside a SQL-derived count.
+
+So `LibraryData` is a discriminated union where `local` carries no counts and `server`
+carries no unfiltered array. Neither shape contains both halves, so pairing rows from
+one mode with counts from the other is a **compile error**, not a rule to remember. In
+the component the two are chosen in a single expression with one branch.
+
+### SQL replaces counting, and nothing else
+
+`categoryOptions` orders by count and breaks ties with `localeCompare`, which a database
+collation will not reproduce. So `library_counts` returns raw integers and the
+`*FromCounts` functions in `src/lib/domain/library.ts` do all sorting and labelling.
+Both modes run that same code; only the counting differs. It keeps the surface SQL has
+to agree about as small as it can be.
+
+The rail is the same idea taken further. Its "N queued" is
+`min(total, PRACTICE_SESSION_SIZE)`, because `selectPracticeSession` orders the whole
+library and takes the first N — so the *length* never depended on the ordering. Counting
+rows is enough, and none of the bucket ordering or shuffling exists in SQL.
+`practiceQueueSize` is asserted equal to `selectPracticeSession(...).length` for
+arbitrary libraries.
+
+### The parity harness
+
+Two implementations of one specification is the arrangement that drifts, so neither is
+trusted. `src/lib/domain/__fixtures__/library-corpus.ts` holds one corpus and 53 filter
+combinations; the domain is run over it and the results are written into
+`supabase/tests/library_parity_test.sql` as literal expectations.
+
+- **pgTAP** asserts the two RPCs reproduce those rows and counts exactly.
+- **Vitest** asserts the committed file is still what the domain produces. Without this
+  half, changing a domain rule would leave SQL agreeing with a stale specification and
+  both layers green.
+
+Together: domain == committed expectations == SQL. Both halves were deliberately broken
+to confirm they fail — dropping tags from `topic_search_text` fails the pgTAP row *and*
+count assertions; changing `RECENT_WINDOW_DAYS` fails the Vitest one.
+
+The corpus exists to be hostile: NBSP, thin, ideographic and narrow spaces, line
+separator, vertical tab, form feed, zero-width space (whitespace to neither engine),
+Turkish dotted capital I, Greek final sigma, the sharp s, all three LIKE
+metacharacters, and a title whose end meets the next field's beginning so a needle
+spanning two fields must not match.
+
+### Matching in SQL, and what it depends on
+
+`matchesQuery` tests each field separately, so `topic_search_text` joins the normalised
+fields with a newline. Each field's own newlines are already collapsed to spaces by the
+normaliser, so the only newlines are separators, and a normalised needle can never
+contain one — which is what makes a cross-field match impossible.
+
+`normaliseText`'s counterpart is
+`lower(regexp_replace(btrim(coalesce(x,'')), '\s+', ' ', 'g'))`. The two were verified
+equal across all of the hostile cases above, on both the local stack and the hosted
+project: PostgreSQL 17.6, `en_US.UTF-8`, ICU provider, zero divergences out of 18.
+
+**That equality depends on the collation and locale provider matching.** If they ever
+diverge, local and server mode can disagree in production while every local test passes.
+Check `datcollate`, `datctype` and `datlocprovider` before moving to a different
+database.
+
+### `IMMUTABLE` on `topic_search_text` is a deliberate claim
+
+A `GENERATED ... STORED` column requires an immutable expression, and `array_to_string`
+and `concat_ws` are marked STABLE — Postgres rejects the column outright. The wrapper
+function declares itself `IMMUTABLE`, which is slightly stronger than Postgres's own
+labelling: those functions are STABLE only because output functions for arbitrary
+element types may not be immutable, and for `text[]` the result is deterministic.
+
+### A trigram index needs three characters
+
+`search_text` carries a GIN `gin_trgm_ops` index, which the planner uses for
+`LIKE '%needle%'` once the table is big enough — at 50,000 rows it chose the index
+unprompted and returned in 2ms. A needle of one or two characters produces no trigram
+and falls back to a scan, bounded by one user's rows under RLS. That is a real limit,
+not a bug to be surprised by later.
+
+### What still reads the whole library
+
+`listTopics` is unchanged and still unbounded. The weak, practice and topic-detail pages
+use it. Each needs a different purpose-built query, and they were deliberately left out
+of #4 rather than folded in — tracked separately.

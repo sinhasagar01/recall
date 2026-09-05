@@ -13,12 +13,12 @@ import type { BrowserContext, Page } from '@playwright/test'
  * random — flaky-looking, but entirely deterministic once you know the cause.
  *
  * So each fixture user signs in ONCE in global setup and the cookies are replayed
- * here. Four sign-ins a run instead of fifty-seven.
+ * here. Five sign-ins a run instead of fifty-seven.
  *
  * auth.spec.ts and journey.spec.ts still sign in through the form, because signing
  * in is the thing they are testing.
  */
-export type Fixture = 'main' | 'empty' | 'few' | 'strong'
+export type Fixture = 'main' | 'empty' | 'few' | 'strong' | 'large'
 
 export const CREDENTIALS: Record<Fixture, { email: string; password: string }> = {
   main: { email: process.env.E2E_USER_EMAIL!, password: process.env.E2E_USER_PASSWORD! },
@@ -30,6 +30,11 @@ export const CREDENTIALS: Record<Fixture, { email: string; password: string }> =
   strong: {
     email: process.env.E2E_STRONG_USER_EMAIL!,
     password: process.env.E2E_STRONG_USER_PASSWORD!,
+  },
+  /* Just over LOCAL_MODE_MAX, so its library is read through SQL. */
+  large: {
+    email: process.env.E2E_LARGE_USER_EMAIL!,
+    password: process.env.E2E_LARGE_USER_PASSWORD!,
   },
 }
 

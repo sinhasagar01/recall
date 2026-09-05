@@ -46,8 +46,17 @@ export interface TopicsRead {
 }
 
 /*
-  cache() dedupes within a single request, so the rail and the page share one
-  query and one readAt instead of issuing the same select twice.
+  cache() dedupes within a single request, so callers within one request share a
+  single query and one readAt instead of issuing the same select twice.
+
+  ── This is the remaining unbounded read ────────────────────────────────────
+  It loads every topic the user owns. The library page and the rail no longer use
+  it (see src/lib/data/library.ts); the weak, practice and topic-detail pages
+  still do. Each needs a different purpose-built query and they are tracked
+  separately — see the follow-up to issue #4.
+
+  The column list is explicit rather than `*` so the generated `search_text`
+  column, which exists only for the trigram index, is never sent to the client.
 */
 export const listTopics = cache(async (): Promise<TopicsRead> => {
   const supabase = await createClient()
@@ -56,7 +65,9 @@ export const listTopics = cache(async (): Promise<TopicsRead> => {
   // purpose, because one would imply the policy might not be doing its job.
   const { data, error } = await supabase
     .from('topics')
-    .select('*')
+    .select(
+      'id, user_id, title, definition, mental_model, mental_model_image_path, category, tags, difficulty, confidence, practice_count, last_practiced_at, created_at, updated_at',
+    )
     .order('created_at', { ascending: false })
 
   if (error) fail('Loading your topics', error)
