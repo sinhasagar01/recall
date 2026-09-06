@@ -13,8 +13,11 @@ import { signInAs } from './auth-state'
 test('N opens the add sheet, from the library and from elsewhere', async ({ page }) => {
   await signInAs(page, 'main')
 
-  await page.keyboard.press('n')
-  await expect(page.getByRole('dialog')).toBeVisible()
+  // Retried, for the hydration reason spelled out in the slash test below.
+  await expect(async () => {
+    await page.keyboard.press('n')
+    await expect(page.getByRole('dialog')).toBeVisible({ timeout: 500 })
+  }).toPass()
   await page.keyboard.press('Escape')
   await expect(page.getByRole('dialog')).toHaveCount(0)
 
@@ -55,8 +58,17 @@ test('slash focuses search, and brings you to it from another page', async ({ pa
 test('P starts practice', async ({ page }) => {
   await signInAs(page, 'main')
 
-  await page.keyboard.press('p')
-  await expect(page).toHaveURL(/\/practice/)
+  /*
+    Retried, like the slash test. Pressing once passed for months and then started
+    failing about one full-suite run in three when the quiz specs were added — not
+    because anything about P changed, but because more tests running alongside it
+    made hydration lose a race it had always been in. A single press asserts that
+    the page happened to be interactive, which is not what this test is about.
+  */
+  await expect(async () => {
+    await page.keyboard.press('p')
+    await expect(page).toHaveURL(/\/practice/, { timeout: 1000 })
+  }).toPass()
 })
 
 test('the shortcuts are inert while typing', async ({ page }) => {

@@ -49,12 +49,35 @@ export function Definition({ children }: { children: React.ReactNode }) {
   )
 }
 
-export function MentalModel({ children }: { children: React.ReactNode }) {
+/**
+ * The indigo register — one field, one voice, both shapes.
+ *
+ * `label` exists because a quiz's `mental_model` is captured as **Why**, and an
+ * eyebrow reading "Mental model" over a quiz explanation would name a field the
+ * person never filled in. `null` drops the eyebrow entirely, which is what the
+ * quiz reference draws on the practice screen: there the explanation sits
+ * directly under the marked options and a heading would only separate them.
+ *
+ * The panel itself never changes. That is the point of sharing the field.
+ */
+export function MentalModel({
+  children,
+  label = 'Mental model',
+}: {
+  children: React.ReactNode
+  label?: string | null
+}) {
+  const panel = (
+    <p className="max-w-[66ch] rounded-r-md border-l-2 border-accent bg-accent-soft px-5 py-4 font-display text-model leading-[1.68] text-accent-ink">
+      {children}
+    </p>
+  )
+
+  if (label === null) return <div className="mt-[18px] mb-[26px]">{panel}</div>
+
   return (
-    <RegisterSection title="Mental model" tone="accent">
-      <p className="mt-2.5 max-w-[66ch] rounded-r-md border-l-2 border-accent bg-accent-soft px-5 py-4 font-display text-model leading-[1.68] text-accent-ink">
-        {children}
-      </p>
+    <RegisterSection title={label} tone="accent">
+      <div className="mt-2.5">{panel}</div>
     </RegisterSection>
   )
 }

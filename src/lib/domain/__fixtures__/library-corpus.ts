@@ -1,5 +1,5 @@
 import type { QuickFilter, TopicFilters } from '@/lib/domain/search-filter'
-import type { Confidence, Difficulty, Topic } from '@/lib/domain/types'
+import type { Confidence, Difficulty, Quiz, Topic, TopicRecord } from '@/lib/domain/types'
 
 /**
  * The shared corpus behind the local/server parity harness.
@@ -23,6 +23,8 @@ import type { Confidence, Difficulty, Topic } from '@/lib/domain/types'
  *   * null category and mental_model, and empty tags
  *   * timestamps exactly on the recency boundary, on both sides of it
  *   * two rows sharing a created_at, so the keyset cursor's id tiebreak is exercised
+ *   * quizzes — a null definition, options carrying the query needle, and the
+ *     search-only-in-options case a topic cannot produce
  */
 export const CORPUS_USER_ID = '00000000-0000-0000-0000-0000000000aa'
 
@@ -39,15 +41,48 @@ function ago(days: number, ms = 0): string {
 
 let seq = 0
 
-function topic(overrides: Partial<Topic> & Pick<Topic, 'title' | 'definition'>): Topic {
+function nextId(): string {
   seq += 1
-  const id = `00000000-0000-4000-8000-${String(seq).padStart(12, '0')}`
+  return `00000000-0000-4000-8000-${String(seq).padStart(12, '0')}`
+}
+
+function topic(
+  overrides: Partial<TopicRecord> & Pick<TopicRecord, 'title' | 'definition'>,
+): TopicRecord {
+  const id = nextId()
 
   return {
+    kind: 'topic',
+    options: null,
+    correct_option: null,
     id,
     user_id: CORPUS_USER_ID,
     mental_model: null,
     mental_model_image_path: null,
+    category: null,
+    tags: [],
+    difficulty: 'medium',
+    confidence: 'okay',
+    practice_count: 0,
+    last_practiced_at: null,
+    created_at: ago(30 + seq),
+    updated_at: ago(30 + seq),
+    ...overrides,
+  }
+}
+
+function quiz(
+  overrides: Partial<Quiz> & Pick<Quiz, 'title' | 'options' | 'correct_option'>,
+): Quiz {
+  const id = nextId()
+
+  return {
+    kind: 'quiz',
+    definition: null,
+    mental_model_image_path: null,
+    id,
+    user_id: CORPUS_USER_ID,
+    mental_model: null,
     category: null,
     tags: [],
     difficulty: 'medium',
@@ -178,6 +213,40 @@ export const CORPUS: Topic[] = [
   // ── a shared created_at, so the keyset cursor needs its id tiebreak ──────
   topic({ title: 'Tie one', definition: 'Same created_at as the next row.', created_at: ago(3) }),
   topic({ title: 'Tie two', definition: 'Same created_at as the previous row.', created_at: ago(3) }),
+
+  // ── quizzes ──────────────────────────────────────────────────────────────
+  quiz({
+    title: 'Does a transform create a stacking context?',
+    options: ['Yes, any transform other than none', 'No, only position with z-index'],
+    correct_option: 0,
+    mental_model: 'A z-index that should work stops working once a parent is transformed.',
+    category: 'CSS',
+    tags: ['layout'],
+    confidence: 'new',
+  }),
+  quiz({
+    /*
+      The needle is ONLY in an option — not in the title, the explanation, the
+      category or the tags. A search implementation that forgot options would
+      return this row for nothing, and no topic in the corpus can produce that
+      case because a topic has no options at all.
+    */
+    title: 'Which of these is not a hook rule?',
+    options: ['Call them at the top level', 'Call them from a plain function', 'Call them from a component'],
+    correct_option: 1,
+    mental_model: 'The linter enforces it; the reason is the call order the renderer relies on.',
+    confidence: 'weak',
+    practice_count: 2,
+    last_practiced_at: ago(4),
+  }),
+  quiz({
+    // A quiz with no explanation, no category and no tags — the sparse shape.
+    title: 'Sparse quiz',
+    options: ['a', 'b'],
+    correct_option: 1,
+    difficulty: 'hard',
+    confidence: 'strong',
+  }),
 ]
 
 /**
@@ -276,4 +345,14 @@ export const COMBINATIONS: Combination[] = [
     },
   },
   { name: 'composition matching nothing', filters: { query: 'grid', category: 'Systems' } },
+
+  // The type chips, and the search cases only a quiz can produce.
+  { name: 'kind topic', filters: { kind: 'topic' } },
+  { name: 'kind quiz', filters: { kind: 'quiz' } },
+  { name: 'query matches only an option', filters: { query: 'plain function' } },
+  { name: 'query matches a question', filters: { query: 'stacking context' } },
+  { name: 'query matches a quiz explanation', filters: { query: 'call order the renderer' } },
+  { name: 'kind and confidence', filters: { kind: 'quiz', confidence: 'weak' } },
+  { name: 'kind and query', filters: { kind: 'quiz', query: 'hook rule' } },
+  { name: 'kind quiz excludes a matching topic', filters: { kind: 'quiz', query: 'grid' } },
 ]

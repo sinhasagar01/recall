@@ -410,7 +410,7 @@ has been corrected. All 20 are built.
 | 13 | delete | yes | Copy derived, not literal — see below |
 | 14 | practice-q | yes | |
 | 15 | practice-a | yes | |
-| 16 | practice-done | yes | Minus "Review the N you missed" (DESIGN.md §7) |
+| 16 | practice-done | yes | Minus "Review the N you missed" (DESIGN.md, "Out of scope") |
 | 17 | practice-thin | yes | With the override |
 | 18 | weak | yes | |
 | 19 | weak-empty | yes | |
@@ -425,16 +425,19 @@ has been corrected. All 20 are built.
 | The lightbox's Esc chip is a real button | The mock shows a hint. A hint is not an affordance — pointer users had nothing to click and the control had no accessible name |
 | The upload bar is indeterminate | `storage-js` `upload()` exposes no progress callback. A percentage would be invented |
 | The topic card is a link, not a button | It navigates. A link gets middle-click, open-in-new-tab and the browser's own affordances free |
-| No search-term highlighting | DESIGN.md §7 defers it, and it is not free — it needs a match-splitting function and its own tests |
+| No search-term highlighting | DESIGN.md, "Out of scope", defers it, and it is not free — it needs a match-splitting function and its own tests |
 
 ### Deliberately not built
 
-- From DESIGN.md §7: search-term highlighting, "Review the N you missed", undo on the
+- From DESIGN.md "Out of scope": search-term highlighting, "Review the N you missed", undo on the
   edit toast, per-option counts in the difficulty select.
 - No password reset, OAuth or profile management — the brief said email and password only.
 - No spaced repetition, scoring, streaks, charts or analytics.
 - One image per topic; no cropping, editing or annotation.
 - No `quiz_attempts`, `practice_sessions`, `categories` or analytics tables. One table.
+  Still true after quizzes shipped: a quiz is a row in `topics`, and it keeps no history,
+  score, streak or timer of its own. Its record is the same `confidence`,
+  `practice_count` and `last_practiced_at` a topic keeps.
 
 ### The `jwt_expiry` check, performed
 
@@ -488,7 +491,7 @@ it is that it describes the twelve phases as they happened.
 ## Phase 12 — mobile navigation
 
 - [x] Bottom tab bar below 860px: Library and Practice, plus the centre FAB
-- [x] Weak topics is a filter chip on Library, not a third tab (DESIGN.md §4.8)
+- [x] Weak topics is a filter chip on Library, not a third tab (DESIGN.md, "Behaviour the mock encodes")
 - [x] The three Selects collapse behind one `Filters` chip, into the existing Sheet
 - [x] Add Topic is full-bleed on mobile, a side sheet from `md` up
 - [x] Practice hides the tab bar — it is in its own route group, so it never had one
@@ -604,3 +607,91 @@ about.
 | [#7](https://github.com/sinhasagar01/recall/issues/7) | Subscriptions, Stripe webhook, quota enforcement. Only when there is something to bill for |
 
 #13 closed with the settled-but-quiet list; #15 closes with export.
+
+---
+
+## Phase 13 — quizzes as a second content type
+
+A question with 2+ options, one correct, and an explanation. Hand-written; **no AI
+anywhere**. Specified by `quiz-reference.html`, which supersedes any earlier quiz mock and
+is read under the precedence rule recorded in DESIGN.md, "How `quiz-reference.html` is
+read".
+
+**One table, two shapes.** `kind text not null default 'topic'`, `options text[]`,
+`correct_option int`, and `definition` loses its NOT NULL — the guarantee moves into a
+kind-aware CHECK beside the others rather than weakening. `topics_shape_is_consistent`
+holds the whole coupling in both directions: a quiz needs 2+ options and an index into
+them and must have no definition and no image; a topic needs a definition and neither of
+the other two.
+
+### The constraints were written before the migration, and shown red
+
+`supabase/tests/quiz_shape_test.sql` — 29 assertions, run against the un-migrated schema
+first. Invalid indices in both directions and at the boundary, both directions of the
+kind/options coupling, and the coupling surviving an UPDATE rather than only an INSERT.
+
+The first version of the CHECK **accepted an options-less quiz**, because
+`array_length(array[]::text[], 1)` is NULL, not 0, and one NULL conjunct makes the whole
+CASE branch NULL — which a CHECK passes. The migration comment had explicitly claimed the
+opposite. Written up as ARCHITECTURE.md, "The rule: a CHECK must be proven to reject, not
+proven to accept".
+
+### The union was not the map it was claimed to be
+
+`Topic = TopicRecord | Quiz` was expected to turn every place assuming one shape into a
+compile error. Of nine `.definition` reads, `tsc` flagged **two** — the ones that consume
+it as a `string`. The three that merely render it stayed silent, because `definition` is
+`string | null` on the union and JSX renders null as nothing. A quiz card would have shown
+an **empty** excerpt where the reference specifies none.
+
+Those three are held by three Playwright **absence** assertions, written red before the
+narrowing. ARCHITECTURE.md, "A discriminated union only catches reads it makes
+type-incompatible".
+
+### The two-option case first, and what only three options can prove
+
+Built and verified before the three-option one, because it is the shape with no quiet
+third: both options are marked and the muting rule has nothing to apply to, so an
+implementation that painted every non-answer red would look completely correct there.
+
+Proven by perturbation. With the state rule broken to `isAnswer ? 'correct' : 'wrong'`,
+all four two-option tests pass and the three-option test fails. A second perturbation
+painting `muted` in `--flag` fails the computed-colour assertion, so the `data-state`
+attribute cannot drift away from what is actually painted.
+
+### Two assertions that were measuring the fixture, not the feature
+
+A weak-page membership assertion that was passing on ordering luck (60-row page, 275 rows
+needing review), and a write-completion assertion reading optimistic copy that renders
+before the response. Both recorded as ARCHITECTURE.md, "An assertion about a row in a
+paged, ordered list is not an assertion about the row".
+
+Adding the quiz specs also made `shortcuts.spec.ts › P starts practice` start failing
+about one full-suite run in three — not a regression in P, but a hydration race it had
+always been in and had always won. Confirmed by rebuilding the tree without the quiz work
+and running the suite clean three times. It now retries the way its sibling slash test
+already did.
+
+### Three latent defects this phase exposed
+
+None was introduced by quizzes; each was a rule that had never been asked the question.
+
+- **The focus trap treated hidden inputs as focusable.** `input:not([disabled])` matches
+  `type="hidden"`, and `.focus()` on one silently does nothing. The sheet had carried
+  hidden inputs for tags and category since phase 3, but always *below* the field the trap
+  picked. The type toggle put one above, and the caret landed nowhere — a topic could no
+  longer be added without a mouse. Radios and checkboxes are now skipped as "first field"
+  too: a mode toggle is a setting, not the thing a dialog is there to be filled in with.
+- **`Number('')` is `0`.** An unmarked answer arrives at the action as an empty string, so
+  a coerced parse would have marked the first option correct and saved happily. Caught by
+  a domain test feeding the parser a shape a form cannot produce; the index is now read
+  from digits.
+- **A `kind`-only filter took the unfiltered read path.** `hasFilters` did not know about
+  it, so the chips looked inert on a server-mode library — and the server page never read
+  `kind` from the URL at all. Both found by driving the chips rather than by reading them.
+
+### Not built, deliberately
+
+No quiz history, scores, streaks, analytics or timers. No images on a quiz — enforced by
+the CHECK, not only by the form. No type chips on the weak page; see DESIGN.md for why
+that is a not-yet rather than a never.

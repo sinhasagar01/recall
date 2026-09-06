@@ -16,7 +16,7 @@ async function signIn(page: Page, email: string) {
 async function addTopic(page: Page, title: string): Promise<string> {
   await page.goto('/library')
   await page.getByRole('button', { name: /Add (topic|your first topic)/ }).first().click()
-  await page.getByLabel('Topic', { exact: true }).fill(title)
+  await page.getByRole('textbox', { name: 'Topic', exact: true }).fill(title)
   await page.getByLabel('Definition').fill('A definition for the weak list.')
   await page.getByRole('button', { name: 'Save topic' }).click()
   await expect(page.getByRole('dialog', { name: 'Add topic' })).not.toBeVisible()

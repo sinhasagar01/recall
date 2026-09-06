@@ -7,7 +7,7 @@ import { STALE_WINDOW_DAYS } from '@/lib/domain/confidence'
 import { REVIEW_CONFIDENCES, SETTLED_CONFIDENCES } from '@/lib/domain/library-counts'
 import { SERVER_PAGE_SIZE } from '@/lib/domain/library-paging'
 import { BUCKET_SEQUENCE, PRACTICE_SESSION_SIZE } from '@/lib/domain/practice-selection'
-import type { Confidence, Topic } from '@/lib/domain/types'
+import type { Confidence, Kind, Topic } from '@/lib/domain/types'
 import { createClient } from '@/lib/supabase/server'
 
 /**
@@ -145,19 +145,27 @@ export const weakPage = cache(async (cursor: WeakCursor | null = null): Promise<
  *
  * `weakOnly` is the `?scope=weak` entry point, which now takes the same
  * PRACTICE_SESSION_SIZE cap as every other session.
+ *
+ * `kinds` is `?scope=quiz`. Left undefined the query returns both shapes, which
+ * is what the default session is meant to do — see DESIGN.md: a quiz that could
+ * not appear in the default session would be a permanent leak wearing
+ * separation's clothes.
  */
 export async function practiceQueue({
   seed,
   weakOnly = false,
+  kinds,
 }: {
   seed: string
   weakOnly?: boolean
+  kinds?: Kind[]
 }): Promise<Topic[]> {
   const supabase = await createClient()
 
   const { data, error } = await supabase.rpc('practice_ordered_page', {
     p_bucket_order: BUCKETS,
     p_confidences: weakOnly ? REVIEW : undefined,
+    p_kinds: kinds,
     p_seed: seed,
     p_limit: PRACTICE_SESSION_SIZE,
   })

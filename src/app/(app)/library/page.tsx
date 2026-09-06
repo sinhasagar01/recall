@@ -1,7 +1,7 @@
 import { LibraryView } from '@/components/topics/library-view'
 import { listLibrary, railCounts } from '@/lib/data/library'
 import type { QuickFilter, TopicFilters } from '@/lib/domain/search-filter'
-import type { Confidence, Difficulty } from '@/lib/domain/types'
+import type { Confidence, Difficulty, Kind } from '@/lib/domain/types'
 
 /*
   A server component: the first paint carries the data, with no client waterfall
@@ -44,6 +44,9 @@ function readFilters(params: Record<string, string | string[] | undefined>): Top
     category: one('category') ?? null,
     confidence: oneOf(['new', 'weak', 'okay', 'strong'] as const, one('confidence')) as Confidence | null,
     difficulty: oneOf(['easy', 'medium', 'hard'] as const, one('difficulty')) as Difficulty | null,
+    // Through `oneOf` like the others, so `?kind=anything` is All rather than an
+    // error or a filter that matches nothing.
+    kind: oneOf(['topic', 'quiz'] as const, one('kind')) as Kind | null,
     quickFilters: QUICK_FILTERS.filter((value) => requested.includes(value)),
   }
 }

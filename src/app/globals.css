@@ -38,6 +38,15 @@
   --color-flag-soft: #fbebf1;
 
   /*
+    The only green in the product, and it exists for exactly one thing: the correct
+    option after a quiz is checked. Confidence "strong" is accent, not green — a
+    quiz answer is right or wrong in a way a self-assessed grade is not, and that
+    difference is what the colour marks. From quiz-reference.html.
+  */
+  --color-ok: #1b6b4f;
+  --color-ok-soft: #e6f2ec;
+
+  /*
     DESIGN.md names these --radius / --radius-lg / --radius-sm. Tailwind v4 has no
     bare `--radius` namespace, so the 6px default is --radius-md (`rounded-md`).
     Recorded in DESIGN.md.

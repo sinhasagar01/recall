@@ -78,8 +78,10 @@ select columns_are('public'::name, 'topics'::name, ARRAY[
   'id', 'user_id', 'title', 'definition', 'mental_model',
   'mental_model_image_path', 'category', 'tags', 'difficulty', 'confidence',
   'practice_count', 'last_practiced_at', 'created_at', 'updated_at',
-  'search_text'
-]::name[], 'topics has exactly the columns in the brief, plus the derived search_text');
+  'search_text',
+  -- The quiz shape. See supabase/tests/quiz_shape_test.sql for what couples them.
+  'kind', 'options', 'correct_option'
+]::name[], 'topics has exactly the columns in the brief, plus search_text and the quiz shape');
 
 select is(
   (select is_generated from information_schema.columns
@@ -108,7 +110,13 @@ select col_type_is('public'::name, 'topics'::name, 'updated_at'::name, 'timestam
 -- ===========================================================================
 select col_not_null('public'::name, 'topics'::name, 'user_id'::name);
 select col_not_null('public'::name, 'topics'::name, 'title'::name);
-select col_not_null('public'::name, 'topics'::name, 'definition'::name);
+/*
+  definition is nullable as of the quiz migration: a quiz has no definition, its
+  question is its title. The guarantee for TOPICS did not weaken — it moved into
+  topics_shape_is_consistent, which quiz_shape_test.sql exercises in both
+  directions. Asserted here so the move is visible from this file too.
+*/
+select col_is_null('public'::name, 'topics'::name, 'definition'::name);
 select col_not_null('public'::name, 'topics'::name, 'practice_count'::name);
 select col_not_null('public'::name, 'topics'::name, 'created_at'::name);
 select col_not_null('public'::name, 'topics'::name, 'updated_at'::name);

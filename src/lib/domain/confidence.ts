@@ -50,8 +50,15 @@ export const GRADE_TO_CONFIDENCE: Record<Grade, Confidence> = {
 /**
  * Skipping is a real outcome with a real meaning, not the absence of one, so it
  * is a variant rather than a missing branch.
+ *
+ * `answered` is a quiz: no grade, because the grade is not an opinion. It shares
+ * this type rather than getting its own update path so that `practice_count` and
+ * `last_practiced_at` cannot drift between the two shapes.
  */
-export type PracticeOutcome = { kind: 'graded'; grade: Grade } | { kind: 'skipped' }
+export type PracticeOutcome =
+  | { kind: 'graded'; grade: Grade }
+  | { kind: 'answered'; correct: boolean }
+  | { kind: 'skipped' }
 
 export interface TopicPracticeUpdate {
   confidence: Confidence
@@ -74,7 +81,8 @@ export function practiceUpdateFor(
   if (outcome.kind === 'skipped') return null
 
   return {
-    confidence: GRADE_TO_CONFIDENCE[outcome.grade],
+    confidence:
+      outcome.kind === 'graded' ? GRADE_TO_CONFIDENCE[outcome.grade] : gradeQuiz(outcome.correct),
     practice_count: topic.practice_count + 1,
     last_practiced_at: now.toISOString(),
   }
@@ -129,4 +137,19 @@ export function isStale(
   // Strictly greater: the boundary belongs to the settled side, mirroring
   // RECENT_WINDOW_DAYS where "recent" is `gap <= window`.
   return now.getTime() - parsed > STALE_WINDOW_MS
+}
+
+/**
+ * Grading a quiz.
+ *
+ * Deliberately NOT `GRADE_TO_CONFIDENCE`. That map is for self-assessment, where
+ * "partly" is a real and useful answer; a quiz is answered against a stored correct
+ * option and there is no partly about it. Reusing the three-way map is exactly what
+ * would make `'okay'` reachable for a quiz, so the two-outcome rule gets its own
+ * function and its own test.
+ *
+ * This is the one thing quizzes do better than topics: the grade is not an opinion.
+ */
+export function gradeQuiz(correct: boolean): Confidence {
+  return correct ? 'strong' : 'weak'
 }

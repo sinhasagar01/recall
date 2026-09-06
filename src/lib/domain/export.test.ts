@@ -4,10 +4,14 @@ import {
   imageEntryName,
   renderLibraryMarkdown,
 } from '@/lib/domain/export'
-import { makeTopic } from '@/lib/domain/topic-fixture'
+import { makeQuiz, makeTopic } from '@/lib/domain/topic-fixture'
 import type { Topic } from '@/lib/domain/types'
 
 const NOW = new Date('2026-09-05T18:40:00.000Z')
+
+const render = (topics: Topic[], missing: string[] = []) =>
+  renderLibraryMarkdown(topics, { exportedAt: NOW, missingPaths: new Set(missing) })
+
 
 describe('exportFilename', () => {
   it('carries the date, so two exports do not collide in a downloads folder', () => {
@@ -75,9 +79,6 @@ const noMentalModel: Topic = makeTopic({
 })
 
 describe('renderLibraryMarkdown', () => {
-  const render = (topics: Topic[], missing: string[] = []) =>
-    renderLibraryMarkdown(topics, { exportedAt: NOW, missingPaths: new Set(missing) })
-
   it('follows the detail page order: title, category and tags, definition, mental model, then practice', () => {
     const md = render([withImage])
     const at = (needle: string) => md.indexOf(needle)
@@ -135,5 +136,74 @@ describe('renderLibraryMarkdown', () => {
 
   it('says so plainly when the library is empty', () => {
     expect(render([])).toContain('No topics')
+  })
+})
+
+describe('a quiz in library.md', () => {
+  const quiz = makeQuiz({
+    title: 'What runs first — a promise or a timeout?',
+    options: [
+      'The promise — microtasks drain before the next macrotask',
+      'The timeout — a zero delay is always immediate',
+      "Depends on the browser's scheduler",
+    ],
+    correct_option: 0,
+    mental_model: 'The microtask queue empties completely between macrotasks.',
+    category: 'JavaScript',
+    tags: ['async', 'event-loop'],
+    confidence: 'weak',
+  })
+
+  it('renders the question as the heading and the options as a list', () => {
+    const out = render([quiz])
+
+    expect(out).toContain('# What runs first — a promise or a timeout?')
+    expect(out).toContain('## Options')
+    expect(out).toContain('1. The promise — microtasks drain before the next macrotask  ← the answer')
+    expect(out).toContain('2. The timeout — a zero delay is always immediate')
+    expect(out).toContain("3. Depends on the browser's scheduler")
+  })
+
+  it('marks exactly one answer, and marks the stored one', () => {
+    const out = render([makeQuiz({ options: ['a', 'b', 'c'], correct_option: 2 })])
+
+    expect(out.match(/← the answer/g)).toHaveLength(1)
+    expect(out).toContain('3. c  ← the answer')
+    expect(out).not.toContain('1. a  ← the answer')
+  })
+
+  it('keeps the stored order rather than a shuffled one', () => {
+    /*
+      The shuffle belongs to a practice session. If the export shuffled, two
+      exports of the same library would differ and neither would match the row.
+    */
+    const out = render([quiz])
+    const positions = ['The promise', 'The timeout', "Depends on"].map((text) => out.indexOf(text))
+    expect(positions).toEqual([...positions].sort((a, b) => a - b))
+  })
+
+  it('has no Definition section and no image section', () => {
+    const out = render([quiz])
+
+    expect(out).not.toContain('## Definition')
+    expect(out).not.toContain('## Visual')
+  })
+
+  it('names the explanation Why, not Mental model', () => {
+    const out = render([quiz])
+
+    expect(out).toContain('## Why')
+    expect(out).not.toContain('## Mental model')
+    expect(out).toContain('The microtask queue empties completely between macrotasks.')
+  })
+
+  it('carries the same practice line a topic does', () => {
+    expect(render([quiz])).toContain('Weak · never practiced · practiced 0 times')
+  })
+
+  it('counts both shapes at the top rather than calling everything a topic', () => {
+    expect(render([quiz])).toContain('1 quiz, exported')
+    expect(render([makeTopic({})])).toContain('1 topic, exported')
+    expect(render([makeTopic({}), makeTopic({}), quiz])).toContain('2 topics and 1 quiz, exported')
   })
 })

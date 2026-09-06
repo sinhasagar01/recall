@@ -38,7 +38,15 @@ async function downloadExport(page: Page) {
       exportedAt: string
       topicCount: number
       images: { exported: number; missing: string[] }
-      topics: { title: string; mental_model: string | null; mental_model_image_path: string | null }[]
+      topics: {
+        title: string
+        mental_model: string | null
+        mental_model_image_path: string | null
+        kind: 'topic' | 'quiz'
+        definition: string | null
+        options: string[] | null
+        correct_option: number | null
+      }[]
     },
     files,
   }
@@ -121,7 +129,7 @@ test('a topic with an image, one without, and one with no mental model all survi
   const add = async (title: string, mentalModel: string | null, file: boolean) => {
     await page.goto('/library')
     await page.getByRole('button', { name: /Add (topic|your first topic)/ }).first().click()
-    await page.getByLabel('Topic', { exact: true }).fill(title)
+    await page.getByRole('textbox', { name: 'Topic', exact: true }).fill(title)
     await page.getByLabel('Definition').fill('Exported.')
     if (mentalModel) await page.getByLabel(/Mental model/).fill(mentalModel)
     if (file) {
@@ -160,4 +168,44 @@ test('a topic with an image, one without, and one with no mental model all survi
   // The topic without one says nothing about an image at all.
   const section = markdown.slice(markdown.indexOf(`# ${withoutImage}`))
   expect(section.split('---')[0]).not.toContain('images/')
+})
+
+test('a quiz survives the export in both files', async ({ page }) => {
+  await signInAs(page, 'main')
+  const { markdown, json } = await downloadExport(page)
+
+  const TWO_OPTION = 'Does a transform on a parent create a stacking context?'
+
+  /*
+    library.json is the machine copy — every column, so the three that make a quiz
+    a quiz have to be there. A JSON export that dropped `correct_option` would look
+    complete and be unable to reconstruct the quiz.
+  */
+  const quiz = json.topics.find((topic) => topic.title === TWO_OPTION)
+  expect(quiz).toBeDefined()
+  expect(quiz).toMatchObject({
+    kind: 'quiz',
+    definition: null,
+    correct_option: 0,
+    options: ['Yes — any transform other than none', 'No — only position plus z-index'],
+  })
+
+  /*
+    library.md is the one that actually survives — readable with no tooling. So
+    the answer is marked in words rather than by an index the reader would have to
+    resolve against a list that renumbers when rendered.
+  */
+  expect(markdown).toContain(`# ${TWO_OPTION}`)
+  expect(markdown).toContain('## Options')
+  expect(markdown).toContain('1. Yes — any transform other than none  ← the answer')
+  expect(markdown).toContain('2. No — only position plus z-index')
+  expect(markdown).toContain('## Why')
+
+  /*
+    And the count at the top names both shapes rather than calling them all topics.
+    Deliberately not "2 quizzes": that number is the fixture's size, and another
+    spec authoring a quiz concurrently would fail this for a reason that has
+    nothing to do with the export.
+  */
+  expect(markdown).toMatch(/\d+ topics and \d+ quizzes, exported/)
 })

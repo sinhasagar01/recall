@@ -27,7 +27,7 @@ test('a topic saved with only a title and definition appears without a reload', 
   const title = uniqueTitle('Event loop')
 
   await openAddSheet(page)
-  await page.getByLabel('Topic', { exact: true }).fill(title)
+  await page.getByRole('textbox', { name: 'Topic', exact: true }).fill(title)
   await page.getByLabel('Definition').fill('Microtasks drain before the next macrotask.')
   await page.getByRole('button', { name: 'Save topic' }).click()
 
@@ -42,7 +42,7 @@ test('a topic with a mental model shows Model ✓ on its card', async ({ page })
   const title = uniqueTitle('Reconciliation')
 
   await openAddSheet(page)
-  await page.getByLabel('Topic', { exact: true }).fill(title)
+  await page.getByRole('textbox', { name: 'Topic', exact: true }).fill(title)
   await page.getByLabel('Definition').fill('Comparing the previous and next element tree.')
   await page.getByLabel(/Mental model/).fill('Like an editor diffing two drafts.')
   await page.getByRole('button', { name: 'Save topic' }).click()
@@ -57,7 +57,7 @@ test('a topic without a mental model does not show Model ✓', async ({ page }) 
   const title = uniqueTitle('No model')
 
   await openAddSheet(page)
-  await page.getByLabel('Topic', { exact: true }).fill(title)
+  await page.getByRole('textbox', { name: 'Topic', exact: true }).fill(title)
   await page.getByLabel('Definition').fill('A definition and nothing more.')
   await page.getByRole('button', { name: 'Save topic' }).click()
 
@@ -84,7 +84,7 @@ test('a save that fails surfaces the reason instead of failing silently', async 
     not this form would do. The server action must reject it and the sheet must
     say so.
   */
-  await page.getByLabel('Topic', { exact: true }).evaluate((el: HTMLInputElement) => el.removeAttribute('required'))
+  await page.getByRole('textbox', { name: 'Topic', exact: true }).evaluate((el: HTMLInputElement) => el.removeAttribute('required'))
   await page
     .getByLabel('Definition')
     .evaluate((el: HTMLTextAreaElement) => el.removeAttribute('required'))

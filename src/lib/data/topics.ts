@@ -21,13 +21,32 @@ import { createClient } from '@/lib/supabase/server'
  * default (`auth.uid()`), and the insert policy's with-check refuses anything
  * else. A client that sends one is a client trying to write someone else's row.
  */
-export interface NewTopic {
+interface NewShared {
   title: string
-  definition: string
   mental_model: string | null
   category: string | null
   tags: string[]
 }
+
+/**
+ * A union, like `Topic` itself, and for a sharper reason here.
+ *
+ * Every field of the other shape is written **explicitly null** rather than
+ * omitted. On an insert that is merely tidy; on an update it is the whole point —
+ * switching an existing topic to a quiz has to clear `definition`, and switching
+ * back has to clear `options` and `correct_option`, or `topics_shape_is_consistent`
+ * rejects the write. Omitting a field leaves the old value in place, so "omit what
+ * does not apply" would make the toggle work in the add sheet and fail in the edit
+ * sheet, which is the kind of difference nobody notices until it is in the way.
+ */
+export type NewTopic =
+  | (NewShared & { kind: 'topic'; definition: string; options: null; correct_option: null })
+  | (NewShared & {
+      kind: 'quiz'
+      definition: null
+      options: string[]
+      correct_option: number
+    })
 
 /** Supabase errors carry a code worth showing — the mock's error state shows one. */
 function fail(action: string, error: { code?: string; message: string }): never {
@@ -44,10 +63,30 @@ function fail(action: string, error: { code?: string; message: string }): never 
   select. Adding it back would give the next page an unbounded read to find.
 */
 
+/**
+ * Flattens the union into the row the client writes.
+ *
+ * Written out field by field rather than spread, because the point of the union is
+ * that **both shapes' columns are always sent** — a spread of a narrowed arm would
+ * type-check while omitting exactly the fields an update has to clear.
+ */
+function rowFor(input: NewTopic) {
+  return {
+    title: input.title,
+    mental_model: input.mental_model,
+    category: input.category,
+    tags: input.tags,
+    kind: input.kind,
+    definition: input.definition,
+    options: input.options,
+    correct_option: input.correct_option,
+  }
+}
+
 export async function insertTopic(input: NewTopic): Promise<Topic> {
   const supabase = await createClient()
 
-  const { data, error } = await supabase.from('topics').insert(input).select().single()
+  const { data, error } = await supabase.from('topics').insert(rowFor(input)).select().single()
 
   if (error) fail('Saving the topic', error)
 
@@ -90,7 +129,7 @@ export async function updateTopic(id: string, input: TopicEdit): Promise<Topic> 
 
   const { data, error } = await supabase
     .from('topics')
-    .update(input)
+    .update({ ...rowFor(input), difficulty: input.difficulty })
     .eq('id', id)
     .select()
     .single()

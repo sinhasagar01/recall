@@ -77,8 +77,19 @@ export function TopicDetail({
       </header>
 
       {/* The same two components the phase 8 practice reveal imports. */}
-      <Definition>{topic.definition}</Definition>
-      {topic.mental_model ? <MentalModel>{topic.mental_model}</MentalModel> : null}
+      {/*
+        A quiz has no definition — its question is the title above, and its options
+        belong to practice rather than to a reading view. Omitted rather than
+        rendered empty; e2e/quiz.spec.ts asserts the section is absent, because a
+        blank Definition register is invisible to the compiler and looks almost right.
+      */}
+      {topic.kind === 'topic' ? <Definition>{topic.definition}</Definition> : null}
+      {topic.mental_model ? (
+        // "Why" is the word the add sheet uses for a quiz's explanation.
+        <MentalModel label={topic.kind === 'quiz' ? 'Why' : 'Mental model'}>
+          {topic.mental_model}
+        </MentalModel>
+      ) : null}
 
       {imageUrl !== null ? (
         <RegisterSection title="Visual">

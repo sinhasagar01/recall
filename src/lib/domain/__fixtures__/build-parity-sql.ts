@@ -26,6 +26,7 @@ import {
 import {
   CONFIDENCE_VALUES,
   DIFFICULTY_VALUES,
+  KIND_VALUES,
   QUICK_FILTER_VALUES,
   libraryCounts,
 } from '@/lib/domain/library-counts'
@@ -93,6 +94,7 @@ function canon(counts: ReturnType<typeof libraryCounts>): string {
     `conf=${pairs(counts.byConfidence, CONFIDENCE_VALUES)}`,
     `diff=${pairs(counts.byDifficulty, DIFFICULTY_VALUES)}`,
     `quick=${pairs(counts.quick, QUICK_FILTER_VALUES)}`,
+    `kind=${pairs(counts.byKind, KIND_VALUES)}`,
     `cat=${counts.byCategory.map((entry) => `${entry.category}:${entry.count}`).join(';')}`,
   ].join('|')
 }
@@ -111,13 +113,23 @@ function rpcArgs(filters: (typeof COMBINATIONS)[number]['filters']): string {
   ].join(', ')
 }
 
+/*
+  Named rather than positional. `p_kinds` is declared last in both functions, but
+  in `library_page` that is AFTER the cursor and limit arguments — so appending it
+  to the shared positional list would silently bind it to `p_cursor_created_at`.
+  Named notation makes the argument's identity independent of where it sits.
+*/
+function kindArg(filters: (typeof COMBINATIONS)[number]['filters']): string {
+  return filters.kind == null ? '' : `, p_kinds := array[${lit(filters.kind)}]`
+}
+
 const rows = ORDERED.map(
   (t) =>
     `  (${[
       lit(t.id) + '::uuid',
       lit(t.user_id) + '::uuid',
       lit(t.title),
-      lit(t.definition),
+      nullableLit(t.definition),
       nullableLit(t.mental_model),
       nullableLit(t.mental_model_image_path),
       nullableLit(t.category),
@@ -128,6 +140,9 @@ const rows = ORDERED.map(
       t.last_practiced_at === null ? 'null' : lit(t.last_practiced_at) + '::timestamptz',
       lit(t.created_at) + '::timestamptz',
       lit(t.updated_at) + '::timestamptz',
+      lit(t.kind),
+      t.options === null ? 'null' : arrayLit(t.options),
+      t.correct_option === null ? 'null' : String(t.correct_option),
     ].join(', ')})`,
 )
 
@@ -144,7 +159,7 @@ const assertions = COMBINATIONS.flatMap((combination) => {
   (
     with page as (
       select id, row_number() over () as rn
-      from public.library_page(${args}, null, null, 1000)
+      from public.library_page(${args}, null, null, 1000${kindArg(combination.filters)})
     )
     select coalesce(string_agg(id::text, ',' order by rn), '') from page
   ),
@@ -152,7 +167,7 @@ const assertions = COMBINATIONS.flatMap((combination) => {
   ${lit(`${combination.name}: rows`)}
 );`,
     `select is(
-  tests_counts_canon(public.library_counts(${args})),
+  tests_counts_canon(public.library_counts(${args}${kindArg(combination.filters)})),
   ${lit(expectedCounts)},
   ${lit(`${combination.name}: counts`)}
 );`,
@@ -257,6 +272,7 @@ language sql as $fn$
     'conf=' || ${CONFIDENCE_VALUES.map((v) => `'${v}:' || (j->'byConfidence'->>'${v}')`).join(` || ',' || `)},
     'diff=' || ${DIFFICULTY_VALUES.map((v) => `'${v}:' || (j->'byDifficulty'->>'${v}')`).join(` || ',' || `)},
     'quick=' || ${QUICK_FILTER_VALUES.map((v) => `'${v}:' || (j->'quick'->>'${v}')`).join(` || ',' || `)},
+    'kind=' || ${KIND_VALUES.map((v) => `'${v}:' || (j->'byKind'->>'${v}')`).join(` || ',' || `)},
     'cat=' || coalesce((
       select string_agg((e->>'category') || ':' || (e->>'count'), ';'
                         order by (e->>'category') collate "C")
@@ -270,7 +286,7 @@ select tests_create_user(${lit(CORPUS_USER_ID)}::uuid, 'corpus@recall.test');
 insert into public.topics (
   id, user_id, title, definition, mental_model, mental_model_image_path,
   category, tags, difficulty, confidence, practice_count, last_practiced_at,
-  created_at, updated_at
+  created_at, updated_at, kind, options, correct_option
 ) values
 ${rows.join(',\n')};
 

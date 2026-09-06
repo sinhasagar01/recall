@@ -3,6 +3,8 @@
 import { revalidatePath } from 'next/cache'
 import { listLibrary, type Cursor } from '@/lib/data/library'
 import { insertTopic, setMentalModelImagePath } from '@/lib/data/topics'
+import { parseTopicForm } from '@/lib/domain/topic-form'
+import { readTopicForm } from '@/lib/data/topic-form-data'
 import type { TopicFilters } from '@/lib/domain/search-filter'
 import type { Topic } from '@/lib/domain/types'
 
@@ -36,18 +38,13 @@ export async function attachMentalModelImage(
 
 
 export async function createTopic(formData: FormData): Promise<SaveTopicResult> {
-  const title = String(formData.get('title') ?? '').trim()
-  const definition = String(formData.get('definition') ?? '').trim()
-  const mentalModel = String(formData.get('mental_model') ?? '').trim()
-  const category = String(formData.get('category') ?? '').trim()
-
   /*
-    Validated here as well as in the browser. `required` on an input is a
-    convenience for the user, not a guarantee to the server — anything can POST
-    to a server action.
+    Validated here as well as in the browser, through the same domain parser the
+    edit action uses. `required` on an input is a convenience for the user, not a
+    guarantee to the server — anything can POST to a server action.
   */
-  if (title === '') return { error: 'Give the topic a title so you can find it again.' }
-  if (definition === '') return { error: 'A topic needs a definition. What is it?' }
+  const parsed = parseTopicForm(readTopicForm(formData))
+  if (parsed.error !== undefined) return { error: parsed.error }
 
   /*
     No difficulty. It is not asked for at capture any more (issue #14) — nothing
@@ -61,13 +58,7 @@ export async function createTopic(formData: FormData): Promise<SaveTopicResult> 
       then attachMentalModelImage patches the path. A failed upload leaves the row
       exactly as saved — there is no rollback path, by design.
     */
-    const topic = await insertTopic({
-      title,
-      definition,
-      mental_model: mentalModel === '' ? null : mentalModel,
-      category: category === '' ? null : category,
-      tags: formData.getAll('tags').map(String),
-    })
+    const topic = await insertTopic(parsed.value)
 
     revalidatePath('/library')
 
@@ -75,7 +66,7 @@ export async function createTopic(formData: FormData): Promise<SaveTopicResult> 
     return { error: null, title: topic.title, id: topic.id, userId: topic.user_id }
   } catch (cause) {
     // The real reason, never a generic message. DESIGN.md, "Copy rules".
-    return { error: cause instanceof Error ? cause.message : 'The topic could not be saved.' }
+    return { error: cause instanceof Error ? cause.message : 'It could not be saved.' }
   }
 }
 

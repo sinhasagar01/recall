@@ -9,6 +9,32 @@ export type Confidence = 'new' | 'weak' | 'okay' | 'strong'
 
 export type Difficulty = 'easy' | 'medium' | 'hard'
 
+export type Kind = 'topic' | 'quiz'
+
+/**
+ * What both shapes have, and what every shared rule reads.
+ *
+ * `isNeverPracticed`, `needsReview`, `orderForPractice` and `isStale` take
+ * `Pick<…>` of fields from here, which is why none of them needed changing when
+ * quizzes arrived: they were already written against what the two shapes share.
+ */
+interface TopicShared {
+  id: string
+  user_id: string
+  /** A topic's name; a quiz's question. The card shows it either way. */
+  title: string
+  /** A topic's mental model; a quiz's explanation. One field, one register. */
+  mental_model: string | null
+  category: string | null
+  tags: string[]
+  difficulty: Difficulty
+  confidence: Confidence
+  practice_count: number
+  last_practiced_at: string | null
+  created_at: string
+  updated_at: string
+}
+
 /**
  * `difficulty`, `confidence` and `tags` are non-null: a later migration added the
  * NOT NULL the originals were missing. A CHECK constraint passes on NULL, so the
@@ -18,19 +44,40 @@ export type Difficulty = 'easy' | 'medium' | 'hard'
  *
  * Timestamps are ISO-8601 strings, which is what the wire format is.
  */
-export interface Topic {
-  id: string
-  user_id: string
-  title: string
+export interface TopicRecord extends TopicShared {
+  kind: 'topic'
   definition: string
-  mental_model: string | null
   mental_model_image_path: string | null
-  category: string | null
-  tags: string[]
-  difficulty: Difficulty
-  confidence: Confidence
-  practice_count: number
-  last_practiced_at: string | null
-  created_at: string
-  updated_at: string
+  options: null
+  correct_option: null
+}
+
+/**
+ * A question with 2+ options, one correct, and an explanation.
+ *
+ * No `definition` — the question is the title. No image — "a quiz that needs a
+ * diagram is a topic". `correct_option` indexes into `options`. All four of those
+ * are enforced by `topics_shape_is_consistent`, so this type is a description of
+ * what the database will actually store rather than a hope.
+ */
+export interface Quiz extends TopicShared {
+  kind: 'quiz'
+  definition: null
+  mental_model_image_path: null
+  options: string[]
+  correct_option: number
+}
+
+/**
+ * One table, two shapes, discriminated on `kind`.
+ *
+ * A union rather than a wide record with nullable extras, so reading `options`
+ * without establishing the kind is a compile error instead of a runtime `null`.
+ * That is the point: adding this discriminant turned every place that assumed one
+ * shape into an error the compiler finds, rather than a null someone remembers.
+ */
+export type Topic = TopicRecord | Quiz
+
+export function isQuiz(topic: Topic): topic is Quiz {
+  return topic.kind === 'quiz'
 }

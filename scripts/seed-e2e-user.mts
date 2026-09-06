@@ -248,6 +248,53 @@ console.log(`Large-library user seeded with ${largeTopics.length} topics: ${larg
 await admin.from('topics').delete().eq('user_id', mainUserId)
 console.log(`General-purpose user's topics cleared: ${email}`)
 
+/*
+  Two quizzes on the general-purpose user, deterministic on every run.
+
+  The two-option one exists because it is the shape with no quiet third option —
+  after checking, BOTH get marked, and it is the state most likely to look broken.
+  The three-option one is the ordinary case with a muted survivor.
+
+  Quizzes cannot be authored through the UI until the type toggle ships, and these
+  specs have to run red before it does, so they are seeded rather than driven.
+*/
+const { error: quizError } = await admin.from('topics').insert([
+  {
+    user_id: mainUserId,
+    kind: 'quiz',
+    title: 'Does a transform on a parent create a stacking context?',
+    options: ['Yes — any transform other than none', 'No — only position plus z-index'],
+    correct_option: 0,
+    mental_model:
+      'Which is why a z-index that should work stops working the moment a parent gets a transform for performance.',
+    category: 'CSS',
+    tags: ['layout'],
+    confidence: 'new',
+  },
+  {
+    user_id: mainUserId,
+    kind: 'quiz',
+    title: 'What runs first — a resolved promise or a zero-delay timeout?',
+    options: [
+      'The promise — microtasks drain before the next macrotask',
+      'The timeout — a zero delay is always immediate',
+      "Depends on the browser's scheduler",
+    ],
+    correct_option: 0,
+    mental_model:
+      'The microtask queue empties completely between macrotasks, so a pending promise chain always finishes before a zero-delay timer gets a turn.',
+    category: 'JavaScript',
+    tags: ['async', 'event-loop'],
+    confidence: 'new',
+  },
+])
+
+if (quizError) {
+  console.error(`Could not seed the quizzes: ${quizError.message}`)
+  process.exit(1)
+}
+console.log(`Quizzes seeded: 2 (one two-option, one three-option)`)
+
 for (const userId of [mainUserId, emptyUserId, fewUserId, strongUserId, largeUserId]) {
   const { data: folders } = await admin.storage.from('mental-models').list(userId)
   const paths = (folders ?? []).flatMap((folder) => folder.name)

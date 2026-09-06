@@ -38,13 +38,16 @@ export type Database = {
         Row: {
           category: string | null
           confidence: string
+          correct_option: number | null
           created_at: string
-          definition: string
+          definition: string | null
           difficulty: string
           id: string
+          kind: string
           last_practiced_at: string | null
           mental_model: string | null
           mental_model_image_path: string | null
+          options: string[] | null
           practice_count: number
           search_text: string | null
           tags: string[]
@@ -55,13 +58,16 @@ export type Database = {
         Insert: {
           category?: string | null
           confidence?: string
+          correct_option?: number | null
           created_at?: string
-          definition: string
+          definition?: string | null
           difficulty?: string
           id?: string
+          kind?: string
           last_practiced_at?: string | null
           mental_model?: string | null
           mental_model_image_path?: string | null
+          options?: string[] | null
           practice_count?: number
           search_text?: string | null
           tags?: string[]
@@ -72,13 +78,16 @@ export type Database = {
         Update: {
           category?: string | null
           confidence?: string
+          correct_option?: number | null
           created_at?: string
-          definition?: string
+          definition?: string | null
           difficulty?: string
           id?: string
+          kind?: string
           last_practiced_at?: string | null
           mental_model?: string | null
           mental_model_image_path?: string | null
+          options?: string[] | null
           practice_count?: number
           search_text?: string | null
           tags?: string[]
@@ -98,6 +107,7 @@ export type Database = {
           p_category?: string
           p_confidence?: string
           p_difficulty?: string
+          p_kinds?: string[]
           p_now: string
           p_query?: string
           p_quick?: string[]
@@ -112,6 +122,7 @@ export type Database = {
           p_cursor_created_at?: string
           p_cursor_id?: string
           p_difficulty?: string
+          p_kinds?: string[]
           p_limit?: number
           p_now: string
           p_query?: string
@@ -121,13 +132,16 @@ export type Database = {
         Returns: {
           category: string
           confidence: string
+          correct_option: number
           created_at: string
           definition: string
           difficulty: string
           id: string
+          kind: string
           last_practiced_at: string
           mental_model: string
           mental_model_image_path: string
+          options: string[]
           practice_count: number
           tags: string[]
           title: string
@@ -143,6 +157,7 @@ export type Database = {
           p_cursor_created_at?: string
           p_cursor_id?: string
           p_cursor_staleness?: string
+          p_kinds?: string[]
           p_limit?: number
           p_practised_before?: string
           p_seed?: string
@@ -151,13 +166,16 @@ export type Database = {
           bucket: number
           category: string
           confidence: string
+          correct_option: number
           created_at: string
           definition: string
           difficulty: string
           id: string
+          kind: string
           last_practiced_at: string
           mental_model: string
           mental_model_image_path: string
+          options: string[]
           practice_count: number
           staleness: string
           tags: string[]
@@ -169,16 +187,28 @@ export type Database = {
       rail_counts: { Args: { p_review_confidences: string[] }; Returns: Json }
       topic_search_normalise: { Args: { p_value: string }; Returns: string }
       topic_search_pattern: { Args: { p_query: string }; Returns: string }
-      topic_search_text: {
-        Args: {
-          p_category: string
-          p_definition: string
-          p_mental_model: string
-          p_tags: string[]
-          p_title: string
-        }
-        Returns: string
-      }
+      topic_search_text:
+        | {
+            Args: {
+              p_category: string
+              p_definition: string
+              p_mental_model: string
+              p_tags: string[]
+              p_title: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              p_category: string
+              p_definition: string
+              p_mental_model: string
+              p_options: string[]
+              p_tags: string[]
+              p_title: string
+            }
+            Returns: string
+          }
       weak_counts: {
         Args: {
           p_confidences: string[]

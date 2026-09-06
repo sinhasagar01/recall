@@ -10,7 +10,8 @@ import { Sheet } from '@/components/ui/sheet'
 import { TagsInput } from '@/components/ui/tags-input'
 import { suggestCategory, UNCATEGORIZED } from '@/lib/domain/category-suggest'
 import { DIFFICULTY_LABEL, type CategoryOption } from '@/lib/domain/library'
-import type { Difficulty } from '@/lib/domain/types'
+import { QuizOptionsField } from '@/components/topics/quiz-options-field'
+import type { Difficulty, Kind } from '@/lib/domain/types'
 import { attachMentalModelImage, createTopic, type SaveTopicResult } from '@/app/(app)/library/actions'
 import { ImageField, type PickedImage } from '@/components/topics/image-field'
 import { discardUploadedImage, uploadMentalModelImage } from '@/lib/data/mental-model-image'
@@ -22,12 +23,23 @@ const DIFFICULTIES = (['easy', 'medium', 'hard'] as const).map((value) => ({
   label: DIFFICULTY_LABEL[value],
 }))
 
+const KINDS = [
+  { value: 'topic', label: 'Topic' },
+  { value: 'quiz', label: 'Quiz' },
+]
+
 /**
- * One sheet, two modes.
+ * One sheet, four modes — add/edit crossed with topic/quiz.
  *
- * Passing a `topic` puts it in edit mode. Forking a second sheet would mean two
- * places to keep the category suggestions, the tag rules and the difficulty
- * control in step, and they would not stay in step.
+ * Passing a `topic` puts it in edit mode; the type toggle at the top switches
+ * between the two shapes. Forking a second sheet would mean two places to keep
+ * the category suggestions, the tag rules and the difficulty control in step, and
+ * they would not stay in step. The quiz mode swaps three fields and hides the
+ * image; everything else is the same control in the same place.
+ *
+ * Switching the toggle keeps what you have typed. Definition and options are held
+ * in separate state, so flipping to Quiz and back does not lose a half-written
+ * definition — and a mistaken tap on the toggle is not destructive.
  *
  * The caller remounts this with a `key` when the topic changes, so the prefilled
  * state comes from useState initialisers rather than an effect syncing props into
@@ -51,8 +63,15 @@ export function TopicSheet({
 }) {
   const editing = topic !== undefined
 
+  const [kind, setKind] = useState<Kind>(topic?.kind ?? 'topic')
+  const isQuiz = kind === 'quiz'
+
   const [title, setTitle] = useState(topic?.title ?? initialTitle)
   const [definition, setDefinition] = useState(topic?.definition ?? '')
+  const [options, setOptions] = useState<string[]>(topic?.options ?? ['', ''])
+  // -1 is "nothing marked yet". An existing quiz always has an answer; a new one
+  // must be given one, rather than inheriting a default nobody chose.
+  const [correct, setCorrect] = useState(topic?.correct_option ?? -1)
   const [mentalModel, setMentalModel] = useState(topic?.mental_model ?? '')
   const [category, setCategory] = useState(topic?.category ?? UNCATEGORIZED)
   const [tags, setTags] = useState<string[]>(topic?.tags ?? [])
@@ -96,11 +115,15 @@ export function TopicSheet({
   const clear = () => {
     setTitle('')
     setDefinition('')
+    setOptions(['', ''])
+    setCorrect(-1)
     setMentalModel('')
     setCategory(UNCATEGORIZED)
     setTags([])
     setDifficulty('medium')
     setError(null)
+    // The toggle is deliberately NOT reset: adding three quizzes in a row should
+    // not mean setting it to Quiz three times.
   }
 
   /*
@@ -175,7 +198,13 @@ export function TopicSheet({
     <Sheet
       open={open}
       onClose={onClose}
-      title={editing ? 'Edit topic' : 'Add topic'}
+      /*
+        The title follows the toggle rather than reading a bare "Add", which is what
+        the reference draws. DESIGN.md, "Copy rules": an action keeps its name
+        through the whole flow — the sheet, the save button and the toast all say
+        the same word, and "Add" next to a button reading "Save quiz" does not.
+      */
+      title={`${editing ? 'Edit' : 'Add'} ${isQuiz ? 'quiz' : 'topic'}`}
       footer={
         <>
           <Button
@@ -186,10 +215,16 @@ export function TopicSheet({
             loading={isSaving}
             loadingLabel="Saving…"
           >
-            {editing ? 'Save changes' : 'Save topic'}
+            {editing ? 'Save changes' : isQuiz ? 'Save quiz' : 'Save topic'}
           </Button>
           <span className="font-mono text-[11.5px] text-ink-3">
-            <Kbd>⌘</Kbd> <Kbd>↵</Kbd> to save
+            {isQuiz ? (
+              'Question, 2+ options, a marked answer and the why'
+            ) : (
+              <>
+                <Kbd>⌘</Kbd> <Kbd>↵</Kbd> to save
+              </>
+            )}
           </span>
         </>
       }
@@ -217,39 +252,92 @@ export function TopicSheet({
           </p>
         ) : null}
 
-        <Field
-          label="Topic"
-          name="title"
-          required
-          value={title}
-          onChange={(event) => setTitle(event.target.value)}
-        />
-
+        {/* The mode, and the only control whose position never changes. */}
+        <input type="hidden" name="kind" value={kind} />
         <div className="mb-[18px]">
-          <label htmlFor="definition" className="mb-1.5 block text-label font-medium text-ink">
-            Definition
-          </label>
-          <textarea
-            id="definition"
-            name="definition"
-            required
-            rows={4}
-            value={definition}
-            onChange={(event) => setDefinition(event.target.value)}
-            className="w-full rounded-md border border-rule-strong bg-surface px-3 py-2.5 text-body leading-[1.5] text-ink outline-offset-[-1px] focus:border-accent focus:outline-2 focus:outline-accent"
+          <Segmented
+            legend="Type"
+            name="kind_toggle"
+            options={KINDS}
+            value={kind}
+            onChange={(next) => setKind(next as Kind)}
           />
         </div>
 
+        {isQuiz ? (
+          /*
+            A question is a sentence, not a name, so it gets a textarea where a
+            topic gets a single line. The question IS the title — same column,
+            same card heading — which is why there is no separate definition.
+          */
+          <div className="mb-[18px]">
+            <label htmlFor="title" className="mb-1.5 block text-label font-medium text-ink">
+              Question
+            </label>
+            <textarea
+              id="title"
+              name="title"
+              required
+              rows={2}
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+              className="w-full rounded-md border border-rule-strong bg-surface px-3 py-2.5 text-body leading-[1.5] text-ink outline-offset-[-1px] focus:border-accent focus:outline-2 focus:outline-accent"
+            />
+          </div>
+        ) : (
+          <Field
+            label="Topic"
+            name="title"
+            required
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+          />
+        )}
+
+        {isQuiz ? (
+          <QuizOptionsField
+            options={options}
+            correct={correct}
+            onChange={(next) => {
+              setOptions(next.options)
+              setCorrect(next.correct)
+            }}
+          />
+        ) : (
+          <div className="mb-[18px]">
+            <label htmlFor="definition" className="mb-1.5 block text-label font-medium text-ink">
+              Definition
+            </label>
+            <textarea
+              id="definition"
+              name="definition"
+              required
+              rows={4}
+              value={definition}
+              onChange={(event) => setDefinition(event.target.value)}
+              className="w-full rounded-md border border-rule-strong bg-surface px-3 py-2.5 text-body leading-[1.5] text-ink outline-offset-[-1px] focus:border-accent focus:outline-2 focus:outline-accent"
+            />
+          </div>
+        )}
+
         <div className="mb-[18px]">
+          {/*
+            One field, two names. A quiz's Why and a topic's mental model do the
+            same job — not what the answer is, but why — so they share the column,
+            the register and the voice. Required for a quiz, because a question you
+            get wrong that explains nothing teaches the answer rather than the idea;
+            enforced by the form rather than by the column, which is shared.
+          */}
           <label htmlFor="mental_model" className="mb-1.5 block text-label font-medium text-ink">
-            Mental model
+            {isQuiz ? 'Why' : 'Mental model'}
             <span className="ml-1.5 font-mono text-mono font-normal text-ink-3">
-              how you think about it
+              {isQuiz ? 'shown after you answer' : 'how you think about it'}
             </span>
           </label>
           <textarea
             id="mental_model"
             name="mental_model"
+            required={isQuiz}
             rows={3}
             value={mentalModel}
             onChange={(event) => setMentalModel(event.target.value)}
@@ -321,6 +409,12 @@ export function TopicSheet({
           </p>
         ) : null}
 
+        {/*
+          No image field on a quiz — "a quiz that needs a diagram is a topic". The
+          database refuses one too, so this is the same rule said twice rather than
+          a UI convention holding it up alone.
+        */}
+        {isQuiz ? null : (
         <ImageField
           picked={picked}
           existingName={existingImage === null ? null : (existingImage.split('/').pop() ?? null)}
@@ -340,6 +434,7 @@ export function TopicSheet({
           }}
           error={imageError}
         />
+        )}
       </form>
     </Sheet>
   )

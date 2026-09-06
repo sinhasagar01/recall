@@ -19,7 +19,7 @@ async function addTopic(
   fields: { title: string; definition: string; mentalModel?: string; tag?: string },
 ) {
   await page.getByRole('button', { name: /Add (topic|your first topic)/ }).first().click()
-  await page.getByLabel('Topic', { exact: true }).fill(fields.title)
+  await page.getByRole('textbox', { name: 'Topic', exact: true }).fill(fields.title)
   await page.getByLabel('Definition').fill(fields.definition)
   if (fields.mentalModel) await page.getByLabel(/Mental model/).fill(fields.mentalModel)
   if (fields.tag) await page.getByLabel(/Tags/).fill(`${fields.tag}\n`)
@@ -117,7 +117,7 @@ test('"+ Add" from the no-results state opens the sheet with the title prefilled
 
   // The moment you most want to save the thing you failed to find.
   await expect(page.getByRole('dialog', { name: 'Add topic' })).toBeVisible()
-  await expect(page.getByLabel('Topic', { exact: true })).toHaveValue(missing)
+  await expect(page.getByRole('textbox', { name: 'Topic', exact: true })).toHaveValue(missing)
 })
 
 test('Clear resets the search and the filters', async ({ page }) => {

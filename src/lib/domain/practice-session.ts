@@ -1,17 +1,27 @@
-import { GRADE_TO_CONFIDENCE, needsReview, type Grade } from '@/lib/domain/confidence'
-import type { Topic } from '@/lib/domain/types'
+import { needsReview } from '@/lib/domain/confidence'
+import type { Confidence, Topic } from '@/lib/domain/types'
 
-/** One graded answer. A skip produces no result at all, so it cannot appear here. */
+/**
+ * One answered card. A skip produces no result at all, so it cannot appear here.
+ *
+ * Carries the resulting **confidence** rather than the grade, because a session
+ * can hold both shapes and a quiz has no grade — its outcome is objective. The
+ * grade was never extra information: `GRADE_TO_CONFIDENCE` maps the three grades
+ * onto the three confidences one-to-one, so nothing is lost by recording the end
+ * of that arrow instead of the start, and the summary reads one field for both
+ * shapes rather than branching.
+ */
 export interface GradedResult {
   topic: Topic
-  grade: Grade
+  confidence: Confidence
 }
 
-export type Tally = Record<Grade, number> & { total: number }
+/** `new` cannot be an outcome — nothing an answer produces lands there. */
+export type Tally = Record<Exclude<Confidence, 'new'>, number> & { total: number }
 
 export function sessionTally(results: GradedResult[]): Tally {
-  const tally: Tally = { 'didnt-know': 0, partly: 0, 'knew-it': 0, total: results.length }
-  for (const { grade } of results) tally[grade] += 1
+  const tally: Tally = { weak: 0, okay: 0, strong: 0, total: results.length }
+  for (const { confidence } of results) tally[confidence === 'new' ? 'weak' : confidence] += 1
   return tally
 }
 
@@ -26,22 +36,35 @@ export function sessionTally(results: GradedResult[]): Tally {
 export function sessionSummary(results: GradedResult[]): string {
   if (results.length === 0) return 'Nothing was graded this time.'
 
-  let out = 0
-  let into = 0
+  const out: Topic[] = []
+  const into: Topic[] = []
 
-  for (const { topic, grade } of results) {
+  for (const { topic, confidence } of results) {
     const before = needsReview(topic)
-    const after = needsReview({ ...topic, confidence: GRADE_TO_CONFIDENCE[grade] })
-    if (before && !after) out += 1
-    if (!before && after) into += 1
+    const after = needsReview({ ...topic, confidence })
+    if (before && !after) out.push(topic)
+    if (!before && after) into.push(topic)
   }
 
-  const topics = (count: number) => `${count} ${count === 1 ? 'topic' : 'topics'}`
-
-  if (out > 0 && into > 0) {
-    return `${topics(out)} moved out of needing review. ${into} moved in — it'll come first next time.`
+  if (out.length > 0 && into.length > 0) {
+    return `${named(out)} moved out of needing review. ${into.length} moved in — it'll come first next time.`
   }
-  if (out > 0) return `${topics(out)} moved out of needing review.`
-  if (into > 0) return `${topics(into)} moved in — it'll come first next time.`
+  if (out.length > 0) return `${named(out)} moved out of needing review.`
+  if (into.length > 0) return `${named(into)} moved in — it'll come first next time.`
   return 'Nothing changed category this time.'
+}
+
+/**
+ * "2 topics", "1 quiz", "3 cards".
+ *
+ * Named from the moved set rather than the whole session, so a mixed session in
+ * which only topics moved still says "topics". "Cards" is the fallback because it
+ * is what the library already calls both shapes on screen.
+ */
+function named(moved: Topic[]): string {
+  const kinds = new Set(moved.map((topic) => topic.kind))
+  const one = kinds.size > 1 ? 'card' : kinds.has('quiz') ? 'quiz' : 'topic'
+  const many = one === 'quiz' ? 'quizzes' : `${one}s`
+
+  return `${moved.length} ${moved.length === 1 ? one : many}`
 }

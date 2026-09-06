@@ -42,7 +42,7 @@ export interface Cursor {
 
 /* The columns of a Topic, explicitly. Never `*`: that would ship search_text. */
 const TOPIC_COLUMNS =
-  'id, user_id, title, definition, mental_model, mental_model_image_path, category, tags, difficulty, confidence, practice_count, last_practiced_at, created_at, updated_at'
+  'id, user_id, title, definition, mental_model, mental_model_image_path, category, tags, difficulty, confidence, practice_count, last_practiced_at, created_at, updated_at, kind, options, correct_option'
 
 function fail(action: string, error: { code?: string; message: string }): never {
   throw new Error(`${action} failed: ${error.code ?? 'unknown'} · ${error.message}`)
@@ -54,6 +54,9 @@ function hasFilters(filters: TopicFilters): boolean {
     (filters.category ?? null) !== null ||
     (filters.confidence ?? null) !== null ||
     (filters.difficulty ?? null) !== null ||
+    // Without this a kind-only filter took the unfiltered path, which reads the
+    // whole library and ignores every filter — the chips looked inert.
+    (filters.kind ?? null) !== null ||
     (filters.quickFilters ?? []).length > 0
   )
 }
@@ -72,6 +75,9 @@ function rpcArgs(filters: TopicFilters, readAt: string) {
     p_confidence: filters.confidence ?? undefined,
     p_difficulty: filters.difficulty ?? undefined,
     p_quick: filters.quickFilters ?? [],
+    // Null is All. Sent as an array because the function takes a set, so a later
+    // "topics and quizzes but not X" needs no signature change.
+    p_kinds: filters.kind == null ? undefined : [filters.kind],
   }
 }
 

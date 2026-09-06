@@ -21,7 +21,7 @@ test('deleting an account removes its topics and its images, for good', async ({
 
   // Something to destroy: a topic, and an image belonging to it.
   await page.getByRole('button', { name: /Add (topic|your first topic)/ }).first().click()
-  await page.getByLabel('Topic', { exact: true }).fill(title)
+  await page.getByRole('textbox', { name: 'Topic', exact: true }).fill(title)
   await page.getByLabel('Definition').fill('This account is about to be deleted.')
   await page.getByLabel(/Visual/).setInputFiles({
     name: 'goes-with-it.png',

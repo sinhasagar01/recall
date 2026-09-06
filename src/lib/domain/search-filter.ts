@@ -1,6 +1,6 @@
 import { categoryOf } from '@/lib/domain/category-suggest'
 import { isNeverPracticed, needsReview } from '@/lib/domain/confidence'
-import type { Confidence, Difficulty, Topic } from '@/lib/domain/types'
+import type { Confidence, Difficulty, Topic, Kind } from '@/lib/domain/types'
 
 /**
  * One window, shared by both recency filters. Two constants would drift, and
@@ -24,12 +24,20 @@ export function matchesQuery(topic: Topic, query: string): boolean {
   const needle = normaliseText(query)
   if (needle === '') return true
 
+  /*
+    A quiz's question is its title and its explanation is its mental model, so those
+    are already here. Its options are not, and the reference is explicit that search
+    matches them — "a quiz's question, its options and its explanation".
+
+    `definition` is null on the quiz arm and the null guard below already skips it.
+  */
   const fields: (string | null)[] = [
     topic.title,
     topic.definition,
     topic.mental_model,
     topic.category,
     ...topic.tags,
+    ...(topic.kind === 'quiz' ? topic.options : []),
   ]
 
   return fields.some((field) => field !== null && normaliseText(field).includes(needle))
@@ -46,6 +54,8 @@ export interface TopicFilters {
   category?: string | null
   confidence?: Confidence | null
   difficulty?: Difficulty | null
+  /** The library's type chips. Null is All — both shapes, which is the default. */
+  kind?: Kind | null
   quickFilters?: QuickFilter[]
 }
 
@@ -80,6 +90,7 @@ export function filterTopics(topics: Topic[], filters: TopicFilters, now: Date):
     category = null,
     confidence = null,
     difficulty = null,
+    kind = null,
     quickFilters = [],
   } = filters
 
@@ -88,6 +99,7 @@ export function filterTopics(topics: Topic[], filters: TopicFilters, now: Date):
     if (category !== null && categoryOf(topic) !== category) return false
     if (confidence !== null && topic.confidence !== confidence) return false
     if (difficulty !== null && topic.difficulty !== difficulty) return false
+    if (kind !== null && topic.kind !== kind) return false
     return quickFilters.every((quick) => QUICK_FILTERS[quick](topic, now))
   })
 }

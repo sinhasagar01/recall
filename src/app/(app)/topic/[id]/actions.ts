@@ -4,29 +4,28 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { deleteTopicRow, getTopic, removeMentalModelImage, updateTopic } from '@/lib/data/topics'
 import type { Difficulty } from '@/lib/domain/types'
+import { parseTopicForm } from '@/lib/domain/topic-form'
+import { readTopicForm } from '@/lib/data/topic-form-data'
 import type { SaveTopicResult } from '@/app/(app)/library/actions'
 
 const DIFFICULTIES: Difficulty[] = ['easy', 'medium', 'hard']
 
 export async function saveTopicEdits(id: string, formData: FormData): Promise<SaveTopicResult> {
-  const title = String(formData.get('title') ?? '').trim()
-  const definition = String(formData.get('definition') ?? '').trim()
-  const mentalModel = String(formData.get('mental_model') ?? '').trim()
-  const category = String(formData.get('category') ?? '').trim()
   const rawDifficulty = String(formData.get('difficulty') ?? 'medium')
 
-  // Validated on the server too: `required` is a courtesy to the browser, not a
-  // guarantee to the action.
-  if (title === '') return { error: 'Give the topic a title so you can find it again.' }
-  if (definition === '') return { error: 'A topic needs a definition. What is it?' }
+  // The same parser the add action uses, so the two cannot disagree about what a
+  // quiz needs. `required` is a courtesy to the browser, not a guarantee here.
+  const parsed = parseTopicForm(readTopicForm(formData))
+  if (parsed.error !== undefined) return { error: parsed.error }
 
   try {
+    /*
+      An edit can change the KIND. `parsed.value` always carries both shapes'
+      columns, one side nulled, so switching clears what no longer applies —
+      without that the shape CHECK would reject the update.
+    */
     const topic = await updateTopic(id, {
-      title,
-      definition,
-      mental_model: mentalModel === '' ? null : mentalModel,
-      category: category === '' ? null : category,
-      tags: formData.getAll('tags').map(String),
+      ...parsed.value,
       difficulty: DIFFICULTIES.includes(rawDifficulty as Difficulty)
         ? (rawDifficulty as Difficulty)
         : 'medium',

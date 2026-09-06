@@ -16,7 +16,7 @@ async function signIn(page: Page, email: string) {
 /** Returns the topic's id, so a spec can run a deliberate single-topic session. */
 async function addTopic(page: Page, title: string, definition: string): Promise<string> {
   await page.getByRole('button', { name: /Add (topic|your first topic)/ }).first().click()
-  await page.getByLabel('Topic', { exact: true }).fill(title)
+  await page.getByRole('textbox', { name: 'Topic', exact: true }).fill(title)
   await page.getByLabel('Definition').fill(definition)
   await page.getByRole('button', { name: 'Save topic' }).click()
   await expect(page.getByRole('dialog', { name: 'Add topic' })).not.toBeVisible()

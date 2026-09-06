@@ -141,10 +141,13 @@ test.describe('the weak page and practice, on a large library', () => {
     await practice.click()
     await expect(page.getByRole('button', { name: 'Reveal answer' })).toBeVisible()
 
-    // Capped at a session, like every other entry point. The progress dots carry
-    // the queue length as their accessible name.
+    /*
+      Capped at a session, like every other entry point. The progress dots carry
+      the queue length as their accessible name — "Card", not "Topic", since a
+      session can now hold both shapes.
+    */
     await expect(
-      page.getByRole('img', { name: `Topic 1 of ${PRACTICE_SESSION_SIZE}` }),
+      page.getByRole('img', { name: `Card 1 of ${PRACTICE_SESSION_SIZE}` }),
     ).toBeVisible()
   })
 })

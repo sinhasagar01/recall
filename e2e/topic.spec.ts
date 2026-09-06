@@ -19,7 +19,13 @@ async function addTopic(
   fields: { title: string; definition: string; mentalModel?: string },
 ) {
   await page.getByRole('button', { name: /Add (topic|your first topic)/ }).first().click()
-  await page.getByLabel('Topic', { exact: true }).fill(fields.title)
+  /*
+    By role, not by label. Since the type toggle arrived the sheet has two controls
+    accessibly named "Topic" — the toggle's radio and the title field. A person is
+    not confused, because the toggle sits inside a fieldset legended "Type"; a
+    label lookup has no such context and matches both.
+  */
+  await page.getByRole('textbox', { name: 'Topic', exact: true }).fill(fields.title)
   await page.getByLabel('Definition').fill(fields.definition)
   if (fields.mentalModel) await page.getByLabel(/Mental model/).fill(fields.mentalModel)
   await page.getByRole('button', { name: 'Save topic' }).click()
@@ -70,7 +76,7 @@ test('editing the title changes it on the detail page and in the library', async
 
   await page.getByRole('button', { name: 'Edit' }).click()
   await expect(page.getByRole('dialog', { name: 'Edit topic' })).toBeVisible()
-  await page.getByLabel('Topic', { exact: true }).fill(edited)
+  await page.getByRole('textbox', { name: 'Topic', exact: true }).fill(edited)
   await page.getByRole('button', { name: 'Save changes' }).click()
 
   await expect(page.getByRole('heading', { name: edited, level: 1 })).toBeVisible()
@@ -171,12 +177,12 @@ test('adding a topic does not ask for difficulty, and it defaults to medium', as
   // The fieldset, by role — `getByText('Difficulty')` matches more than one node.
   await expect(sheet.getByRole('group', { name: 'Difficulty' })).toHaveCount(0)
   // The fields that do belong at capture are all still there.
-  await expect(sheet.getByLabel('Topic', { exact: true })).toBeVisible()
+  await expect(sheet.getByRole('textbox', { name: 'Topic', exact: true })).toBeVisible()
   await expect(sheet.getByLabel('Definition')).toBeVisible()
   await expect(sheet.getByText('Category')).toBeVisible()
 
   const title = uniqueTitle('Defaulted difficulty')
-  await sheet.getByLabel('Topic', { exact: true }).fill(title)
+  await sheet.getByRole('textbox', { name: 'Topic', exact: true }).fill(title)
   await sheet.getByLabel('Definition').fill('Saved without being asked.')
   await sheet.getByRole('button', { name: 'Save topic' }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 15_000 })

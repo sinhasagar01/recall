@@ -23,7 +23,7 @@ import {
 } from '@/lib/domain/library'
 import { libraryCounts } from '@/lib/domain/library-counts'
 import { filterTopics, type QuickFilter, type TopicFilters } from '@/lib/domain/search-filter'
-import type { Confidence, Difficulty, Topic } from '@/lib/domain/types'
+import type { Confidence, Difficulty, Kind, Topic } from '@/lib/domain/types'
 
 /** How long typing settles before server mode asks the database. */
 const SEARCH_DEBOUNCE_MS = 250
@@ -52,6 +52,7 @@ function readState(params: URLSearchParams): ToolbarState {
     category: params.get('category') ?? 'all',
     confidence: params.get('confidence') ?? 'any',
     difficulty: params.get('difficulty') ?? 'any',
+    kind: params.get('kind') ?? 'all',
     quickFilters: QUICK_FILTERS.filter((quick) => params.getAll('quick').includes(quick)),
   }
 }
@@ -62,6 +63,7 @@ function stateToParams(state: ToolbarState): string {
   if (state.category !== 'all') params.set('category', state.category)
   if (state.confidence !== 'any') params.set('confidence', state.confidence)
   if (state.difficulty !== 'any') params.set('difficulty', state.difficulty)
+  if (state.kind !== 'all') params.set('kind', state.kind)
   for (const quick of state.quickFilters) params.append('quick', quick)
 
   return params.toString()
@@ -74,6 +76,7 @@ function toFilters(state: ToolbarState): TopicFilters {
     category: state.category === 'all' ? null : state.category,
     confidence: state.confidence === 'any' ? null : (state.confidence as Confidence),
     difficulty: state.difficulty === 'any' ? null : (state.difficulty as Difficulty),
+    kind: state.kind === 'all' ? null : (state.kind as Kind),
     quickFilters: state.quickFilters,
   }
 }
@@ -83,6 +86,7 @@ const CLEARED: ToolbarState = {
   category: 'all',
   confidence: 'any',
   difficulty: 'any',
+  kind: 'all',
   quickFilters: [],
 }
 
@@ -229,6 +233,7 @@ export function LibraryView({
     state.category !== 'all' ||
     state.confidence !== 'any' ||
     state.difficulty !== 'any' ||
+    state.kind !== 'all' ||
     state.quickFilters.length > 0
 
   const stats = libraryStatsFromCounts(counts)
@@ -239,6 +244,7 @@ export function LibraryView({
     select still reads "All categories 48". Only `matching` narrows.
   */
   const quickCounts = counts.quick
+  const kindCounts = { total: counts.total, ...counts.byKind }
 
   /*
     "Recently learned" splits the unfiltered library into what arrived this week
@@ -325,6 +331,7 @@ export function LibraryView({
             confidences={confidenceOptionsFromCounts(counts.byConfidence, counts.total)}
             difficulties={difficultyOptionsFromCounts(counts.byDifficulty, counts.total)}
             quickCounts={quickCounts}
+            kindCounts={kindCounts}
           />
 
           {rows.length === 0 ? (

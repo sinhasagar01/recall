@@ -9,12 +9,15 @@ import { Select } from '@/components/ui/select'
 import { Sheet } from '@/components/ui/sheet'
 import type { CategoryOption } from '@/lib/domain/library'
 import type { QuickFilter } from '@/lib/domain/search-filter'
+import type { Kind } from '@/lib/domain/types'
 
 export interface ToolbarState {
   query: string
   category: string
   confidence: string
   difficulty: string
+  /** "all" is the sentinel for both shapes, matching the other selects. */
+  kind: string
   quickFilters: QuickFilter[]
 }
 
@@ -30,6 +33,7 @@ export function LibraryToolbar({
   confidences,
   difficulties,
   quickCounts,
+  kindCounts,
 }: {
   state: ToolbarState
   onChange: (next: Partial<ToolbarState>) => void
@@ -38,6 +42,8 @@ export function LibraryToolbar({
   confidences: CategoryOption[]
   difficulties: CategoryOption[]
   quickCounts: Record<QuickFilter, number>
+  /** All is `total`, so it is not carried separately. */
+  kindCounts: { total: number } & Record<Kind, number>
 }) {
   const [filtersOpen, setFiltersOpen] = useState(false)
 
@@ -53,6 +59,7 @@ export function LibraryToolbar({
     state.category !== 'all' ||
     state.confidence !== 'any' ||
     state.difficulty !== 'any' ||
+    state.kind !== 'all' ||
     state.quickFilters.length > 0
 
   return (
@@ -107,6 +114,35 @@ export function LibraryToolbar({
         "no" — and after a quiet fortnight the 7-day window makes that common.
       */}
       <div className="mt-[-14px] mb-[22px] flex flex-wrap gap-1.5">
+        {/*
+          The type chips lead the row, and unlike the quick filters they are
+          mutually exclusive — All is the absence of the filter, not a third value.
+          Grouped so a screen reader reads them as one control rather than three
+          unrelated toggles that happen to sit together.
+
+          Counts come from `byKind`, produced by `libraryCounts` in local mode and
+          by `library_counts` in SQL past the threshold — the same pair the parity
+          harness holds to agreement. A chip cannot claim a number that clicking it
+          would not yield.
+        */}
+        <span role="group" aria-label="Type" className="flex gap-1.5">
+          {(
+            [
+              ['all', 'All', kindCounts.total],
+              ['topic', 'Topics', kindCounts.topic],
+              ['quiz', 'Quizzes', kindCounts.quiz],
+            ] as const
+          ).map(([value, label, count]) => (
+            <QuickFilterChip
+              key={value}
+              pressed={state.kind === value}
+              onClick={() => onChange({ kind: value })}
+            >
+              {label} {count}
+            </QuickFilterChip>
+          ))}
+        </span>
+
         {/* Weak is a chip here, not a destination — DESIGN.md, "Mobile has two destinations plus add". */}
         <span className="md:hidden">
           <QuickFilterChip

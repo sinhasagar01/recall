@@ -24,6 +24,12 @@ import {
                            the user chose, so the floor is waived for the same
                            reason as ?topic= — this case did NOT follow from the
                            earlier scheme and was added in phase 9.
+    /practice?scope=quiz   quizzes only. Same shape as ?scope=weak: a chosen set,
+                           the same PRACTICE_SESSION_SIZE cap, the same waived
+                           floor. Note this is the SEPARATION, not the rule — the
+                           default session above already mixes both shapes, and
+                           excluding quizzes from it would leave a quiz you are
+                           weak at waiting for you to come looking.
 */
 export default async function PracticePage({ searchParams }: PageProps<'/practice'>) {
   const { topic: topicId, all, scope } = await searchParams
@@ -48,7 +54,7 @@ export default async function PracticePage({ searchParams }: PageProps<'/practic
       )
     }
     const one = [chosen]
-    return <PracticeSession queue={one} imageUrls={await imageUrls(one)} />
+    return <PracticeSession queue={one} imageUrls={await imageUrls(one)} seed={readAt} />
   }
 
   if (scope === 'weak') {
@@ -60,7 +66,25 @@ export default async function PracticePage({ searchParams }: PageProps<'/practic
       at a time is what a session has always meant.
     */
     const weak = await practiceQueue({ seed: readAt, weakOnly: true })
-    if (weak.length > 0) return <PracticeSession queue={weak} imageUrls={await imageUrls(weak)} />
+    if (weak.length > 0)
+      return <PracticeSession queue={weak} imageUrls={await imageUrls(weak)} seed={readAt} />
+  }
+
+  if (scope === 'quiz') {
+    const quizzes = await practiceQueue({ seed: readAt, kinds: ['quiz'] })
+
+    if (quizzes.length === 0) {
+      return (
+        <StateBlock
+          eyebrow="Practice"
+          title="No quizzes yet"
+          body="A quiz is a question you write yourself, with a couple of options and one right answer. Add one from the library and it'll show up here."
+          action={<BackToLibrary />}
+        />
+      )
+    }
+
+    return <PracticeSession queue={quizzes} imageUrls={{}} seed={readAt} />
   }
 
   const overridden = all === '1'
@@ -113,7 +137,7 @@ export default async function PracticePage({ searchParams }: PageProps<'/practic
     )
   }
 
-  return <PracticeSession queue={queue} imageUrls={await imageUrls(queue)} />
+  return <PracticeSession queue={queue} imageUrls={await imageUrls(queue)} seed={readAt} />
 }
 
 /*

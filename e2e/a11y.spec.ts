@@ -61,7 +61,7 @@ test('search is reachable and usable from the keyboard', async ({ page }) => {
     assumes otherwise is really depending on another spec having run first.
   */
   await page.getByRole('button', { name: /Add (topic|your first topic)/ }).first().click()
-  await page.getByLabel('Topic', { exact: true }).fill(`Searchable ${Date.now()}`)
+  await page.getByRole('textbox', { name: 'Topic', exact: true }).fill(`Searchable ${Date.now()}`)
   await page.getByLabel('Definition').fill('So the toolbar is on screen.')
   await page.getByRole('button', { name: 'Save topic' }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 15_000 })
@@ -79,7 +79,7 @@ test('a practice session can be completed without a mouse', async ({ page }) => 
   const title = `Keys ${Date.now()}`
 
   await page.getByRole('button', { name: /Add (topic|your first topic)/ }).first().click()
-  await page.getByLabel('Topic', { exact: true }).fill(title)
+  await page.getByRole('textbox', { name: 'Topic', exact: true }).fill(title)
   await page.getByLabel('Definition').fill('Graded with the number keys.')
   await page.getByRole('button', { name: 'Save topic' }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 15_000 })
@@ -114,7 +114,7 @@ test('Space reveals only when the caret is outside the answer field', async ({ p
   const title = `Space guard ${Date.now()}`
 
   await page.getByRole('button', { name: /Add (topic|your first topic)/ }).first().click()
-  await page.getByLabel('Topic', { exact: true }).fill(title)
+  await page.getByRole('textbox', { name: 'Topic', exact: true }).fill(title)
   await page.getByLabel('Definition').fill('Space belongs to the sentence being written.')
   await page.getByRole('button', { name: 'Save topic' }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 15_000 })
@@ -178,7 +178,7 @@ test('confidence never rests on colour alone', async ({ page }) => {
   // not a spec.
   const title = `Colour ${Date.now()}`
   await page.getByRole('button', { name: /Add (topic|your first topic)/ }).first().click()
-  await page.getByLabel('Topic', { exact: true }).fill(title)
+  await page.getByRole('textbox', { name: 'Topic', exact: true }).fill(title)
   await page.getByLabel('Definition').fill('A never-practiced topic, so it is weak.')
   await page.getByRole('button', { name: 'Save topic' }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 15_000 })

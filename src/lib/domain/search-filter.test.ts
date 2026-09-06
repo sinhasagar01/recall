@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { RECENT_WINDOW_DAYS, filterTopics, matchesQuery } from '@/lib/domain/search-filter'
 import { needsReview } from '@/lib/domain/library'
 import { makeTopic } from '@/lib/domain/topic-fixture'
-import type { Topic } from '@/lib/domain/types'
+import type { Topic, TopicRecord } from '@/lib/domain/types'
 
 const NOW = new Date('2026-06-15T12:00:00.000Z')
 
@@ -11,7 +11,7 @@ const daysAgo = (n: number) => new Date(NOW.getTime() - n * 24 * 60 * 60 * 1000)
 
 const titles = (topics: Topic[]) => topics.map((t) => t.title)
 
-function topic(title: string, overrides: Partial<Topic> = {}) {
+function topic(title: string, overrides: Partial<TopicRecord> = {}) {
   return makeTopic({ id: title, title, ...overrides })
 }
 

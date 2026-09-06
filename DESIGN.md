@@ -31,9 +31,18 @@ theme config. Do not hardcode hex values in components.
 | `--accent-ink` | `#2E2A9E` | text on accent-soft, primary hover |
 | `--flag` | `#B4325C` | weak confidence, destructive, errors |
 | `--flag-soft` | `#FBEBF1` | error banners and panels |
+| `--ok` | `#1B6B4F` | a quiz's correct option, and nothing else |
+| `--ok-soft` | `#E6F2EC` | the panel behind it |
 
 `--flag` is the only alarm color. Never use it for anything that isn't weak
 confidence, a destructive action, or an error.
+
+`--ok` is the only green in the product, and it exists for one reason: a quiz's
+answer is **objective**. Everywhere else the app deliberately refuses to grade —
+confidence is drawn in ink and accent, never red/amber/green, because "the library
+should not scold its owner on every card". A quiz is the one place where the app
+knows you were right, so it is the one place a green is honest. Using it anywhere
+else re-introduces the scolding this palette was built to avoid.
 
 ### Type
 
@@ -109,6 +118,12 @@ mono eyebrow in `--accent`.
 This separation is the product. It appears on topic detail and on practice
 reveal, identically.
 
+A quiz has no definition, and its Why renders in the mental-model register — same
+panel, same serif, same rule. The eyebrow is the one thing that changes: "Why" on a
+quiz's detail page, and **no eyebrow at all** on the practice screen, where the
+explanation sits directly under the marked options and a heading would only separate
+them. One field, one register, one voice; the label follows what was typed into it.
+
 ### Kbd
 
 A keycap: hairline `--rule` border with a 2px bottom edge, `--radius-sm`, mono
@@ -150,6 +165,7 @@ wrong, not the reference.)
 | Detail | full · visual lightbox · delete confirmation |
 | Practice | recall · reveal + grade · session complete · too few topics |
 | Weak | list · empty |
+| Quiz (`quiz-reference.html`) | add · library card · practice: unanswered · focus · selected · wrong · right · two-option · no quizzes |
 | Mobile | library · add (full screen) · practice (no tab bar) |
 
 Skeletons must match real card geometry so nothing shifts when data lands.
@@ -270,7 +286,180 @@ note existed. The bolded phrase opening each rule is its name.*
 
 ---
 
-## 5. Copy rules
+## 5. Quizzes
+
+A second content type in the same table, discriminated on `kind`. Specified by
+`quiz-reference.html`, which **supersedes any earlier quiz mock**.
+
+### How `quiz-reference.html` is read
+
+`design-reference.html` predates the build and specifies things the code has not caught
+up to. `quiz-reference.html` is the opposite: it was drawn after twelve phases and can
+contradict decisions already shipped. So it is read under a precedence rule:
+
+> **The screens win on visual and interaction detail. A shipped decision with recorded
+> reasoning wins over the screens. Any other conflict of that kind stops for a decision
+> rather than being resolved by following the drawing.**
+
+Two conflicts of that kind, both resolved:
+
+- **Difficulty on the add form.** The reference draws a difficulty select on the quiz add
+  sheet. It was drawn without tracking that the difficulty field had already been removed
+  from capture — practice ordering reads confidence and staleness and **never** difficulty,
+  so asking at capture is a decision nothing acts on. Neither shape asks at capture; both
+  set it on edit. The build stands, the drawing does not.
+- **"Practised" vs "practiced".** The reference is British; the build ships
+  `CONFIDENCE_LABEL.new = 'Never practiced'` and is overwhelmingly American in user-facing
+  copy. New quiz copy follows the build. Recorded so it is not read as an oversight.
+
+### What a quiz is
+
+A hand-written question, 2+ options, exactly one correct, and an explanation. Independent
+of topics — not generated from them, not attached to them. **No AI anywhere.**
+
+- The **question** is the `title`. There is no definition field; the card and the detail
+  page show the question where a topic shows its name.
+- The **Why** reuses `mental_model`. It does the same job — not what the answer is, but
+  why — so it gets the same field, the same indigo register and the same voice. It is
+  labelled "Why" on a quiz and "Mental model" on a topic; the panel is identical.
+- **No image.** A quiz that needs a diagram is a topic. Enforced by the database, not
+  only by the form.
+- Required to save: question, 2+ options, a marked answer, and the Why. The first three
+  are database constraints; the Why is a form rule, so a quiz arriving by another path is
+  not rejected for it.
+
+### Answering: select, then Check
+
+**A tap never writes.** Selection is local; the database write happens on Check. A
+mis-tap on a phone must not be able to mark something weak for good, and you can change
+your pick as often as you like until you commit.
+
+Before Check, the selected option is **accent** — the same colour every selected thing in
+the app uses, deliberately not green or red. The app is not hinting at whether you are
+right.
+
+After Check, **exactly two options are marked**: the correct one, and your pick if it was
+wrong. Everything else goes muted grey. Painting every wrong option red buries the one
+that matters. The **two-option case** is the shape with no quiet third — both options
+carry a mark and the muting rule has nothing to apply to — so it was built first, and the
+muting rule itself is asserted against a three-option quiz because two options cannot
+express it.
+
+The options **stop being buttons** after Check: same shape so nothing shifts, but no
+hover, not focusable, and not announced as controls. A disabled button still says
+"button".
+
+Colour never carries the outcome alone. Every marked option has a glyph and a text tag
+("The answer", "You picked this", or "Correct · you picked this" — one tag, not two), and
+the verdict line pairs the `ConfidenceMeter` with the words "Marked weak" / "Marked
+strong" inside an `aria-live` region.
+
+`1`–`9` select by **displayed** position, `Enter` checks and then continues, `Esc` leaves.
+All inert while the caret is in a field.
+
+### Options shuffle per session
+
+With the same seeded shuffle practice ordering uses, keyed by the read timestamp and the
+quiz id. Otherwise by the third round you are recalling "the second one" rather than the
+answer. Stable within a session so a re-render cannot reshuffle mid-question, and **stored
+order everywhere else** — the export renders options as stored, because the shuffle is a
+property of a session, not of the quiz.
+
+### Grading is objective, and has two outcomes
+
+Correct → strong. Incorrect → weak. **A quiz can never land on `okay`**, and this is its
+own function (`gradeQuiz`) rather than a reuse of `GRADE_TO_CONFIDENCE`: sharing the
+three-way map is precisely what would make "partly" reachable for something that has no
+partly.
+
+Everything downstream is shared and unforked. `isNeverPracticed`, `needsReview`,
+`orderForPractice` and `isStale` were already written against fields both shapes have, so
+none of them changed.
+
+### A session holds both shapes
+
+The default session mixes quizzes and topics, and `/weak` lists them together. This is
+load-bearing rather than incidental: confidence is one system, so a quiz that could not
+appear in the default session would only resurface when you went looking for it — a thing
+the product knows you are weak at and never brings you. `?scope=quiz` is the separation;
+excluding quizzes from the default session would have been a leak wearing separation's
+clothes.
+
+Because a session can now hold both, two pieces of copy changed:
+
+- The progress dots are labelled **"Card N of M"**, not "Topic N of M".
+- The session-complete screen's three columns read **Weak / Okay / Strong**, not "Didn't
+  know / Partly / Knew it". A quiz makes no self-assessment, so the grade screen's words
+  do not describe what happened to it — and the confidence words are the ones the
+  `ConfidenceMeter`, the library chips and the weak page already use. The tally now names
+  the thing that was actually recorded, in the vocabulary the rest of the app already
+  reads in.
+
+### The weak page gets no type chips — deliberately
+
+It answers *what do I not know*, and shape is not part of that question. All / Topics /
+Quizzes there would invite narrowing a list whose whole point is that confidence is one
+system regardless of shape.
+
+The mixing stays legible without chips: the Quiz badge and the left accent rule mark a
+quiz at a glance, exactly as on the library card. And the action someone actually wants on
+noticing the mix — *drill only the quizzes* — already exists as `?scope=quiz` rather than
+as a filter that only re-sorts what they are looking at.
+
+Stated as a not-yet rather than a never. `LibraryCounts.byKind` exists for the library's
+chips, so if the mixed list does feel wrong in use, adding them there is small.
+
+### Adding one: the type toggle
+
+The existing Add/Edit sheet gains a Topic/Quiz toggle at the top — one sheet, four
+modes, the same way edit mode already reuses it rather than forking a second. Switching
+swaps three things and hides one:
+
+| | Topic | Quiz |
+| --- | --- | --- |
+| First field | Topic (one line) | Question (a textarea — a question is a sentence, not a name) |
+| Body | Definition | Options, 2+, one marked |
+| Indigo field | Mental model · *how you think about it* | Why · *shown after you answer*, and required |
+| Image | yes | absent |
+
+Switching keeps what you have typed: definition and options are held separately, so
+flipping to Quiz and back does not lose a half-written definition, and a mistaken tap on
+the toggle is not destructive. An **edit** can change the kind too — the write always
+carries both shapes' columns with one side nulled, because switching has to clear what no
+longer applies or the shape constraint rejects it.
+
+**Nothing is marked as the answer by default.** A pre-checked first option would let a
+distracted save record the wrong answer, and the quiz would then look entirely normal
+until it marked you wrong for being right. The radios carry `required` so the browser
+refuses the submit; the same rule is enforced again in the domain parser, because an
+action is reachable without a form and an unmarked `correct_option` arrives there as an
+empty string — which `Number('')` would have turned into a valid index of 0.
+
+An empty option is **reported, not dropped**. Dropping one would shift every option after
+it and silently move the marked answer.
+
+### The type chips
+
+All / Topics / Quizzes lead the library's chip row, mutually exclusive, with All as the
+absence of the filter rather than a third value. Counts come from `LibraryCounts.byKind`,
+produced by the domain in local mode and by `library_counts` in SQL past the threshold —
+the same pair the parity harness holds to agreement, so a chip cannot claim a number that
+clicking it would not yield. The filter lives in the URL like every other one, so a
+filtered view is shareable and survives a reload.
+
+### In the export
+
+`library.json` carries `kind`, `options` and `correct_option` like every other column.
+`library.md` renders the question as the heading, an `## Options` list in stored order
+with `← the answer` beside the correct one, and `## Why`. The answer is marked **in
+words** because the file has to be readable with no tooling at all — a bold entry or a
+colour is a convention the reader has to already know, and an index would have to be
+resolved against a list that renumbers when rendered. The count at the top of the file
+names both shapes ("12 topics and 3 quizzes"), never calling everything a topic.
+
+---
+
+## 6. Copy rules
 
 Sentence case everywhere. Active voice. An action keeps its name through the
 whole flow — the button that says "Save topic" produces a toast that says
@@ -282,7 +471,7 @@ invitations, not apologies.
 
 ---
 
-## 6. Accessibility floor
+## 7. Accessibility floor
 
 Not optional, not polish-phase:
 
@@ -291,13 +480,14 @@ Not optional, not polish-phase:
   restored on close.
 - `prefers-reduced-motion` disables the skeleton pulse and the spinner
   animation.
-- Practice grade buttons reachable by `1` / `2` / `3`, and `Esc` leaves a session
-  at any point. The session has no rail, so its exit is the only way back and has
+- Practice grade buttons reachable by `1` / `2` / `3`; a quiz's options by `1`–`9`
+  with `Enter` to check and then continue. `Esc` leaves a session at any point. The session has no rail, so its exit is the only way back and has
   to be a visible control rather than a word in the meta line.
 - The rail's `N` / `/` / `P` hints are real shortcuts, not decoration. Every one is
   inert while the caret is in a field.
 - Color never carries meaning alone — confidence has a text label and a fill
-  count; errors have an icon and text.
+  count; errors have an icon and text; a checked quiz option has a glyph and a text
+  tag, and the verdict is announced through `aria-live`.
 
 **The mock is not authoritative on field-error markup (phase 3).** `design-reference.html`
 nests the error inside `<label class="field">`, which folds the error text into the input's
@@ -310,7 +500,7 @@ technology. Where the two disagree, this is the rule.
 
 ---
 
-## 7. Out of scope
+## 8. Out of scope
 
 The mock shows a few things beyond the original spec. Ship them only if the core
 loop is done: search-term highlighting in card titles, "Review the 2 you missed"

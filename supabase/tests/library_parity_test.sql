@@ -10,7 +10,7 @@
 -- would show one thing and its counts another, which is what phase 7 removed.
 
 begin;
-select plan(110);
+select plan(126);
 
 create function tests_create_user(uid uuid, email text) returns uuid
 language plpgsql as $fn$
@@ -42,6 +42,7 @@ language sql as $fn$
     'conf=' || 'new:' || (j->'byConfidence'->>'new') || ',' || 'weak:' || (j->'byConfidence'->>'weak') || ',' || 'okay:' || (j->'byConfidence'->>'okay') || ',' || 'strong:' || (j->'byConfidence'->>'strong'),
     'diff=' || 'easy:' || (j->'byDifficulty'->>'easy') || ',' || 'medium:' || (j->'byDifficulty'->>'medium') || ',' || 'hard:' || (j->'byDifficulty'->>'hard'),
     'quick=' || 'never-practiced:' || (j->'quick'->>'never-practiced') || ',' || 'needs-review:' || (j->'quick'->>'needs-review') || ',' || 'recently-added:' || (j->'quick'->>'recently-added') || ',' || 'recently-practiced:' || (j->'quick'->>'recently-practiced'),
+    'kind=' || 'topic:' || (j->'byKind'->>'topic') || ',' || 'quiz:' || (j->'byKind'->>'quiz'),
     'cat=' || coalesce((
       select string_agg((e->>'category') || ':' || (e->>'count'), ';'
                         order by (e->>'category') collate "C")
@@ -55,59 +56,62 @@ select tests_create_user(U&'00000000-0000-0000-0000-0000000000aa'::uuid, 'corpus
 insert into public.topics (
   id, user_id, title, definition, mental_model, mental_model_image_path,
   category, tags, difficulty, confidence, practice_count, last_practiced_at,
-  created_at, updated_at
+  created_at, updated_at, kind, options, correct_option
 ) values
-  (U&'00000000-0000-4000-8000-000000000042'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Added today', U&'An hour ago.', null, null, null, '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-09-05T11:00:00.000Z'::timestamptz, U&'2026-06-25T12:00:00.000Z'::timestamptz),
-  (U&'00000000-0000-4000-8000-000000000051'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Tie two', U&'Same created_at as the previous row.', null, null, null, '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-09-02T12:00:00.000Z'::timestamptz, U&'2026-06-16T12:00:00.000Z'::timestamptz),
-  (U&'00000000-0000-4000-8000-000000000050'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Tie one', U&'Same created_at as the next row.', null, null, null, '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-09-02T12:00:00.000Z'::timestamptz, U&'2026-06-17T12:00:00.000Z'::timestamptz),
-  (U&'00000000-0000-4000-8000-000000000040'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Added just inside', U&'Seven days ago exactly.', null, null, null, '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-08-29T12:00:00.000Z'::timestamptz, U&'2026-06-27T12:00:00.000Z'::timestamptz),
-  (U&'00000000-0000-4000-8000-000000000041'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Added just outside', U&'A millisecond past seven days.', null, null, null, '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-08-29T11:59:59.999Z'::timestamptz, U&'2026-06-26T12:00:00.000Z'::timestamptz),
-  (U&'00000000-0000-4000-8000-000000000001'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'React  reconciliation', U&'Two spaces in the title.', null, null, null, '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-08-05T12:00:00.000Z'::timestamptz, U&'2026-08-05T12:00:00.000Z'::timestamptz),
-  (U&'00000000-0000-4000-8000-000000000002'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'NBSP\00a0separated', U&'Non-breaking space.', null, null, null, '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-08-04T12:00:00.000Z'::timestamptz, U&'2026-08-04T12:00:00.000Z'::timestamptz),
-  (U&'00000000-0000-4000-8000-000000000003'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'thin\2009space', U&'Thin space.', null, null, null, '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-08-03T12:00:00.000Z'::timestamptz, U&'2026-08-03T12:00:00.000Z'::timestamptz),
-  (U&'00000000-0000-4000-8000-000000000004'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'ideo\3000graphic', U&'Ideographic space.', null, null, null, '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-08-02T12:00:00.000Z'::timestamptz, U&'2026-08-02T12:00:00.000Z'::timestamptz),
-  (U&'00000000-0000-4000-8000-000000000005'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'line\2028separator', U&'Line separator.', null, null, null, '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-08-01T12:00:00.000Z'::timestamptz, U&'2026-08-01T12:00:00.000Z'::timestamptz),
-  (U&'00000000-0000-4000-8000-000000000006'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'narrow\202fnbsp', U&'Narrow no-break space.', null, null, null, '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-07-31T12:00:00.000Z'::timestamptz, U&'2026-07-31T12:00:00.000Z'::timestamptz),
-  (U&'00000000-0000-4000-8000-000000000007'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'tab\0009delimited', U&'Horizontal tab.', null, null, null, '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-07-30T12:00:00.000Z'::timestamptz, U&'2026-07-30T12:00:00.000Z'::timestamptz),
-  (U&'00000000-0000-4000-8000-000000000008'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'vertical\000btab', U&'Vertical tab.', null, null, null, '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-07-29T12:00:00.000Z'::timestamptz, U&'2026-07-29T12:00:00.000Z'::timestamptz),
-  (U&'00000000-0000-4000-8000-000000000009'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'form\000cfeed', U&'Form feed.', null, null, null, '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-07-28T12:00:00.000Z'::timestamptz, U&'2026-07-28T12:00:00.000Z'::timestamptz),
-  (U&'00000000-0000-4000-8000-000000000010'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'  padded  ', U&'Leading and trailing whitespace.', null, null, null, '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-07-27T12:00:00.000Z'::timestamptz, U&'2026-07-27T12:00:00.000Z'::timestamptz),
-  (U&'00000000-0000-4000-8000-000000000011'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'zwsp\200bjoined', U&'Zero-width space is not whitespace.', null, null, null, '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-07-26T12:00:00.000Z'::timestamptz, U&'2026-07-26T12:00:00.000Z'::timestamptz),
-  (U&'00000000-0000-4000-8000-000000000012'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'\0130stanbul', U&'Turkish dotted capital I.', null, null, null, '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-07-25T12:00:00.000Z'::timestamptz, U&'2026-07-25T12:00:00.000Z'::timestamptz),
-  (U&'00000000-0000-4000-8000-000000000013'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Stra\00dfe', U&'Sharp s.', null, null, null, '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-07-24T12:00:00.000Z'::timestamptz, U&'2026-07-24T12:00:00.000Z'::timestamptz),
-  (U&'00000000-0000-4000-8000-000000000014'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'STRASSE', U&'The uppercase spelling, which is a different word.', null, null, null, '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-07-23T12:00:00.000Z'::timestamptz, U&'2026-07-23T12:00:00.000Z'::timestamptz),
-  (U&'00000000-0000-4000-8000-000000000015'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'\03a3\03a3', U&'Greek sigmas; the second lowercases to a final form.', null, null, null, '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-07-22T12:00:00.000Z'::timestamptz, U&'2026-07-22T12:00:00.000Z'::timestamptz),
-  (U&'00000000-0000-4000-8000-000000000016'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'CAF\00c9', U&'Accented uppercase.', null, null, null, '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-07-21T12:00:00.000Z'::timestamptz, U&'2026-07-21T12:00:00.000Z'::timestamptz),
-  (U&'00000000-0000-4000-8000-000000000017'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'100% coverage', U&'A literal percent sign.', null, null, null, '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-07-20T12:00:00.000Z'::timestamptz, U&'2026-07-20T12:00:00.000Z'::timestamptz),
-  (U&'00000000-0000-4000-8000-000000000018'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'snake_case_name', U&'A literal underscore.', null, null, null, '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-07-19T12:00:00.000Z'::timestamptz, U&'2026-07-19T12:00:00.000Z'::timestamptz),
-  (U&'00000000-0000-4000-8000-000000000019'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'back\005cslash', U&'A literal backslash.', null, null, null, '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-07-18T12:00:00.000Z'::timestamptz, U&'2026-07-18T12:00:00.000Z'::timestamptz),
-  (U&'00000000-0000-4000-8000-000000000020'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'ends with alpha', U&'beta begins the definition', null, null, null, '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-07-17T12:00:00.000Z'::timestamptz, U&'2026-07-17T12:00:00.000Z'::timestamptz),
-  (U&'00000000-0000-4000-8000-000000000021'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Findable by title', U&'Nothing else matches.', null, null, U&'Systems', '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-07-16T12:00:00.000Z'::timestamptz, U&'2026-07-16T12:00:00.000Z'::timestamptz),
-  (U&'00000000-0000-4000-8000-000000000022'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Plain', U&'Findable by definitionword.', null, null, null, '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-07-15T12:00:00.000Z'::timestamptz, U&'2026-07-15T12:00:00.000Z'::timestamptz),
-  (U&'00000000-0000-4000-8000-000000000023'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Plain two', U&'Nothing.', U&'Findable by mentalmodelword.', null, null, '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-07-14T12:00:00.000Z'::timestamptz, U&'2026-07-14T12:00:00.000Z'::timestamptz),
-  (U&'00000000-0000-4000-8000-000000000024'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Plain three', U&'Nothing.', null, null, U&'Findablecategory', '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-07-13T12:00:00.000Z'::timestamptz, U&'2026-07-13T12:00:00.000Z'::timestamptz),
-  (U&'00000000-0000-4000-8000-000000000025'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Plain four', U&'Nothing.', null, null, null, array[U&'findabletag', U&'other']::text[], U&'medium', U&'okay', 0, null, U&'2026-07-12T12:00:00.000Z'::timestamptz, U&'2026-07-12T12:00:00.000Z'::timestamptz),
-  (U&'00000000-0000-4000-8000-000000000026'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'No category', U&'Category is null.', null, null, null, '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-07-11T12:00:00.000Z'::timestamptz, U&'2026-07-11T12:00:00.000Z'::timestamptz),
-  (U&'00000000-0000-4000-8000-000000000027'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Explicitly uncategorized', U&'Category is the literal label.', null, null, U&'Uncategorized', '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-07-10T12:00:00.000Z'::timestamptz, U&'2026-07-10T12:00:00.000Z'::timestamptz),
-  (U&'00000000-0000-4000-8000-000000000028'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Grid new easy', U&'One per confidence and difficulty pair.', null, null, null, '{}'::text[], U&'easy', U&'new', 0, null, U&'2026-07-09T12:00:00.000Z'::timestamptz, U&'2026-07-09T12:00:00.000Z'::timestamptz),
-  (U&'00000000-0000-4000-8000-000000000029'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Grid new medium', U&'One per confidence and difficulty pair.', null, null, null, '{}'::text[], U&'medium', U&'new', 0, null, U&'2026-07-08T12:00:00.000Z'::timestamptz, U&'2026-07-08T12:00:00.000Z'::timestamptz),
-  (U&'00000000-0000-4000-8000-000000000030'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Grid new hard', U&'One per confidence and difficulty pair.', null, null, null, '{}'::text[], U&'hard', U&'new', 0, null, U&'2026-07-07T12:00:00.000Z'::timestamptz, U&'2026-07-07T12:00:00.000Z'::timestamptz),
-  (U&'00000000-0000-4000-8000-000000000031'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Grid weak easy', U&'One per confidence and difficulty pair.', null, null, U&'Grid', '{}'::text[], U&'easy', U&'weak', 0, null, U&'2026-07-06T12:00:00.000Z'::timestamptz, U&'2026-07-06T12:00:00.000Z'::timestamptz),
-  (U&'00000000-0000-4000-8000-000000000032'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Grid weak medium', U&'One per confidence and difficulty pair.', null, null, U&'Grid', '{}'::text[], U&'medium', U&'weak', 0, null, U&'2026-07-05T12:00:00.000Z'::timestamptz, U&'2026-07-05T12:00:00.000Z'::timestamptz),
-  (U&'00000000-0000-4000-8000-000000000033'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Grid weak hard', U&'One per confidence and difficulty pair.', null, null, U&'Grid', '{}'::text[], U&'hard', U&'weak', 0, null, U&'2026-07-04T12:00:00.000Z'::timestamptz, U&'2026-07-04T12:00:00.000Z'::timestamptz),
-  (U&'00000000-0000-4000-8000-000000000034'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Grid okay easy', U&'One per confidence and difficulty pair.', null, null, U&'Grid', '{}'::text[], U&'easy', U&'okay', 0, null, U&'2026-07-03T12:00:00.000Z'::timestamptz, U&'2026-07-03T12:00:00.000Z'::timestamptz),
-  (U&'00000000-0000-4000-8000-000000000035'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Grid okay medium', U&'One per confidence and difficulty pair.', null, null, U&'Grid', '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-07-02T12:00:00.000Z'::timestamptz, U&'2026-07-02T12:00:00.000Z'::timestamptz),
-  (U&'00000000-0000-4000-8000-000000000036'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Grid okay hard', U&'One per confidence and difficulty pair.', null, null, U&'Grid', '{}'::text[], U&'hard', U&'okay', 0, null, U&'2026-07-01T12:00:00.000Z'::timestamptz, U&'2026-07-01T12:00:00.000Z'::timestamptz),
-  (U&'00000000-0000-4000-8000-000000000037'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Grid strong easy', U&'One per confidence and difficulty pair.', null, null, U&'Grid', '{}'::text[], U&'easy', U&'strong', 0, null, U&'2026-06-30T12:00:00.000Z'::timestamptz, U&'2026-06-30T12:00:00.000Z'::timestamptz),
-  (U&'00000000-0000-4000-8000-000000000038'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Grid strong medium', U&'One per confidence and difficulty pair.', null, null, U&'Grid', '{}'::text[], U&'medium', U&'strong', 0, null, U&'2026-06-29T12:00:00.000Z'::timestamptz, U&'2026-06-29T12:00:00.000Z'::timestamptz),
-  (U&'00000000-0000-4000-8000-000000000039'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Grid strong hard', U&'One per confidence and difficulty pair.', null, null, U&'Grid', '{}'::text[], U&'hard', U&'strong', 0, null, U&'2026-06-28T12:00:00.000Z'::timestamptz, U&'2026-06-28T12:00:00.000Z'::timestamptz),
-  (U&'00000000-0000-4000-8000-000000000043'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Practiced just inside', U&'Seven days ago exactly.', null, null, null, '{}'::text[], U&'medium', U&'strong', 3, U&'2026-08-29T12:00:00.000Z'::timestamptz, U&'2026-06-24T12:00:00.000Z'::timestamptz, U&'2026-06-24T12:00:00.000Z'::timestamptz),
-  (U&'00000000-0000-4000-8000-000000000044'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Practiced just outside', U&'A millisecond past seven days.', null, null, null, '{}'::text[], U&'medium', U&'strong', 2, U&'2026-08-29T11:59:59.999Z'::timestamptz, U&'2026-06-23T12:00:00.000Z'::timestamptz, U&'2026-06-23T12:00:00.000Z'::timestamptz),
-  (U&'00000000-0000-4000-8000-000000000045'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Practiced most recently', U&'The maximum last_practiced_at in the corpus.', null, null, null, '{}'::text[], U&'medium', U&'okay', 9, U&'2026-09-05T11:30:00.000Z'::timestamptz, U&'2026-06-22T12:00:00.000Z'::timestamptz, U&'2026-06-22T12:00:00.000Z'::timestamptz),
-  (U&'00000000-0000-4000-8000-000000000046'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Settled just inside the stale window', U&'Practised exactly sixty days ago.', null, null, null, '{}'::text[], U&'medium', U&'strong', 4, U&'2026-07-07T12:00:00.000Z'::timestamptz, U&'2026-06-21T12:00:00.000Z'::timestamptz, U&'2026-06-21T12:00:00.000Z'::timestamptz),
-  (U&'00000000-0000-4000-8000-000000000047'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Settled just outside the stale window', U&'A millisecond past sixty days.', null, null, null, '{}'::text[], U&'medium', U&'strong', 4, U&'2026-07-07T11:59:59.999Z'::timestamptz, U&'2026-06-20T12:00:00.000Z'::timestamptz, U&'2026-06-20T12:00:00.000Z'::timestamptz),
-  (U&'00000000-0000-4000-8000-000000000048'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Okay and long gone', U&'Half known, and not looked at in months.', null, null, null, '{}'::text[], U&'medium', U&'okay', 1, U&'2026-02-17T12:00:00.000Z'::timestamptz, U&'2026-06-19T12:00:00.000Z'::timestamptz, U&'2026-06-19T12:00:00.000Z'::timestamptz),
-  (U&'00000000-0000-4000-8000-000000000049'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Settled but never practised', U&'Unreachable through the app; an absent stamp is an infinite gap.', null, null, null, '{}'::text[], U&'medium', U&'strong', 0, null, U&'2026-06-18T12:00:00.000Z'::timestamptz, U&'2026-06-18T12:00:00.000Z'::timestamptz);
+  (U&'00000000-0000-4000-8000-000000000042'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Added today', U&'An hour ago.', null, null, null, '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-09-05T11:00:00.000Z'::timestamptz, U&'2026-06-25T12:00:00.000Z'::timestamptz, U&'topic', null, null),
+  (U&'00000000-0000-4000-8000-000000000051'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Tie two', U&'Same created_at as the previous row.', null, null, null, '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-09-02T12:00:00.000Z'::timestamptz, U&'2026-06-16T12:00:00.000Z'::timestamptz, U&'topic', null, null),
+  (U&'00000000-0000-4000-8000-000000000050'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Tie one', U&'Same created_at as the next row.', null, null, null, '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-09-02T12:00:00.000Z'::timestamptz, U&'2026-06-17T12:00:00.000Z'::timestamptz, U&'topic', null, null),
+  (U&'00000000-0000-4000-8000-000000000040'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Added just inside', U&'Seven days ago exactly.', null, null, null, '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-08-29T12:00:00.000Z'::timestamptz, U&'2026-06-27T12:00:00.000Z'::timestamptz, U&'topic', null, null),
+  (U&'00000000-0000-4000-8000-000000000041'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Added just outside', U&'A millisecond past seven days.', null, null, null, '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-08-29T11:59:59.999Z'::timestamptz, U&'2026-06-26T12:00:00.000Z'::timestamptz, U&'topic', null, null),
+  (U&'00000000-0000-4000-8000-000000000001'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'React  reconciliation', U&'Two spaces in the title.', null, null, null, '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-08-05T12:00:00.000Z'::timestamptz, U&'2026-08-05T12:00:00.000Z'::timestamptz, U&'topic', null, null),
+  (U&'00000000-0000-4000-8000-000000000002'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'NBSP\00a0separated', U&'Non-breaking space.', null, null, null, '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-08-04T12:00:00.000Z'::timestamptz, U&'2026-08-04T12:00:00.000Z'::timestamptz, U&'topic', null, null),
+  (U&'00000000-0000-4000-8000-000000000003'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'thin\2009space', U&'Thin space.', null, null, null, '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-08-03T12:00:00.000Z'::timestamptz, U&'2026-08-03T12:00:00.000Z'::timestamptz, U&'topic', null, null),
+  (U&'00000000-0000-4000-8000-000000000004'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'ideo\3000graphic', U&'Ideographic space.', null, null, null, '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-08-02T12:00:00.000Z'::timestamptz, U&'2026-08-02T12:00:00.000Z'::timestamptz, U&'topic', null, null),
+  (U&'00000000-0000-4000-8000-000000000005'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'line\2028separator', U&'Line separator.', null, null, null, '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-08-01T12:00:00.000Z'::timestamptz, U&'2026-08-01T12:00:00.000Z'::timestamptz, U&'topic', null, null),
+  (U&'00000000-0000-4000-8000-000000000006'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'narrow\202fnbsp', U&'Narrow no-break space.', null, null, null, '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-07-31T12:00:00.000Z'::timestamptz, U&'2026-07-31T12:00:00.000Z'::timestamptz, U&'topic', null, null),
+  (U&'00000000-0000-4000-8000-000000000007'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'tab\0009delimited', U&'Horizontal tab.', null, null, null, '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-07-30T12:00:00.000Z'::timestamptz, U&'2026-07-30T12:00:00.000Z'::timestamptz, U&'topic', null, null),
+  (U&'00000000-0000-4000-8000-000000000008'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'vertical\000btab', U&'Vertical tab.', null, null, null, '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-07-29T12:00:00.000Z'::timestamptz, U&'2026-07-29T12:00:00.000Z'::timestamptz, U&'topic', null, null),
+  (U&'00000000-0000-4000-8000-000000000009'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'form\000cfeed', U&'Form feed.', null, null, null, '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-07-28T12:00:00.000Z'::timestamptz, U&'2026-07-28T12:00:00.000Z'::timestamptz, U&'topic', null, null),
+  (U&'00000000-0000-4000-8000-000000000010'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'  padded  ', U&'Leading and trailing whitespace.', null, null, null, '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-07-27T12:00:00.000Z'::timestamptz, U&'2026-07-27T12:00:00.000Z'::timestamptz, U&'topic', null, null),
+  (U&'00000000-0000-4000-8000-000000000011'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'zwsp\200bjoined', U&'Zero-width space is not whitespace.', null, null, null, '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-07-26T12:00:00.000Z'::timestamptz, U&'2026-07-26T12:00:00.000Z'::timestamptz, U&'topic', null, null),
+  (U&'00000000-0000-4000-8000-000000000012'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'\0130stanbul', U&'Turkish dotted capital I.', null, null, null, '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-07-25T12:00:00.000Z'::timestamptz, U&'2026-07-25T12:00:00.000Z'::timestamptz, U&'topic', null, null),
+  (U&'00000000-0000-4000-8000-000000000013'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Stra\00dfe', U&'Sharp s.', null, null, null, '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-07-24T12:00:00.000Z'::timestamptz, U&'2026-07-24T12:00:00.000Z'::timestamptz, U&'topic', null, null),
+  (U&'00000000-0000-4000-8000-000000000014'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'STRASSE', U&'The uppercase spelling, which is a different word.', null, null, null, '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-07-23T12:00:00.000Z'::timestamptz, U&'2026-07-23T12:00:00.000Z'::timestamptz, U&'topic', null, null),
+  (U&'00000000-0000-4000-8000-000000000015'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'\03a3\03a3', U&'Greek sigmas; the second lowercases to a final form.', null, null, null, '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-07-22T12:00:00.000Z'::timestamptz, U&'2026-07-22T12:00:00.000Z'::timestamptz, U&'topic', null, null),
+  (U&'00000000-0000-4000-8000-000000000016'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'CAF\00c9', U&'Accented uppercase.', null, null, null, '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-07-21T12:00:00.000Z'::timestamptz, U&'2026-07-21T12:00:00.000Z'::timestamptz, U&'topic', null, null),
+  (U&'00000000-0000-4000-8000-000000000017'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'100% coverage', U&'A literal percent sign.', null, null, null, '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-07-20T12:00:00.000Z'::timestamptz, U&'2026-07-20T12:00:00.000Z'::timestamptz, U&'topic', null, null),
+  (U&'00000000-0000-4000-8000-000000000018'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'snake_case_name', U&'A literal underscore.', null, null, null, '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-07-19T12:00:00.000Z'::timestamptz, U&'2026-07-19T12:00:00.000Z'::timestamptz, U&'topic', null, null),
+  (U&'00000000-0000-4000-8000-000000000019'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'back\005cslash', U&'A literal backslash.', null, null, null, '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-07-18T12:00:00.000Z'::timestamptz, U&'2026-07-18T12:00:00.000Z'::timestamptz, U&'topic', null, null),
+  (U&'00000000-0000-4000-8000-000000000020'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'ends with alpha', U&'beta begins the definition', null, null, null, '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-07-17T12:00:00.000Z'::timestamptz, U&'2026-07-17T12:00:00.000Z'::timestamptz, U&'topic', null, null),
+  (U&'00000000-0000-4000-8000-000000000021'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Findable by title', U&'Nothing else matches.', null, null, U&'Systems', '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-07-16T12:00:00.000Z'::timestamptz, U&'2026-07-16T12:00:00.000Z'::timestamptz, U&'topic', null, null),
+  (U&'00000000-0000-4000-8000-000000000022'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Plain', U&'Findable by definitionword.', null, null, null, '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-07-15T12:00:00.000Z'::timestamptz, U&'2026-07-15T12:00:00.000Z'::timestamptz, U&'topic', null, null),
+  (U&'00000000-0000-4000-8000-000000000023'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Plain two', U&'Nothing.', U&'Findable by mentalmodelword.', null, null, '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-07-14T12:00:00.000Z'::timestamptz, U&'2026-07-14T12:00:00.000Z'::timestamptz, U&'topic', null, null),
+  (U&'00000000-0000-4000-8000-000000000024'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Plain three', U&'Nothing.', null, null, U&'Findablecategory', '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-07-13T12:00:00.000Z'::timestamptz, U&'2026-07-13T12:00:00.000Z'::timestamptz, U&'topic', null, null),
+  (U&'00000000-0000-4000-8000-000000000025'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Plain four', U&'Nothing.', null, null, null, array[U&'findabletag', U&'other']::text[], U&'medium', U&'okay', 0, null, U&'2026-07-12T12:00:00.000Z'::timestamptz, U&'2026-07-12T12:00:00.000Z'::timestamptz, U&'topic', null, null),
+  (U&'00000000-0000-4000-8000-000000000026'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'No category', U&'Category is null.', null, null, null, '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-07-11T12:00:00.000Z'::timestamptz, U&'2026-07-11T12:00:00.000Z'::timestamptz, U&'topic', null, null),
+  (U&'00000000-0000-4000-8000-000000000027'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Explicitly uncategorized', U&'Category is the literal label.', null, null, U&'Uncategorized', '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-07-10T12:00:00.000Z'::timestamptz, U&'2026-07-10T12:00:00.000Z'::timestamptz, U&'topic', null, null),
+  (U&'00000000-0000-4000-8000-000000000028'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Grid new easy', U&'One per confidence and difficulty pair.', null, null, null, '{}'::text[], U&'easy', U&'new', 0, null, U&'2026-07-09T12:00:00.000Z'::timestamptz, U&'2026-07-09T12:00:00.000Z'::timestamptz, U&'topic', null, null),
+  (U&'00000000-0000-4000-8000-000000000029'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Grid new medium', U&'One per confidence and difficulty pair.', null, null, null, '{}'::text[], U&'medium', U&'new', 0, null, U&'2026-07-08T12:00:00.000Z'::timestamptz, U&'2026-07-08T12:00:00.000Z'::timestamptz, U&'topic', null, null),
+  (U&'00000000-0000-4000-8000-000000000030'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Grid new hard', U&'One per confidence and difficulty pair.', null, null, null, '{}'::text[], U&'hard', U&'new', 0, null, U&'2026-07-07T12:00:00.000Z'::timestamptz, U&'2026-07-07T12:00:00.000Z'::timestamptz, U&'topic', null, null),
+  (U&'00000000-0000-4000-8000-000000000031'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Grid weak easy', U&'One per confidence and difficulty pair.', null, null, U&'Grid', '{}'::text[], U&'easy', U&'weak', 0, null, U&'2026-07-06T12:00:00.000Z'::timestamptz, U&'2026-07-06T12:00:00.000Z'::timestamptz, U&'topic', null, null),
+  (U&'00000000-0000-4000-8000-000000000032'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Grid weak medium', U&'One per confidence and difficulty pair.', null, null, U&'Grid', '{}'::text[], U&'medium', U&'weak', 0, null, U&'2026-07-05T12:00:00.000Z'::timestamptz, U&'2026-07-05T12:00:00.000Z'::timestamptz, U&'topic', null, null),
+  (U&'00000000-0000-4000-8000-000000000033'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Grid weak hard', U&'One per confidence and difficulty pair.', null, null, U&'Grid', '{}'::text[], U&'hard', U&'weak', 0, null, U&'2026-07-04T12:00:00.000Z'::timestamptz, U&'2026-07-04T12:00:00.000Z'::timestamptz, U&'topic', null, null),
+  (U&'00000000-0000-4000-8000-000000000034'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Grid okay easy', U&'One per confidence and difficulty pair.', null, null, U&'Grid', '{}'::text[], U&'easy', U&'okay', 0, null, U&'2026-07-03T12:00:00.000Z'::timestamptz, U&'2026-07-03T12:00:00.000Z'::timestamptz, U&'topic', null, null),
+  (U&'00000000-0000-4000-8000-000000000035'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Grid okay medium', U&'One per confidence and difficulty pair.', null, null, U&'Grid', '{}'::text[], U&'medium', U&'okay', 0, null, U&'2026-07-02T12:00:00.000Z'::timestamptz, U&'2026-07-02T12:00:00.000Z'::timestamptz, U&'topic', null, null),
+  (U&'00000000-0000-4000-8000-000000000036'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Grid okay hard', U&'One per confidence and difficulty pair.', null, null, U&'Grid', '{}'::text[], U&'hard', U&'okay', 0, null, U&'2026-07-01T12:00:00.000Z'::timestamptz, U&'2026-07-01T12:00:00.000Z'::timestamptz, U&'topic', null, null),
+  (U&'00000000-0000-4000-8000-000000000037'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Grid strong easy', U&'One per confidence and difficulty pair.', null, null, U&'Grid', '{}'::text[], U&'easy', U&'strong', 0, null, U&'2026-06-30T12:00:00.000Z'::timestamptz, U&'2026-06-30T12:00:00.000Z'::timestamptz, U&'topic', null, null),
+  (U&'00000000-0000-4000-8000-000000000038'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Grid strong medium', U&'One per confidence and difficulty pair.', null, null, U&'Grid', '{}'::text[], U&'medium', U&'strong', 0, null, U&'2026-06-29T12:00:00.000Z'::timestamptz, U&'2026-06-29T12:00:00.000Z'::timestamptz, U&'topic', null, null),
+  (U&'00000000-0000-4000-8000-000000000039'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Grid strong hard', U&'One per confidence and difficulty pair.', null, null, U&'Grid', '{}'::text[], U&'hard', U&'strong', 0, null, U&'2026-06-28T12:00:00.000Z'::timestamptz, U&'2026-06-28T12:00:00.000Z'::timestamptz, U&'topic', null, null),
+  (U&'00000000-0000-4000-8000-000000000043'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Practiced just inside', U&'Seven days ago exactly.', null, null, null, '{}'::text[], U&'medium', U&'strong', 3, U&'2026-08-29T12:00:00.000Z'::timestamptz, U&'2026-06-24T12:00:00.000Z'::timestamptz, U&'2026-06-24T12:00:00.000Z'::timestamptz, U&'topic', null, null),
+  (U&'00000000-0000-4000-8000-000000000044'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Practiced just outside', U&'A millisecond past seven days.', null, null, null, '{}'::text[], U&'medium', U&'strong', 2, U&'2026-08-29T11:59:59.999Z'::timestamptz, U&'2026-06-23T12:00:00.000Z'::timestamptz, U&'2026-06-23T12:00:00.000Z'::timestamptz, U&'topic', null, null),
+  (U&'00000000-0000-4000-8000-000000000045'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Practiced most recently', U&'The maximum last_practiced_at in the corpus.', null, null, null, '{}'::text[], U&'medium', U&'okay', 9, U&'2026-09-05T11:30:00.000Z'::timestamptz, U&'2026-06-22T12:00:00.000Z'::timestamptz, U&'2026-06-22T12:00:00.000Z'::timestamptz, U&'topic', null, null),
+  (U&'00000000-0000-4000-8000-000000000046'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Settled just inside the stale window', U&'Practised exactly sixty days ago.', null, null, null, '{}'::text[], U&'medium', U&'strong', 4, U&'2026-07-07T12:00:00.000Z'::timestamptz, U&'2026-06-21T12:00:00.000Z'::timestamptz, U&'2026-06-21T12:00:00.000Z'::timestamptz, U&'topic', null, null),
+  (U&'00000000-0000-4000-8000-000000000047'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Settled just outside the stale window', U&'A millisecond past sixty days.', null, null, null, '{}'::text[], U&'medium', U&'strong', 4, U&'2026-07-07T11:59:59.999Z'::timestamptz, U&'2026-06-20T12:00:00.000Z'::timestamptz, U&'2026-06-20T12:00:00.000Z'::timestamptz, U&'topic', null, null),
+  (U&'00000000-0000-4000-8000-000000000048'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Okay and long gone', U&'Half known, and not looked at in months.', null, null, null, '{}'::text[], U&'medium', U&'okay', 1, U&'2026-02-17T12:00:00.000Z'::timestamptz, U&'2026-06-19T12:00:00.000Z'::timestamptz, U&'2026-06-19T12:00:00.000Z'::timestamptz, U&'topic', null, null),
+  (U&'00000000-0000-4000-8000-000000000049'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Settled but never practised', U&'Unreachable through the app; an absent stamp is an infinite gap.', null, null, null, '{}'::text[], U&'medium', U&'strong', 0, null, U&'2026-06-18T12:00:00.000Z'::timestamptz, U&'2026-06-18T12:00:00.000Z'::timestamptz, U&'topic', null, null),
+  (U&'00000000-0000-4000-8000-000000000052'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Does a transform create a stacking context?', null, U&'A z-index that should work stops working once a parent is transformed.', null, U&'CSS', array[U&'layout']::text[], U&'medium', U&'new', 0, null, U&'2026-06-15T12:00:00.000Z'::timestamptz, U&'2026-06-15T12:00:00.000Z'::timestamptz, U&'quiz', array[U&'Yes, any transform other than none', U&'No, only position with z-index']::text[], 0),
+  (U&'00000000-0000-4000-8000-000000000053'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Which of these is not a hook rule?', null, U&'The linter enforces it; the reason is the call order the renderer relies on.', null, null, '{}'::text[], U&'medium', U&'weak', 2, U&'2026-09-01T12:00:00.000Z'::timestamptz, U&'2026-06-14T12:00:00.000Z'::timestamptz, U&'2026-06-14T12:00:00.000Z'::timestamptz, U&'quiz', array[U&'Call them at the top level', U&'Call them from a plain function', U&'Call them from a component']::text[], 1),
+  (U&'00000000-0000-4000-8000-000000000054'::uuid, U&'00000000-0000-0000-0000-0000000000aa'::uuid, U&'Sparse quiz', null, null, null, null, '{}'::text[], U&'hard', U&'strong', 0, null, U&'2026-06-13T12:00:00.000Z'::timestamptz, U&'2026-06-13T12:00:00.000Z'::timestamptz, U&'quiz', array[U&'a', U&'b']::text[], 1);
 
 -- Everything below runs as the corpus user. pgTAP runs as postgres, which has
 -- BYPASSRLS, so an assertion made before this line would pass whether or not the
@@ -116,7 +120,7 @@ select tests_login_as(U&'00000000-0000-0000-0000-0000000000aa'::uuid);
 
 select is(
   (select count(*)::int from public.topics),
-  51,
+  54,
   'the corpus loaded, and RLS scopes it to its owner'
 );
 
@@ -129,12 +133,12 @@ select is(
     )
     select coalesce(string_agg(id::text, ',' order by rn), '') from page
   ),
-  U&'00000000-0000-4000-8000-000000000042,00000000-0000-4000-8000-000000000051,00000000-0000-4000-8000-000000000050,00000000-0000-4000-8000-000000000040,00000000-0000-4000-8000-000000000041,00000000-0000-4000-8000-000000000001,00000000-0000-4000-8000-000000000002,00000000-0000-4000-8000-000000000003,00000000-0000-4000-8000-000000000004,00000000-0000-4000-8000-000000000005,00000000-0000-4000-8000-000000000006,00000000-0000-4000-8000-000000000007,00000000-0000-4000-8000-000000000008,00000000-0000-4000-8000-000000000009,00000000-0000-4000-8000-000000000010,00000000-0000-4000-8000-000000000011,00000000-0000-4000-8000-000000000012,00000000-0000-4000-8000-000000000013,00000000-0000-4000-8000-000000000014,00000000-0000-4000-8000-000000000015,00000000-0000-4000-8000-000000000016,00000000-0000-4000-8000-000000000017,00000000-0000-4000-8000-000000000018,00000000-0000-4000-8000-000000000019,00000000-0000-4000-8000-000000000020,00000000-0000-4000-8000-000000000021,00000000-0000-4000-8000-000000000022,00000000-0000-4000-8000-000000000023,00000000-0000-4000-8000-000000000024,00000000-0000-4000-8000-000000000025,00000000-0000-4000-8000-000000000026,00000000-0000-4000-8000-000000000027,00000000-0000-4000-8000-000000000028,00000000-0000-4000-8000-000000000029,00000000-0000-4000-8000-000000000030,00000000-0000-4000-8000-000000000031,00000000-0000-4000-8000-000000000032,00000000-0000-4000-8000-000000000033,00000000-0000-4000-8000-000000000034,00000000-0000-4000-8000-000000000035,00000000-0000-4000-8000-000000000036,00000000-0000-4000-8000-000000000037,00000000-0000-4000-8000-000000000038,00000000-0000-4000-8000-000000000039,00000000-0000-4000-8000-000000000043,00000000-0000-4000-8000-000000000044,00000000-0000-4000-8000-000000000045,00000000-0000-4000-8000-000000000046,00000000-0000-4000-8000-000000000047,00000000-0000-4000-8000-000000000048,00000000-0000-4000-8000-000000000049',
+  U&'00000000-0000-4000-8000-000000000042,00000000-0000-4000-8000-000000000051,00000000-0000-4000-8000-000000000050,00000000-0000-4000-8000-000000000040,00000000-0000-4000-8000-000000000041,00000000-0000-4000-8000-000000000001,00000000-0000-4000-8000-000000000002,00000000-0000-4000-8000-000000000003,00000000-0000-4000-8000-000000000004,00000000-0000-4000-8000-000000000005,00000000-0000-4000-8000-000000000006,00000000-0000-4000-8000-000000000007,00000000-0000-4000-8000-000000000008,00000000-0000-4000-8000-000000000009,00000000-0000-4000-8000-000000000010,00000000-0000-4000-8000-000000000011,00000000-0000-4000-8000-000000000012,00000000-0000-4000-8000-000000000013,00000000-0000-4000-8000-000000000014,00000000-0000-4000-8000-000000000015,00000000-0000-4000-8000-000000000016,00000000-0000-4000-8000-000000000017,00000000-0000-4000-8000-000000000018,00000000-0000-4000-8000-000000000019,00000000-0000-4000-8000-000000000020,00000000-0000-4000-8000-000000000021,00000000-0000-4000-8000-000000000022,00000000-0000-4000-8000-000000000023,00000000-0000-4000-8000-000000000024,00000000-0000-4000-8000-000000000025,00000000-0000-4000-8000-000000000026,00000000-0000-4000-8000-000000000027,00000000-0000-4000-8000-000000000028,00000000-0000-4000-8000-000000000029,00000000-0000-4000-8000-000000000030,00000000-0000-4000-8000-000000000031,00000000-0000-4000-8000-000000000032,00000000-0000-4000-8000-000000000033,00000000-0000-4000-8000-000000000034,00000000-0000-4000-8000-000000000035,00000000-0000-4000-8000-000000000036,00000000-0000-4000-8000-000000000037,00000000-0000-4000-8000-000000000038,00000000-0000-4000-8000-000000000039,00000000-0000-4000-8000-000000000043,00000000-0000-4000-8000-000000000044,00000000-0000-4000-8000-000000000045,00000000-0000-4000-8000-000000000046,00000000-0000-4000-8000-000000000047,00000000-0000-4000-8000-000000000048,00000000-0000-4000-8000-000000000049,00000000-0000-4000-8000-000000000052,00000000-0000-4000-8000-000000000053,00000000-0000-4000-8000-000000000054',
   U&'unfiltered: rows'
 );
 select is(
   tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'', null, null, null, '{}'::text[])),
-  U&'total=51|matching=51|needsReview=6|lastPracticed=1788607800000|conf=new:3,weak:3,okay:37,strong:8|diff=easy:4,medium:43,hard:4|quick=never-practiced:3,needs-review:6,recently-added:4,recently-practiced:2|cat=Findablecategory:1;Grid:9;Systems:1;Uncategorized:40',
+  U&'total=54|matching=54|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
   U&'unfiltered: counts'
 );
 
@@ -152,7 +156,7 @@ select is(
 );
 select is(
   tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'react reconciliation', null, null, null, '{}'::text[])),
-  U&'total=51|matching=1|needsReview=6|lastPracticed=1788607800000|conf=new:3,weak:3,okay:37,strong:8|diff=easy:4,medium:43,hard:4|quick=never-practiced:3,needs-review:6,recently-added:4,recently-practiced:2|cat=Findablecategory:1;Grid:9;Systems:1;Uncategorized:40',
+  U&'total=54|matching=1|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
   U&'query collapses double space: counts'
 );
 
@@ -170,7 +174,7 @@ select is(
 );
 select is(
   tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'REACT RECONCILIATION', null, null, null, '{}'::text[])),
-  U&'total=51|matching=1|needsReview=6|lastPracticed=1788607800000|conf=new:3,weak:3,okay:37,strong:8|diff=easy:4,medium:43,hard:4|quick=never-practiced:3,needs-review:6,recently-added:4,recently-practiced:2|cat=Findablecategory:1;Grid:9;Systems:1;Uncategorized:40',
+  U&'total=54|matching=1|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
   U&'query is case insensitive: counts'
 );
 
@@ -188,7 +192,7 @@ select is(
 );
 select is(
   tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'   react   ', null, null, null, '{}'::text[])),
-  U&'total=51|matching=1|needsReview=6|lastPracticed=1788607800000|conf=new:3,weak:3,okay:37,strong:8|diff=easy:4,medium:43,hard:4|quick=never-practiced:3,needs-review:6,recently-added:4,recently-practiced:2|cat=Findablecategory:1;Grid:9;Systems:1;Uncategorized:40',
+  U&'total=54|matching=1|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
   U&'query is trimmed: counts'
 );
 
@@ -206,7 +210,7 @@ select is(
 );
 select is(
   tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'nbsp separated', null, null, null, '{}'::text[])),
-  U&'total=51|matching=1|needsReview=6|lastPracticed=1788607800000|conf=new:3,weak:3,okay:37,strong:8|diff=easy:4,medium:43,hard:4|quick=never-practiced:3,needs-review:6,recently-added:4,recently-practiced:2|cat=Findablecategory:1;Grid:9;Systems:1;Uncategorized:40',
+  U&'total=54|matching=1|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
   U&'query matches across nbsp: counts'
 );
 
@@ -224,7 +228,7 @@ select is(
 );
 select is(
   tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'thin space', null, null, null, '{}'::text[])),
-  U&'total=51|matching=1|needsReview=6|lastPracticed=1788607800000|conf=new:3,weak:3,okay:37,strong:8|diff=easy:4,medium:43,hard:4|quick=never-practiced:3,needs-review:6,recently-added:4,recently-practiced:2|cat=Findablecategory:1;Grid:9;Systems:1;Uncategorized:40',
+  U&'total=54|matching=1|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
   U&'query matches across thin space: counts'
 );
 
@@ -242,7 +246,7 @@ select is(
 );
 select is(
   tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'ideo graphic', null, null, null, '{}'::text[])),
-  U&'total=51|matching=1|needsReview=6|lastPracticed=1788607800000|conf=new:3,weak:3,okay:37,strong:8|diff=easy:4,medium:43,hard:4|quick=never-practiced:3,needs-review:6,recently-added:4,recently-practiced:2|cat=Findablecategory:1;Grid:9;Systems:1;Uncategorized:40',
+  U&'total=54|matching=1|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
   U&'query matches across ideographic space: counts'
 );
 
@@ -260,7 +264,7 @@ select is(
 );
 select is(
   tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'line separator', null, null, null, '{}'::text[])),
-  U&'total=51|matching=1|needsReview=6|lastPracticed=1788607800000|conf=new:3,weak:3,okay:37,strong:8|diff=easy:4,medium:43,hard:4|quick=never-practiced:3,needs-review:6,recently-added:4,recently-practiced:2|cat=Findablecategory:1;Grid:9;Systems:1;Uncategorized:40',
+  U&'total=54|matching=1|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
   U&'query matches across line separator: counts'
 );
 
@@ -278,7 +282,7 @@ select is(
 );
 select is(
   tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'narrow nbsp', null, null, null, '{}'::text[])),
-  U&'total=51|matching=1|needsReview=6|lastPracticed=1788607800000|conf=new:3,weak:3,okay:37,strong:8|diff=easy:4,medium:43,hard:4|quick=never-practiced:3,needs-review:6,recently-added:4,recently-practiced:2|cat=Findablecategory:1;Grid:9;Systems:1;Uncategorized:40',
+  U&'total=54|matching=1|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
   U&'query matches across narrow nbsp: counts'
 );
 
@@ -296,7 +300,7 @@ select is(
 );
 select is(
   tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'tab delimited', null, null, null, '{}'::text[])),
-  U&'total=51|matching=1|needsReview=6|lastPracticed=1788607800000|conf=new:3,weak:3,okay:37,strong:8|diff=easy:4,medium:43,hard:4|quick=never-practiced:3,needs-review:6,recently-added:4,recently-practiced:2|cat=Findablecategory:1;Grid:9;Systems:1;Uncategorized:40',
+  U&'total=54|matching=1|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
   U&'query matches across tab: counts'
 );
 
@@ -314,7 +318,7 @@ select is(
 );
 select is(
   tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'vertical tab', null, null, null, '{}'::text[])),
-  U&'total=51|matching=1|needsReview=6|lastPracticed=1788607800000|conf=new:3,weak:3,okay:37,strong:8|diff=easy:4,medium:43,hard:4|quick=never-practiced:3,needs-review:6,recently-added:4,recently-practiced:2|cat=Findablecategory:1;Grid:9;Systems:1;Uncategorized:40',
+  U&'total=54|matching=1|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
   U&'query matches across vertical tab: counts'
 );
 
@@ -332,7 +336,7 @@ select is(
 );
 select is(
   tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'form feed', null, null, null, '{}'::text[])),
-  U&'total=51|matching=1|needsReview=6|lastPracticed=1788607800000|conf=new:3,weak:3,okay:37,strong:8|diff=easy:4,medium:43,hard:4|quick=never-practiced:3,needs-review:6,recently-added:4,recently-practiced:2|cat=Findablecategory:1;Grid:9;Systems:1;Uncategorized:40',
+  U&'total=54|matching=1|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
   U&'query matches across form feed: counts'
 );
 
@@ -350,7 +354,7 @@ select is(
 );
 select is(
   tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'zwsp joined', null, null, null, '{}'::text[])),
-  U&'total=51|matching=0|needsReview=6|lastPracticed=1788607800000|conf=new:3,weak:3,okay:37,strong:8|diff=easy:4,medium:43,hard:4|quick=never-practiced:3,needs-review:6,recently-added:4,recently-practiced:2|cat=Findablecategory:1;Grid:9;Systems:1;Uncategorized:40',
+  U&'total=54|matching=0|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
   U&'query does not split zero width space: counts'
 );
 
@@ -368,7 +372,7 @@ select is(
 );
 select is(
   tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'zwsp\200bjoined', null, null, null, '{}'::text[])),
-  U&'total=51|matching=1|needsReview=6|lastPracticed=1788607800000|conf=new:3,weak:3,okay:37,strong:8|diff=easy:4,medium:43,hard:4|quick=never-practiced:3,needs-review:6,recently-added:4,recently-practiced:2|cat=Findablecategory:1;Grid:9;Systems:1;Uncategorized:40',
+  U&'total=54|matching=1|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
   U&'query matches zero width space intact: counts'
 );
 
@@ -386,7 +390,7 @@ select is(
 );
 select is(
   tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'\0130stanbul', null, null, null, '{}'::text[])),
-  U&'total=51|matching=1|needsReview=6|lastPracticed=1788607800000|conf=new:3,weak:3,okay:37,strong:8|diff=easy:4,medium:43,hard:4|quick=never-practiced:3,needs-review:6,recently-added:4,recently-practiced:2|cat=Findablecategory:1;Grid:9;Systems:1;Uncategorized:40',
+  U&'total=54|matching=1|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
   U&'query folds turkish capital i: counts'
 );
 
@@ -404,7 +408,7 @@ select is(
 );
 select is(
   tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'stra\00dfe', null, null, null, '{}'::text[])),
-  U&'total=51|matching=1|needsReview=6|lastPracticed=1788607800000|conf=new:3,weak:3,okay:37,strong:8|diff=easy:4,medium:43,hard:4|quick=never-practiced:3,needs-review:6,recently-added:4,recently-practiced:2|cat=Findablecategory:1;Grid:9;Systems:1;Uncategorized:40',
+  U&'total=54|matching=1|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
   U&'query folds sharp s: counts'
 );
 
@@ -422,7 +426,7 @@ select is(
 );
 select is(
   tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'\03c3\03c2', null, null, null, '{}'::text[])),
-  U&'total=51|matching=1|needsReview=6|lastPracticed=1788607800000|conf=new:3,weak:3,okay:37,strong:8|diff=easy:4,medium:43,hard:4|quick=never-practiced:3,needs-review:6,recently-added:4,recently-practiced:2|cat=Findablecategory:1;Grid:9;Systems:1;Uncategorized:40',
+  U&'total=54|matching=1|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
   U&'query folds final sigma: counts'
 );
 
@@ -440,7 +444,7 @@ select is(
 );
 select is(
   tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'caf\00e9', null, null, null, '{}'::text[])),
-  U&'total=51|matching=1|needsReview=6|lastPracticed=1788607800000|conf=new:3,weak:3,okay:37,strong:8|diff=easy:4,medium:43,hard:4|quick=never-practiced:3,needs-review:6,recently-added:4,recently-practiced:2|cat=Findablecategory:1;Grid:9;Systems:1;Uncategorized:40',
+  U&'total=54|matching=1|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
   U&'query folds accented capital: counts'
 );
 
@@ -458,7 +462,7 @@ select is(
 );
 select is(
   tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'100%', null, null, null, '{}'::text[])),
-  U&'total=51|matching=1|needsReview=6|lastPracticed=1788607800000|conf=new:3,weak:3,okay:37,strong:8|diff=easy:4,medium:43,hard:4|quick=never-practiced:3,needs-review:6,recently-added:4,recently-practiced:2|cat=Findablecategory:1;Grid:9;Systems:1;Uncategorized:40',
+  U&'total=54|matching=1|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
   U&'percent is literal: counts'
 );
 
@@ -476,7 +480,7 @@ select is(
 );
 select is(
   tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'snake_case', null, null, null, '{}'::text[])),
-  U&'total=51|matching=1|needsReview=6|lastPracticed=1788607800000|conf=new:3,weak:3,okay:37,strong:8|diff=easy:4,medium:43,hard:4|quick=never-practiced:3,needs-review:6,recently-added:4,recently-practiced:2|cat=Findablecategory:1;Grid:9;Systems:1;Uncategorized:40',
+  U&'total=54|matching=1|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
   U&'underscore is literal: counts'
 );
 
@@ -494,7 +498,7 @@ select is(
 );
 select is(
   tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'snakexcase', null, null, null, '{}'::text[])),
-  U&'total=51|matching=0|needsReview=6|lastPracticed=1788607800000|conf=new:3,weak:3,okay:37,strong:8|diff=easy:4,medium:43,hard:4|quick=never-practiced:3,needs-review:6,recently-added:4,recently-practiced:2|cat=Findablecategory:1;Grid:9;Systems:1;Uncategorized:40',
+  U&'total=54|matching=0|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
   U&'underscore does not act as a wildcard: counts'
 );
 
@@ -512,7 +516,7 @@ select is(
 );
 select is(
   tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'back\005cslash', null, null, null, '{}'::text[])),
-  U&'total=51|matching=1|needsReview=6|lastPracticed=1788607800000|conf=new:3,weak:3,okay:37,strong:8|diff=easy:4,medium:43,hard:4|quick=never-practiced:3,needs-review:6,recently-added:4,recently-practiced:2|cat=Findablecategory:1;Grid:9;Systems:1;Uncategorized:40',
+  U&'total=54|matching=1|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
   U&'backslash is literal: counts'
 );
 
@@ -530,7 +534,7 @@ select is(
 );
 select is(
   tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'%', null, null, null, '{}'::text[])),
-  U&'total=51|matching=1|needsReview=6|lastPracticed=1788607800000|conf=new:3,weak:3,okay:37,strong:8|diff=easy:4,medium:43,hard:4|quick=never-practiced:3,needs-review:6,recently-added:4,recently-practiced:2|cat=Findablecategory:1;Grid:9;Systems:1;Uncategorized:40',
+  U&'total=54|matching=1|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
   U&'a bare percent matches nothing extra: counts'
 );
 
@@ -548,7 +552,7 @@ select is(
 );
 select is(
   tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'alpha beta', null, null, null, '{}'::text[])),
-  U&'total=51|matching=0|needsReview=6|lastPracticed=1788607800000|conf=new:3,weak:3,okay:37,strong:8|diff=easy:4,medium:43,hard:4|quick=never-practiced:3,needs-review:6,recently-added:4,recently-practiced:2|cat=Findablecategory:1;Grid:9;Systems:1;Uncategorized:40',
+  U&'total=54|matching=0|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
   U&'a needle may not span two fields: counts'
 );
 
@@ -566,7 +570,7 @@ select is(
 );
 select is(
   tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'findable by title', null, null, null, '{}'::text[])),
-  U&'total=51|matching=1|needsReview=6|lastPracticed=1788607800000|conf=new:3,weak:3,okay:37,strong:8|diff=easy:4,medium:43,hard:4|quick=never-practiced:3,needs-review:6,recently-added:4,recently-practiced:2|cat=Findablecategory:1;Grid:9;Systems:1;Uncategorized:40',
+  U&'total=54|matching=1|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
   U&'matches in title: counts'
 );
 
@@ -584,7 +588,7 @@ select is(
 );
 select is(
   tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'definitionword', null, null, null, '{}'::text[])),
-  U&'total=51|matching=1|needsReview=6|lastPracticed=1788607800000|conf=new:3,weak:3,okay:37,strong:8|diff=easy:4,medium:43,hard:4|quick=never-practiced:3,needs-review:6,recently-added:4,recently-practiced:2|cat=Findablecategory:1;Grid:9;Systems:1;Uncategorized:40',
+  U&'total=54|matching=1|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
   U&'matches in definition: counts'
 );
 
@@ -602,7 +606,7 @@ select is(
 );
 select is(
   tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'mentalmodelword', null, null, null, '{}'::text[])),
-  U&'total=51|matching=1|needsReview=6|lastPracticed=1788607800000|conf=new:3,weak:3,okay:37,strong:8|diff=easy:4,medium:43,hard:4|quick=never-practiced:3,needs-review:6,recently-added:4,recently-practiced:2|cat=Findablecategory:1;Grid:9;Systems:1;Uncategorized:40',
+  U&'total=54|matching=1|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
   U&'matches in mental model: counts'
 );
 
@@ -620,7 +624,7 @@ select is(
 );
 select is(
   tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'findablecategory', null, null, null, '{}'::text[])),
-  U&'total=51|matching=1|needsReview=6|lastPracticed=1788607800000|conf=new:3,weak:3,okay:37,strong:8|diff=easy:4,medium:43,hard:4|quick=never-practiced:3,needs-review:6,recently-added:4,recently-practiced:2|cat=Findablecategory:1;Grid:9;Systems:1;Uncategorized:40',
+  U&'total=54|matching=1|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
   U&'matches in category: counts'
 );
 
@@ -638,7 +642,7 @@ select is(
 );
 select is(
   tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'findabletag', null, null, null, '{}'::text[])),
-  U&'total=51|matching=1|needsReview=6|lastPracticed=1788607800000|conf=new:3,weak:3,okay:37,strong:8|diff=easy:4,medium:43,hard:4|quick=never-practiced:3,needs-review:6,recently-added:4,recently-practiced:2|cat=Findablecategory:1;Grid:9;Systems:1;Uncategorized:40',
+  U&'total=54|matching=1|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
   U&'matches in a tag: counts'
 );
 
@@ -656,7 +660,7 @@ select is(
 );
 select is(
   tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'zzzznothingmatchesthis', null, null, null, '{}'::text[])),
-  U&'total=51|matching=0|needsReview=6|lastPracticed=1788607800000|conf=new:3,weak:3,okay:37,strong:8|diff=easy:4,medium:43,hard:4|quick=never-practiced:3,needs-review:6,recently-added:4,recently-practiced:2|cat=Findablecategory:1;Grid:9;Systems:1;Uncategorized:40',
+  U&'total=54|matching=0|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
   U&'matches nothing: counts'
 );
 
@@ -669,12 +673,12 @@ select is(
     )
     select coalesce(string_agg(id::text, ',' order by rn), '') from page
   ),
-  U&'00000000-0000-4000-8000-000000000042,00000000-0000-4000-8000-000000000051,00000000-0000-4000-8000-000000000050,00000000-0000-4000-8000-000000000040,00000000-0000-4000-8000-000000000041,00000000-0000-4000-8000-000000000001,00000000-0000-4000-8000-000000000002,00000000-0000-4000-8000-000000000003,00000000-0000-4000-8000-000000000004,00000000-0000-4000-8000-000000000005,00000000-0000-4000-8000-000000000006,00000000-0000-4000-8000-000000000007,00000000-0000-4000-8000-000000000008,00000000-0000-4000-8000-000000000010,00000000-0000-4000-8000-000000000011,00000000-0000-4000-8000-000000000012,00000000-0000-4000-8000-000000000013,00000000-0000-4000-8000-000000000014,00000000-0000-4000-8000-000000000015,00000000-0000-4000-8000-000000000016,00000000-0000-4000-8000-000000000017,00000000-0000-4000-8000-000000000018,00000000-0000-4000-8000-000000000019,00000000-0000-4000-8000-000000000020,00000000-0000-4000-8000-000000000021,00000000-0000-4000-8000-000000000022,00000000-0000-4000-8000-000000000023,00000000-0000-4000-8000-000000000024,00000000-0000-4000-8000-000000000025,00000000-0000-4000-8000-000000000026,00000000-0000-4000-8000-000000000027,00000000-0000-4000-8000-000000000028,00000000-0000-4000-8000-000000000029,00000000-0000-4000-8000-000000000030,00000000-0000-4000-8000-000000000031,00000000-0000-4000-8000-000000000032,00000000-0000-4000-8000-000000000033,00000000-0000-4000-8000-000000000034,00000000-0000-4000-8000-000000000035,00000000-0000-4000-8000-000000000036,00000000-0000-4000-8000-000000000037,00000000-0000-4000-8000-000000000038,00000000-0000-4000-8000-000000000039,00000000-0000-4000-8000-000000000043,00000000-0000-4000-8000-000000000044,00000000-0000-4000-8000-000000000045,00000000-0000-4000-8000-000000000046,00000000-0000-4000-8000-000000000047,00000000-0000-4000-8000-000000000048,00000000-0000-4000-8000-000000000049',
+  U&'00000000-0000-4000-8000-000000000042,00000000-0000-4000-8000-000000000051,00000000-0000-4000-8000-000000000050,00000000-0000-4000-8000-000000000040,00000000-0000-4000-8000-000000000041,00000000-0000-4000-8000-000000000001,00000000-0000-4000-8000-000000000002,00000000-0000-4000-8000-000000000003,00000000-0000-4000-8000-000000000004,00000000-0000-4000-8000-000000000005,00000000-0000-4000-8000-000000000006,00000000-0000-4000-8000-000000000007,00000000-0000-4000-8000-000000000008,00000000-0000-4000-8000-000000000010,00000000-0000-4000-8000-000000000011,00000000-0000-4000-8000-000000000012,00000000-0000-4000-8000-000000000013,00000000-0000-4000-8000-000000000014,00000000-0000-4000-8000-000000000015,00000000-0000-4000-8000-000000000016,00000000-0000-4000-8000-000000000017,00000000-0000-4000-8000-000000000018,00000000-0000-4000-8000-000000000019,00000000-0000-4000-8000-000000000020,00000000-0000-4000-8000-000000000021,00000000-0000-4000-8000-000000000022,00000000-0000-4000-8000-000000000023,00000000-0000-4000-8000-000000000024,00000000-0000-4000-8000-000000000025,00000000-0000-4000-8000-000000000026,00000000-0000-4000-8000-000000000027,00000000-0000-4000-8000-000000000028,00000000-0000-4000-8000-000000000029,00000000-0000-4000-8000-000000000030,00000000-0000-4000-8000-000000000031,00000000-0000-4000-8000-000000000032,00000000-0000-4000-8000-000000000033,00000000-0000-4000-8000-000000000034,00000000-0000-4000-8000-000000000035,00000000-0000-4000-8000-000000000036,00000000-0000-4000-8000-000000000037,00000000-0000-4000-8000-000000000038,00000000-0000-4000-8000-000000000039,00000000-0000-4000-8000-000000000043,00000000-0000-4000-8000-000000000044,00000000-0000-4000-8000-000000000045,00000000-0000-4000-8000-000000000046,00000000-0000-4000-8000-000000000047,00000000-0000-4000-8000-000000000048,00000000-0000-4000-8000-000000000049,00000000-0000-4000-8000-000000000052,00000000-0000-4000-8000-000000000053,00000000-0000-4000-8000-000000000054',
   U&'single character needle: rows'
 );
 select is(
   tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'a', null, null, null, '{}'::text[])),
-  U&'total=51|matching=50|needsReview=6|lastPracticed=1788607800000|conf=new:3,weak:3,okay:37,strong:8|diff=easy:4,medium:43,hard:4|quick=never-practiced:3,needs-review:6,recently-added:4,recently-practiced:2|cat=Findablecategory:1;Grid:9;Systems:1;Uncategorized:40',
+  U&'total=54|matching=53|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
   U&'single character needle: counts'
 );
 
@@ -687,12 +691,12 @@ select is(
     )
     select coalesce(string_agg(id::text, ',' order by rn), '') from page
   ),
-  U&'00000000-0000-4000-8000-000000000040,00000000-0000-4000-8000-000000000041,00000000-0000-4000-8000-000000000012,00000000-0000-4000-8000-000000000013,00000000-0000-4000-8000-000000000014,00000000-0000-4000-8000-000000000021,00000000-0000-4000-8000-000000000037,00000000-0000-4000-8000-000000000038,00000000-0000-4000-8000-000000000039,00000000-0000-4000-8000-000000000043,00000000-0000-4000-8000-000000000044,00000000-0000-4000-8000-000000000045,00000000-0000-4000-8000-000000000046,00000000-0000-4000-8000-000000000047,00000000-0000-4000-8000-000000000049',
+  U&'00000000-0000-4000-8000-000000000040,00000000-0000-4000-8000-000000000041,00000000-0000-4000-8000-000000000012,00000000-0000-4000-8000-000000000013,00000000-0000-4000-8000-000000000014,00000000-0000-4000-8000-000000000021,00000000-0000-4000-8000-000000000037,00000000-0000-4000-8000-000000000038,00000000-0000-4000-8000-000000000039,00000000-0000-4000-8000-000000000043,00000000-0000-4000-8000-000000000044,00000000-0000-4000-8000-000000000045,00000000-0000-4000-8000-000000000046,00000000-0000-4000-8000-000000000047,00000000-0000-4000-8000-000000000049,00000000-0000-4000-8000-000000000052',
   U&'two character needle: rows'
 );
 select is(
   tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'st', null, null, null, '{}'::text[])),
-  U&'total=51|matching=15|needsReview=6|lastPracticed=1788607800000|conf=new:3,weak:3,okay:37,strong:8|diff=easy:4,medium:43,hard:4|quick=never-practiced:3,needs-review:6,recently-added:4,recently-practiced:2|cat=Findablecategory:1;Grid:9;Systems:1;Uncategorized:40',
+  U&'total=54|matching=16|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
   U&'two character needle: counts'
 );
 
@@ -705,12 +709,12 @@ select is(
     )
     select coalesce(string_agg(id::text, ',' order by rn), '') from page
   ),
-  U&'00000000-0000-4000-8000-000000000042,00000000-0000-4000-8000-000000000051,00000000-0000-4000-8000-000000000050,00000000-0000-4000-8000-000000000040,00000000-0000-4000-8000-000000000041,00000000-0000-4000-8000-000000000001,00000000-0000-4000-8000-000000000002,00000000-0000-4000-8000-000000000003,00000000-0000-4000-8000-000000000004,00000000-0000-4000-8000-000000000005,00000000-0000-4000-8000-000000000006,00000000-0000-4000-8000-000000000007,00000000-0000-4000-8000-000000000008,00000000-0000-4000-8000-000000000009,00000000-0000-4000-8000-000000000010,00000000-0000-4000-8000-000000000011,00000000-0000-4000-8000-000000000012,00000000-0000-4000-8000-000000000013,00000000-0000-4000-8000-000000000014,00000000-0000-4000-8000-000000000015,00000000-0000-4000-8000-000000000016,00000000-0000-4000-8000-000000000017,00000000-0000-4000-8000-000000000018,00000000-0000-4000-8000-000000000019,00000000-0000-4000-8000-000000000020,00000000-0000-4000-8000-000000000022,00000000-0000-4000-8000-000000000023,00000000-0000-4000-8000-000000000025,00000000-0000-4000-8000-000000000026,00000000-0000-4000-8000-000000000027,00000000-0000-4000-8000-000000000028,00000000-0000-4000-8000-000000000029,00000000-0000-4000-8000-000000000030,00000000-0000-4000-8000-000000000043,00000000-0000-4000-8000-000000000044,00000000-0000-4000-8000-000000000045,00000000-0000-4000-8000-000000000046,00000000-0000-4000-8000-000000000047,00000000-0000-4000-8000-000000000048,00000000-0000-4000-8000-000000000049',
+  U&'00000000-0000-4000-8000-000000000042,00000000-0000-4000-8000-000000000051,00000000-0000-4000-8000-000000000050,00000000-0000-4000-8000-000000000040,00000000-0000-4000-8000-000000000041,00000000-0000-4000-8000-000000000001,00000000-0000-4000-8000-000000000002,00000000-0000-4000-8000-000000000003,00000000-0000-4000-8000-000000000004,00000000-0000-4000-8000-000000000005,00000000-0000-4000-8000-000000000006,00000000-0000-4000-8000-000000000007,00000000-0000-4000-8000-000000000008,00000000-0000-4000-8000-000000000009,00000000-0000-4000-8000-000000000010,00000000-0000-4000-8000-000000000011,00000000-0000-4000-8000-000000000012,00000000-0000-4000-8000-000000000013,00000000-0000-4000-8000-000000000014,00000000-0000-4000-8000-000000000015,00000000-0000-4000-8000-000000000016,00000000-0000-4000-8000-000000000017,00000000-0000-4000-8000-000000000018,00000000-0000-4000-8000-000000000019,00000000-0000-4000-8000-000000000020,00000000-0000-4000-8000-000000000022,00000000-0000-4000-8000-000000000023,00000000-0000-4000-8000-000000000025,00000000-0000-4000-8000-000000000026,00000000-0000-4000-8000-000000000027,00000000-0000-4000-8000-000000000028,00000000-0000-4000-8000-000000000029,00000000-0000-4000-8000-000000000030,00000000-0000-4000-8000-000000000043,00000000-0000-4000-8000-000000000044,00000000-0000-4000-8000-000000000045,00000000-0000-4000-8000-000000000046,00000000-0000-4000-8000-000000000047,00000000-0000-4000-8000-000000000048,00000000-0000-4000-8000-000000000049,00000000-0000-4000-8000-000000000053,00000000-0000-4000-8000-000000000054',
   U&'category uncategorized covers nulls: rows'
 );
 select is(
   tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'', U&'Uncategorized', null, null, '{}'::text[])),
-  U&'total=51|matching=40|needsReview=6|lastPracticed=1788607800000|conf=new:3,weak:3,okay:37,strong:8|diff=easy:4,medium:43,hard:4|quick=never-practiced:3,needs-review:6,recently-added:4,recently-practiced:2|cat=Findablecategory:1;Grid:9;Systems:1;Uncategorized:40',
+  U&'total=54|matching=42|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
   U&'category uncategorized covers nulls: counts'
 );
 
@@ -728,7 +732,7 @@ select is(
 );
 select is(
   tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'', U&'Grid', null, null, '{}'::text[])),
-  U&'total=51|matching=9|needsReview=6|lastPracticed=1788607800000|conf=new:3,weak:3,okay:37,strong:8|diff=easy:4,medium:43,hard:4|quick=never-practiced:3,needs-review:6,recently-added:4,recently-practiced:2|cat=Findablecategory:1;Grid:9;Systems:1;Uncategorized:40',
+  U&'total=54|matching=9|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
   U&'category grid: counts'
 );
 
@@ -746,7 +750,7 @@ select is(
 );
 select is(
   tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'', U&'Systems', null, null, '{}'::text[])),
-  U&'total=51|matching=1|needsReview=6|lastPracticed=1788607800000|conf=new:3,weak:3,okay:37,strong:8|diff=easy:4,medium:43,hard:4|quick=never-practiced:3,needs-review:6,recently-added:4,recently-practiced:2|cat=Findablecategory:1;Grid:9;Systems:1;Uncategorized:40',
+  U&'total=54|matching=1|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
   U&'category systems: counts'
 );
 
@@ -759,12 +763,12 @@ select is(
     )
     select coalesce(string_agg(id::text, ',' order by rn), '') from page
   ),
-  U&'00000000-0000-4000-8000-000000000028,00000000-0000-4000-8000-000000000029,00000000-0000-4000-8000-000000000030',
+  U&'00000000-0000-4000-8000-000000000028,00000000-0000-4000-8000-000000000029,00000000-0000-4000-8000-000000000030,00000000-0000-4000-8000-000000000052',
   U&'confidence new: rows'
 );
 select is(
   tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'', null, U&'new', null, '{}'::text[])),
-  U&'total=51|matching=3|needsReview=6|lastPracticed=1788607800000|conf=new:3,weak:3,okay:37,strong:8|diff=easy:4,medium:43,hard:4|quick=never-practiced:3,needs-review:6,recently-added:4,recently-practiced:2|cat=Findablecategory:1;Grid:9;Systems:1;Uncategorized:40',
+  U&'total=54|matching=4|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
   U&'confidence new: counts'
 );
 
@@ -777,12 +781,12 @@ select is(
     )
     select coalesce(string_agg(id::text, ',' order by rn), '') from page
   ),
-  U&'00000000-0000-4000-8000-000000000031,00000000-0000-4000-8000-000000000032,00000000-0000-4000-8000-000000000033',
+  U&'00000000-0000-4000-8000-000000000031,00000000-0000-4000-8000-000000000032,00000000-0000-4000-8000-000000000033,00000000-0000-4000-8000-000000000053',
   U&'confidence weak: rows'
 );
 select is(
   tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'', null, U&'weak', null, '{}'::text[])),
-  U&'total=51|matching=3|needsReview=6|lastPracticed=1788607800000|conf=new:3,weak:3,okay:37,strong:8|diff=easy:4,medium:43,hard:4|quick=never-practiced:3,needs-review:6,recently-added:4,recently-practiced:2|cat=Findablecategory:1;Grid:9;Systems:1;Uncategorized:40',
+  U&'total=54|matching=4|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
   U&'confidence weak: counts'
 );
 
@@ -800,7 +804,7 @@ select is(
 );
 select is(
   tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'', null, U&'okay', null, '{}'::text[])),
-  U&'total=51|matching=37|needsReview=6|lastPracticed=1788607800000|conf=new:3,weak:3,okay:37,strong:8|diff=easy:4,medium:43,hard:4|quick=never-practiced:3,needs-review:6,recently-added:4,recently-practiced:2|cat=Findablecategory:1;Grid:9;Systems:1;Uncategorized:40',
+  U&'total=54|matching=37|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
   U&'confidence okay: counts'
 );
 
@@ -813,12 +817,12 @@ select is(
     )
     select coalesce(string_agg(id::text, ',' order by rn), '') from page
   ),
-  U&'00000000-0000-4000-8000-000000000037,00000000-0000-4000-8000-000000000038,00000000-0000-4000-8000-000000000039,00000000-0000-4000-8000-000000000043,00000000-0000-4000-8000-000000000044,00000000-0000-4000-8000-000000000046,00000000-0000-4000-8000-000000000047,00000000-0000-4000-8000-000000000049',
+  U&'00000000-0000-4000-8000-000000000037,00000000-0000-4000-8000-000000000038,00000000-0000-4000-8000-000000000039,00000000-0000-4000-8000-000000000043,00000000-0000-4000-8000-000000000044,00000000-0000-4000-8000-000000000046,00000000-0000-4000-8000-000000000047,00000000-0000-4000-8000-000000000049,00000000-0000-4000-8000-000000000054',
   U&'confidence strong: rows'
 );
 select is(
   tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'', null, U&'strong', null, '{}'::text[])),
-  U&'total=51|matching=8|needsReview=6|lastPracticed=1788607800000|conf=new:3,weak:3,okay:37,strong:8|diff=easy:4,medium:43,hard:4|quick=never-practiced:3,needs-review:6,recently-added:4,recently-practiced:2|cat=Findablecategory:1;Grid:9;Systems:1;Uncategorized:40',
+  U&'total=54|matching=9|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
   U&'confidence strong: counts'
 );
 
@@ -836,7 +840,7 @@ select is(
 );
 select is(
   tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'', null, null, U&'easy', '{}'::text[])),
-  U&'total=51|matching=4|needsReview=6|lastPracticed=1788607800000|conf=new:3,weak:3,okay:37,strong:8|diff=easy:4,medium:43,hard:4|quick=never-practiced:3,needs-review:6,recently-added:4,recently-practiced:2|cat=Findablecategory:1;Grid:9;Systems:1;Uncategorized:40',
+  U&'total=54|matching=4|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
   U&'difficulty easy: counts'
 );
 
@@ -849,12 +853,12 @@ select is(
     )
     select coalesce(string_agg(id::text, ',' order by rn), '') from page
   ),
-  U&'00000000-0000-4000-8000-000000000042,00000000-0000-4000-8000-000000000051,00000000-0000-4000-8000-000000000050,00000000-0000-4000-8000-000000000040,00000000-0000-4000-8000-000000000041,00000000-0000-4000-8000-000000000001,00000000-0000-4000-8000-000000000002,00000000-0000-4000-8000-000000000003,00000000-0000-4000-8000-000000000004,00000000-0000-4000-8000-000000000005,00000000-0000-4000-8000-000000000006,00000000-0000-4000-8000-000000000007,00000000-0000-4000-8000-000000000008,00000000-0000-4000-8000-000000000009,00000000-0000-4000-8000-000000000010,00000000-0000-4000-8000-000000000011,00000000-0000-4000-8000-000000000012,00000000-0000-4000-8000-000000000013,00000000-0000-4000-8000-000000000014,00000000-0000-4000-8000-000000000015,00000000-0000-4000-8000-000000000016,00000000-0000-4000-8000-000000000017,00000000-0000-4000-8000-000000000018,00000000-0000-4000-8000-000000000019,00000000-0000-4000-8000-000000000020,00000000-0000-4000-8000-000000000021,00000000-0000-4000-8000-000000000022,00000000-0000-4000-8000-000000000023,00000000-0000-4000-8000-000000000024,00000000-0000-4000-8000-000000000025,00000000-0000-4000-8000-000000000026,00000000-0000-4000-8000-000000000027,00000000-0000-4000-8000-000000000029,00000000-0000-4000-8000-000000000032,00000000-0000-4000-8000-000000000035,00000000-0000-4000-8000-000000000038,00000000-0000-4000-8000-000000000043,00000000-0000-4000-8000-000000000044,00000000-0000-4000-8000-000000000045,00000000-0000-4000-8000-000000000046,00000000-0000-4000-8000-000000000047,00000000-0000-4000-8000-000000000048,00000000-0000-4000-8000-000000000049',
+  U&'00000000-0000-4000-8000-000000000042,00000000-0000-4000-8000-000000000051,00000000-0000-4000-8000-000000000050,00000000-0000-4000-8000-000000000040,00000000-0000-4000-8000-000000000041,00000000-0000-4000-8000-000000000001,00000000-0000-4000-8000-000000000002,00000000-0000-4000-8000-000000000003,00000000-0000-4000-8000-000000000004,00000000-0000-4000-8000-000000000005,00000000-0000-4000-8000-000000000006,00000000-0000-4000-8000-000000000007,00000000-0000-4000-8000-000000000008,00000000-0000-4000-8000-000000000009,00000000-0000-4000-8000-000000000010,00000000-0000-4000-8000-000000000011,00000000-0000-4000-8000-000000000012,00000000-0000-4000-8000-000000000013,00000000-0000-4000-8000-000000000014,00000000-0000-4000-8000-000000000015,00000000-0000-4000-8000-000000000016,00000000-0000-4000-8000-000000000017,00000000-0000-4000-8000-000000000018,00000000-0000-4000-8000-000000000019,00000000-0000-4000-8000-000000000020,00000000-0000-4000-8000-000000000021,00000000-0000-4000-8000-000000000022,00000000-0000-4000-8000-000000000023,00000000-0000-4000-8000-000000000024,00000000-0000-4000-8000-000000000025,00000000-0000-4000-8000-000000000026,00000000-0000-4000-8000-000000000027,00000000-0000-4000-8000-000000000029,00000000-0000-4000-8000-000000000032,00000000-0000-4000-8000-000000000035,00000000-0000-4000-8000-000000000038,00000000-0000-4000-8000-000000000043,00000000-0000-4000-8000-000000000044,00000000-0000-4000-8000-000000000045,00000000-0000-4000-8000-000000000046,00000000-0000-4000-8000-000000000047,00000000-0000-4000-8000-000000000048,00000000-0000-4000-8000-000000000049,00000000-0000-4000-8000-000000000052,00000000-0000-4000-8000-000000000053',
   U&'difficulty medium: rows'
 );
 select is(
   tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'', null, null, U&'medium', '{}'::text[])),
-  U&'total=51|matching=43|needsReview=6|lastPracticed=1788607800000|conf=new:3,weak:3,okay:37,strong:8|diff=easy:4,medium:43,hard:4|quick=never-practiced:3,needs-review:6,recently-added:4,recently-practiced:2|cat=Findablecategory:1;Grid:9;Systems:1;Uncategorized:40',
+  U&'total=54|matching=45|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
   U&'difficulty medium: counts'
 );
 
@@ -867,12 +871,12 @@ select is(
     )
     select coalesce(string_agg(id::text, ',' order by rn), '') from page
   ),
-  U&'00000000-0000-4000-8000-000000000030,00000000-0000-4000-8000-000000000033,00000000-0000-4000-8000-000000000036,00000000-0000-4000-8000-000000000039',
+  U&'00000000-0000-4000-8000-000000000030,00000000-0000-4000-8000-000000000033,00000000-0000-4000-8000-000000000036,00000000-0000-4000-8000-000000000039,00000000-0000-4000-8000-000000000054',
   U&'difficulty hard: rows'
 );
 select is(
   tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'', null, null, U&'hard', '{}'::text[])),
-  U&'total=51|matching=4|needsReview=6|lastPracticed=1788607800000|conf=new:3,weak:3,okay:37,strong:8|diff=easy:4,medium:43,hard:4|quick=never-practiced:3,needs-review:6,recently-added:4,recently-practiced:2|cat=Findablecategory:1;Grid:9;Systems:1;Uncategorized:40',
+  U&'total=54|matching=5|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
   U&'difficulty hard: counts'
 );
 
@@ -885,12 +889,12 @@ select is(
     )
     select coalesce(string_agg(id::text, ',' order by rn), '') from page
   ),
-  U&'00000000-0000-4000-8000-000000000028,00000000-0000-4000-8000-000000000029,00000000-0000-4000-8000-000000000030',
+  U&'00000000-0000-4000-8000-000000000028,00000000-0000-4000-8000-000000000029,00000000-0000-4000-8000-000000000030,00000000-0000-4000-8000-000000000052',
   U&'quick never-practiced: rows'
 );
 select is(
   tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'', null, null, null, array[U&'never-practiced']::text[])),
-  U&'total=51|matching=3|needsReview=6|lastPracticed=1788607800000|conf=new:3,weak:3,okay:37,strong:8|diff=easy:4,medium:43,hard:4|quick=never-practiced:3,needs-review:6,recently-added:4,recently-practiced:2|cat=Findablecategory:1;Grid:9;Systems:1;Uncategorized:40',
+  U&'total=54|matching=4|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
   U&'quick never-practiced: counts'
 );
 
@@ -903,12 +907,12 @@ select is(
     )
     select coalesce(string_agg(id::text, ',' order by rn), '') from page
   ),
-  U&'00000000-0000-4000-8000-000000000028,00000000-0000-4000-8000-000000000029,00000000-0000-4000-8000-000000000030,00000000-0000-4000-8000-000000000031,00000000-0000-4000-8000-000000000032,00000000-0000-4000-8000-000000000033',
+  U&'00000000-0000-4000-8000-000000000028,00000000-0000-4000-8000-000000000029,00000000-0000-4000-8000-000000000030,00000000-0000-4000-8000-000000000031,00000000-0000-4000-8000-000000000032,00000000-0000-4000-8000-000000000033,00000000-0000-4000-8000-000000000052,00000000-0000-4000-8000-000000000053',
   U&'quick needs-review: rows'
 );
 select is(
   tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'', null, null, null, array[U&'needs-review']::text[])),
-  U&'total=51|matching=6|needsReview=6|lastPracticed=1788607800000|conf=new:3,weak:3,okay:37,strong:8|diff=easy:4,medium:43,hard:4|quick=never-practiced:3,needs-review:6,recently-added:4,recently-practiced:2|cat=Findablecategory:1;Grid:9;Systems:1;Uncategorized:40',
+  U&'total=54|matching=8|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
   U&'quick needs-review: counts'
 );
 
@@ -926,7 +930,7 @@ select is(
 );
 select is(
   tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'', null, null, null, array[U&'recently-added']::text[])),
-  U&'total=51|matching=4|needsReview=6|lastPracticed=1788607800000|conf=new:3,weak:3,okay:37,strong:8|diff=easy:4,medium:43,hard:4|quick=never-practiced:3,needs-review:6,recently-added:4,recently-practiced:2|cat=Findablecategory:1;Grid:9;Systems:1;Uncategorized:40',
+  U&'total=54|matching=4|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
   U&'quick recently-added: counts'
 );
 
@@ -939,12 +943,12 @@ select is(
     )
     select coalesce(string_agg(id::text, ',' order by rn), '') from page
   ),
-  U&'00000000-0000-4000-8000-000000000043,00000000-0000-4000-8000-000000000045',
+  U&'00000000-0000-4000-8000-000000000043,00000000-0000-4000-8000-000000000045,00000000-0000-4000-8000-000000000053',
   U&'quick recently-practiced: rows'
 );
 select is(
   tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'', null, null, null, array[U&'recently-practiced']::text[])),
-  U&'total=51|matching=2|needsReview=6|lastPracticed=1788607800000|conf=new:3,weak:3,okay:37,strong:8|diff=easy:4,medium:43,hard:4|quick=never-practiced:3,needs-review:6,recently-added:4,recently-practiced:2|cat=Findablecategory:1;Grid:9;Systems:1;Uncategorized:40',
+  U&'total=54|matching=3|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
   U&'quick recently-practiced: counts'
 );
 
@@ -957,12 +961,12 @@ select is(
     )
     select coalesce(string_agg(id::text, ',' order by rn), '') from page
   ),
-  U&'00000000-0000-4000-8000-000000000028,00000000-0000-4000-8000-000000000029,00000000-0000-4000-8000-000000000030',
+  U&'00000000-0000-4000-8000-000000000028,00000000-0000-4000-8000-000000000029,00000000-0000-4000-8000-000000000030,00000000-0000-4000-8000-000000000052',
   U&'quick never-practiced and needs-review: rows'
 );
 select is(
   tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'', null, null, null, array[U&'never-practiced', U&'needs-review']::text[])),
-  U&'total=51|matching=3|needsReview=6|lastPracticed=1788607800000|conf=new:3,weak:3,okay:37,strong:8|diff=easy:4,medium:43,hard:4|quick=never-practiced:3,needs-review:6,recently-added:4,recently-practiced:2|cat=Findablecategory:1;Grid:9;Systems:1;Uncategorized:40',
+  U&'total=54|matching=4|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
   U&'quick never-practiced and needs-review: counts'
 );
 
@@ -980,7 +984,7 @@ select is(
 );
 select is(
   tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'', null, null, null, array[U&'recently-added', U&'recently-practiced']::text[])),
-  U&'total=51|matching=0|needsReview=6|lastPracticed=1788607800000|conf=new:3,weak:3,okay:37,strong:8|diff=easy:4,medium:43,hard:4|quick=never-practiced:3,needs-review:6,recently-added:4,recently-practiced:2|cat=Findablecategory:1;Grid:9;Systems:1;Uncategorized:40',
+  U&'total=54|matching=0|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
   U&'quick recently-added and recently-practiced: counts'
 );
 
@@ -998,7 +1002,7 @@ select is(
 );
 select is(
   tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'grid', null, U&'weak', null, '{}'::text[])),
-  U&'total=51|matching=3|needsReview=6|lastPracticed=1788607800000|conf=new:3,weak:3,okay:37,strong:8|diff=easy:4,medium:43,hard:4|quick=never-practiced:3,needs-review:6,recently-added:4,recently-practiced:2|cat=Findablecategory:1;Grid:9;Systems:1;Uncategorized:40',
+  U&'total=54|matching=3|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
   U&'query and confidence: counts'
 );
 
@@ -1016,7 +1020,7 @@ select is(
 );
 select is(
   tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'', U&'Grid', null, U&'hard', '{}'::text[])),
-  U&'total=51|matching=3|needsReview=6|lastPracticed=1788607800000|conf=new:3,weak:3,okay:37,strong:8|diff=easy:4,medium:43,hard:4|quick=never-practiced:3,needs-review:6,recently-added:4,recently-practiced:2|cat=Findablecategory:1;Grid:9;Systems:1;Uncategorized:40',
+  U&'total=54|matching=3|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
   U&'category and difficulty: counts'
 );
 
@@ -1034,7 +1038,7 @@ select is(
 );
 select is(
   tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'grid', U&'Grid', null, null, array[U&'needs-review']::text[])),
-  U&'total=51|matching=3|needsReview=6|lastPracticed=1788607800000|conf=new:3,weak:3,okay:37,strong:8|diff=easy:4,medium:43,hard:4|quick=never-practiced:3,needs-review:6,recently-added:4,recently-practiced:2|cat=Findablecategory:1;Grid:9;Systems:1;Uncategorized:40',
+  U&'total=54|matching=3|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
   U&'query and category and quick: counts'
 );
 
@@ -1052,7 +1056,7 @@ select is(
 );
 select is(
   tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'grid', U&'Grid', U&'weak', U&'easy', array[U&'needs-review']::text[])),
-  U&'total=51|matching=1|needsReview=6|lastPracticed=1788607800000|conf=new:3,weak:3,okay:37,strong:8|diff=easy:4,medium:43,hard:4|quick=never-practiced:3,needs-review:6,recently-added:4,recently-practiced:2|cat=Findablecategory:1;Grid:9;Systems:1;Uncategorized:40',
+  U&'total=54|matching=1|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
   U&'every control at once: counts'
 );
 
@@ -1070,12 +1074,156 @@ select is(
 );
 select is(
   tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'grid', U&'Systems', null, null, '{}'::text[])),
-  U&'total=51|matching=0|needsReview=6|lastPracticed=1788607800000|conf=new:3,weak:3,okay:37,strong:8|diff=easy:4,medium:43,hard:4|quick=never-practiced:3,needs-review:6,recently-added:4,recently-practiced:2|cat=Findablecategory:1;Grid:9;Systems:1;Uncategorized:40',
+  U&'total=54|matching=0|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
   U&'composition matching nothing: counts'
 );
 
+-- kind topic
+select is(
+  (
+    with page as (
+      select id, row_number() over () as rn
+      from public.library_page(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'', null, null, null, '{}'::text[], null, null, 1000, p_kinds := array[U&'topic'])
+    )
+    select coalesce(string_agg(id::text, ',' order by rn), '') from page
+  ),
+  U&'00000000-0000-4000-8000-000000000042,00000000-0000-4000-8000-000000000051,00000000-0000-4000-8000-000000000050,00000000-0000-4000-8000-000000000040,00000000-0000-4000-8000-000000000041,00000000-0000-4000-8000-000000000001,00000000-0000-4000-8000-000000000002,00000000-0000-4000-8000-000000000003,00000000-0000-4000-8000-000000000004,00000000-0000-4000-8000-000000000005,00000000-0000-4000-8000-000000000006,00000000-0000-4000-8000-000000000007,00000000-0000-4000-8000-000000000008,00000000-0000-4000-8000-000000000009,00000000-0000-4000-8000-000000000010,00000000-0000-4000-8000-000000000011,00000000-0000-4000-8000-000000000012,00000000-0000-4000-8000-000000000013,00000000-0000-4000-8000-000000000014,00000000-0000-4000-8000-000000000015,00000000-0000-4000-8000-000000000016,00000000-0000-4000-8000-000000000017,00000000-0000-4000-8000-000000000018,00000000-0000-4000-8000-000000000019,00000000-0000-4000-8000-000000000020,00000000-0000-4000-8000-000000000021,00000000-0000-4000-8000-000000000022,00000000-0000-4000-8000-000000000023,00000000-0000-4000-8000-000000000024,00000000-0000-4000-8000-000000000025,00000000-0000-4000-8000-000000000026,00000000-0000-4000-8000-000000000027,00000000-0000-4000-8000-000000000028,00000000-0000-4000-8000-000000000029,00000000-0000-4000-8000-000000000030,00000000-0000-4000-8000-000000000031,00000000-0000-4000-8000-000000000032,00000000-0000-4000-8000-000000000033,00000000-0000-4000-8000-000000000034,00000000-0000-4000-8000-000000000035,00000000-0000-4000-8000-000000000036,00000000-0000-4000-8000-000000000037,00000000-0000-4000-8000-000000000038,00000000-0000-4000-8000-000000000039,00000000-0000-4000-8000-000000000043,00000000-0000-4000-8000-000000000044,00000000-0000-4000-8000-000000000045,00000000-0000-4000-8000-000000000046,00000000-0000-4000-8000-000000000047,00000000-0000-4000-8000-000000000048,00000000-0000-4000-8000-000000000049',
+  U&'kind topic: rows'
+);
+select is(
+  tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'', null, null, null, '{}'::text[], p_kinds := array[U&'topic'])),
+  U&'total=54|matching=51|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
+  U&'kind topic: counts'
+);
+
+-- kind quiz
+select is(
+  (
+    with page as (
+      select id, row_number() over () as rn
+      from public.library_page(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'', null, null, null, '{}'::text[], null, null, 1000, p_kinds := array[U&'quiz'])
+    )
+    select coalesce(string_agg(id::text, ',' order by rn), '') from page
+  ),
+  U&'00000000-0000-4000-8000-000000000052,00000000-0000-4000-8000-000000000053,00000000-0000-4000-8000-000000000054',
+  U&'kind quiz: rows'
+);
+select is(
+  tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'', null, null, null, '{}'::text[], p_kinds := array[U&'quiz'])),
+  U&'total=54|matching=3|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
+  U&'kind quiz: counts'
+);
+
+-- query matches only an option
+select is(
+  (
+    with page as (
+      select id, row_number() over () as rn
+      from public.library_page(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'plain function', null, null, null, '{}'::text[], null, null, 1000)
+    )
+    select coalesce(string_agg(id::text, ',' order by rn), '') from page
+  ),
+  U&'00000000-0000-4000-8000-000000000053',
+  U&'query matches only an option: rows'
+);
+select is(
+  tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'plain function', null, null, null, '{}'::text[])),
+  U&'total=54|matching=1|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
+  U&'query matches only an option: counts'
+);
+
+-- query matches a question
+select is(
+  (
+    with page as (
+      select id, row_number() over () as rn
+      from public.library_page(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'stacking context', null, null, null, '{}'::text[], null, null, 1000)
+    )
+    select coalesce(string_agg(id::text, ',' order by rn), '') from page
+  ),
+  U&'00000000-0000-4000-8000-000000000052',
+  U&'query matches a question: rows'
+);
+select is(
+  tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'stacking context', null, null, null, '{}'::text[])),
+  U&'total=54|matching=1|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
+  U&'query matches a question: counts'
+);
+
+-- query matches a quiz explanation
+select is(
+  (
+    with page as (
+      select id, row_number() over () as rn
+      from public.library_page(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'call order the renderer', null, null, null, '{}'::text[], null, null, 1000)
+    )
+    select coalesce(string_agg(id::text, ',' order by rn), '') from page
+  ),
+  U&'00000000-0000-4000-8000-000000000053',
+  U&'query matches a quiz explanation: rows'
+);
+select is(
+  tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'call order the renderer', null, null, null, '{}'::text[])),
+  U&'total=54|matching=1|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
+  U&'query matches a quiz explanation: counts'
+);
+
+-- kind and confidence
+select is(
+  (
+    with page as (
+      select id, row_number() over () as rn
+      from public.library_page(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'', null, U&'weak', null, '{}'::text[], null, null, 1000, p_kinds := array[U&'quiz'])
+    )
+    select coalesce(string_agg(id::text, ',' order by rn), '') from page
+  ),
+  U&'00000000-0000-4000-8000-000000000053',
+  U&'kind and confidence: rows'
+);
+select is(
+  tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'', null, U&'weak', null, '{}'::text[], p_kinds := array[U&'quiz'])),
+  U&'total=54|matching=1|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
+  U&'kind and confidence: counts'
+);
+
+-- kind and query
+select is(
+  (
+    with page as (
+      select id, row_number() over () as rn
+      from public.library_page(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'hook rule', null, null, null, '{}'::text[], null, null, 1000, p_kinds := array[U&'quiz'])
+    )
+    select coalesce(string_agg(id::text, ',' order by rn), '') from page
+  ),
+  U&'00000000-0000-4000-8000-000000000053',
+  U&'kind and query: rows'
+);
+select is(
+  tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'hook rule', null, null, null, '{}'::text[], p_kinds := array[U&'quiz'])),
+  U&'total=54|matching=1|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
+  U&'kind and query: counts'
+);
+
+-- kind quiz excludes a matching topic
+select is(
+  (
+    with page as (
+      select id, row_number() over () as rn
+      from public.library_page(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'grid', null, null, null, '{}'::text[], null, null, 1000, p_kinds := array[U&'quiz'])
+    )
+    select coalesce(string_agg(id::text, ',' order by rn), '') from page
+  ),
+  U&'',
+  U&'kind quiz excludes a matching topic: rows'
+);
+select is(
+  tests_counts_canon(public.library_counts(U&'2026-09-05T12:00:00.000Z'::timestamptz, 7, U&'grid', null, null, null, '{}'::text[], p_kinds := array[U&'quiz'])),
+  U&'total=54|matching=0|needsReview=8|lastPracticed=1788607800000|conf=new:4,weak:4,okay:37,strong:9|diff=easy:4,medium:45,hard:5|quick=never-practiced:4,needs-review:8,recently-added:4,recently-practiced:3|kind=topic:51,quiz:3|cat=CSS:1;Findablecategory:1;Grid:9;Systems:1;Uncategorized:42',
+  U&'kind quiz excludes a matching topic: counts'
+);
+
 -- Keyset pagination walks the whole corpus exactly once. Page size 7 does not
--- divide 51, and two rows share a created_at, so a cursor missing its
+-- divide 54, and two rows share a created_at, so a cursor missing its
 -- id tiebreak would drop or repeat one of them.
 select is(
   (
@@ -1092,12 +1240,12 @@ select is(
                                  '', null, null, null, '{}'::text[],
                                  walk.created_at, walk.id, 1) p
       ) next
-      where walk.page < 51
+      where walk.page < 54
     )
     select coalesce(string_agg(distinct id::text, ',' order by id::text), '') from walk
   ),
   (select coalesce(string_agg(distinct id::text, ',' order by id::text), '')
-     from unnest(string_to_array(U&'00000000-0000-4000-8000-000000000042,00000000-0000-4000-8000-000000000051,00000000-0000-4000-8000-000000000050,00000000-0000-4000-8000-000000000040,00000000-0000-4000-8000-000000000041,00000000-0000-4000-8000-000000000001,00000000-0000-4000-8000-000000000002,00000000-0000-4000-8000-000000000003,00000000-0000-4000-8000-000000000004,00000000-0000-4000-8000-000000000005,00000000-0000-4000-8000-000000000006,00000000-0000-4000-8000-000000000007,00000000-0000-4000-8000-000000000008,00000000-0000-4000-8000-000000000009,00000000-0000-4000-8000-000000000010,00000000-0000-4000-8000-000000000011,00000000-0000-4000-8000-000000000012,00000000-0000-4000-8000-000000000013,00000000-0000-4000-8000-000000000014,00000000-0000-4000-8000-000000000015,00000000-0000-4000-8000-000000000016,00000000-0000-4000-8000-000000000017,00000000-0000-4000-8000-000000000018,00000000-0000-4000-8000-000000000019,00000000-0000-4000-8000-000000000020,00000000-0000-4000-8000-000000000021,00000000-0000-4000-8000-000000000022,00000000-0000-4000-8000-000000000023,00000000-0000-4000-8000-000000000024,00000000-0000-4000-8000-000000000025,00000000-0000-4000-8000-000000000026,00000000-0000-4000-8000-000000000027,00000000-0000-4000-8000-000000000028,00000000-0000-4000-8000-000000000029,00000000-0000-4000-8000-000000000030,00000000-0000-4000-8000-000000000031,00000000-0000-4000-8000-000000000032,00000000-0000-4000-8000-000000000033,00000000-0000-4000-8000-000000000034,00000000-0000-4000-8000-000000000035,00000000-0000-4000-8000-000000000036,00000000-0000-4000-8000-000000000037,00000000-0000-4000-8000-000000000038,00000000-0000-4000-8000-000000000039,00000000-0000-4000-8000-000000000043,00000000-0000-4000-8000-000000000044,00000000-0000-4000-8000-000000000045,00000000-0000-4000-8000-000000000046,00000000-0000-4000-8000-000000000047,00000000-0000-4000-8000-000000000048,00000000-0000-4000-8000-000000000049', ',')) as id),
+     from unnest(string_to_array(U&'00000000-0000-4000-8000-000000000042,00000000-0000-4000-8000-000000000051,00000000-0000-4000-8000-000000000050,00000000-0000-4000-8000-000000000040,00000000-0000-4000-8000-000000000041,00000000-0000-4000-8000-000000000001,00000000-0000-4000-8000-000000000002,00000000-0000-4000-8000-000000000003,00000000-0000-4000-8000-000000000004,00000000-0000-4000-8000-000000000005,00000000-0000-4000-8000-000000000006,00000000-0000-4000-8000-000000000007,00000000-0000-4000-8000-000000000008,00000000-0000-4000-8000-000000000009,00000000-0000-4000-8000-000000000010,00000000-0000-4000-8000-000000000011,00000000-0000-4000-8000-000000000012,00000000-0000-4000-8000-000000000013,00000000-0000-4000-8000-000000000014,00000000-0000-4000-8000-000000000015,00000000-0000-4000-8000-000000000016,00000000-0000-4000-8000-000000000017,00000000-0000-4000-8000-000000000018,00000000-0000-4000-8000-000000000019,00000000-0000-4000-8000-000000000020,00000000-0000-4000-8000-000000000021,00000000-0000-4000-8000-000000000022,00000000-0000-4000-8000-000000000023,00000000-0000-4000-8000-000000000024,00000000-0000-4000-8000-000000000025,00000000-0000-4000-8000-000000000026,00000000-0000-4000-8000-000000000027,00000000-0000-4000-8000-000000000028,00000000-0000-4000-8000-000000000029,00000000-0000-4000-8000-000000000030,00000000-0000-4000-8000-000000000031,00000000-0000-4000-8000-000000000032,00000000-0000-4000-8000-000000000033,00000000-0000-4000-8000-000000000034,00000000-0000-4000-8000-000000000035,00000000-0000-4000-8000-000000000036,00000000-0000-4000-8000-000000000037,00000000-0000-4000-8000-000000000038,00000000-0000-4000-8000-000000000039,00000000-0000-4000-8000-000000000043,00000000-0000-4000-8000-000000000044,00000000-0000-4000-8000-000000000045,00000000-0000-4000-8000-000000000046,00000000-0000-4000-8000-000000000047,00000000-0000-4000-8000-000000000048,00000000-0000-4000-8000-000000000049,00000000-0000-4000-8000-000000000052,00000000-0000-4000-8000-000000000053,00000000-0000-4000-8000-000000000054', ',')) as id),
   'keyset pagination reaches every row exactly once'
 );
 
@@ -1111,7 +1259,7 @@ select is(
     )
     select coalesce(string_agg(id::text, ',' order by rn), '') from page
   ),
-  U&'00000000-0000-4000-8000-000000000028,00000000-0000-4000-8000-000000000029,00000000-0000-4000-8000-000000000030,00000000-0000-4000-8000-000000000031,00000000-0000-4000-8000-000000000032,00000000-0000-4000-8000-000000000033',
+  U&'00000000-0000-4000-8000-000000000028,00000000-0000-4000-8000-000000000029,00000000-0000-4000-8000-000000000030,00000000-0000-4000-8000-000000000052,00000000-0000-4000-8000-000000000031,00000000-0000-4000-8000-000000000032,00000000-0000-4000-8000-000000000033,00000000-0000-4000-8000-000000000053',
   'the weak list ordering matches orderForPractice with noShuffle, id for id'
 );
 
@@ -1128,7 +1276,7 @@ select is(
     )
     select coalesce(string_agg(id::text, ',' order by rn), '') from page
   ),
-  U&'00000000-0000-4000-8000-000000000042,00000000-0000-4000-8000-000000000051,00000000-0000-4000-8000-000000000050,00000000-0000-4000-8000-000000000040,00000000-0000-4000-8000-000000000041,00000000-0000-4000-8000-000000000001,00000000-0000-4000-8000-000000000002,00000000-0000-4000-8000-000000000003,00000000-0000-4000-8000-000000000004,00000000-0000-4000-8000-000000000005,00000000-0000-4000-8000-000000000006,00000000-0000-4000-8000-000000000007,00000000-0000-4000-8000-000000000008,00000000-0000-4000-8000-000000000009,00000000-0000-4000-8000-000000000010,00000000-0000-4000-8000-000000000011,00000000-0000-4000-8000-000000000012,00000000-0000-4000-8000-000000000013,00000000-0000-4000-8000-000000000014,00000000-0000-4000-8000-000000000015,00000000-0000-4000-8000-000000000016,00000000-0000-4000-8000-000000000017,00000000-0000-4000-8000-000000000018,00000000-0000-4000-8000-000000000019,00000000-0000-4000-8000-000000000020,00000000-0000-4000-8000-000000000021,00000000-0000-4000-8000-000000000022,00000000-0000-4000-8000-000000000023,00000000-0000-4000-8000-000000000024,00000000-0000-4000-8000-000000000025,00000000-0000-4000-8000-000000000026,00000000-0000-4000-8000-000000000027,00000000-0000-4000-8000-000000000034,00000000-0000-4000-8000-000000000035,00000000-0000-4000-8000-000000000036,00000000-0000-4000-8000-000000000048,00000000-0000-4000-8000-000000000037,00000000-0000-4000-8000-000000000038,00000000-0000-4000-8000-000000000039,00000000-0000-4000-8000-000000000049,00000000-0000-4000-8000-000000000047',
+  U&'00000000-0000-4000-8000-000000000042,00000000-0000-4000-8000-000000000051,00000000-0000-4000-8000-000000000050,00000000-0000-4000-8000-000000000040,00000000-0000-4000-8000-000000000041,00000000-0000-4000-8000-000000000001,00000000-0000-4000-8000-000000000002,00000000-0000-4000-8000-000000000003,00000000-0000-4000-8000-000000000004,00000000-0000-4000-8000-000000000005,00000000-0000-4000-8000-000000000006,00000000-0000-4000-8000-000000000007,00000000-0000-4000-8000-000000000008,00000000-0000-4000-8000-000000000009,00000000-0000-4000-8000-000000000010,00000000-0000-4000-8000-000000000011,00000000-0000-4000-8000-000000000012,00000000-0000-4000-8000-000000000013,00000000-0000-4000-8000-000000000014,00000000-0000-4000-8000-000000000015,00000000-0000-4000-8000-000000000016,00000000-0000-4000-8000-000000000017,00000000-0000-4000-8000-000000000018,00000000-0000-4000-8000-000000000019,00000000-0000-4000-8000-000000000020,00000000-0000-4000-8000-000000000021,00000000-0000-4000-8000-000000000022,00000000-0000-4000-8000-000000000023,00000000-0000-4000-8000-000000000024,00000000-0000-4000-8000-000000000025,00000000-0000-4000-8000-000000000026,00000000-0000-4000-8000-000000000027,00000000-0000-4000-8000-000000000034,00000000-0000-4000-8000-000000000035,00000000-0000-4000-8000-000000000036,00000000-0000-4000-8000-000000000048,00000000-0000-4000-8000-000000000037,00000000-0000-4000-8000-000000000038,00000000-0000-4000-8000-000000000039,00000000-0000-4000-8000-000000000049,00000000-0000-4000-8000-000000000054,00000000-0000-4000-8000-000000000047',
   'the stale list matches isStale, id for id'
 );
 

@@ -33,6 +33,24 @@ export function imageEntryName(topic: Topic): string | null {
   return `images/${topic.id}-${filename}`
 }
 
+/**
+ * "12 topics", "3 quizzes", "12 topics and 3 quizzes".
+ *
+ * A library holding both is not "15 topics", and the count at the top of the file
+ * is the one thing someone reads before deciding whether the export is complete.
+ */
+function counted(topics: Topic[]): string {
+  const quizzes = topics.filter((topic) => topic.kind === 'quiz').length
+  const plain = topics.length - quizzes
+
+  const parts: string[] = []
+  if (plain > 0) parts.push(`${plain} ${plain === 1 ? 'topic' : 'topics'}`)
+  if (quizzes > 0) parts.push(`${quizzes} ${quizzes === 1 ? 'quiz' : 'quizzes'}`)
+
+  // Empty stays '0 topics' — there are no quizzes either, and the line reads.
+  return parts.length === 0 ? '0 topics' : parts.join(' and ')
+}
+
 function practiceLine(topic: Topic): string {
   const confidence = CONFIDENCE_LABEL[topic.confidence]
   const when =
@@ -73,7 +91,7 @@ export function renderLibraryMarkdown(
   const head = [
     '# Recall',
     '',
-    `${topics.length} ${topics.length === 1 ? 'topic' : 'topics'}, exported ${formatShortDate(exportedAt.toISOString())}.`,
+    `${counted(topics)}, exported ${formatShortDate(exportedAt.toISOString())}.`,
     '',
     exportedImages > 0
       ? '`library.json` holds the same data with every field, for a machine. Images are in `images/`.'
@@ -98,11 +116,37 @@ export function renderLibraryMarkdown(
     const tags = topic.tags.length > 0 ? ` · ${topic.tags.join(', ')}` : ''
     lines.push(`${categoryOf(topic)}${tags}`, '')
 
-    lines.push('## Definition', '', topic.definition, '')
+    /*
+      A quiz has no definition — its question is the heading above. The section is
+      omitted rather than rendered empty, the same rule the mental model follows.
+    */
+    if (topic.kind === 'topic') lines.push('## Definition', '', topic.definition, '')
 
-    // Omitted entirely rather than rendered as an empty section.
+    /*
+      A quiz's options, in STORED order rather than shuffled, with the answer
+      marked in words.
+
+      Stored order because the shuffle is a property of a practice session, not of
+      the quiz — an export that reordered them would make two exports of the same
+      library differ. In words because the file has to be readable with no tooling
+      at all: a bold entry or a colour would be a formatting convention someone has
+      to already know, and "the answer" is not.
+    */
+    if (topic.kind === 'quiz') {
+      lines.push('## Options', '')
+      topic.options.forEach((option, index) => {
+        lines.push(`${index + 1}. ${option}${index === topic.correct_option ? '  ← the answer' : ''}`)
+      })
+      lines.push('')
+    }
+
+    /*
+      Omitted entirely rather than rendered as an empty section. Named "Why" for a
+      quiz, which is the word the add sheet uses — the field is shared, the heading
+      follows what was actually typed into it.
+    */
     if (topic.mental_model !== null && topic.mental_model !== '') {
-      lines.push('## Mental model', '', topic.mental_model, '')
+      lines.push(topic.kind === 'quiz' ? '## Why' : '## Mental model', '', topic.mental_model, '')
     }
 
     if (topic.mental_model_image_path !== null) {

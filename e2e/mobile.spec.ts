@@ -11,7 +11,7 @@ const uniqueTitle = (label: string) => `${label} ${Date.now()}-${Math.random().t
 
 async function seedTopic(page: import('@playwright/test').Page, title: string) {
   await page.getByRole('link', { name: 'Add topic' }).click()
-  await page.getByLabel('Topic', { exact: true }).fill(title)
+  await page.getByRole('textbox', { name: 'Topic', exact: true }).fill(title)
   await page.getByLabel('Definition').fill('A topic to see on a phone.')
   await page.getByRole('button', { name: 'Save topic' }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 15_000 })

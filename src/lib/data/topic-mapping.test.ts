@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { toTopic, type TopicRow } from '@/lib/data/topic-mapping'
 
 const row: TopicRow = {
+  kind: 'topic',
+  options: null,
+  correct_option: null,
   id: 'topic-1',
   user_id: 'user-1',
   title: 'React reconciliation',

@@ -16,7 +16,19 @@ import type { Confidence, Difficulty, Topic } from '@/lib/domain/types'
 export function topicPath(topic: Topic): string {
   const category = categoryOf(topic)
   const firstTag = topic.tags[0]
-  return firstTag ? `${category} · ${firstTag}` : category
+  const base = firstTag ? `${category} · ${firstTag}` : category
+
+  /*
+    A quiz's path line carries how many options it has — the reference's
+    "CSS · layout · 2 options". It stands in for the excerpt a quiz does not have,
+    and it is the one number that changes how the question feels to answer.
+  */
+  if (topic.kind === 'quiz') {
+    const count = topic.options.length
+    return `${base} · ${count} ${count === 1 ? 'option' : 'options'}`
+  }
+
+  return base
 }
 
 export interface LibraryStats {

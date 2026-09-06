@@ -1,7 +1,7 @@
 import { categoryOf } from '@/lib/domain/category-suggest'
 import { needsReview } from '@/lib/domain/confidence'
 import { filterTopics, type QuickFilter, type TopicFilters } from '@/lib/domain/search-filter'
-import type { Confidence, Difficulty, Topic } from '@/lib/domain/types'
+import type { Confidence, Difficulty, Kind, Topic } from '@/lib/domain/types'
 
 /**
  * Every number the library toolbar and the sidebar rail display.
@@ -30,11 +30,14 @@ export interface LibraryCounts {
   byConfidence: Record<Confidence, number>
   byDifficulty: Record<Difficulty, number>
   quick: Record<QuickFilter, number>
+  /** The type chips. `All` is `total`, so it is not repeated here. */
+  byKind: Record<Kind, number>
   byCategory: CategoryCount[]
 }
 
 export const CONFIDENCE_VALUES: readonly Confidence[] = ['new', 'weak', 'okay', 'strong']
 export const DIFFICULTY_VALUES: readonly Difficulty[] = ['easy', 'medium', 'hard']
+export const KIND_VALUES: readonly Kind[] = ['topic', 'quiz']
 export const QUICK_FILTER_VALUES: readonly QuickFilter[] = [
   'never-practiced',
   'needs-review',
@@ -130,6 +133,7 @@ export function libraryCounts(topics: Topic[], filters: TopicFilters, now: Date)
     byConfidence: countBy(topics, now, CONFIDENCE_VALUES, (confidence) => ({ confidence })),
     byDifficulty: countBy(topics, now, DIFFICULTY_VALUES, (difficulty) => ({ difficulty })),
     quick: countBy(topics, now, QUICK_FILTER_VALUES, (quick) => ({ quickFilters: [quick] })),
+    byKind: countBy(topics, now, KIND_VALUES, (kind) => ({ kind })),
     byCategory: categoryCounts(topics),
   }
 }

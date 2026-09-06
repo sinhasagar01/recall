@@ -5,7 +5,15 @@ import { useEffect, useRef } from 'react'
 const FOCUSABLE = [
   'a[href]',
   'button:not([disabled])',
-  'input:not([disabled])',
+  /*
+    Hidden inputs are inputs. They match `input:not([disabled])`, they cannot take
+    focus, and `.focus()` on one silently does nothing — so before this exclusion
+    the trap could pick one as its initial target and leave the caret nowhere, and
+    Tab could stop on it. Latent until the topic sheet gained a hidden field ABOVE
+    its first real one; the sheet had carried hidden inputs for tags and category
+    since phase 3, but only ever below the field that was picked first.
+  */
+  'input:not([disabled]):not([type="hidden"])',
   'select:not([disabled])',
   'textarea:not([disabled])',
   '[tabindex]:not([tabindex="-1"])',
@@ -43,14 +51,25 @@ export function useFocusTrap({ open, onClose }: { open: boolean; onClose: () => 
       hypothetical: it regressed exactly that way when Sheet gained its close
       control.)
 
+      Radios and checkboxes do not count as that first field. They are settings —
+      a mode toggle, a marked answer — and a dialog is not there to be filled in by
+      changing one. The topic sheet grew a Topic/Quiz toggle above its title field
+      and the caret landed on it, which is the same regression the paragraph above
+      describes, arriving through a different door. Skipping them keeps every
+      existing dialog on exactly the control it already focused.
+
       A dialog with no form control — the delete confirmation — falls back to the
       first focusable, which is its first action. And a dialog with nothing
       focusable at all falls back to the container, so the trap always has a
       subject.
     */
     const items = focusable()
-    const firstField = items.find((element) =>
-      ['INPUT', 'TEXTAREA', 'SELECT'].includes(element.tagName),
+    const firstField = items.find(
+      (element) =>
+        ['TEXTAREA', 'SELECT'].includes(element.tagName) ||
+        (element instanceof HTMLInputElement &&
+          element.type !== 'radio' &&
+          element.type !== 'checkbox'),
     )
     const initial = firstField ?? items[0] ?? container
     initial.focus()

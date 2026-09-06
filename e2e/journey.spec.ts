@@ -32,7 +32,7 @@ test('the whole product, end to end, as one person', async ({ page }) => {
 
   // ── add a topic with a mental model and an image ──────────────────────────
   await page.getByRole('button', { name: '+ Add your first topic' }).click()
-  await page.getByLabel('Topic', { exact: true }).fill(title)
+  await page.getByRole('textbox', { name: 'Topic', exact: true }).fill(title)
   await page
     .getByLabel('Definition')
     .fill('React compares the previous and next element tree, then commits only what changed.')

@@ -29,7 +29,7 @@ async function addTopic(
 ): Promise<string> {
   await page.goto('/library')
   await page.getByRole('button', { name: /Add (topic|your first topic)/ }).first().click()
-  await page.getByLabel('Topic', { exact: true }).fill(title)
+  await page.getByRole('textbox', { name: 'Topic', exact: true }).fill(title)
   await page.getByLabel('Definition').fill('A topic with a diagram.')
   if (file) await page.getByLabel(/Visual/).setInputFiles(file)
   await page.getByRole('button', { name: 'Save topic' }).click()
@@ -113,7 +113,7 @@ test('an oversized file leaves the topic saved and names the real reason', async
 
   await page.goto('/library')
   await page.getByRole('button', { name: /Add (topic|your first topic)/ }).first().click()
-  await page.getByLabel('Topic', { exact: true }).fill(title)
+  await page.getByRole('textbox', { name: 'Topic', exact: true }).fill(title)
   await page.getByLabel('Definition').fill('The image will not make it.')
   await page.getByLabel(/Visual/).setInputFiles({
     name: 'enormous.png',
@@ -140,7 +140,7 @@ test('a wrong file type leaves the topic saved and names the real reason', async
 
   await page.goto('/library')
   await page.getByRole('button', { name: /Add (topic|your first topic)/ }).first().click()
-  await page.getByLabel('Topic', { exact: true }).fill(title)
+  await page.getByRole('textbox', { name: 'Topic', exact: true }).fill(title)
   await page.getByLabel('Definition').fill('A PDF is not a diagram we accept.')
   await page.getByLabel(/Visual/).setInputFiles({
     name: 'notes.pdf',

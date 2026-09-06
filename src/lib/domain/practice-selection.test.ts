@@ -11,7 +11,7 @@ import {
   selectPracticeSession,
 } from '@/lib/domain/practice-selection'
 import { makeTopic } from '@/lib/domain/topic-fixture'
-import type { Topic } from '@/lib/domain/types'
+import type { Topic, TopicRecord } from '@/lib/domain/types'
 
 /*
   `noShuffle` is imported rather than declared here: phase 9 gave it a real home in
@@ -22,7 +22,7 @@ const reverseShuffle = <T>(items: T[]): T[] => [...items].reverse()
 
 const titles = (topics: Topic[]) => topics.map((t) => t.title)
 
-function topic(title: string, overrides: Partial<Topic> = {}) {
+function topic(title: string, overrides: Partial<TopicRecord> = {}) {
   return makeTopic({ id: title, title, ...overrides })
 }
 

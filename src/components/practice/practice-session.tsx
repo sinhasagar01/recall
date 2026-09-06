@@ -8,9 +8,11 @@ import { Button } from '@/components/ui/button'
 import { Chip } from '@/components/ui/chip'
 import { ConfidenceMeter } from '@/components/ui/confidence-meter'
 import { Kbd } from '@/components/ui/kbd'
+import { QuizBadge } from '@/components/ui/quiz-badge'
 import { Definition, MentalModel, RegisterSection } from '@/components/ui/register'
-import { gradeTopic } from '@/app/(practice)/practice/actions'
-import { CONFIDENCE_LABEL, GRADE_TO_CONFIDENCE, type Grade } from '@/lib/domain/confidence'
+import { QuizCard } from '@/components/practice/quiz-card'
+import { answerQuiz, gradeTopic } from '@/app/(practice)/practice/actions'
+import { CONFIDENCE_LABEL, GRADE_TO_CONFIDENCE, gradeQuiz, type Grade } from '@/lib/domain/confidence'
 import { topicPath } from '@/lib/domain/library'
 import { sessionSummary, sessionTally, type GradedResult } from '@/lib/domain/practice-session'
 import type { Topic } from '@/lib/domain/types'
@@ -21,15 +23,33 @@ const GRADES = [
   { grade: 'knew-it', label: 'Knew it', hint: '' },
 ] as const satisfies readonly { grade: Grade; label: string; hint: string }[]
 
+/**
+ * A session holds both shapes.
+ *
+ * One queue, one progress bar, one completion screen; the card in the middle is
+ * chosen by `kind`. Everything around it — ordering, the cap, what counts as
+ * weak, the summary — is shared, because confidence is one system and a quiz that
+ * could not appear in the default session would be a permanent leak.
+ */
 export function PracticeSession({
   queue,
   imageUrls,
+  seed,
 }: {
   queue: Topic[]
   imageUrls: Record<string, string>
+  /** The read timestamp. Shuffles a quiz's options, stably for the session. */
+  seed: string
 }) {
   const [index, setIndex] = useState(0)
   const [revealed, setRevealed] = useState(false)
+  /*
+    A quiz's equivalent of `revealed`. Both mean "the answer is now on screen", and
+    both hide the prior-confidence chip for the same reason: once you can see the
+    answer, what the app thought of you beforehand is no longer information you can
+    act on, and leaving it up next to a fresh verdict reads as a contradiction.
+  */
+  const [answered, setAnswered] = useState(false)
   const [answer, setAnswer] = useState('')
   const [results, setResults] = useState<GradedResult[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -40,6 +60,7 @@ export function PracticeSession({
 
   const advance = () => {
     setRevealed(false)
+    setAnswered(false)
     setAnswer('')
     setError(null)
     setIndex((current) => current + 1)
@@ -63,8 +84,30 @@ export function PracticeSession({
         setError(result.error)
         return
       }
-      setResults((current) => [...current, { topic, grade: chosen }])
+      setResults((current) => [...current, { topic, confidence: GRADE_TO_CONFIDENCE[chosen] }])
       advance()
+    })
+  }
+
+  /*
+    Answering a quiz. Same shape as `grade`: awaited, and a failure keeps the card
+    on screen rather than advancing past a write that did not happen.
+
+    The picked index goes to the server and the verdict comes back from the stored
+    answer — this only needs to know it for the tally.
+  */
+  const submitAnswer = (picked: number) => {
+    if (isSaving) return
+    setError(null)
+    setAnswered(true)
+    startSaving(async () => {
+      const result = await answerQuiz(topic.id, picked)
+      if (result.error !== null) {
+        setError(result.error)
+        return
+      }
+      const correct = topic.kind === 'quiz' && picked === topic.correct_option
+      setResults((current) => [...current, { topic, confidence: gradeQuiz(correct) }])
     })
   }
 
@@ -76,9 +119,14 @@ export function PracticeSession({
 
   const router = useRouter()
 
+  const isQuizCard = !done && topic.kind === 'quiz'
+
   usePracticeKeys({
-    onReveal: !done && !revealed ? () => setRevealed(true) : undefined,
-    onGrade: !done && revealed && !isSaving ? (i) => grade(GRADES[i].grade) : undefined,
+    // Both undefined on a quiz: Space has nothing to reveal, and 1-3 would fight
+    // QuizCard's own 1-9 for the same keys. Escape stays bound either way.
+    onReveal: !done && !revealed && !isQuizCard ? () => setRevealed(true) : undefined,
+    onGrade:
+      !done && revealed && !isSaving && !isQuizCard ? (i) => grade(GRADES[i].grade) : undefined,
     // Unconditional: leaving is always available. Grades already saved on
     // selection, so nothing is lost by going.
     onExit: () => router.push('/library'),
@@ -89,7 +137,7 @@ export function PracticeSession({
   return (
     <div>
       <div className="mb-[34px] flex items-center justify-between gap-4">
-        <div className="flex items-center gap-[3px]" role="img" aria-label={`Topic ${index + 1} of ${queue.length}`}>
+        <div className="flex items-center gap-[3px]" role="img" aria-label={`Card ${index + 1} of ${queue.length}`}>
           {queue.map((item, position) => (
             <i
               key={item.id}
@@ -124,12 +172,45 @@ export function PracticeSession({
         <span className="font-mono text-mono font-medium tracking-[0.16em] text-ink-3 uppercase">
           {topicPath(topic)}
         </span>
-        {!revealed && topic.confidence !== 'new' ? (
+        {topic.kind === 'quiz' ? <QuizBadge /> : null}
+        {!revealed && !answered && topic.confidence !== 'new' ? (
           <Chip tone={topic.confidence === 'weak' ? 'flag' : 'default'}>
             {CONFIDENCE_LABEL[topic.confidence]}
           </Chip>
         ) : null}
       </div>
+
+      {/*
+        A quiz is answered, not recalled, so it does not get the prompt heading,
+        the recall textarea or the grade buttons — none of which mean anything
+        when the answer is on screen and objective. Everything OUTSIDE this
+        branch is shared: the progress bar, the path line, the confidence chip,
+        the way out, the tally at the end.
+      */}
+      {topic.kind === 'quiz' ? (
+        <div className="mt-[22px]">
+          {error ? (
+            <p
+              role="alert"
+              className="mb-3.5 rounded-md border border-flag bg-flag-soft px-4 py-3 text-meta text-flag"
+            >
+              {error} Your earlier answers are already saved.
+            </p>
+          ) : null}
+
+          <QuizCard
+            // Remounts per card, so a pick never survives into the next question.
+            key={topic.id}
+            quiz={topic}
+            seed={seed}
+            isSaving={isSaving}
+            onAnswered={submitAnswer}
+            onNext={advance}
+            isLast={index === queue.length - 1}
+          />
+        </div>
+      ) : (
+      <>
 
       <h1
         className={`mt-[22px] mb-2 font-display font-medium tracking-[-0.022em] ${
@@ -233,6 +314,8 @@ export function PracticeSession({
           </div>
         </>
       )}
+      </>
+      )}
     </div>
   )
 }
@@ -249,18 +332,19 @@ function Complete({ results, count }: { results: GradedResult[]; count: number }
       <h1 className="mb-2 font-display text-[27px] font-medium">Session complete</h1>
       <p className="mx-auto mb-[26px] max-w-[44ch] text-ink-2">{sessionSummary(results)}</p>
 
+      {/*
+        Labelled by confidence — Weak / Okay / Strong — rather than by the grade
+        buttons' words. A session can hold both shapes, and "Didn't know it" is
+        the topic screen's phrasing for a self-assessment a quiz never makes.
+        These are the words the meter, the library chips and the weak page
+        already use, so the tally names the thing that was actually recorded.
+      */}
       <div className="mb-[30px] flex flex-wrap justify-center gap-[26px]">
-        {(
-          [
-            ['didnt-know', "Didn't know"],
-            ['partly', 'Partly'],
-            ['knew-it', 'Knew it'],
-          ] as const
-        ).map(([grade, label]) => (
-          <div key={grade}>
-            <div className="font-display text-[23px] font-medium">{tally[grade]}</div>
+        {(['weak', 'okay', 'strong'] as const).map((confidence) => (
+          <div key={confidence}>
+            <div className="font-display text-[23px] font-medium">{tally[confidence]}</div>
             <div className="font-mono text-mono font-medium tracking-[0.16em] text-ink-3 uppercase">
-              {label}
+              {CONFIDENCE_LABEL[confidence]}
             </div>
           </div>
         ))}

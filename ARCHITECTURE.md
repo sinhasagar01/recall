@@ -63,6 +63,127 @@ Two consequences worth stating:
 If the migration changes, this file changes with it, and the pgTAP `columns_are`
 assertion is what catches a drift in the other direction.
 
+## The rule: a CHECK must be proven to reject, not proven to accept
+
+Three times now a constraint on `public.topics` has passed a row it was written to
+stop, and every time the cause was the same: something in the expression evaluated to
+**NULL**, and Postgres rejects a row only when a CHECK is *false*. Reasoning has failed
+to catch this twice; a test caught it all three times.
+
+So it is a rule rather than a note:
+
+> **Every clause of every CHECK on this table carries an assertion that fails when that
+> clause is removed.** Proving the constraint accepts a valid row proves nothing — the
+> hole is always in what it lets through. Perturbing each clause and watching a named
+> assertion go red is the standard, not an extra step.
+
+`supabase/tests/quiz_shape_test.sql` is the worked example: removing the index-range
+check reds three named assertions, removing the image clause reds one, removing a
+single `coalesce` reds one.
+
+### The two NULL sources that have actually bitten
+
+- **A nullable column compared to anything yields NULL.** `check (difficulty in
+  ('easy','medium','hard'))` is NULL for a null input, so the constraint that looks like
+  it enumerates the legal values passes a null straight through.
+- **`array_length` of an EMPTY array returns NULL, not 0.** `array_length('{}'::text[], 1)`
+  is NULL, so `array_length(options, 1) >= 2` is NULL for `options = '{}'` and a quiz with
+  no options at all satisfied a constraint demanding two.
+
+### The reasoning that was wrong, recorded because it will be repeated
+
+The quiz migration originally carried this comment:
+
+> *"`kind` is NOT NULL, so every branch of the CASE evaluates to a real boolean."*
+
+It is wrong, and plausibly wrong, which is worse. `kind` being NOT NULL guarantees the
+CASE picks a branch — it guarantees nothing about the expression inside that branch. The
+branch was `... and array_length(options, 1) >= 2 and ...`, and one NULL conjunct makes
+the whole conjunction NULL.
+
+**A NOT NULL discriminant does not make a CHECK total.** Whatever is inside the branch
+has to be shown to be total, clause by clause, and the way to show it is the
+perturbation above rather than an argument.
+
+## A discriminated union only catches reads it makes type-incompatible
+
+The same shape of lesson as the CHECK rule above, found the same way: by a test, after
+reasoning said otherwise.
+
+Adding `kind` to `Topic` was expected to be "the map" of every place assuming one shape —
+each read would become a compile error until narrowed. It was not. Of the nine reads of
+`.definition`, **`tsc` flagged two.**
+
+`definition` exists on *both* arms — `string` on a topic, `null` on a quiz — so reading it
+is always legal and yields `string | null`. Only **consuming** it where a `string` is
+required errors. Everywhere a null is renderable, the compiler stays silent:
+
+| Site | What it does | Compiler |
+| --- | --- | --- |
+| `domain/export.ts` | passes it where a `string` is required | error |
+| `__fixtures__/build-parity-sql.ts` | same | error |
+| `topics/topic-card.tsx` | `{topic.definition}</p>` | **silent** — JSX renders null as nothing |
+| `topics/topic-detail.tsx` | same | **silent** |
+| `practice/practice-session.tsx` | same | **silent** |
+| `topics/topic-sheet.tsx` | `topic?.definition ?? ''` | silent, and already correct |
+| `domain/search-filter.ts` | into a `(string \| null)[]` that skips nulls | silent, and already correct |
+
+The three silent component reads are the dangerous ones: a quiz card would render an
+**empty** excerpt where the reference specifies none at all. It looks almost right, which
+is the worst kind of wrong, and no type error ever appears.
+
+**Playwright holds those three, not `tsc`** — `e2e/quiz.spec.ts` asserts the excerpt
+element, the Definition section and the Definition register are *absent* for a quiz. The
+assertion has to be absence: "the element is missing" fails before narrowing and passes
+after, while "the text is empty" passes in both states and proves nothing.
+
+The general rule: **a field present on both arms with different nullability is invisible to
+the compiler wherever null is renderable.** Adding a discriminant tells you where the
+shapes are *used* incompatibly, never where they are merely displayed.
+
+
+## An assertion about a row in a paged, ordered list is not an assertion about the row
+
+The third of the same family, after the CHECK rule and the union rule above. All three are
+assertions that *passed while proving nothing*, and all three were caught by making the
+thing they claimed to test actually change.
+
+The quiz work needed to show that confidence is one system across both shapes — "a weak
+quiz and a weak topic sit in the same list". The obvious Playwright test: answer a quiz
+wrong, go to `/weak`, assert the question is visible; answer it right, assert it is gone.
+
+It failed about one run in six, and the failure was the *correct* half. The `/weak` page is
+ordered and paged at `SERVER_PAGE_SIZE` (60), and the fixture user has **275** rows needing
+review. A just-answered weak quiz sorts to the end of its bucket and lands on page 5. The
+"it is visible" assertion had been passing on ordering luck, and the "it is gone"
+assertion could never have failed for the right reason — a quiz genuinely still in the weak
+set is invisible on page 1 exactly as a correctly-removed one is.
+
+**Absence from a paged list is not absence from the set, and presence is a fact about the
+ordering.** Both halves were measuring the fixture's size.
+
+The rule, in two parts:
+
+- **Put the set-membership claim where the query can be interrogated.** It moved to
+  `supabase/tests/quiz_shape_test.sql`, which calls `practice_ordered_page` directly with a
+  limit above the row count and asserts a weak quiz and a weak topic come back from the one
+  call. That is the claim, stated against the thing that decides it.
+- **Read the outcome somewhere unpaged in the browser test.** The Playwright test now reads
+  the confidence off the quiz's own library card, found by search. One row, addressed
+  directly, no ordering involved.
+
+The mechanical check when writing an assertion about a list: **if this row moved to page 2,
+would the assertion still mean what I think it means?** If not, the assertion is about the
+page, not about the row.
+
+A related trap in the same test, worth recording because it is the same mistake wearing
+different clothes: the practice screen's verdict line ("Marked weak") renders the instant
+Check is pressed, derived from the pick in the browser — not from the response. Asserting on
+it and then navigating raced the write, and it would have read "Marked weak" just as happily
+if the write had failed outright. The synchronisation point is the continue button, which
+stays disabled and reads "Saving…" until the action resolves. **Do not treat optimistic
+copy as evidence that a write happened.**
+
 ## A CHECK constraint does not imply NOT NULL
 
 `public.topics.difficulty`, `.confidence` and `.tags` originally carried a default,

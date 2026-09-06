@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recall — quizzes (final)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;450;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#E9EAF0; --surface:#FFFFFF; --surface-2:#F5F5FA; --surface-3:#EDEEF4;
+  --ink:#12131A; --ink-2:#53555F; --ink-3:#83858F;
+  --rule:#E1E1E9; --rule-strong:#C9C9D4;
+  --accent:#3F3AC7; --accent-soft:#EDECFB; --accent-ink:#2E2A9E;
+  --flag:#B4325C; --flag-soft:#FBEBF1;
+  --ok:#1B6B4F; --ok-soft:#E6F2EC;
+  --radius:6px; --radius-lg:10px;
+  --shadow:0 1px 2px rgba(18,19,26,.05), 0 1px 1px rgba(18,19,26,.03);
+  --font-display:"Newsreader",Georgia,serif;
+  --font-body:"IBM Plex Sans",system-ui,sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:14.5px;line-height:1.55;-webkit-font-smoothing:antialiased}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+code{font-family:var(--font-mono);font-size:.86em}
+
+.chrome{position:sticky;top:0;z-index:50;display:flex;gap:6px;align-items:center;padding:9px 16px;
+  background:var(--surface);border-bottom:1px solid var(--rule);flex-wrap:wrap}
+.chrome__label{font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin-right:6px}
+.tab{font-family:var(--font-mono);font-size:11.5px;padding:5px 9px;border:1px solid transparent;border-radius:var(--radius);
+  background:none;color:var(--ink-2);cursor:pointer}
+.tab:hover{background:var(--surface-2);color:var(--ink)}
+.tab[aria-selected="true"]{background:var(--accent-soft);color:var(--accent-ink);border-color:var(--accent)}
+
+.wrap{max-width:1060px;margin:0 auto;padding:30px 26px 80px}
+.h1{font-family:var(--font-display);font-size:29px;font-weight:500;letter-spacing:-.022em}
+.sub{margin-top:5px;color:var(--ink-2);max-width:66ch}
+.screen{display:none}.screen[data-active]{display:block}
+.eyebrow{font-family:var(--font-mono);font-size:10.5px;font-weight:500;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3)}
+.meta{font-family:var(--font-mono);font-size:11.5px;color:var(--ink-3)}
+.rule{display:flex;align-items:center;gap:12px;margin:34px 0 4px}
+.rule::after{content:"";flex:1;height:1px;background:var(--rule)}
+.note{max-width:70ch;color:var(--ink-2);font-size:13.5px;margin-top:26px;padding-top:18px;border-top:1px solid var(--rule)}
+
+.btn{font-family:var(--font-body);font-size:13.5px;font-weight:500;display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  padding:11px 16px;border-radius:var(--radius);border:1px solid var(--rule-strong);background:var(--surface);color:var(--ink);cursor:pointer}
+.btn--primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn--ghost{background:none;border-color:transparent;color:var(--ink-2)}
+.btn--block{width:100%}
+.btn[disabled]{opacity:.4;cursor:not-allowed}
+.field{display:block;margin-bottom:16px}
+.field__label{display:block;margin-bottom:6px;font-size:13px;font-weight:500}
+.field__hint{font-family:var(--font-mono);font-size:10.5px;color:var(--ink-3);font-weight:400;margin-left:6px}
+.input,.textarea{width:100%;font-family:var(--font-body);font-size:14.5px;color:var(--ink);background:var(--surface);
+  border:1px solid var(--rule-strong);border-radius:var(--radius);padding:10px 12px;line-height:1.5}
+.textarea{min-height:66px;resize:vertical}
+.seg{display:inline-flex;border:1px solid var(--rule-strong);border-radius:var(--radius);overflow:hidden}
+.seg button{font-family:var(--font-mono);font-size:12px;padding:8px 14px;border:none;background:var(--surface);
+  color:var(--ink-2);cursor:pointer;border-right:1px solid var(--rule)}
+.seg button:last-child{border-right:none}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--surface)}
+.chip{font-family:var(--font-mono);font-size:11px;padding:3px 8px;border-radius:100px;border:1px solid var(--rule);
+  background:var(--surface-2);color:var(--ink-2)}
+.badge{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;padding:2px 7px;
+  border-radius:3px;border:1px solid var(--accent);color:var(--accent-ink);background:var(--accent-soft);flex:none}
+.conf__ticks{display:inline-flex;gap:2.5px}
+.conf__tick{width:5px;height:13px;border-radius:1.5px;border:1px solid var(--rule-strong)}
+.conf__tick--on{background:var(--ink);border-color:var(--ink)}
+.conf--new .conf__tick{border-style:dashed}
+.conf--weak .conf__tick--on{background:var(--flag);border-color:var(--flag)}
+.conf--strong .conf__tick--on{background:var(--accent);border-color:var(--accent)}
+.conf__label{font-family:var(--font-mono);font-size:11px;color:var(--ink-2)}
+.conf--weak .conf__label{color:var(--flag)}
+.conf--strong .conf__label{color:var(--accent-ink)}
+.conf--new .conf__label{color:var(--ink-3)}
+
+/* sheet */
+.sheetwrap{display:flex;justify-content:center;margin-top:24px}
+.sheet{width:min(560px,100%);background:var(--surface);border:1px solid var(--rule);border-radius:var(--radius-lg);
+  padding:24px 28px 32px;box-shadow:var(--shadow)}
+.sheet__head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.sheet__title{font-family:var(--font-display);font-size:22px;font-weight:500}
+.typetoggle{display:inline-flex;border:1px solid var(--rule-strong);border-radius:var(--radius);overflow:hidden;margin-bottom:20px}
+.typetoggle button{font-family:var(--font-mono);font-size:12px;padding:8px 18px;border:none;background:var(--surface);
+  color:var(--ink-2);cursor:pointer;border-right:1px solid var(--rule)}
+.typetoggle button:last-child{border-right:none}
+.typetoggle button[aria-pressed="true"]{background:var(--accent);color:#fff}
+.optrow{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.optrow__radio{width:18px;height:18px;border-radius:50%;border:1.5px solid var(--rule-strong);flex:none;display:grid;place-items:center;cursor:pointer}
+.optrow__radio--on{border-color:var(--accent)}
+.optrow__radio--on::after{content:"";width:9px;height:9px;border-radius:50%;background:var(--accent)}
+.optrow__x{border:none;background:none;color:var(--ink-3);cursor:pointer;font-size:16px;padding:0 4px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+
+/* option component */
+.opt{display:flex;align-items:flex-start;gap:12px;width:100%;text-align:left;background:var(--surface);
+  border:1px solid var(--rule-strong);border-radius:var(--radius-lg);padding:13px 15px;margin-bottom:8px;
+  font-family:inherit;font-size:14px;color:var(--ink);line-height:1.5;cursor:pointer}
+.opt__mark{width:19px;height:19px;border-radius:50%;border:1.5px solid var(--rule-strong);flex:none;margin-top:1px;
+  display:grid;place-items:center;color:#fff;font-size:11px}
+.opt__body{flex:1;min-width:0}
+.opt__tag{display:block;font-family:var(--font-mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;margin-top:7px}
+.opt__key{font-family:var(--font-mono);font-size:10.5px;color:var(--ink-3);border:1px solid var(--rule);
+  border-bottom-width:2px;border-radius:4px;padding:1px 5px;background:var(--surface);flex:none;margin-top:1px}
+.opt:hover{border-color:var(--ink-3)}
+.opt--focus{outline:2px solid var(--accent);outline-offset:2px}
+.opt--selected{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-ink)}
+.opt--selected .opt__mark{border-color:var(--accent);background:var(--accent)}
+.opt--selected .opt__mark::after{content:"";width:8px;height:8px;border-radius:50%;background:#fff}
+.opt--correct{border-color:var(--ok);background:var(--ok-soft);color:var(--ok)}
+.opt--correct .opt__mark{border-color:var(--ok);background:var(--ok)}
+.opt--correct .opt__tag{color:var(--ok)}
+.opt--wrong{border-color:var(--flag);background:var(--flag-soft);color:var(--flag)}
+.opt--wrong .opt__mark{border-color:var(--flag);background:var(--flag)}
+.opt--wrong .opt__tag{color:var(--flag)}
+.opt--muted{border-color:var(--rule);color:var(--ink-3);cursor:default}
+.opt--muted .opt__mark{border-color:var(--rule)}
+.opt--done{cursor:default}
+
+.states{display:grid;grid-template-columns:repeat(auto-fit,minmax(370px,1fr));gap:16px;margin-top:22px}
+.panel{background:var(--surface-2);border:1px solid var(--rule);border-radius:var(--radius-lg);padding:18px 20px 20px}
+.panel__t{font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2);
+  padding-bottom:10px;border-bottom:1px solid var(--rule);margin-bottom:14px;display:flex;justify-content:space-between;gap:10px}
+.panel__n{color:var(--ink-3)}
+.panel__note{color:var(--ink-2);font-size:12.5px;margin-top:12px;padding-top:10px;border-top:1px solid var(--rule)}
+.qtext{font-family:var(--font-display);font-size:17px;font-weight:500;line-height:1.35;margin-bottom:14px}
+.expl{background:var(--accent-soft);border-left:2px solid var(--accent);border-radius:0 var(--radius) var(--radius) 0;
+  padding:12px 15px;margin-top:14px;font-family:var(--font-display);font-size:15px;line-height:1.6;color:var(--accent-ink)}
+.verdictline{display:flex;align-items:center;gap:9px;margin-top:14px;font-size:13.5px;font-weight:500}
+
+/* library */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(292px,1fr));gap:12px;margin-top:16px}
+.card{background:var(--surface);border:1px solid var(--rule);border-radius:var(--radius-lg);padding:20px;
+  box-shadow:var(--shadow);display:flex;flex-direction:column;gap:9px}
+.card--quiz{border-left:3px solid var(--accent)}
+.card__title{font-family:var(--font-display);font-size:18px;font-weight:500;line-height:1.3}
+.card__path{font-family:var(--font-mono);font-size:11px;color:var(--ink-3)}
+.card__excerpt{color:var(--ink-2);font-size:13.5px;line-height:1.6}
+.card__foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:3px;padding-top:11px;border-top:1px solid var(--rule)}
+.quickrow{display:flex;gap:6px;flex-wrap:wrap;margin-top:16px}
+.quick{font-family:var(--font-mono);font-size:11px;padding:4px 10px;border-radius:100px;border:1px solid var(--rule);
+  background:none;color:var(--ink-3);cursor:pointer}
+.quick[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--surface)}
+
+/* phone */
+.frames{display:flex;gap:24px;flex-wrap:wrap;margin-top:22px}
+.frame{width:368px;max-width:100%}
+.frame__cap{font-family:var(--font-mono);font-size:11px;color:var(--ink-3);text-align:center;margin-bottom:10px}
+.phone{border:1px solid var(--rule-strong);border-radius:24px;overflow:hidden;background:var(--bg);height:620px;
+  display:flex;flex-direction:column;box-shadow:var(--shadow)}
+.phone__body{flex:1;overflow:auto;padding:20px 18px}
+.bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.progress{display:flex;gap:3px}
+.progress__seg{width:16px;height:3px;border-radius:2px;background:var(--rule-strong)}
+.progress__seg--done{background:var(--ink-3)}
+.progress__seg--now{background:var(--accent);width:23px}
+
+/* rules */
+.ruleset{background:var(--surface);border:1px solid var(--rule);border-radius:var(--radius-lg);padding:6px 22px;
+  margin-top:16px;box-shadow:var(--shadow)}
+.ruleset li{list-style:none;padding:13px 0;border-bottom:1px solid var(--rule);font-size:13.5px;color:var(--ink-2)}
+.ruleset li:last-child{border-bottom:none}
+.ruleset strong{color:var(--ink);font-weight:500;display:block;margin-bottom:2px}
+@media(max-width:760px){.row2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="chrome">
+  <span class="chrome__label">View</span>
+  <button class="tab" data-go="add" aria-selected="true">Add &amp; edit</button>
+  <button class="tab" data-go="library">Library</button>
+  <button class="tab" data-go="practice">Practice states</button>
+  <button class="tab" data-go="rules">The rules</button>
+</div>
+
+<!-- ============ ADD ============ -->
+<section class="screen" data-screen="add" data-active>
+<div class="wrap">
+  <h1 class="h1">Adding a quiz</h1>
+  <p class="sub">The existing Add sheet with a type toggle at the top. One sheet, two modes — the same way edit mode reuses it rather than forking a second.</p>
+
+  <div class="sheetwrap">
+    <div class="sheet">
+      <div class="sheet__head"><h2 class="sheet__title">Add</h2><button class="btn btn--ghost" style="padding:5px 9px">Close</button></div>
+      <div class="typetoggle"><button>Topic</button><button aria-pressed="true">Quiz</button></div>
+
+      <label class="field"><span class="field__label">Question</span>
+        <textarea class="textarea" style="min-height:54px">What runs first — Promise.resolve().then(fn) or setTimeout(fn, 0)?</textarea></label>
+
+      <div class="field">
+        <span class="field__label">Options <span class="field__hint">tap a circle to mark the right one</span></span>
+        <div class="optrow"><span class="optrow__radio optrow__radio--on"></span><input class="input" value="The promise — microtasks drain before the next macrotask"><button class="optrow__x">×</button></div>
+        <div class="optrow"><span class="optrow__radio"></span><input class="input" value="The timeout — a zero delay is always immediate"><button class="optrow__x">×</button></div>
+        <div class="optrow"><span class="optrow__radio"></span><input class="input" value="Depends on the browser's scheduler"><button class="optrow__x">×</button></div>
+        <div class="optrow"><span class="optrow__radio"></span><input class="input" placeholder="Add another option…"><button class="optrow__x">×</button></div>
+      </div>
+
+      <label class="field"><span class="field__label">Why <span class="field__hint">shown after you answer</span></span>
+        <textarea class="textarea">The microtask queue empties completely between macrotasks, so a pending promise chain always finishes before a zero-delay timer gets a turn.</textarea></label>
+
+      <div class="row2">
+        <div class="field"><span class="field__label">Category</span>
+          <button class="btn" style="width:100%;justify-content:space-between;font-family:var(--font-mono);font-size:12px">JavaScript <span style="opacity:.6">▾</span></button></div>
+        <div class="field"><span class="field__label">Difficulty</span>
+          <div class="seg"><button>Easy</button><button aria-pressed="true">Medium</button><button>Hard</button></div></div>
+      </div>
+
+      <div class="field"><span class="field__label">Tags <span class="field__hint">optional</span></span>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;border:1px solid var(--rule-strong);border-radius:var(--radius);padding:7px 9px">
+          <span class="chip">async</span><span class="chip">event-loop</span>
+          <input style="border:none;outline:none;background:none;font-family:var(--font-mono);font-size:12px;flex:1;min-width:80px" placeholder="add a tag…"></div></div>
+
+      <button class="btn btn--primary" style="margin-top:6px">Save quiz</button>
+      <span class="meta" style="margin-left:12px">Question, 2+ options and a marked answer required</span>
+    </div>
+  </div>
+
+  <p class="note">No image field — a quiz that needs a diagram is a topic. The <strong>Why</strong> stores in <code>mental_model</code>, because it does the same job the mental model does: not what the answer is, but why. Switching the toggle to Topic restores the definition, mental-model and image fields and hides options.</p>
+</div>
+</section>
+
+<!-- ============ LIBRARY ============ -->
+<section class="screen" data-screen="library">
+<div class="wrap">
+  <h1 class="h1">In the library</h1>
+  <p class="sub">One library. A badge, a left accent rule, and a type filter with counts sourced the same way every other count is.</p>
+
+  <div class="quickrow">
+    <button class="quick" aria-pressed="true">All 31</button>
+    <button class="quick">Topics 26</button>
+    <button class="quick">Quizzes 5</button>
+    <button class="quick">Weak 8</button>
+    <button class="quick">Never practised 4</button>
+  </div>
+
+  <div class="grid">
+    <div class="card card--quiz">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+        <div class="card__title">What runs first — <code>Promise.resolve().then(fn)</code> or <code>setTimeout(fn, 0)</code>?</div>
+        <span class="badge">Quiz</span>
+      </div>
+      <div class="card__path">JavaScript · async, event-loop · 3 options</div>
+      <div class="card__foot">
+        <span class="conf conf--weak"><span class="conf__ticks"><i class="conf__tick conf__tick--on"></i><i class="conf__tick"></i><i class="conf__tick"></i></span><span class="conf__label">Weak</span></span>
+        <span class="meta">Practised 3×</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card__title">React reconciliation</div>
+      <div class="card__path">React · rendering</div>
+      <p class="card__excerpt">React compares the previous and next element tree to work out what actually changed…</p>
+      <div class="card__foot">
+        <span class="conf conf--weak"><span class="conf__ticks"><i class="conf__tick conf__tick--on"></i><i class="conf__tick"></i><i class="conf__tick"></i></span><span class="conf__label">Weak</span></span>
+        <span class="meta" style="color:var(--accent)">MODEL ✓</span>
+      </div>
+    </div>
+
+    <div class="card card--quiz">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+        <div class="card__title">Does a <code>transform</code> on a parent create a stacking context?</div>
+        <span class="badge">Quiz</span>
+      </div>
+      <div class="card__path">CSS · layout · 2 options</div>
+      <div class="card__foot">
+        <span class="conf conf--strong"><span class="conf__ticks"><i class="conf__tick conf__tick--on"></i><i class="conf__tick conf__tick--on"></i><i class="conf__tick conf__tick--on"></i></span><span class="conf__label">Strong</span></span>
+        <span class="meta">Practised 2×</span>
+      </div>
+    </div>
+
+    <div class="card card--quiz">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+        <div class="card__title">Which HTTP status does a CORS preflight failure return?</div>
+        <span class="badge">Quiz</span>
+      </div>
+      <div class="card__path">Browser · security · 4 options</div>
+      <div class="card__foot">
+        <span class="conf conf--new"><span class="conf__ticks"><i class="conf__tick"></i><i class="conf__tick"></i><i class="conf__tick"></i></span><span class="conf__label">Never practised</span></span>
+      </div>
+    </div>
+  </div>
+
+  <p class="note">The card shows the question as its title and the option count in the path line. Search matches a quiz's question, its options and its explanation. Confidence, the weak page and practice ordering treat both shapes identically — a weak quiz and a weak topic sit in the same list.</p>
+</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section class="screen" data-screen="practice">
+<div class="wrap">
+  <h1 class="h1">Practising — every state</h1>
+  <p class="sub"><code>/practice?scope=quiz</code>, separate from topic practice. Select, then Check answer — a tap never writes to the database on its own.</p>
+
+  <div class="rule"><span class="eyebrow">Before checking</span></div>
+  <div class="states">
+    <div class="panel">
+      <div class="panel__t"><span>1 · Unanswered</span><span class="panel__n">default</span></div>
+      <p class="qtext">What runs first — <code>Promise.resolve().then(fn)</code> or <code>setTimeout(fn, 0)</code>?</p>
+      <button class="opt"><span class="opt__mark"></span><span class="opt__body">The promise — microtasks drain before the next macrotask</span><span class="opt__key">1</span></button>
+      <button class="opt"><span class="opt__mark"></span><span class="opt__body">The timeout — a zero delay is always immediate</span><span class="opt__key">2</span></button>
+      <button class="opt"><span class="opt__mark"></span><span class="opt__body">Depends on the browser's scheduler</span><span class="opt__key">3</span></button>
+      <button class="btn btn--primary btn--block" disabled style="margin-top:6px">Check answer</button>
+      <p class="panel__note">Nothing pre-selected, button disabled. Number keys shown because they work.</p>
+    </div>
+
+    <div class="panel">
+      <div class="panel__t"><span>2 · Keyboard focus</span><span class="panel__n">focus is not selection</span></div>
+      <p class="qtext">What runs first — <code>Promise.resolve().then(fn)</code> or <code>setTimeout(fn, 0)</code>?</p>
+      <button class="opt"><span class="opt__mark"></span><span class="opt__body">The promise — microtasks drain before the next macrotask</span><span class="opt__key">1</span></button>
+      <button class="opt opt--focus"><span class="opt__mark"></span><span class="opt__body">The timeout — a zero delay is always immediate</span><span class="opt__key">2</span></button>
+      <button class="opt"><span class="opt__mark"></span><span class="opt__body">Depends on the browser's scheduler</span><span class="opt__key">3</span></button>
+      <button class="btn btn--primary btn--block" disabled style="margin-top:6px">Check answer</button>
+      <p class="panel__note">The same 2px accent ring at 2px offset used everywhere else in the app.</p>
+    </div>
+
+    <div class="panel">
+      <div class="panel__t"><span>3 · Selected</span><span class="panel__n">nothing written yet</span></div>
+      <p class="qtext">What runs first — <code>Promise.resolve().then(fn)</code> or <code>setTimeout(fn, 0)</code>?</p>
+      <button class="opt"><span class="opt__mark"></span><span class="opt__body">The promise — microtasks drain before the next macrotask</span><span class="opt__key">1</span></button>
+      <button class="opt"><span class="opt__mark"></span><span class="opt__body">The timeout — a zero delay is always immediate</span><span class="opt__key">2</span></button>
+      <button class="opt opt--selected"><span class="opt__mark"></span><span class="opt__body">Depends on the browser's scheduler</span><span class="opt__key">3</span></button>
+      <button class="btn btn--primary btn--block" style="margin-top:6px">Check answer</button>
+      <p class="panel__note">Indigo — the same colour every selected thing uses. Deliberately not green or red: the app is not hinting. You can change your pick until you press Check.</p>
+    </div>
+  </div>
+
+  <div class="rule"><span class="eyebrow">After checking</span></div>
+  <div class="states">
+    <div class="panel">
+      <div class="panel__t"><span>4 · Wrong</span><span class="panel__n">two marked, one quiet</span></div>
+      <p class="qtext">What runs first — <code>Promise.resolve().then(fn)</code> or <code>setTimeout(fn, 0)</code>?</p>
+      <button class="opt opt--correct opt--done"><span class="opt__mark">✓</span><span class="opt__body">The promise — microtasks drain before the next macrotask<span class="opt__tag">The answer</span></span></button>
+      <button class="opt opt--muted opt--done"><span class="opt__mark"></span><span class="opt__body">The timeout — a zero delay is always immediate</span></button>
+      <button class="opt opt--wrong opt--done"><span class="opt__mark">✕</span><span class="opt__body">Depends on the browser's scheduler<span class="opt__tag">You picked this</span></span></button>
+      <div class="expl">The microtask queue empties completely between macrotasks, so a pending promise chain always finishes before a zero-delay timer gets a turn.</div>
+      <div class="verdictline"><span class="conf conf--weak"><span class="conf__ticks"><i class="conf__tick conf__tick--on"></i><i class="conf__tick"></i><i class="conf__tick"></i></span></span><span style="color:var(--flag)">Marked weak</span></div>
+      <p class="panel__note">The option you did not pick and that was not the answer stays grey. Painting every wrong option red buries the one that matters.</p>
+    </div>
+
+    <div class="panel">
+      <div class="panel__t"><span>5 · Right</span><span class="panel__n">one marked</span></div>
+      <p class="qtext">What runs first — <code>Promise.resolve().then(fn)</code> or <code>setTimeout(fn, 0)</code>?</p>
+      <button class="opt opt--correct opt--done"><span class="opt__mark">✓</span><span class="opt__body">The promise — microtasks drain before the next macrotask<span class="opt__tag">Correct · you picked this</span></span></button>
+      <button class="opt opt--muted opt--done"><span class="opt__mark"></span><span class="opt__body">The timeout — a zero delay is always immediate</span></button>
+      <button class="opt opt--muted opt--done"><span class="opt__mark"></span><span class="opt__body">Depends on the browser's scheduler</span></button>
+      <div class="expl">The microtask queue empties completely between macrotasks.</div>
+      <div class="verdictline"><span class="conf conf--strong"><span class="conf__ticks"><i class="conf__tick conf__tick--on"></i><i class="conf__tick conf__tick--on"></i><i class="conf__tick conf__tick--on"></i></span></span><span style="color:var(--accent-ink)">Marked strong</span></div>
+      <p class="panel__note">One tag, not two — "Correct · you picked this" rather than a tick plus a separate confirmation.</p>
+    </div>
+
+    <div class="panel">
+      <div class="panel__t"><span>6 · Two options</span><span class="panel__n">build this case first</span></div>
+      <p class="qtext">Does a <code>transform</code> on a parent create a stacking context?</p>
+      <button class="opt opt--correct opt--done"><span class="opt__mark">✓</span><span class="opt__body">Yes — any transform other than <code>none</code><span class="opt__tag">The answer</span></span></button>
+      <button class="opt opt--wrong opt--done"><span class="opt__mark">✕</span><span class="opt__body">No — only <code>position</code> plus <code>z-index</code><span class="opt__tag">You picked this</span></span></button>
+      <div class="expl">Which is why a z-index that "should" work stops working the moment a parent gets a transform for performance.</div>
+      <div class="verdictline"><span class="conf conf--weak"><span class="conf__ticks"><i class="conf__tick conf__tick--on"></i><i class="conf__tick"></i><i class="conf__tick"></i></span></span><span style="color:var(--flag)">Marked weak</span></div>
+      <p class="panel__note">No quiet third exists, so both are marked. The shape most likely to look broken.</p>
+    </div>
+  </div>
+
+  <div class="rule"><span class="eyebrow">On the phone</span></div>
+  <div class="frames">
+    <div class="frame"><div class="frame__cap">Selected</div>
+      <div class="phone"><div class="phone__body">
+        <div class="bar">
+          <div class="progress"><i class="progress__seg progress__seg--done"></i><i class="progress__seg progress__seg--done"></i><i class="progress__seg progress__seg--now"></i><i class="progress__seg"></i><i class="progress__seg"></i></div>
+          <span class="meta">3 / 5</span></div>
+        <span class="eyebrow">JavaScript · async</span>
+        <p class="qtext" style="font-size:20px;margin:12px 0 18px">What runs first — <code>Promise.resolve().then(fn)</code> or <code>setTimeout(fn, 0)</code>?</p>
+        <button class="opt"><span class="opt__mark"></span><span class="opt__body">The promise — microtasks drain before the next macrotask</span><span class="opt__key">1</span></button>
+        <button class="opt"><span class="opt__mark"></span><span class="opt__body">The timeout — a zero delay is always immediate</span><span class="opt__key">2</span></button>
+        <button class="opt opt--selected"><span class="opt__mark"></span><span class="opt__body">Depends on the browser's scheduler</span><span class="opt__key">3</span></button>
+        <button class="btn btn--primary btn--block" style="margin-top:14px">Check answer</button>
+        <p class="meta" style="text-align:center;margin-top:10px">Enter to check · 1–3 to change your pick</p>
+      </div></div>
+    </div>
+    <div class="frame"><div class="frame__cap">Checked — wrong</div>
+      <div class="phone"><div class="phone__body">
+        <div class="bar">
+          <div class="progress"><i class="progress__seg progress__seg--done"></i><i class="progress__seg progress__seg--done"></i><i class="progress__seg progress__seg--now"></i><i class="progress__seg"></i><i class="progress__seg"></i></div>
+          <span class="meta">3 / 5</span></div>
+        <p class="qtext" style="font-size:17px;margin:8px 0 16px">What runs first — <code>Promise.resolve().then(fn)</code> or <code>setTimeout(fn, 0)</code>?</p>
+        <button class="opt opt--correct opt--done"><span class="opt__mark">✓</span><span class="opt__body">The promise — microtasks drain before the next macrotask<span class="opt__tag">The answer</span></span></button>
+        <button class="opt opt--muted opt--done"><span class="opt__mark"></span><span class="opt__body">The timeout — a zero delay is always immediate</span></button>
+        <button class="opt opt--wrong opt--done"><span class="opt__mark">✕</span><span class="opt__body">Depends on the browser's scheduler<span class="opt__tag">You picked this</span></span></button>
+        <div class="expl">The microtask queue empties completely between macrotasks.</div>
+        <div class="verdictline"><span class="conf conf--weak"><span class="conf__ticks"><i class="conf__tick conf__tick--on"></i><i class="conf__tick"></i><i class="conf__tick"></i></span></span><span style="color:var(--flag)">Marked weak</span></div>
+        <button class="btn btn--primary btn--block" style="margin-top:14px">Next</button>
+      </div></div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ============ RULES ============ -->
+<section class="screen" data-screen="rules">
+<div class="wrap">
+  <h1 class="h1">The rules</h1>
+  <p class="sub">Every decision this mock encodes, in one place. Where this page and the screens disagree, the screens win.</p>
+
+  <div class="rule"><span class="eyebrow">Data</span></div>
+  <ul class="ruleset">
+    <li><strong>One table, two shapes</strong>Three columns on <code>topics</code>: <code>kind</code> ('topic' | 'quiz'), <code>options text[]</code>, <code>correct_option int</code>. No second table, no quiz history, no scores.</li>
+    <li><strong>The constraints are the feature</strong>A quiz requires 2+ options and a <code>correct_option</code> that indexes into them. A topic requires both to be null. Enforced in the database, not just the form.</li>
+    <li><strong>Why reuses mental_model</strong>It does the same job — not what the answer is, but why. One field, one register, one voice across both shapes.</li>
+    <li><strong>Quizzes are independent</strong>Not generated from topics, not attached to them. Interview questions and "what does this print", not concepts already saved.</li>
+  </ul>
+
+  <div class="rule"><span class="eyebrow">Behaviour</span></div>
+  <ul class="ruleset">
+    <li><strong>Select, then Check</strong>A tap never writes. The database write happens on Check, so a mis-tap on a phone cannot permanently mark something weak.</li>
+    <li><strong>Grading is objective</strong>Correct → strong, incorrect → weak. There is no 'okay' for a quiz, and no self-assessment — this is the one thing quizzes do better than topics.</li>
+    <li><strong>Only two options get marked</strong>The correct one, and your pick if it was wrong. Everything else goes grey.</li>
+    <li><strong>Options shuffle per session</strong>Using the existing seeded shuffle. Otherwise by the third round you are recalling "the second one".</li>
+    <li><strong>Options stop being buttons after Check</strong>Same shape so nothing shifts, but no hover, not focusable, not announced as actionable.</li>
+    <li><strong>Separate practice</strong><code>/practice?scope=quiz</code>, following the existing scope pattern. Same session size, same floor rules.</li>
+  </ul>
+
+  <div class="rule"><span class="eyebrow">Shared, unchanged</span></div>
+  <ul class="ruleset">
+    <li><strong>Confidence, weak page, ordering</strong>Identical for both shapes. A weak quiz and a weak topic sit in the same list, ordered by the same rule.</li>
+    <li><strong>Search</strong>Matches a quiz's question, its options and its explanation, alongside everything it already matches.</li>
+    <li><strong>Colour is never the only signal</strong>Every marked option carries a shape and a text tag. Readable in greyscale, announced via aria-live.</li>
+    <li><strong>Export</strong>Quizzes appear in both <code>library.json</code> and <code>library.md</code>.</li>
+  </ul>
+
+  <p class="note">Explicitly not built: quiz history, scores, streaks, analytics, timers, AI-generated questions, AI grading, and images on quizzes. A quiz's entire record is its confidence and its practice count, exactly like a topic's.</p>
+</div>
+</section>
+
+<script>
+  const screens=document.querySelectorAll('[data-screen]');
+  document.querySelector('.chrome').addEventListener('click',e=>{
+    const b=e.target.closest('[data-go]'); if(!b) return;
+    document.querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-selected',t===b));
+    screens.forEach(s=>s.toggleAttribute('data-active',s.dataset.screen===b.dataset.go));
+    window.scrollTo(0,0);
+  });
+</script>
+</body>
+</html>
