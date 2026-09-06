@@ -108,3 +108,57 @@ test('focus and keyboard behaviour hold at mobile width', async ({ page }) => {
   await page.getByRole('button', { name: 'Close' }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
 })
+
+/*
+  The add sheet at phone size: Save is reachable on arrival.
+
+  It was not. At 390x844 the sheet's content is 951px tall, so the footer — which
+  used to sit at the bottom of one scrolling box — put Save at y=862 against an
+  844px viewport. The primary action of the primary form opened 18px below the
+  fold, before a single character was typed.
+
+  Asserted as "in the viewport", not as "visible": Playwright's toBeVisible() is
+  satisfied by a rendered element with a box, whether or not it is on screen, and
+  would have passed throughout.
+*/
+test.describe('the add sheet on a phone', () => {
+  test.use({ viewport: { width: 390, height: 844 } })
+
+  test('Save is in the viewport when the sheet opens, with every field present', async ({ page }) => {
+    await signInAs(page, 'main')
+    await page.goto('/library?add=1')
+
+    const sheet = page.getByRole('dialog')
+    await expect(sheet).toBeVisible()
+
+    // Nothing was removed to achieve this. Every field the desktop sheet has.
+    await expect(sheet.getByRole('textbox', { name: 'Topic', exact: true })).toBeVisible()
+    await expect(sheet.getByLabel('Definition')).toBeVisible()
+    await expect(sheet.getByLabel(/Mental model/)).toHaveCount(1)
+    await expect(sheet.getByText('Category', { exact: true })).toHaveCount(1)
+    await expect(sheet.getByText(/^Tags/)).toHaveCount(1)
+    await expect(sheet.getByText(/^Visual/)).toHaveCount(1)
+
+    const save = sheet.getByRole('button', { name: 'Save topic' })
+    const box = await save.boundingBox()
+    const viewport = page.viewportSize()!.height
+    expect(box).not.toBeNull()
+    expect(box!.y + box!.height).toBeLessThanOrEqual(viewport)
+
+    /*
+      And it stays there once the body scrolls, which is the actual fix — the
+      footer is pinned rather than the content being made to fit.
+    */
+    await page.mouse.move(195, 400)
+    await page.mouse.wheel(0, 600)
+    await page.waitForTimeout(300)
+    const after = await save.boundingBox()
+    expect(after!.y + after!.height).toBeLessThanOrEqual(viewport)
+
+    // It is a real control at that position, not merely a box in the layout.
+    await sheet.getByRole('textbox', { name: 'Topic', exact: true }).fill(`Pinned footer ${Date.now()}`)
+    await sheet.getByLabel('Definition').fill('Saved without scrolling to find the button.')
+    await save.click()
+    await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 15_000 })
+  })
+})

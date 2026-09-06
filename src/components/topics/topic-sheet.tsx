@@ -73,7 +73,22 @@ export function TopicSheet({
   // must be given one, rather than inheriting a default nobody chose.
   const [correct, setCorrect] = useState(topic?.correct_option ?? -1)
   const [mentalModel, setMentalModel] = useState(topic?.mental_model ?? '')
-  const [category, setCategory] = useState(topic?.category ?? UNCATEGORIZED)
+  /*
+    ── The category follows the suggestion until you overrule it ──────────────
+    `null` means "nobody has chosen"; the effective value is then whatever
+    `suggestCategory` currently makes of the title and definition. Picking one
+    from the select writes a real value here and the field stops moving.
+
+    Deliberately NOT `useState(suggestCategory(initialTitle, ''))`. A one-shot
+    initialiser would be a no-op: at mount the title and definition are empty, so
+    the suggester has nothing to read and returns Uncategorized — which is the
+    value we are trying to stop opening on. The suggestion only exists after you
+    have typed, so the field has to be able to change its mind.
+
+    An edit starts from the stored category, so nothing drifts under a topic that
+    already has one.
+  */
+  const [chosenCategory, setChosenCategory] = useState<string | null>(topic?.category ?? null)
   const [tags, setTags] = useState<string[]>(topic?.tags ?? [])
   const isEdit = topic !== undefined
   const [difficulty, setDifficulty] = useState<Difficulty>(topic?.difficulty ?? 'medium')
@@ -91,8 +106,17 @@ export function TopicSheet({
     The Suggested group comes from the phase 2 keyword heuristic. No AI, no keys —
     it reads the title and definition the user has already typed.
   */
+  const suggestion = useMemo(() => suggestCategory(title, definition), [title, definition])
+
+  /*
+    What the control shows and what a save sends. The app had this answer already
+    — the select labelled it "Suggested from your topic" and put it first — and
+    still opened on Uncategorized, so every save spent two actions choosing the
+    option the app itself had nominated.
+  */
+  const category = chosenCategory ?? suggestion
+
   const categoryChoices = useMemo(() => {
-    const suggestion = suggestCategory(title, definition)
     const rest = categories
       .filter((option) => option.value !== 'all' && option.value !== suggestion)
       .map((option) => ({ ...option, group: 'All' }))
@@ -110,7 +134,7 @@ export function TopicSheet({
         : [{ value: UNCATEGORIZED, label: UNCATEGORIZED, group: 'All' }]
 
     return [suggested, ...rest, ...uncategorized]
-  }, [categories, title, definition])
+  }, [categories, suggestion])
 
   const clear = () => {
     setTitle('')
@@ -118,7 +142,7 @@ export function TopicSheet({
     setOptions(['', ''])
     setCorrect(-1)
     setMentalModel('')
-    setCategory(UNCATEGORIZED)
+    setChosenCategory(null)
     setTags([])
     setDifficulty('medium')
     setError(null)
@@ -365,7 +389,7 @@ export function TopicSheet({
               options={categoryChoices}
               value={category}
               unsetValue={UNCATEGORIZED}
-              onChange={setCategory}
+              onChange={setChosenCategory}
               filterable
             />
           </div>

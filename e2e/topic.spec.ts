@@ -218,3 +218,70 @@ test('editing a topic can set its difficulty, and it sticks', async ({ page }) =
   await page.reload()
   await expect(page.getByText('Hard', { exact: true })).toBeVisible()
 })
+
+test('the category opens on the suggestion the app already made', async ({ page }) => {
+  await signIn(page, EMAIL)
+  const title = uniqueTitle('Debouncing a scroll handler')
+
+  await page.getByRole('button', { name: /Add (topic|your first topic)/ }).first().click()
+  const sheet = page.getByRole('dialog')
+  const category = sheet.getByRole('button', { name: /Category/ })
+
+  // Nothing typed yet, so there is nothing to suggest from.
+  await expect(category).toContainText('Uncategorized')
+
+  await sheet.getByRole('textbox', { name: 'Topic', exact: true }).fill(title)
+  await sheet
+    .getByLabel('Definition')
+    .fill('Wait until events stop arriving before running the callback. setTimeout and clearTimeout in a closure.')
+
+  /*
+    The heuristic has read that and decided. It always did — the select labels the
+    result "Suggested from your topic" and puts it first — but the field opened on
+    Uncategorized anyway, so saving with a category cost two extra actions to pick
+    the option the app itself had nominated.
+
+    Asserted on the closed control, not inside the open dropdown: the suggestion
+    was already IN the dropdown before this change.
+  */
+  await expect(category).toContainText('JavaScript')
+
+  // Saving takes it, without the select ever being opened.
+  await sheet.getByRole('button', { name: 'Save topic' }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 15_000 })
+  await expect(page.getByRole('link', { name: new RegExp(title) })).toContainText('JavaScript')
+})
+
+test('choosing a category overrules the suggestion and stops it moving', async ({ page }) => {
+  await signIn(page, EMAIL)
+  const title = uniqueTitle('Overruled')
+
+  await page.getByRole('button', { name: /Add (topic|your first topic)/ }).first().click()
+  const sheet = page.getByRole('dialog')
+  await sheet.getByRole('textbox', { name: 'Topic', exact: true }).fill(title)
+  await sheet.getByLabel('Definition').fill('A closure over setTimeout, which the heuristic reads as JavaScript.')
+  await expect(sheet.getByRole('button', { name: /Category/ })).toContainText('JavaScript')
+
+  /*
+    Overruled back to Uncategorized — the case that matters most, because it is
+    the one the old behaviour gave away for free. "No category" has to stay
+    reachable and has to stick, or the suggestion has stopped being a suggestion.
+
+    The listbox renders outside the dialog, so it is addressed from the page.
+  */
+  await sheet.getByRole('button', { name: /Category/ }).click()
+  await page.getByRole('option', { name: /^Uncategorized/ }).first().click()
+  await expect(sheet.getByRole('button', { name: /Category/ })).toContainText('Uncategorized')
+
+  /*
+    Typing more must not move it back. A field that keeps re-deciding after you
+    have decided is worse than one that never decides.
+  */
+  await sheet.getByLabel('Definition').fill('More about closures and setTimeout, still JavaScript to the heuristic.')
+  await expect(sheet.getByRole('button', { name: /Category/ })).toContainText('Uncategorized')
+
+  // And the save honours it rather than the heuristic.
+  await sheet.getByRole('button', { name: 'Save topic' }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 15_000 })
+  await expect(page.getByRole('link', { name: new RegExp(title) })).toContainText('Uncategorized')
+})

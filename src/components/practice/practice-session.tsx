@@ -308,8 +308,15 @@ export function PracticeSession({
             <Button variant="ghost" onClick={skip}>
               Skip
             </Button>
+            {/*
+              Names ⌘↵, not Space. Space still reveals, but only while the caret
+              is outside the textarea — and this card has just asked you to put it
+              inside. A hint that is true only if you ignore the instruction above
+              it is worse than no hint. ⌘↵ is true either way, and it is the same
+              chord the add sheet uses to finish a form.
+            */}
             <span className="font-mono text-[11.5px] text-ink-3">
-              <Kbd>Space</Kbd> reveal · Skip records nothing
+              <Kbd>⌘</Kbd> <Kbd>↵</Kbd> reveal · Skip records nothing
             </span>
           </div>
         </>

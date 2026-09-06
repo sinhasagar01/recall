@@ -132,10 +132,73 @@ test('Space reveals only when the caret is outside the answer field', async ({ p
   await expect(answer).toHaveValue('two words')
   await expect(page.getByRole('button', { name: 'Reveal answer' })).toBeVisible()
 
-  // Out of the field, the same key reveals.
+  /*
+    And ⌘↵ reveals from INSIDE the field, without moving the caret.
+
+    This is the assertion the old test could not make. It focused its way out of
+    the textarea before pressing anything, so it proved Space works for someone
+    who has not written their recall — which is the one person the card is not
+    asking for. Anybody who did what the screen says ("Explain it in your own
+    words before revealing") found the advertised shortcut dead, and had been
+    finding that since phase 8.
+  */
+  await expect(answer).toBeFocused()
+  await page.keyboard.press('ControlOrMeta+Enter')
+  await expect(page.getByRole('button', { name: /Didn't know it/ })).toBeVisible()
+
+  // What was typed is still what was typed — the chord did not leak into it.
+  await expect(page.getByText('two words')).toBeVisible()
+})
+
+test('Space still reveals when the caret is outside the field', async ({ page }) => {
+  await signIn(page)
+  const title = `Space outside ${Date.now()}`
+
+  await page.getByRole('button', { name: /Add (topic|your first topic)/ }).first().click()
+  await page.getByRole('textbox', { name: 'Topic', exact: true }).fill(title)
+  await page.getByLabel('Definition').fill('Space keeps working for anyone who skips the writing.')
+  await page.getByRole('button', { name: 'Save topic' }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 15_000 })
+
+  await page.getByRole('link', { name: new RegExp(title) }).click()
+  // The navigation has to land before the URL is read — clicking a next/link
+  // returns before the transition completes.
+  await expect(page).toHaveURL(/\/topic\//)
+  const id = page.url().split('/topic/')[1]
+  await page.goto(`/practice?topic=${id}`)
+
+  // ⌘↵ is an addition, not a replacement.
   await page.getByRole('link', { name: 'End session' }).focus()
   await page.keyboard.press('Space')
   await expect(page.getByRole('button', { name: /Didn't know it/ })).toBeVisible()
+})
+
+test('the reveal hint names a shortcut that works from the answer field', async ({ page }) => {
+  await signIn(page)
+  const title = `Hint honesty ${Date.now()}`
+
+  await page.getByRole('button', { name: /Add (topic|your first topic)/ }).first().click()
+  await page.getByRole('textbox', { name: 'Topic', exact: true }).fill(title)
+  await page.getByLabel('Definition').fill('The hint has to be true after you follow the instruction above it.')
+  await page.getByRole('button', { name: 'Save topic' }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 15_000 })
+
+  await page.getByRole('link', { name: new RegExp(title) }).click()
+  // The navigation has to land before the URL is read — clicking a next/link
+  // returns before the transition completes.
+  await expect(page).toHaveURL(/\/topic\//)
+  const id = page.url().split('/topic/')[1]
+  await page.goto(`/practice?topic=${id}`)
+
+  /*
+    The card tells you to write first. The hint under the button must therefore
+    name a key that still works once you have — Space does not, so it is not the
+    one named.
+  */
+  await expect(page.getByText('Explain it in your own words before revealing.')).toBeVisible()
+  const hint = page.getByText('reveal · Skip records nothing')
+  await expect(hint).toBeVisible()
+  await expect(hint).not.toContainText('Space')
 })
 
 test('closing an overlay returns focus to whatever opened it', async ({ page }) => {
