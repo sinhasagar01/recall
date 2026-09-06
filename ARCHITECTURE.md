@@ -211,6 +211,63 @@ assertions were run against the previous schema first and reported
 **The rule: if a column enumerates its legal values, it almost certainly wants NOT NULL
 too.** A CHECK says what a value may be, never that there must be one.
 
+## Seeding belongs to the test runner, not to an npm script
+
+`test:e2e` used to be `seed:e2e && build && playwright test`, so the suite was correct
+only when run that way. `npx playwright test` — the command you actually use while
+iterating on one spec — skipped the seed, and each run left roughly 52 topics behind on
+the general-purpose fixture.
+
+Past `LOCAL_MODE_MAX` the library stops being read whole and is served a page at a time,
+so the seeded rows fall off page one and specs that have nothing to do with each other
+start failing. Measured, by inflating the fixture deliberately rather than by waiting for
+it:
+
+| fixture rows | failing specs |
+| --- | --- |
+| 604 | 1 |
+| 785 | **13**, across `a11y`, `image`, `library` and `quiz` |
+
+Not one of those thirteen mentions a fixture size anywhere. That is the whole problem: the
+suite degrades into a spread of unrelated locator timeouts.
+
+**Two entry points and only one of them correct is the bug**, so the fix is one door:
+seeding runs in `globalSetup`. There is no invocation of Playwright that can skip it —
+`npx playwright test`, `-g "one test"`, an IDE runner and `npm run verify` all go through
+it. The duplicate was removed from `test:e2e`, which now only builds and runs.
+
+### The consequence, stated rather than discovered
+
+**Every Playwright invocation now deletes the fixture users' topics.** Running a single
+spec with `-g` wipes a topic you made by hand on the general-purpose fixture. That is the
+price of making the failure impossible instead of merely recoverable, and it belongs here
+rather than in a surprise at the keyboard. It costs 2.3 seconds a run, against the five
+browser sign-ins `globalSetup` already performs.
+
+### The guard, and what it is actually for
+
+`e2e/fixture-invariants.ts` lists what each fixture must look like and runs immediately
+after seeding. With seeding in `globalSetup` it is a **regression net for the seed**, not
+the primary fix — and it earns its place on the failure message alone:
+
+```
+Fixture invariants are broken — aborting before any spec runs.
+
+  ✗ "main" must hold at most 500 topics, so the library is read whole rather than a page at a time
+      it currently holds 760 topics
+      relied on by: everything that expects a seeded row to be on the first page
+```
+
+Three of its seven invariants were **silent** dependencies, found by reading the specs
+during the post-mortem rather than by anyone knowing they existed: `few` holding exactly
+the two titles `export.spec` asserts by name, `strong` holding the two the export and weak
+specs look for, and `large` holding `Bulk topic 0007`. Any of them could have broken and
+presented as an unrelated timeout.
+
+Hence the rule the file states in its own header: **a spec that depends on a fixture's
+shape must add its invariant there, and a spec relying on an unlisted property is relying
+on luck.**
+
 ## A fixture with no spread on a dimension cannot test that dimension
 
 The fifth time fixture composition has hidden something in this project, and by now the

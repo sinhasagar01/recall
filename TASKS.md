@@ -768,3 +768,28 @@ is exactly what the old layout violated.
   with every field kept. Low usage is not a reason to delete working, verified machinery.
   So "a quiz that needs a diagram is a topic" keeps its meaning and the storage
   delete-order rule stands.
+
+---
+
+## Phase 16 — the fixture cannot silently rot
+
+[#19](https://github.com/sinhasagar01/recall/issues/19). Seeding moved from the `test:e2e`
+npm script into `globalSetup`, so no invocation of Playwright can skip it, and
+`e2e/fixture-invariants.ts` checks the shape the specs assume before any browser starts.
+
+**The issue's central claim was wrong and was corrected.** It said `npm run verify` does
+not re-seed; `verify` was expanded to prove it and `test:e2e` was not, and `test:e2e` was
+where the seed lived. `verify` had always been safe. The real gap was that raw
+`npx playwright test` was not — two entry points, one of them correct.
+
+Verified by driving the fixture past the boundary rather than reasoning about it: at 604
+rows one spec failed, at 785 **thirteen** failed across four unrelated files. With the fix
+in place and the fixture sitting at 809 rows, a cold `npx playwright test` reseeds and
+passes. The guard was perturbed by disabling the seed, and fired naming the row-count
+invariant and what depends on it.
+
+Three consecutive `npx playwright test` runs with no reseed between them: 125, 125, and
+one pre-existing load flake. That flake reproduces identically on the pre-change code at
+the same rate, checked by stashing — `practice.spec.ts` "Escape leaves a practice session"
+and `shortcuts.spec.ts` "N opens the add sheet" trade places between runs, which is the
+signature of hydration racing under parallel load rather than anything about fixtures.
