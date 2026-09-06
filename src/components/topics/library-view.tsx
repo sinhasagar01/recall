@@ -247,18 +247,31 @@ export function LibraryView({
   const kindCounts = { total: counts.total, ...counts.byKind }
 
   /*
-    "Recently learned" splits the unfiltered library into what arrived this week
-    and everything else — and in server mode the client does not have the
-    unfiltered library, only a page of it. Splitting a page would produce a heading
-    that describes the page rather than the library, and rows would move under it
-    as you paged. So the split is local mode only; server mode renders one list,
-    which is already newest-first.
+    ── One list, newest first ─────────────────────────────────────────────────
+    The library used to render two grids: everything else, then a "Recently
+    learned" divider, then what arrived this week. Two visually identical grids do
+    not read as two sections — on a 29-topic library a topic saved five seconds
+    earlier sat at position 24, which reads as "my new topic is at the bottom".
+
+    The split was also local-mode only, so the SAME library rendered in a
+    different order either side of the 500-row boundary. The parity harness could
+    not see that: it compares the rows and counts the two modes produce and stops
+    at the data layer, which is correct — the divergence was in JSX, downstream of
+    everything it checks. See ARCHITECTURE.md.
+
+    `rows` is already `created_at desc` in both modes, so rendering it is the whole
+    ordering rule: newest first, full stop.
+
+    The recency information survives per card. Marked through `filterTopics` with
+    the quick filter rather than a new `isRecent` export, so the chip, its count
+    and this timestamp cannot disagree about what "recent" means — the rule every
+    other count in this file already lives by. The old comment here objected to a
+    HEADING describing a page rather than the library; a per-row timestamp makes no
+    claim about the library, so it is safe in both modes and now runs in both.
   */
-  const recent = data.mode === 'local' && !isFiltered
-    ? filterTopics(data.topics, { quickFilters: ['recently-added'] }, at)
-    : []
-  const recentIds = new Set(recent.map((topic) => topic.id))
-  const rest = rows.filter((topic) => !recentIds.has(topic.id))
+  const recentIds = new Set(
+    filterTopics(rows, { quickFilters: ['recently-added'] }, at).map((topic) => topic.id),
+  )
 
   const openAdd = (title: string) => {
     setPrefillTitle(title)
@@ -382,30 +395,18 @@ export function LibraryView({
               className={isFetching ? 'opacity-60 transition-opacity' : undefined}
             >
               <div className={GRID}>
-                {rest.map((topic) => (
-                  <TopicCard key={topic.id} topic={topic} />
+                {rows.map((topic) => (
+                  <TopicCard
+                    key={topic.id}
+                    topic={topic}
+                    timestamp={
+                      recentIds.has(topic.id)
+                        ? formatRelativeTime(topic.created_at, at)
+                        : undefined
+                    }
+                  />
                 ))}
               </div>
-
-              {recent.length > 0 ? (
-                <>
-                  <div className="mt-[38px] mb-4 flex items-center gap-3">
-                    <span className="font-mono text-mono font-medium tracking-[0.16em] text-ink-3 uppercase">
-                      Recently learned
-                    </span>
-                    <span className="h-px flex-1 bg-rule" />
-                  </div>
-                  <div className={GRID}>
-                    {recent.map((topic) => (
-                      <TopicCard
-                        key={topic.id}
-                        topic={topic}
-                        timestamp={formatRelativeTime(topic.created_at, at)}
-                      />
-                    ))}
-                  </div>
-                </>
-              ) : null}
 
               {nextCursor === null ? null : (
                 <div className="mt-9 flex flex-col items-center gap-2">

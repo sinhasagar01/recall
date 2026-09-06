@@ -120,19 +120,35 @@ console.log(`Empty-library user cleared: ${emptyEmail}`)
   The too-few-topics user: exactly two, always. Reset from scratch each run so the
   count is not one topic away from correct after a spec that went sideways. Two is
   below the practice minimum of three, which is the state under test.
+
+  ── Both are backdated, deliberately ────────────────────────────────────────
+  A fixture whose every row was created seconds ago cannot express any behaviour
+  that depends on a date. Every other user here is seeded that way, which is why
+  this one carries the library's date-dependent assertions: 30 and 40 days puts
+  both outside RECENT_WINDOW_DAYS, so a topic saved during a spec is the only
+  recent one and "newest first" is a claim the fixture can actually falsify.
+
+  See ARCHITECTURE.md, "A fixture with no spread on a dimension cannot test that
+  dimension".
 */
 await admin.from('topics').delete().eq('user_id', fewUserId)
+
+/** Shared by every backdated fixture below. One definition, so two cannot drift. */
+const daysAgo = (days: number) =>
+  new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString()
 
 const { error: fewError } = await admin.from('topics').insert([
   {
     user_id: fewUserId,
     title: 'The event loop',
     definition: 'Microtasks drain before the next macrotask.',
+    created_at: daysAgo(40),
   },
   {
     user_id: fewUserId,
     title: 'Specificity',
     definition: 'Which selector wins when two of them apply.',
+    created_at: daysAgo(30),
   },
 ])
 
@@ -154,9 +170,6 @@ console.log(`Two-topic user reset: ${fewEmail}`)
   as the calendar moved — the fixture would have decayed instead of the data.
 */
 await admin.from('topics').delete().eq('user_id', strongUserId)
-
-const daysAgo = (days: number) =>
-  new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString()
 
 const { error: strongError } = await admin.from('topics').insert([
   {
@@ -258,6 +271,43 @@ console.log(`General-purpose user's topics cleared: ${email}`)
   Quizzes cannot be authored through the UI until the type toggle ships, and these
   specs have to run red before it does, so they are seeded rather than driven.
 */
+/*
+  Two backdated topics on the general-purpose user.
+
+  Everything else in this library is debris the specs create as they run, all of
+  it seconds old — so before these existed the fixture had no date spread at all
+  and could not express any behaviour that depends on one. The library's
+  "newest first" assertion needs at least one row outside RECENT_WINDOW_DAYS to
+  be falsifiable, and this is the fixture specs are free to write to.
+
+  See ARCHITECTURE.md, "A fixture with no spread on a dimension cannot test that
+  dimension".
+*/
+const { error: datedError } = await admin.from('topics').insert([
+  {
+    user_id: mainUserId,
+    title: 'Cascade layers',
+    definition: 'An explicit precedence order for rules, decided before specificity is.',
+    category: 'CSS',
+    tags: ['layout'],
+    created_at: daysAgo(45),
+  },
+  {
+    user_id: mainUserId,
+    title: 'The paint holding timeout',
+    definition: 'A browser will delay the first paint briefly, waiting for stylesheets.',
+    category: 'Browser',
+    tags: ['performance'],
+    created_at: daysAgo(35),
+  },
+])
+
+if (datedError) {
+  console.error(`Could not seed the backdated topics: ${datedError.message}`)
+  process.exit(1)
+}
+console.log('Backdated topics seeded: 2 (so the fixture has a date spread)')
+
 const { error: quizError } = await admin.from('topics').insert([
   {
     user_id: mainUserId,

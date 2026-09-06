@@ -426,6 +426,7 @@ has been corrected. All 20 are built.
 | The upload bar is indeterminate | `storage-js` `upload()` exposes no progress callback. A percentage would be invented |
 | The topic card is a link, not a button | It navigates. A link gets middle-click, open-in-new-tab and the browser's own affordances free |
 | No search-term highlighting | DESIGN.md, "Out of scope", defers it, and it is not free — it needs a match-splitting function and its own tests |
+| No "Recently learned" section | The mock draws one and the build shipped it. Two visually identical grids read as one list in the wrong order, not as two sections: a topic saved five seconds ago sat at position 24 of 29. The split was also local-mode only, so the same library rendered differently either side of the 500-row boundary. Removed in favour of one list, newest first, with the recency timestamp kept on the card |
 
 ### Deliberately not built
 
@@ -721,3 +722,49 @@ only ever proved Space works for the one person the card is not asking for.
 | [#7](https://github.com/sinhasagar01/recall/issues/7) | Subscriptions, Stripe webhook, quota enforcement. Only when there is something to bill for |
 
 #14 closed with the quiz phase, which settled that neither shape asks difficulty at capture.
+
+---
+
+## Phase 15 — one library list
+
+[#17](https://github.com/sinhasagar01/recall/issues/17). The library rendered two grids
+with a "Recently learned" divider between them, so a topic saved five seconds ago sat at
+position 24 of 29. Replaced with one grid, `created_at desc`; the recency timestamp moved
+onto the card and now runs in both reading modes rather than only in local mode.
+
+The change is JSX only. `rows` was already `created_at desc` in both modes, so removing
+the partition *is* the ordering rule — no query, cursor, page size or parity expectation
+changed.
+
+Two findings recorded in ARCHITECTURE.md, both larger than the fix:
+
+- **The split was local-mode only**, so the same library rendered in a different order
+  either side of `LOCAL_MODE_MAX`. The parity harness could not see it, correctly — it
+  stops at the data layer, and the divergence was downstream in JSX. A harness proving two
+  modes agree on data does not prove they agree on what is rendered.
+- **Every fixture was seeded with rows stamped `now()`**, so no fixture could express any
+  date-dependent behaviour, and an assertion written against one would have passed on day
+  one and stayed green. The `few` topics are backdated and the general-purpose fixture —
+  the one specs write to — gained two backdated topics.
+
+The assertion is about position, not presence: **nothing older than a week may precede a
+topic saved seconds ago.** Deliberately not a literal "first card" — the suite is
+`fullyParallel` and several specs save to that fixture, so another test's row can land at
+index 0 mid-run without anything being wrong. The property is stronger than an index and
+is exactly what the old layout violated.
+
+### #16 and #18, closed without building
+
+- [#16](https://github.com/sinhasagar01/recall/issues/16) — difficulty as a practice
+  tiebreak. The "60% of hard topics are weak" statistic says difficulty predicts which
+  *bucket* a topic lands in, and `confidence` is the measured version of that same thing,
+  already the primary sort key. Difficulty's only real job was ordering the never-practised
+  group: two rows. And placing it above staleness, as the issue proposed, falsifies
+  `practice_ordering_test.sql:139` — a proposal requiring the deletion of a deliberately
+  written property is rejected on that basis alone. Reopen on a bulk import.
+- [#18](https://github.com/sinhasagar01/recall/issues/18) — retire the mental-model image.
+  Declined. It works, it is tested end to end including hosted storage policies, and the
+  sheet overflow it was offered against was already fixed as a layout problem in phase 14
+  with every field kept. Low usage is not a reason to delete working, verified machinery.
+  So "a quiz that needs a diagram is a topic" keeps its meaning and the storage
+  delete-order rule stands.

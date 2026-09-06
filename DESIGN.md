@@ -284,6 +284,17 @@ note existed. The bolded phrase opening each rule is its name.*
 13. **Mobile has two destinations plus add.** Weak topics is a filter chip on
    Library, and the three filter selects collapse behind one `Filters` chip.
 
+**The library is one list, newest first.** `design-reference.html` draws a "Recently
+learned" section below the grid, and the build shipped it: everything else in one grid,
+a divider, then what arrived inside `RECENT_WINDOW_DAYS` in a second. **Removed.** Two
+visually identical grids do not read as two sections — on a 29-topic library a topic saved
+five seconds earlier sat at position 24, which reads as "my new topic is at the bottom".
+The recency information survives where it always belonged, on the card: a relative
+timestamp appears while a topic is inside the recent window, in both reading modes, marked
+through the same `recently-added` predicate the chip and its count already use, so the
+three cannot disagree about what "recent" means. The ordering is now one sentence —
+newest first, full stop — and the mock does not win this one.
+
 ---
 
 ## 5. Quizzes

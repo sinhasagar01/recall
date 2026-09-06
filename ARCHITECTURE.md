@@ -211,6 +211,60 @@ assertions were run against the previous schema first and reported
 **The rule: if a column enumerates its legal values, it almost certainly wants NOT NULL
 too.** A CHECK says what a value may be, never that there must be one.
 
+## A fixture with no spread on a dimension cannot test that dimension
+
+The fifth time fixture composition has hidden something in this project, and by now the
+pattern is worth stating as a rule rather than rediscovering.
+
+Every seeded user was created with rows stamped `now()`. That is invisible until an
+assertion depends on a date — and then it is not merely unhelpful, it is **actively
+misleading**, because the assertion passes. The library's "newest first" rule splits on
+`RECENT_WINDOW_DAYS`; on a fixture where every row is seconds old, everything is recent,
+the non-recent branch is empty, and the buggy layout and the fixed one render identically.
+A test written against it would have gone green on day one and stayed green forever.
+
+**The rule: a shared fixture with no spread on a dimension cannot test anything that
+depends on that dimension, and a passing assertion against it proves nothing.** The
+mechanical check when writing a fixture-backed test: *what would this fixture have to look
+like for my assertion to be able to fail?* If the answer is "different from how it looks",
+the fixture is the first thing to fix.
+
+The four earlier instances, for the shape:
+
+| Where | The dimension with no spread |
+| --- | --- |
+| `practice_ordering_test.sql` | three weak topics, so a wrong staleness order had a good chance of matching a right one — now twelve with distinct stamps |
+| `practice_ordering_test.sql` | the 40-row tie group carries no difficulty at all, so any difficulty ordering would be untested |
+| `library_parity_test.sql` corpus | no two same-staleness rows differ in difficulty |
+| `e2e-few` / `e2e@recall.test` | every row created seconds ago |
+
+`scripts/seed-e2e-user.mts` now backdates the two `few` topics and seeds two backdated
+topics on the general-purpose user, which is the one specs are free to write to.
+
+## A harness proving two modes agree on DATA does not prove they agree on what is RENDERED
+
+The library reads two ways — the whole library in memory under `LOCAL_MODE_MAX`, SQL past
+it — and `library_parity_test.sql` holds the two to agreement id-for-id and count-for-count
+over a shared corpus. That harness is correct and it is doing its job.
+
+It could not see that **the same library rendered in a different order either side of the
+500-row boundary.** The "Recently learned" split was applied in JSX, downstream of
+everything the harness checks: local mode partitioned the rows into non-recent and recent
+and drew them in that order, while server mode drew the single list it was given. A
+library at 499 topics and the same library at 501 disagreed about where a topic saved five
+seconds ago appeared.
+
+This is **a gap in coverage, not a gap in the harness**. Parity's subject is the data
+layer and it should stay there; extending it to assert on rendering would make it a
+component test wearing a pgTAP costume. The lesson is where the *next* mode-dependent
+render belongs: any branch on `data.mode` in a component is a place the two modes can
+diverge with every data assertion still green, and it needs its own test at the layer it
+lives in.
+
+The fix removed the branch rather than testing it. That is the better outcome where it is
+available: the rendered order is now mode-independent by construction, because there is no
+longer a mode-dependent code path to disagree.
+
 ## What "needs review" means
 
 `needsReview` is one predicate with several callers: the rail's count, the library
