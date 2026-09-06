@@ -695,3 +695,29 @@ None was introduced by quizzes; each was a rule that had never been asked the qu
 No quiz history, scores, streaks, analytics or timers. No images on a quiz — enforced by
 the CHECK, not only by the form. No type chips on the weak page; see DESIGN.md for why
 that is a not-yet rather than a never.
+
+---
+
+## Phase 14 — three fixes from a product review
+
+Found by driving the deployed app rather than by reading it: the practice card's reveal
+shortcut died the moment you followed the instruction printed above it, Save opened below
+the fold in the add sheet at 390x844, and the Category control opened on `Uncategorized`
+while the app had already computed a suggestion and labelled it. All three shipped and
+verified on production at `bbc7794`; the open backlog is now #16, #17 and #18 alongside #7.
+
+Each fix was shown to bite by reverting it and watching its own assertion fail. The most
+useful thing the review turned up is why the first one survived since phase 8: the
+existing spec focused its way *out* of the recall textarea before pressing anything, so it
+only ever proved Space works for the one person the card is not asking for.
+
+### The backlog now
+
+| Issue | |
+| --- | --- |
+| [#16](https://github.com/sinhasagar01/recall/issues/16) | Order by difficulty as a tiebreak within a practice bucket. 60% of hard topics need review against 25% for medium and easy; the column is a passthrough in the ordering SQL and appears in no `order by`. Partially reverses #14's reasoning — nothing read it, and the fix chosen was to stop asking rather than to read it |
+| [#17](https://github.com/sinhasagar01/recall/issues/17) | Remove the "Recently learned" section, so the library is one list newest-first. A topic saved five seconds ago sat at position 24 of 29 |
+| [#18](https://github.com/sinhasagar01/recall/issues/18) | Retire the mental-model image, judged on its own use: 1 of 58 rows, 1 storage object, 0 of the owner's 26 topics in two months. Explicitly **not** the fix for the sheet overflow, which phase 14 handled as a layout problem with every field kept |
+| [#7](https://github.com/sinhasagar01/recall/issues/7) | Subscriptions, Stripe webhook, quota enforcement. Only when there is something to bill for |
+
+#14 closed with the quiz phase, which settled that neither shape asks difficulty at capture.
