@@ -2,17 +2,34 @@ import type { Database } from '@/lib/database.types'
 import type { Confidence, Difficulty, Quiz, Topic, TopicRecord } from '@/lib/domain/types'
 
 /**
- * `search_text` is omitted deliberately.
+ * Two columns are omitted deliberately, for two different reasons.
  *
- * It is a generated column that exists only so the trigram index has something to
- * index — derived from columns the domain already has, never written, and never
- * read by the application. Letting it through would make the boundary assertion
- * below demand a field on the domain Topic that means nothing to the domain.
+ * **`search_text`** is a generated column that exists only so the trigram index
+ * has something to index — derived from columns the domain already has, never
+ * written, and never read by the application. Letting it through would make the
+ * boundary assertion below demand a field on the domain Topic that means nothing
+ * to the domain.
  *
- * Omitting it here is what keeps that assertion honest: every OTHER column
- * difference still fails the build.
+ * **`source_id`** is real, written, and read — just never through `Topic`. It is
+ * omitted so that the queue *cannot* see it: if the domain Topic carried it,
+ * `TopicBoundaryIsSound` would oblige every read to return it, including
+ * `practice_ordered_page`, and `sources-boundary.test.ts` could no longer forbid
+ * every source column in a queue module without carving out an exception for the
+ * one module it most needs to cover. A source is never practised, and the
+ * cheapest way to guarantee that is for the practice path to have no way to name
+ * it.
+ *
+ * The cost, stated: the topic detail page reads its source with its own query,
+ * and the edit sheet takes the current source as a prop rather than reading it
+ * off the topic. One prop, in exchange for a boundary with no exception in it.
+ *
+ * Omitting exactly these two is what keeps the assertion honest: every OTHER
+ * column difference still fails the build.
  */
-export type TopicRow = Omit<Database['public']['Tables']['topics']['Row'], 'search_text'>
+export type TopicRow = Omit<
+  Database['public']['Tables']['topics']['Row'],
+  'search_text' | 'source_id'
+>
 
 /*
   ── The boundary rule ───────────────────────────────────────────────────────

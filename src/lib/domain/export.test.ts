@@ -1,13 +1,19 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   exportFilename,
   imageEntryName,
   renderLibraryMarkdown,
 } from '@/lib/domain/export'
+import type { SourceSummary } from '@/lib/domain/sources'
 import { makeQuiz, makeTopic } from '@/lib/domain/topic-fixture'
 import type { Topic } from '@/lib/domain/types'
 
 const NOW = new Date('2026-09-05T18:40:00.000Z')
+
+/* Stands in for the thing that must never reach the file. */
+const TRANSCRIPT_BODY = 'A closure is the combination of a function and its lexical environment.'
 
 const render = (topics: Topic[], missing: string[] = []) =>
   renderLibraryMarkdown(topics, { exportedAt: NOW, missingPaths: new Set(missing) })
@@ -267,5 +273,120 @@ describe('evidence in library.md', () => {
   it('never renders evidence for a quiz', () => {
     // The constraint refuses the columns, so this is the same rule said twice.
     expect(render([makeQuiz({ options: ['a', 'b'], correct_option: 0 })])).not.toContain('## Evidence')
+  })
+})
+
+describe('sources in library.md', () => {
+  const closures: SourceSummary = {
+    id: 'src-1',
+    user_id: 'u1',
+    title: 'JavaScript closures, in depth',
+    course: 'JS: The Hard Parts',
+    url: 'https://example.com/closures',
+    transcript_words: 8400,
+    transcript_deleted_at: null,
+    caveat_noted: false,
+    created_at: '2026-08-20T10:00:00.000Z',
+    updated_at: '2026-08-20T10:00:00.000Z',
+  }
+
+  const topic = makeTopic({ id: 't1', title: 'Closure' })
+
+  const withSources = (sources: SourceSummary[], sourceOf: Record<string, string> = {}) =>
+    renderLibraryMarkdown([topic], {
+      exportedAt: NOW,
+      missingPaths: new Set<string>(),
+      sources,
+      sourceOf,
+    })
+
+  it('puts the source on the topic it produced', () => {
+    const out = withSources([closures], { t1: 'src-1' })
+
+    expect(out).toContain('## Where this came from')
+    expect(out).toContain('JavaScript closures, in depth · JS: The Hard Parts — https://example.com/closures')
+  })
+
+  it('omits the section for a topic with no source', () => {
+    expect(withSources([closures])).not.toContain('## Where this came from')
+  })
+
+  it('omits the whole section when there are no sources', () => {
+    expect(render([topic])).not.toContain('# Sources')
+  })
+
+  /*
+    The exception, asserted.
+
+    library.json promises "every column, not a summary". Transcript bodies are the
+    one deliberate exclusion, so the word count has to survive — a reader finding a
+    source with a count and no text must be able to tell that was a decision rather
+    than a bug. A test is the only thing that keeps that promise honest once someone
+    changes the section.
+  */
+  it('exports the word count and never the transcript body', () => {
+    /*
+      The row is given a `transcript` it has no business carrying. `SourceSummary`
+      omits the field, so this cannot happen through the type — but the export
+      route hands over whatever the query returned, and a widened select list is
+      exactly how a body would arrive. Passing one here asserts the renderer drops
+      it rather than asserting the type system already did.
+    */
+    const leaky = { ...closures, transcript: TRANSCRIPT_BODY } as SourceSummary
+    const out = withSources([leaky], { t1: 'src-1' })
+
+    expect(out).toContain('8,400 words, not exported')
+    expect(out).toMatch(/Transcript text is \*\*not\*\* exported/)
+    expect(out).not.toContain(TRANSCRIPT_BODY)
+  })
+
+  it('is not read out of the database in the first place', () => {
+    /*
+      The other half, and the one that protects library.json — which is serialised
+      straight from the query result, so the renderer above never sees it. The
+      guarantee is the select list, asserted at the source the way the queue
+      boundary is.
+    */
+    const read = readFileSync(join(process.cwd(), 'src/lib/data/export.ts'), 'utf8')
+    const from = read.indexOf("from('sources')")
+    const select = read.slice(from, read.indexOf("order('created_at'", from))
+
+    expect(select, 'the export read must not select the transcript body').not.toMatch(
+      /\btranscript\b(?!_words|_deleted_at)/,
+    )
+    expect(select, 'but must select the word count, so the omission is legible').toContain(
+      'transcript_words',
+    )
+  })
+
+  it('distinguishes a deleted transcript from one that never existed', () => {
+    const deleted: SourceSummary = {
+      ...closures,
+      id: 'src-2',
+      title: 'Deleted one',
+      transcript_words: null,
+      transcript_deleted_at: '2026-09-01T10:00:00.000Z',
+    }
+    const never: SourceSummary = {
+      ...closures,
+      id: 'src-3',
+      title: 'Never had one',
+      transcript_words: null,
+      transcript_deleted_at: null,
+    }
+
+    const out = withSources([deleted, never])
+
+    expect(out).toContain('transcript deleted')
+    expect(out).toContain('no transcript')
+  })
+
+  it('reads a source with no course and no link without empty punctuation', () => {
+    const bare: SourceSummary = { ...closures, course: null, url: null }
+    const out = withSources([bare], { t1: 'src-1' })
+
+    expect(out).toContain('JavaScript closures, in depth\n')
+    expect(out).not.toContain('· null')
+    expect(out).toContain('no link')
   })
 })

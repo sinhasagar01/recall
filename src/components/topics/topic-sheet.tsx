@@ -52,6 +52,10 @@ export function TopicSheet({
   categories,
   topic,
   initialTitle = '',
+  sourceId = null,
+  sourceOptions = [],
+  initialDefinition = '',
+  initialKind = 'topic',
 }: {
   open: boolean
   onClose: () => void
@@ -60,14 +64,24 @@ export function TopicSheet({
   topic?: Topic
   /** Prefills a NEW topic — the "+ Add “query”" path out of no-results. */
   initialTitle?: string
+  /*
+    The source arrives as a prop rather than off the topic, because `source_id`
+    is deliberately absent from the domain Topic — see topic-mapping.ts. One
+    prop, in exchange for a queue that has no way to name a source.
+  */
+  sourceId?: string | null
+  sourceOptions?: { id: string; title: string }[]
+  /** A transcript selection. Fills the definition, and there is no other field it can reach. */
+  initialDefinition?: string
+  initialKind?: Kind
 }) {
   const editing = topic !== undefined
 
-  const [kind, setKind] = useState<Kind>(topic?.kind ?? 'topic')
+  const [kind, setKind] = useState<Kind>(topic?.kind ?? initialKind)
   const isQuiz = kind === 'quiz'
 
   const [title, setTitle] = useState(topic?.title ?? initialTitle)
-  const [definition, setDefinition] = useState(topic?.definition ?? '')
+  const [definition, setDefinition] = useState(topic?.definition ?? initialDefinition)
   const [options, setOptions] = useState<string[]>(topic?.options ?? ['', ''])
   // -1 is "nothing marked yet". An existing quiz always has an answer; a new one
   // must be given one, rather than inheriting a default nobody chose.
@@ -89,6 +103,7 @@ export function TopicSheet({
     already has one.
   */
   const [chosenCategory, setChosenCategory] = useState<string | null>(topic?.category ?? null)
+  const [chosenSource, setChosenSource] = useState<string>(sourceId ?? '')
   const [tags, setTags] = useState<string[]>(topic?.tags ?? [])
   const isEdit = topic !== undefined
   const [difficulty, setDifficulty] = useState<Difficulty>(topic?.difficulty ?? 'medium')
@@ -404,6 +419,35 @@ export function TopicSheet({
             />
           ) : null}
         </div>
+
+        {/*
+          One optional field and nothing else. Editing a topic lets you attach or
+          change its source; the sheet does not grow a second concept.
+        */}
+        {sourceOptions.length > 0 ? (
+          <div className="mb-[18px]">
+            <label htmlFor="source_id" className="mb-1.5 block text-label font-medium text-ink">
+              Source
+              <span className="ml-1.5 font-mono text-mono font-normal text-ink-3">
+                optional — where you learned it
+              </span>
+            </label>
+            <select
+              id="source_id"
+              name="source_id"
+              value={chosenSource}
+              onChange={(event) => setChosenSource(event.target.value)}
+              className="w-full rounded-md border border-rule-strong bg-surface px-3 py-2.5 text-body text-ink outline-offset-[-1px] focus:border-accent focus:outline-2 focus:outline-accent"
+            >
+              <option value="">No source</option>
+              {sourceOptions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.title}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : null}
 
         <TagsInput label="Tags" hint="optional" tags={tags} onChange={setTags} />
         {tags.map((tag) => (

@@ -20,8 +20,25 @@ test.describe('reaching settings', () => {
     const rail = page.getByRole('complementary')
     await expect(rail.getByRole('link', { name: 'Settings' })).toBeVisible()
 
-    // Still three destinations. A fourth would break the mobile tab bar's shape.
-    await expect(rail.getByRole('navigation').getByRole('link')).toHaveCount(3)
+    /*
+      Still the same three destinations, and Settings is not one of them.
+
+      Asserted by naming them rather than counting, for the reason the mobile half
+      of this file already gives: a count says nothing about which links are there.
+      It also stopped meaning what it claimed once the rail gained its
+      Apprenticeship group — Sources is a fourth link in the same <nav> and a
+      deliberate one, while the rule this test protects is about the mobile TAB
+      BAR's shape, which Sources does not touch.
+    */
+    const nav = rail.getByRole('navigation')
+    for (const href of ['/library', '/practice', '/weak']) {
+      await expect(nav.locator(`a[href="${href}"]`)).toHaveCount(1)
+    }
+    await expect(nav.locator('a[href="/settings"]')).toHaveCount(0)
+
+    // Sources is in the rail, below its own group heading — not among the three.
+    await expect(nav.locator('a[href="/sources"]')).toHaveCount(1)
+    await expect(rail.getByText('Apprenticeship')).toBeVisible()
 
     await rail.getByRole('link', { name: 'Settings' }).click()
     await expect(page).toHaveURL(/\/settings/)

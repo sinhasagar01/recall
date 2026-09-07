@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { TopicDetail } from '@/components/topics/topic-detail'
 import { libraryTotals } from '@/lib/data/library'
 import { getTopic, signedImageUrl } from '@/lib/data/topics'
+import { listSourceOptions, readTopicSource } from '@/lib/data/sources'
 import { categoryOptionsFromCounts } from '@/lib/domain/library'
 
 export default async function TopicPage({ params }: PageProps<'/topic/[id]'>) {
@@ -25,7 +26,11 @@ export default async function TopicPage({ params }: PageProps<'/topic/[id]'>) {
     client-side fetch would leave a hole in the layout while it resolved; this way
     there is nothing to resolve.
   */
-  const imageUrl = await signedImageUrl(topic.mental_model_image_path)
+  const [imageUrl, source, sourceOptions] = await Promise.all([
+    signedImageUrl(topic.mental_model_image_path),
+    readTopicSource(id),
+    listSourceOptions(),
+  ])
 
-  return <TopicDetail topic={topic} categories={categoryOptionsFromCounts(counts.byCategory, counts.total)} imageUrl={imageUrl} />
+  return <TopicDetail topic={topic} categories={categoryOptionsFromCounts(counts.byCategory, counts.total)} imageUrl={imageUrl} source={source} sourceOptions={sourceOptions} />
 }

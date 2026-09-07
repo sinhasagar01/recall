@@ -901,6 +901,84 @@ button is 42px rather than the 27px it looks like. Asserted as non-intersection 
 bounding boxes, with the note verified to have actually wrapped, and proven by restoring
 the absolute positioning and watching it fail.
 
+---
+
+## Arc 2 — sources
+
+Where a topic came from. A source is the video or article you learned from: title required,
+course and URL optional, transcript optional and deletable. Topics and quizzes link to it.
+Specified by `sources-reference.html`. The transcript is scratch you work from, never a
+library of its own — you paste it, distil out of it, and delete it.
+
+**The first new table since the schema was built, and the reasoning is the point.** `kind`
+discriminates `topic` from `quiz`, and those two are the same kind of thing: a practisable
+retrieval unit sharing `confidence`, `practice_count`, `last_practiced_at` and `difficulty`.
+A source has none of that. A third `kind` would have meant a third arm on the shape CHECK
+nulling a dozen columns, a third arm on the `Topic` union that is not a Topic, a
+`topics.source_id` that could point a row at itself — and, worst, `p_kinds` defaults to null
+meaning *both shapes*, so `practice_ordered_page`, `library_page` and `library_counts` would
+each have had to learn to exclude a third kind. Forgetting one puts a transcript in the
+practice queue. Seventeen phases held at one table because everything in it was a
+practisable unit; this is the first thing that genuinely is not one. The rule was never
+"one table forever", it was "do not invent an entity for something that is already a topic".
+
+**`source_id` is on the `topics` row and deliberately not on the domain `Topic`** — omitted
+from `TopicRow` the way `search_text` is, for a different documented reason. It is what
+makes "a source never reaches the queue" absolute rather than careful: if it were on the
+domain type, `TopicBoundaryIsSound` would oblige every read to return it, including
+`practice_ordered_page`, and the boundary test would need an exception carved out for the
+one module it most needs to cover. Both `RETURNS TABLE` contracts are untouched, which also
+avoids the drop-and-recreate the evidence arc needed. The cost, stated: topic detail reads
+its source with its own query, and the edit sheet takes it as a prop.
+
+**Four of the five extractions are derived, one is a stored tick.** Only "when not to use
+it" is stored, because nothing in the data distinguishes that topic from any other, and the
+UI labels it as the exception. The challenge item reads arc 1's `challenge_at` on any linked
+topic — a sources module reading an evidence column, which the evidence boundary permits
+because it forbids evidence columns in *queue* modules.
+
+**The transcript is searched client-side**, over text the workspace has already loaded. Not
+an optimisation: the way to keep a transcript out of library search is to never build a
+server-side way to search it. It is out of library search either way, since `search_text`
+lives on `topics`.
+
+### Two corrections written back into `sources-reference.html`
+
+The reference was wrong twice, and both corrections went into the file rather than only
+into DESIGN.md, so it stops asserting something false.
+
+1. **It drew the mobile screens without showing how you reach them.** Sources sits beside
+   Settings in the account surface, following the precedent Settings set; rule 13 is
+   untouched and the tab bar keeps its three items. A third correction was found while
+   building: the desktop rail's account foot is *not* that surface — the whole rail is
+   `hidden` below `--breakpoint-md`, so a link in its foot renders at no width at all. The
+   mobile account surface is the `md:hidden` cluster in the library head. The Mobile tab
+   now draws it.
+2. **It argued for crimson without checking the token rule.** `--flag` gained a fourth
+   named case, worded narrowly: a stale source's yield *label*, never the row. A crimson row
+   would read as an error, and a stale source is not an error, it is a fact about you.
+
+### Transcripts are excluded from the export, explicitly
+
+`library.json`'s "every column, not a summary" now has one stated exception. Every source
+exports its whole record plus `transcript_words`; no body, in either file. Both DESIGN.md
+and `library.md` itself say so and give the reason, because a reader finding a source with
+a word count and no text must be able to tell that was a decision rather than a bug.
+Asserted twice: the renderer drops a body even when handed one, and the export query never
+selects it in the first place — which is what protects `library.json`, since that file is
+serialised straight from the query result. Both assertions were perturbed and seen to fail.
+
+### Found, not fixed
+
+The library head's `+ Add topic` button carries `className="hidden md:inline-flex"`, but
+`Button` hardcodes `inline-flex` in its own class string and Tailwind orders both utilities
+in the same display group — so `hidden` loses at every width. Measured at 390px: the button
+computes to `display: flex`, sits at x=399, and makes the page 106px wider than the screen.
+Pre-existing, unrelated to this arc, and left for its own change rather than widened into
+this one.
+
+---
+
 ## The backlog
 
 **Issues**

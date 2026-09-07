@@ -93,9 +93,12 @@ const CLEARED: ToolbarState = {
 export function LibraryView({
   data,
   account,
+  sourceOptions,
 }: {
   data: LibraryData
   account: { topics: number; images: number }
+  /** Passed alongside rather than folded into LibraryData: a source is not library data. */
+  sourceOptions: { id: string; title: string }[]
 }) {
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -218,7 +221,15 @@ export function LibraryView({
     window.history.replaceState(null, '', query === '' ? window.location.pathname : `?${query}`)
   }, [focusRequested])
 
+  /*
+    Distilling from a source workspace: `?add=1&source=<id>` opens the sheet with
+    the link already chosen, and `&definition=` carries a transcript selection.
+    The selection fills the DEFINITION and never the mental model — the rule the
+    workspace enforces by shape, restated here as the only field it can reach.
+  */
   const addRequested = params.get('add') === '1'
+  const distilSource = params.get('source')
+  const distilDefinition = params.get('definition')
   const sheetOpen = adding || addRequested
 
   const closeSheet = () => {
@@ -299,15 +310,27 @@ export function LibraryView({
           has two destinations plus the FAB, with no room for it. It sits here,
           beside the title on the default destination, so it is always one tap away.
         */}
-        <div className="flex items-center gap-3 md:hidden">
+        <div className="flex items-center gap-2 md:hidden">
           {/* The rail is hidden here, so the account surface lives in this head. */}
-          <Link href="/settings" className="rounded-md px-2 py-1 text-label text-ink-2 hover:bg-surface-2 hover:text-ink">
+          {/*
+            Sources is reached from here on a phone, beside Settings — not from a
+            fourth tab entry. The tab bar stays two destinations plus add
+            (DESIGN.md, "Mobile has two destinations plus add"), and Sources
+            follows the precedent Settings set when it landed in the account
+            surface rather than the nav. sources-reference.html drew the mobile
+            Sources screens without showing the route in; that gap is corrected in
+            the file.
+          */}
+          <Link href="/sources" className="rounded-md px-1.5 py-1 text-label text-ink-2 hover:bg-surface-2 hover:text-ink">
+            Sources
+          </Link>
+          <Link href="/settings" className="rounded-md px-1.5 py-1 text-label text-ink-2 hover:bg-surface-2 hover:text-ink">
             Settings
           </Link>
           <form action={signOut}>
             <button
               type="submit"
-              className="cursor-pointer rounded-md px-2 py-1 text-label text-ink-2 hover:bg-surface-2 hover:text-ink"
+              className="cursor-pointer rounded-md px-1.5 py-1 text-label text-ink-2 hover:bg-surface-2 hover:text-ink"
             >
               Sign out
             </button>
@@ -431,6 +454,10 @@ export function LibraryView({
         onSaved={setSaved}
         categories={categoryOptionsFromCounts(counts.byCategory, counts.total)}
         initialTitle={prefillTitle}
+        sourceId={distilSource}
+        sourceOptions={sourceOptions}
+        initialDefinition={distilDefinition ?? ''}
+        initialKind={params.get('kind') === 'quiz' ? 'quiz' : 'topic'}
       />
 
       {saved ? <Toast message={`Saved — ${saved}`} /> : null}

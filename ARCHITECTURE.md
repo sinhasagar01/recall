@@ -121,6 +121,43 @@ The same applies to any perturbation that breaks compilation rather than behavio
 red suite is only evidence when the *named* assertion you predicted is the one that
 failed.
 
+### Verify the perturbation applied before believing its result
+
+Two results in the sources arc reported **"0 failed"** because the regex doing the editing
+never matched — the clause was never perturbed at all. That is *indistinguishable from a
+redundant clause*, and it points the same way: "this clause does nothing, delete it".
+
+It is the twin of the entry above. One fails everything for the wrong reason; the other
+fails nothing for the wrong reason. Together:
+
+> **A perturbation is evidence only once you have confirmed the perturbed text is actually
+> present — in the file, and in the installed object.** Then read the result. `grep` the
+> file for the replacement, and for a database object read it back with
+> `pg_get_constraintdef` or `pg_get_functiondef`.
+
+Both halves have now cost real time: a `create or replace` that Postgres silently refused,
+and a regex with unbalanced parens that silently matched nothing.
+
+### Testing RLS: a `with check` failure raises, a `using` failure does not
+
+A fact about Postgres rather than about this schema, and every future table will need it.
+
+- **`using`** decides which rows the statement can *see*. A row it hides is simply not
+  matched, so an unauthorised `update` or `delete` **affects zero rows and returns
+  quietly**. Assert it with a row count — `tests_affected` in these files.
+- **`with check`** decides which rows the statement may *write*. A violation **raises
+  42501**. Assert it with `throws_ok`.
+
+Using the wrong shape is not a failed assertion, it is an aborted file: `tests_affected` on
+a with-check violation throws inside the helper and pgTAP stops, taking every assertion
+after it with no useful message. That happened in this arc on the first attempt to prove a
+caller cannot give a source away by rewriting its `user_id` — the row is the caller's own,
+so `using` passes and only the with-check stops it.
+
+The practical consequence: **the two halves of a policy need separate assertions**, and the
+half that is already covered by a `to authenticated` role clause is not the half worth
+testing. See the entry below.
+
 ### Three vacuous assertions in one phase, all caught by perturbation
 
 Worth recording as a count, because the argument for the standard is its hit rate. Every
@@ -171,6 +208,33 @@ what changes is what a zero-failure result means. It is not automatically dead c
 delete; it is a claim to re-derive, and sometimes the honest answer is "redundant, kept,
 here is why".
 
+## A symmetric rule needs symmetric tests — four phases running
+
+Four consecutive phases have had perturbation find green assertions that proved nothing,
+and **all four were the same mistake**: a rule stated N times, with the tests exercising
+one instance.
+
+| phase | the rule, stated N times | what the tests exercised |
+| --- | --- | --- |
+| Evidence | three markers × three clauses | blank notes and stray URLs on `rebuild` only |
+| Evidence | the queue-ordering claim | evidence on the topic that already sorted second |
+| Sources | three not-blank checks | none of them — every insert supplied real text |
+| Sources | two halves of the insert policy | the half already blocked by `to authenticated` |
+
+The generalisation, which the section below states for one shape and is worth stating
+plainly for all of them:
+
+> **"It passed" on one instance says nothing about the others.** A rule written N times
+> needs N assertions, and the instance a test happens to use is chosen by whoever wrote the
+> fixture — not by what the rule covers.
+
+The last row is the subtlest and the most transferable. An insert policy has two
+independent guards: `to authenticated` stops the signed-out caller, and `with check` stops
+the *signed-in* caller writing into someone else's account. Testing anon proves the first
+and says nothing about the second, and it reads as thorough — the test is literally named
+for the threat model. Relaxing the with-check to `true` failed **zero** assertions until
+one was added that inserts a row with a forged `user_id`.
+
 ## A constraint written N times over N markers needs N tests, or you have tested the loop body once
 
 The same evidence constraint states nine clauses: three rules — a date/note coupling, a
@@ -218,6 +282,52 @@ every screen that must display evidence and every query that must select it comp
 perfectly and was wrong. `toTopic` did not error either, correctly — it spreads the row —
 and `TopicBoundaryIsSound` stayed satisfied because both arms gained the keys at once,
 which is the assertion doing its job by *not* firing.
+
+### Omitting a column from the domain type: two reasons, and only one is negotiable
+
+`TopicRow` omits two columns from the generated row, and **the reason must be written at
+the omission**, because the reason decides what is allowed to change later.
+
+| column | reason | if that changes |
+| --- | --- | --- |
+| `search_text` | **nothing reads it.** A generated column that exists so the trigram index has something to index | the omission is simply *wrong* and should be removed |
+| `source_id` | **plenty reads it** — the detail page, the workspace, the write path. It is omitted so the queue *cannot* | the omission is **load-bearing** and removing it silently breaks a guarantee |
+
+The second kind is the one to be careful with. `sources-boundary.test.ts` forbids every
+source column in every queue module **with no exception**, and that is only possible
+because the domain `Topic` has no `source_id`: if it did, `TopicBoundaryIsSound` would
+oblige every read to return it — including `practice_ordered_page` — and the test would
+need a carve-out for the single module it most needs to cover.
+
+So it cannot be relaxed for local convenience. "I just need `source_id` on `Topic` here"
+is the change that quietly turns an absolute rule into a rule with an exception, and the
+exception is in the queue.
+
+Both reasons now sit side by side in `src/lib/data/topic-mapping.ts`, which is the
+reference for this rule. "We omit columns sometimes" is not something anyone can apply.
+
+### Two mention-guards plus one structure-guard
+
+A rule enforced by forbidding a *mention* needs a companion assertion forbidding the
+*structure* that would make the mention legitimate. Otherwise the guard is one refactor
+away from being satisfied by a change that defeats it.
+
+`sources-boundary.test.ts` is the shape:
+
+1. **Mention, TypeScript** — no queue module names a source column.
+2. **Mention, SQL** — no practice or weak migration names one. The ordering runs in SQL, so
+   the TypeScript check alone would miss a join.
+3. **Structure** — `source_id` is not on the domain `Topic` and `TopicRow` omits it.
+
+Without the third, someone adds `source_id` to `Topic` for a good local reason, the queue's
+reads legitimately gain the column, and the first two guards are then *obliged* to be
+relaxed — each change reasonable, the guarantee gone. The structure guard is what makes the
+mention guards absolute rather than conventional.
+
+`evidence-boundary.test.ts` has the first two and not the third, which is correct for it:
+evidence columns are on the domain `Topic` by design, so there is no structure to forbid.
+The pattern is not "always three" — it is *"if the rule depends on a structural fact, assert
+the structural fact"*.
 
 ### A discriminated union only catches reads it makes type-incompatible
 
@@ -1571,3 +1681,36 @@ The bolded phrase opening each rule is its name, and each name used as a referen
 unique in the file, so a grep finds the rule. `TASKS.md` still carries numeric
 references and is deliberately left alone: it is the historical record of the twelve
 phases and says so, and its references describe what those numbers were at the time.
+
+### A `md:hidden` child inside a `md:`-only container is visible at no width
+
+The account foot in the app rail holds Settings and Sign out, so "put Sources beside
+Settings in the account foot" sounded like it named a surface that exists on a phone. It
+does not. The whole `<aside>` is `hidden … md:flex`, so below `--breakpoint-md` the foot is
+`display: none` and a link inside it carrying `md:hidden` renders at **no width at all** —
+hidden below the breakpoint by its parent, hidden above it by itself.
+
+The mobile account surface is a separate `md:hidden` cluster in the library head
+(`library-view.tsx`), which is where Settings and Sign out actually live on a phone. The
+rail's copies are the desktop pair.
+
+Two things follow. First, "where does X live on mobile" is a question about the rendered
+tree, not about the component whose name matches: a comment claiming a mobile route is not
+evidence of one. Second, the Playwright failure was the honest signal and the temptation
+was to weaken the test — the assertion was right and the implementation was wrong.
+
+The general form is worth keeping: **responsive utilities compose by intersection, not by
+override.** A child cannot reveal itself inside a hidden parent, so a breakpoint-scoped
+class on a child is only ever a further restriction of the parent's range.
+
+### A count assertion stops meaning what it says as soon as a surface grows
+
+`settings.spec.ts` asserted the rail nav held exactly three links, commented "a fourth
+would break the mobile tab bar's shape". The rule it was protecting is about the mobile
+tab bar; the rail is a different surface, and giving it an Apprenticeship group turned a
+true assertion into a false one without the rule changing at all.
+
+Rewritten to name the three destinations and assert Settings is not among them — which is
+what the sentence meant, and which the mobile half of the same file had already worked out
+for itself: *"counting links would read 3 and mean nothing. The invariant is which
+destinations are there."*

@@ -27,6 +27,12 @@ interface NewShared {
   mental_model: string | null
   category: string | null
   tags: string[]
+  /*
+    Where it came from. On the WRITE shape, not on the domain `Topic` — the two
+    are different types for exactly this reason. See topic-mapping.ts for why the
+    domain type must not carry it.
+  */
+  source_id: string | null
 }
 
 /**
@@ -78,6 +84,7 @@ function rowFor(input: NewTopic) {
     category: input.category,
     tags: input.tags,
     kind: input.kind,
+    source_id: input.source_id,
     definition: input.definition,
     options: input.options,
     correct_option: input.correct_option,
