@@ -138,6 +138,32 @@ fails nothing for the wrong reason. Together:
 Both halves have now cost real time: a `create or replace` that Postgres silently refused,
 and a regex with unbalanced parens that silently matched nothing.
 
+### When a page-text read and a screenshot disagree, the screenshot is right
+
+Driving the deployed app through a browser during the arc 2 verification, a text
+extraction of the page returned a **stale snapshot** twice, and each time it produced a
+confident wrong conclusion:
+
+- After saving a new source, the text still showed the empty state — read as *"the save
+  silently failed"*. It had not: the workspace had already rendered, and the screenshot
+  showed it.
+- With a search query in the URL, the text read `Loading your topics…` through repeated
+  waits — read as *"search hangs on production"*. It did not: the screenshot showed
+  `1 of 29 topics match` and the matching card.
+
+Both were about to be reported as production defects. The screenshot is what a person
+would see; the text read is a separate extraction that can lag behind a client-side
+render, and waiting longer does not reliably fix it because the staleness is not always a
+timing problem.
+
+> **A page-text read is a convenience, not the source of truth. When it disagrees with a
+> screenshot, believe the screenshot** — and before reporting any browser-driven failure,
+> confirm it with one.
+
+The cost is asymmetric, which is what makes the rule worth having: a screenshot that
+agrees costs one call, and a false failure costs a wrong bug report, or worse, a "fix" to
+something that was never broken.
+
 ### Testing RLS: a `with check` failure raises, a `using` failure does not
 
 A fact about Postgres rather than about this schema, and every future table will need it.

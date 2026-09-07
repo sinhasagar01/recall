@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   definitionFromSelection,
+  deleteSourceCopy,
   extractionCount,
   extractionsFor,
   isUndistilled,
@@ -164,5 +165,57 @@ describe('parseSourceForm', () => {
   it('refuses a link that is not http or https', () => {
     expect(parseSourceForm(form({ url: 'javascript:alert(1)' })).error).toContain('http or https')
     expect(parseSourceForm(form({ url: 'frontendmasters.com' })).error).toContain('not a URL')
+  })
+})
+
+
+describe('the counts read as English', () => {
+  /*
+    "1 topics" shipped to production. The count is the first thing you look at on
+    this screen, so a number that disagrees with its noun undermines the one
+    thing the screen is for.
+  */
+  it('singularises the definition detail at one topic', () => {
+    expect(detailOf('definition', [])?.detail).toBe('no topics yet')
+    expect(detailOf('definition', [makeTopic({})])?.detail).toBe('1 topic')
+    expect(detailOf('definition', [makeTopic({}), makeTopic({})])?.detail).toBe('2 topics')
+  })
+})
+
+describe('what the delete confirmation says', () => {
+  /*
+    Three things have to agree with the count — the noun, the verb and the
+    pronoun. Only the noun did: at one entry it read "The 1 entry you distilled
+    from it stay in your library — they lose the line saying where they came
+    from."
+  */
+  it('makes a claim about nothing when nothing was distilled', () => {
+    const copy = deleteSourceCopy(0)
+
+    expect(copy.kept).toBe('Nothing has been distilled from it yet')
+    // No consequence clause: there is no line for nothing to lose.
+    expect(copy.lost).toBe('')
+  })
+
+  it('agrees throughout at one entry', () => {
+    const copy = deleteSourceCopy(1)
+
+    expect(copy.kept).toBe('The 1 entry you distilled from it stays in your library')
+    expect(copy.lost).toBe('it loses the line saying where it came from')
+
+    for (const wrong of [' stay in', 'entries', 'they lose', 'they came']) {
+      expect(`${copy.kept} ${copy.lost}`).not.toContain(wrong)
+    }
+  })
+
+  it('agrees throughout at more than one', () => {
+    const copy = deleteSourceCopy(2)
+
+    expect(copy.kept).toBe('The 2 entries you distilled from it stay in your library')
+    expect(copy.lost).toBe('they lose the line saying where they came from')
+
+    for (const wrong of ['stays in', '1 entry ', 'it loses']) {
+      expect(`${copy.kept} ${copy.lost}`).not.toContain(wrong)
+    }
   })
 })

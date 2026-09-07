@@ -73,7 +73,10 @@ test.describe('sources', () => {
     await page.getByRole('link', { name: title }).click()
     await expect(page).toHaveURL(/\/sources\//)
     await expect(page.getByRole('link', { name: new RegExp(topicTitle) })).toBeVisible()
-    await expect(page.getByText('1 topics')).toBeVisible()
+    // Singular. "1 topics" shipped to production; the domain owns the agreement
+    // now, and sources.test.ts covers nothing/one/many.
+    await expect(page.getByText('1 topic', { exact: true })).toBeVisible()
+    await expect(page.getByText('1 topics')).toHaveCount(0)
     await expect(page.getByText(/1 of 5|2 of 5/)).toBeVisible()
 
     // ── delete the transcript: the source and its entries survive ─────────
@@ -89,7 +92,13 @@ test.describe('sources', () => {
     await page.getByRole('button', { name: 'Delete source' }).click()
     const confirm = page.getByRole('dialog')
     // The confirmation names what actually dies and what does not.
-    await expect(confirm).toContainText('stay in your library')
+    /*
+      One entry at this point, so the whole sentence has to agree — noun, verb and
+      pronoun. It used to read "The 1 entry ... stay ... they lose", which is what
+      deleteSourceCopy now owns.
+    */
+    await expect(confirm).toContainText('The 1 entry you distilled from it stays in your library')
+    await expect(confirm).toContainText('it loses the line saying where it came from')
     await confirm.getByRole('button', { name: 'Delete source' }).click()
     await expect(page).toHaveURL(/\/sources$/, { timeout: 30_000 })
 

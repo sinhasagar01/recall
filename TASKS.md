@@ -968,6 +968,51 @@ Asserted twice: the renderer drops a body even when handed one, and the export q
 selects it in the first place — which is what protects `library.json`, since that file is
 serialised straight from the query result. Both assertions were perturbed and seen to fail.
 
+### What shipping it cost — two production incidents, both mine
+
+Recorded because both were caught on production rather than by the suite, and both had a
+guard that could have existed beforehand.
+
+**1 · A signed-out `/sources` answered 500 instead of redirecting.** The proxy's `GUARDED`
+list is hand-written and the route was never added. Not a leak — RLS scopes every read —
+but a 500 on a shipped page. The list was the defect, so `guarded-routes.test.ts` now holds
+it to the route tree in both directions; `/export` is recorded as the one self-guarded
+exception, since it answers 401 rather than redirecting so a browser cannot save the
+sign-in page's HTML under the name of a zip.
+
+**2 · `sources` shipped with no `GRANT`, and took the whole app down.** Every page in the
+(app) group answered 500, not only `/sources`, because `countSources()` runs in the shared
+layout. The second time this has happened — `20260828052220_topics_grants.sql` exists for
+exactly this and explains it in its own comment.
+
+The trap is that **no test against the local database could have caught it.** Supabase
+grants new `public` tables through default ACLs locally, so `has_table_privilege` passes
+whether or not the grant migration exists; a hosted project does not apply those defaults
+to a table created by a migration on a running project. `topics_test.sql`'s privilege
+assertions look like the guard and never were one. So the guard reads the migrations:
+`table-grants.test.ts` extracts every `create table public.x` and asserts a matching grant.
+
+The general lesson, recorded in ARCHITECTURE.md: when local and production differ in a
+*default*, testing against local proves nothing about production — the assertion has to
+move to the artefact that is identical in both.
+
+### Verified on production, then cleaned up
+
+The whole list walked by hand against airlocklab.com: a source added with a transcript and
+distilled from, the source line on the topic and the entry in the derived list, transcript
+deleted with the source and entries surviving, source deleted with the topic surviving and
+its source line gone, Sources reached from the library head cluster beside Settings at
+mobile width with the tab bar untouched, and an export whose `library.json` carried
+`transcript_words: 20` and no `transcript` key at all. Anon was denied on the production
+host at the GRANT gate — it never reaches the policies, since the grant names only
+`authenticated`. Everything created was deleted.
+
+Two copy defects found in that walk and fixed after: `1 topics`, and a delete confirmation
+whose verb and pronoun did not agree with its count. The pluralisation now lives in
+`lib/domain/plural.ts` and the confirmation's whole clause in `deleteSourceCopy`, tested at
+nothing, one and many — the noun was pluralised at the call site, which is exactly what
+made the verb and pronoun easy to miss.
+
 ### Found, not fixed
 
 The library head's `+ Add topic` button carries `className="hidden md:inline-flex"`, but
@@ -985,16 +1030,16 @@ this one.
 
 | | |
 | --- | --- |
+| [#22](https://github.com/sinhasagar01/recall/issues/22) | `+ Add topic` is visible at mobile width and makes the library page 106px wider than a 390px screen. `hidden` loses to `Button`'s hardcoded `inline-flex` in the same Tailwind display group, so any consumer passing a display class hits it silently. Found during arc 2, unrelated to it |
 | [#21](https://github.com/sinhasagar01/recall/issues/21) | `journey.spec.ts` leaks a user per run and fails silently |
 | [#20](https://github.com/sinhasagar01/recall/issues/20) | Keep the recall attempt. **Stays open deliberately** — it was properly planned, it conflicts with nothing in arcs 2–6, and closing it because the queue moved on would discard the plan |
 | [#7](https://github.com/sinhasagar01/recall/issues/7) | Subscriptions, Stripe webhook, quota enforcement. Only when there is something to bill for |
 
-**The apprenticeship arcs.** Arc 1 — evidence on a topic — is closed. Four remain, plus a
-sixth that is a different kind of decision:
+**The apprenticeship arcs.** Arcs 1 and 2 — evidence on a topic, and sources — are closed.
+Three remain, plus a sixth that is a different kind of decision:
 
 | Arc | |
 | --- | --- |
-| 2 · Sources | Where a topic came from, so you can go back to it |
 | 3 · Phases | A subject studied as a set rather than an endless ten |
 | 4 · Ledger | The record of what was done, over time |
 | 5 · Today | One surface answering what to do now |

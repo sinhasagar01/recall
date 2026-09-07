@@ -12,6 +12,7 @@ import { removeSource, removeTranscript, toggleCaveat } from '@/app/(app)/source
 import { topicPath } from '@/lib/domain/library'
 import {
   definitionFromSelection,
+  deleteSourceCopy,
   extractionCount,
   extractionsFor,
   transcriptState,
@@ -43,6 +44,8 @@ import type { Topic } from '@/lib/domain/types'
  * does for you.
  */
 export function SourceWorkspace({ source, entries }: { source: Source; entries: Topic[] }) {
+  // The confirmation's wording agrees with the count — see deleteSourceCopy.
+  const deleteCopy = deleteSourceCopy(entries.length)
   const router = useRouter()
   const [editing, setEditing] = useState(false)
   const [confirming, setConfirming] = useState<'source' | 'transcript' | null>(null)
@@ -321,11 +324,8 @@ export function SourceWorkspace({ source, entries }: { source: Source; entries: 
           {confirming === 'source' ? (
             <>
               This removes the source record and its transcript.{' '}
-              <strong className="font-medium text-ink">
-                The {entries.length} {entries.length === 1 ? 'entry' : 'entries'} you distilled from
-                it stay in your library
-              </strong>{' '}
-              — they lose the line saying where they came from. It can&rsquo;t be undone.
+              <strong className="font-medium text-ink">{deleteCopy.kept}</strong>
+              {deleteCopy.lost === '' ? '' : ` — ${deleteCopy.lost}`}. It can&rsquo;t be undone.
             </>
           ) : (
             <>

@@ -1,3 +1,4 @@
+import { plural } from '@/lib/domain/plural'
 import type { Topic } from '@/lib/domain/types'
 
 /**
@@ -119,7 +120,7 @@ export function extractionsFor(
     {
       kind: 'definition',
       label: 'A definition',
-      detail: topics.length === 0 ? 'no topics yet' : `${topics.length} topics`,
+      detail: topics.length === 0 ? 'no topics yet' : plural(topics.length, 'topic'),
       done: topics.length > 0,
       manual: false,
     },
@@ -175,6 +176,37 @@ export function isUndistilled(
 
   const age = now.getTime() - Date.parse(source.created_at)
   return age >= UNDISTILLED_WINDOW_DAYS * 24 * 60 * 60 * 1000
+}
+
+/**
+ * What the delete confirmation says, and why it is derived rather than written
+ * inline.
+ *
+ * The sentence has three things that have to agree with the count — the noun, the
+ * verb, and the pronoun — and only the noun was doing so: at one entry it read
+ * *"The 1 entry you distilled from it stay in your library — they lose the line
+ * saying where they came from."* Pluralising the noun at the call site is what
+ * makes the other two easy to miss, so the whole clause lives here and is tested
+ * at nothing, one and many.
+ *
+ * Zero is not a smaller version of the same sentence. "The 0 entries stay in your
+ * library" is a claim about nothing, so it gets its own wording and no
+ * consequence clause — there is nothing to lose a line.
+ */
+export function deleteSourceCopy(entryCount: number): { kept: string; lost: string } {
+  if (entryCount === 0) {
+    return { kept: 'Nothing has been distilled from it yet', lost: '' }
+  }
+
+  const subject = entryCount === 1 ? 'it loses' : 'they lose'
+  const possessive = entryCount === 1 ? 'it came' : 'they came'
+
+  return {
+    kept: `The ${plural(entryCount, 'entry', 'entries')} you distilled from it ${
+      entryCount === 1 ? 'stays' : 'stay'
+    } in your library`,
+    lost: `${subject} the line saying where ${possessive} from`,
+  }
 }
 
 /**
