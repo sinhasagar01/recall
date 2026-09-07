@@ -908,7 +908,7 @@ the absolute positioning and watching it fail.
 | | |
 | --- | --- |
 | [#21](https://github.com/sinhasagar01/recall/issues/21) | `journey.spec.ts` leaks a user per run and fails silently |
-| [#20](https://github.com/sinhasagar01/recall/issues/20) | Keep the recall attempt — planned, never approved, still open |
+| [#20](https://github.com/sinhasagar01/recall/issues/20) | Keep the recall attempt. **Stays open deliberately** — it was properly planned, it conflicts with nothing in arcs 2–6, and closing it because the queue moved on would discard the plan |
 | [#7](https://github.com/sinhasagar01/recall/issues/7) | Subscriptions, Stripe webhook, quota enforcement. Only when there is something to bill for |
 
 **The apprenticeship arcs.** Arc 1 — evidence on a topic — is closed. Four remain, plus a
@@ -920,8 +920,39 @@ sixth that is a different kind of decision:
 | 3 · Phases | A subject studied as a set rather than an endless ten |
 | 4 · Ledger | The record of what was done, over time |
 | 5 · Today | One surface answering what to do now |
-| 6 · AI | Excluded by the product spec today. A decision to be argued on its own merits, not smuggled in with a feature |
+| 6 · AI | **Decided, not open.** See below |
 
-Nothing in arcs 2–6 is being designed here, and each of the exclusions the spec already
-holds — no scheduling, no dashboard, no analytics, no gamification — survives until a
-decision explicitly overturns it.
+Nothing in arcs 2–5 is being designed here, and each of the other exclusions the spec
+holds — **no scheduling, no dashboard, no analytics, no gamification** — survives until a
+decision explicitly overturns it. Arcs 2 to 5 inherit them.
+
+### Arc 6 — AI is decided, and the no-AI exclusion is being retired
+
+Recorded here rather than argued later. **The exclusion is retired deliberately, after the
+five screens are built** — not relaxed quietly inside a feature, and not before the product
+it is meant to serve exists.
+
+**Five uses, and only these five:**
+
+1. Challenge my mental model — argue with what I wrote, rather than replace it.
+2. Find what I missed in a video.
+3. Draft retrieval questions.
+4. Draft quiz distractors.
+5. Interview mode.
+
+**Explicitly NOT: generating definitions or mental models.** Writing those *is* the
+learning, and a generated mental model is one I have never had. The library's value is that
+26 of 26 mental models are hand-written corrections of a wrong model — a generated one
+would look identical and teach nothing. This is the line the feature exists on the far side
+of.
+
+**Guardrails, recorded now so they are inherited rather than argued at the time:**
+
+- **The key is server-side only.** `NEXT_PUBLIC_` on an AI key is the same class of mistake
+  as `NEXT_PUBLIC_` on the Supabase secret key, and `secret-key-boundary.test.ts` already
+  establishes how that rule is held: a source-level assertion, not a convention.
+- **Every call is opt-in, per action.** Nothing generates on save. Capture stays the cheap,
+  synchronous thing it is today.
+- **Nothing AI-written is ever stored as a topic field.** Not `definition`, not
+  `mental_model`, not a `note`. If a suggestion is worth keeping, it is worth retyping —
+  and retyping is the point.
