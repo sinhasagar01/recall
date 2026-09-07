@@ -1086,6 +1086,47 @@ first reported "anchor not found". Re-run standalone and verified in `informatio
 it fails both no-stored-boolean assertions. Had I trusted the first run I would have
 reported the arc's central guard as unproven.
 
+### Shipped, and the ordering correction it produced
+
+Deployed migration-first rather than push-first, which is a change from the instruction as
+written. Pushing `master` auto-triggers the Vercel deploy, so "push, merge, push — then
+`supabase db push` first" fixes the order of *verification* while leaving the order of
+*events* unchanged: the merge push had already started the deploy. Arc 2's outage was the
+same mistake in full; this was half of it.
+
+Run instead: migrate, confirm both tables live, push, deploy, confirm SHA and alias.
+Recorded in ARCHITECTURE.md as a rule — migrate first when the migration is additive and
+unreferenced by live code, because "first" has to mean first in wall-clock terms.
+
+The `authenticated` grant needed no separate check: `phaseCounts()` runs in the shared
+layout, so a missing grant 500s every page. The first authenticated page load rendering with
+`Phases 0 / 0` in the rail is the proof, and it is the same signal arc 2's outage gave in
+reverse.
+
+### Verified on production, then cleaned up
+
+The whole walk by hand: phase added and marked current; capability added with the box
+unchecked and **no** reason line; a topic linked and both halves named; practised to strong
+and the reason flipped to the opposite half; a rebuild recorded and **the box checked
+itself** with nothing clicked on the phase screen; the capability line on the topic between
+Definition and Evidence; the phase deleted with the capability gone and the topic surviving
+without its line. Anon denied on both new tables across six operations, all 42501, against
+`yzumtamtjhtzfoeszbtw.supabase.co`. Everything created was deleted.
+
+Two things beyond the checklist. The crimson correction is live — "all weak or new" renders
+crimson because it *is* weak confidence, while "no rebuild, challenge or production" renders
+grey. And when the capability became demonstrated, "· current" disappeared: the phase was
+fully demonstrated, so no phase is current. That null case was not on the list and it
+worked.
+
+**One thing was not verified on production: the 390px numbers.** The browser tab reported
+resizes as successful while `innerWidth` stayed 1920 and `outerWidth` read 0, so no genuine
+mobile viewport was available. The cluster was confirmed structurally on production — five
+items including Delete account, `flex-wrap`, `md:hidden`, tab bar untouched — and the
+measurements above were taken at exactly 390×844 against the production build of this
+commit, which is the identical bundle but not a measurement on airlocklab.com. Recorded as a
+gap rather than blurred into a claim.
+
 ### Fixture
 
 The seed carries **both opposite middle states**, because those are the point of the screen:
@@ -1131,17 +1172,19 @@ container under `justify-between` is worth a measurement rather than an argument
 
 | | |
 | --- | --- |
-| [#22](https://github.com/sinhasagar01/recall/issues/22) | `+ Add topic` is visible at mobile width and makes the library page 106px wider than a 390px screen. `hidden` loses to `Button`'s hardcoded `inline-flex` in the same Tailwind display group, so any consumer passing a display class hits it silently. Found during arc 2, unrelated to it |
 | [#21](https://github.com/sinhasagar01/recall/issues/21) | `journey.spec.ts` leaks a user per run and fails silently |
 | [#20](https://github.com/sinhasagar01/recall/issues/20) | Keep the recall attempt. **Stays open deliberately** — it was properly planned, it conflicts with nothing in arcs 2–6, and closing it because the queue moved on would discard the plan |
 | [#7](https://github.com/sinhasagar01/recall/issues/7) | Subscriptions, Stripe webhook, quota enforcement. Only when there is something to bill for |
 
-**The apprenticeship arcs.** Arcs 1 and 2 — evidence on a topic, and sources — are closed.
-Three remain, plus a sixth that is a different kind of decision:
+**Closed since:** [#22](https://github.com/sinhasagar01/recall/issues/22), the 390px
+overflow — fixed on `Button` rather than at the call site, since any consumer passing a
+display class hit the same silent loss. 106px to 0, measured before and after on the issue.
+
+**The apprenticeship arcs.** Arcs 1, 2 and 3 — evidence on a topic, sources, and phases and
+capabilities — are closed. Two remain, plus a sixth that is a different kind of decision:
 
 | Arc | |
 | --- | --- |
-| 3 · Phases | A subject studied as a set rather than an endless ten |
 | 4 · Ledger | The record of what was done, over time |
 | 5 · Today | One surface answering what to do now |
 | 6 · AI | **Decided, not open.** See below |

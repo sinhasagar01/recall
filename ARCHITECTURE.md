@@ -1596,6 +1596,36 @@ the toolbar and the category select. It was removed rather than left in place be
 was the easy thing to reach for, and reaching for it is what put an unbounded read on five
 pages.
 
+## Migrate first, then push — because pushing IS deploying
+
+The deploy is not a separate step you take after pushing. **Pushing to `master` triggers
+it**, within seconds and without asking. Any plan phrased as "push, then migrate" therefore
+contains a window in which the new code is live against the old schema — which is the
+thing such a plan is usually written to prevent.
+
+> **When a migration is additive and unreferenced by the code already in production,
+> apply it BEFORE pushing. Only then push.** There is then no moment at which the running
+> app can meet a table it cannot read.
+
+"Additive and unreferenced" is the condition that makes this free, and it is worth
+checking rather than assuming: new tables, new nullable columns, new grants. The live code
+does not mention them, so applying early changes nothing for anyone. A destructive or
+narrowing migration — dropping a column, tightening a constraint — inverts the risk and
+has to go the other way, after the code that stopped depending on it is live.
+
+Both halves of this have now cost something. **Arc 2** deployed first and migrated after,
+and shipped an outage: `sources` reached production before its grants, and every page in
+the `(app)` group answered 500 because a count ran in the shared layout. **Arc 3** was
+instructed as "push, merge, push — then `supabase db push` first", which reads as the
+correction and is only half of one: it fixes the order of *verification* while leaving the
+order of *events* unchanged, because the merge push had already started the deploy. Arc 3
+was run migration-first instead, and the sequence was: migrate, confirm both tables live,
+push, deploy, confirm SHA and alias.
+
+The general shape, which is the part worth keeping: **an instruction about ordering is only
+as good as its model of what triggers what.** "First" has to mean first in wall-clock
+terms, not first in the list you wrote.
+
 ## Production configuration is in the repo
 
 `supabase/config.toml` ends with a `[remotes.production]` block. Everything above it
