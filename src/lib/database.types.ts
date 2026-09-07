@@ -34,6 +34,71 @@ export type Database = {
   }
   public: {
     Tables: {
+      capabilities: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          phase_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          phase_id: string
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          phase_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "capabilities_phase_id_fkey"
+            columns: ["phase_id"]
+            isOneToOne: false
+            referencedRelation: "phases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      phases: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          sources_text: string | null
+          updated_at: string
+          user_id: string
+          when_text: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          sources_text?: string | null
+          updated_at?: string
+          user_id?: string
+          when_text?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          sources_text?: string | null
+          updated_at?: string
+          user_id?: string
+          when_text?: string | null
+        }
+        Relationships: []
+      }
       sources: {
         Row: {
           caveat_noted: boolean
@@ -78,6 +143,7 @@ export type Database = {
       }
       topics: {
         Row: {
+          capability_id: string | null
           category: string | null
           challenge_at: string | null
           challenge_note: string | null
@@ -108,6 +174,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          capability_id?: string | null
           category?: string | null
           challenge_at?: string | null
           challenge_note?: string | null
@@ -138,6 +205,7 @@ export type Database = {
           user_id?: string
         }
         Update: {
+          capability_id?: string | null
           category?: string | null
           challenge_at?: string | null
           challenge_note?: string | null
@@ -168,6 +236,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "topics_capability_id_fkey"
+            columns: ["capability_id"]
+            isOneToOne: false
+            referencedRelation: "capabilities"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "topics_source_id_fkey"
             columns: ["source_id"]

@@ -1,7 +1,7 @@
 import { Zip, ZipPassThrough } from 'fflate'
 import { NextResponse } from 'next/server'
 
-import { fetchImage, readEntireLibrary, readSourcesForExport } from '@/lib/data/export'
+import { fetchImage, readCapabilitiesForExport, readEntireLibrary, readSourcesForExport } from '@/lib/data/export'
 import { exportFilename, imageEntryName, renderLibraryMarkdown } from '@/lib/domain/export'
 import { createClient } from '@/lib/supabase/server'
 
@@ -32,9 +32,10 @@ export async function GET() {
   if (!data?.claims) return NextResponse.json({ error: 'Not signed in' }, { status: 401 })
 
   const exportedAt = new Date()
-  const [topics, { sources, sourceOf }] = await Promise.all([
+  const [topics, { sources, sourceOf }, { capabilities, capabilityOf }] = await Promise.all([
     readEntireLibrary(),
     readSourcesForExport(),
+    readCapabilitiesForExport(),
   ])
 
   const stream = new ReadableStream<Uint8Array>({
@@ -88,7 +89,14 @@ export async function GET() {
         write(
           'library.md',
           encoder.encode(
-            renderLibraryMarkdown(topics, { exportedAt, missingPaths, sources, sourceOf }),
+            renderLibraryMarkdown(topics, {
+              exportedAt,
+              missingPaths,
+              sources,
+              sourceOf,
+              capabilities,
+              capabilityOf,
+            }),
           ),
         )
 
@@ -118,6 +126,8 @@ export async function GET() {
                   'Transcript bodies are deliberately not exported: scratch text pasted from elsewhere, not your writing. transcript_words is kept so their absence reads as a decision.',
                 sources,
                 sourceOf,
+                capabilities,
+                capabilityOf,
               },
               null,
               2,

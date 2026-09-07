@@ -390,3 +390,51 @@ describe('sources in library.md', () => {
     expect(out).toContain('no link')
   })
 })
+
+describe('capabilities in library.md', () => {
+  const caps = [
+    { id: 'c1', name: 'Explain the event loop without notes', phase: 'Core foundations', demonstrated: true },
+    { id: 'c2', name: 'Trace a click end to end', phase: 'Core foundations', demonstrated: false },
+  ]
+
+  const withCaps = (capabilityOf: Record<string, string> = {}) =>
+    renderLibraryMarkdown([makeTopic({ id: 't1', title: 'Event loop' })], {
+      exportedAt: NOW,
+      missingPaths: new Set<string>(),
+      capabilities: caps,
+      capabilityOf,
+    })
+
+  it('puts the capability on the topic that serves it', () => {
+    const out = withCaps({ t1: 'c1' })
+
+    expect(out).toContain('## What this is for')
+    expect(out).toContain('Explain the event loop without notes — Core foundations')
+  })
+
+  it('omits the section for a topic with no capability', () => {
+    expect(withCaps()).not.toContain('## What this is for')
+  })
+
+  it('groups capabilities under their phase and marks the derived state', () => {
+    const out = withCaps({ t1: 'c1' })
+
+    expect(out).toContain('# Phases and capabilities')
+    expect(out).toContain('## Core foundations')
+    expect(out).toContain('- [demonstrated] Explain the event loop without notes')
+    expect(out).toContain('- [not yet] Trace a click end to end')
+  })
+
+  it('says in the file that demonstrated is derived, never a flag anyone ticked', () => {
+    /*
+      Without this, a reader would reasonably assume `[demonstrated]` was a stored
+      boolean someone ticked — the one thing the feature refuses. The file has to
+      carry its own explanation, the way the transcript omission does.
+    */
+    expect(withCaps({ t1: 'c1' })).toMatch(/derived from your library every time, never a\nflag anyone ticked/)
+  })
+
+  it('omits the whole section when there are no capabilities', () => {
+    expect(render([makeTopic({})])).not.toContain('# Phases and capabilities')
+  })
+})

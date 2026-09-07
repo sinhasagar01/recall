@@ -94,11 +94,14 @@ export function LibraryView({
   data,
   account,
   sourceOptions,
+  capabilityOptions,
 }: {
   data: LibraryData
   account: { topics: number; images: number }
   /** Passed alongside rather than folded into LibraryData: a source is not library data. */
   sourceOptions: { id: string; title: string }[]
+  /** Grouped by phase — a capability's wording only makes sense under its phase. */
+  capabilityOptions: { phase: string; options: { id: string; name: string }[] }[]
 }) {
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -310,17 +313,30 @@ export function LibraryView({
           has two destinations plus the FAB, with no room for it. It sits here,
           beside the title on the default destination, so it is always one tap away.
         */}
-        <div className="flex items-center gap-2 md:hidden">
-          {/* The rail is hidden here, so the account surface lives in this head. */}
-          {/*
-            Sources is reached from here on a phone, beside Settings — not from a
-            fourth tab entry. The tab bar stays two destinations plus add
-            (DESIGN.md, "Mobile has two destinations plus add"), and Sources
-            follows the precedent Settings set when it landed in the account
-            surface rather than the nav. sources-reference.html drew the mobile
-            Sources screens without showing the route in; that gap is corrected in
-            the file.
-          */}
+        {/*
+          The rail is hidden here, so the account surface lives in this head.
+
+          Phases and Sources are reached from here on a phone, beside Settings —
+          not from extra tab entries. The tab bar stays two destinations plus add
+          (DESIGN.md, "Mobile has two destinations plus add"), and both follow the
+          precedent Settings set when it landed in the account surface rather than
+          the nav.
+
+          `flex-wrap` is load-bearing at five items, and does more than prevent an
+          overflow. Measured at 390px: five inline overflows the page by 51px;
+          wrapped, the cluster stops demanding one line and collapses from 290px
+          to 164px, which gives the title column back 111px → 166px so "My
+          knowledge" stops wrapping. The head gets SHORTER, 150px → 95px. See
+          TASKS.md — the prediction that it would grow by one line was wrong.
+
+          phases-reference.html redraws this as a chip row and omits Delete
+          account; both are corrected in the file. A drawing that drops a shipped
+          control is how a feature quietly disappears.
+        */}
+        <div className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1 md:hidden">
+          <Link href="/phases" className="rounded-md px-1.5 py-1 text-label text-ink-2 hover:bg-surface-2 hover:text-ink">
+            Phases
+          </Link>
           <Link href="/sources" className="rounded-md px-1.5 py-1 text-label text-ink-2 hover:bg-surface-2 hover:text-ink">
             Sources
           </Link>
@@ -456,6 +472,7 @@ export function LibraryView({
         initialTitle={prefillTitle}
         sourceId={distilSource}
         sourceOptions={sourceOptions}
+        capabilityOptions={capabilityOptions}
         initialDefinition={distilDefinition ?? ''}
         initialKind={params.get('kind') === 'quiz' ? 'quiz' : 'topic'}
       />

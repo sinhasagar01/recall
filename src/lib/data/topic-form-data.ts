@@ -14,6 +14,7 @@ export function readTopicForm(formData: FormData): TopicFormInput {
   return {
     kind: kindFrom(formData.get('kind')),
     sourceId: String(formData.get('source_id') ?? ''),
+    capabilityId: String(formData.get('capability_id') ?? ''),
     title: String(formData.get('title') ?? ''),
     definition: String(formData.get('definition') ?? ''),
     mentalModel: String(formData.get('mental_model') ?? ''),

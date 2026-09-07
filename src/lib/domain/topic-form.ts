@@ -19,6 +19,7 @@ import type { Kind } from '@/lib/domain/types'
 export interface TopicFormInput {
   kind: string
   sourceId: string
+  capabilityId: string
   title: string
   definition: string
   mentalModel: string
@@ -41,6 +42,7 @@ export type ParsedTopicForm =
             category: string | null
             tags: string[]
             source_id: string | null
+            capability_id: string | null
             options: null
             correct_option: null
           }
@@ -52,6 +54,7 @@ export type ParsedTopicForm =
             category: string | null
             tags: string[]
             source_id: string | null
+            capability_id: string | null
             options: string[]
             correct_option: number
           }
@@ -72,6 +75,7 @@ export function parseTopicForm(input: TopicFormInput): ParsedTopicForm {
     tags: input.tags,
     // Empty means "no source", never a blank string that would fail the FK.
     source_id: input.sourceId.trim() === '' ? null : input.sourceId.trim(),
+    capability_id: input.capabilityId.trim() === '' ? null : input.capabilityId.trim(),
   }
 
   if (input.kind === 'quiz') {

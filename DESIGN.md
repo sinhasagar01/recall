@@ -614,7 +614,85 @@ the export query never selects the body in the first place, which is what protec
 
 ---
 
-## 8. Copy rules
+## 8. Phases and capabilities
+
+`phases-reference.html` is the visual source of truth, read the way the others are:
+the screens win on visual and interaction detail, and a shipped decision with recorded
+reasoning wins over the screens.
+
+A phase is a stretch of weeks and the handful of things you will be able to do at the end
+of it. A capability is one of those things, **written as an ability** — "Explain the event
+loop without notes", not "Event loop".
+
+### A capability is demonstrated, never ticked
+
+Two halves, both required: **something linked is at okay or better on recall**, and
+**something linked carries rebuild, challenge or production evidence**. Recall plus a
+rebuild, challenge or capstone decision.
+
+The box has no click handler, and there is no column behind it — `phases_test.sql` asserts
+the exact column set of both tables so a stored `demonstrated` cannot be added quietly. A
+course ending changes nothing here, and neither does your opinion of yourself on a good
+day.
+
+The evidence half only counts **topics**. A quiz can be linked and can satisfy the recall
+half; it can never satisfy the evidence half, because a quiz is a retrieval device rather
+than something you build with.
+
+### An undemonstrated capability says which half is missing
+
+*"You can say it, but you have not built with it"* and *"You have built with it, but you
+cannot say it cold"* are **opposite instructions**, and a bare unchecked box gives neither.
+The sentences live in the domain beside the rule that produces them, so the two cannot
+drift. A capability with nothing linked gets no diagnosis — the evidence line already says
+"nothing linked", and there is nothing yet to diagnose.
+
+### Colour
+
+`--ok` marks demonstrated. It is the third place this product uses green and it belongs to
+the same rule as the first two: the thing it marks is **binary and derived from facts**. A
+quiz's answer is right or it is not, a piece of evidence is recorded or it is not, and a
+capability's two halves are both true or they are not. None of them is an opinion.
+
+`--flag` appears in exactly one place on this screen: **"at weak" and "all weak or new"**,
+which *are* weak confidence, the first case the rule already names. "No rebuild, challenge
+or production" and "nothing linked" are **absences, not errors**, and take ordinary meta
+ink. `phases-reference.html` drew all four in crimson and has been corrected. The rule is
+not widened.
+
+### A phase is current when it is the earliest not fully demonstrated
+
+Derived, never stored, and never a date. It changes when evidence changes and at no other
+time — nothing on this screen moves because a week passed. A phase with no capabilities
+counts as unfinished: you have arrived and not yet written down what you are there to
+learn. If every phase is fully demonstrated, none is current.
+
+### "When" is free text
+
+Never a date, never parsed, never compared to today. A date would let the product work out
+that you are behind, and it is not going to do that. There is no date arithmetic anywhere
+in this feature, and the column is `text` with a pgTAP assertion holding it there.
+
+No percentage, no burn-down, no week counter. "2 of 4" is a count you can click through to,
+which is the only kind of number this product carries.
+
+### Deleting
+
+Deleting a phase **deletes its capabilities and keeps every topic** — `on delete cascade`
+one way, `on delete set null` the other, in the same migration. The confirmation names
+both, and its sentence is built in the domain so its two counts and its verb agree.
+
+### On a phone
+
+Phases joins Sources in the library head cluster beside Settings — not a tab entry. The
+tab bar stays two destinations plus add (rule 13). At five items the row **wraps**, which
+does more than avoid an overflow: the cluster stops demanding one line and collapses, the
+title column grows back, and the head gets *shorter*. Delete account stays in the cluster;
+the reference omitted it and has been corrected.
+
+---
+
+## 9. Copy rules
 
 Sentence case everywhere. Active voice. An action keeps its name through the
 whole flow — the button that says "Save topic" produces a toast that says
@@ -626,7 +704,7 @@ invitations, not apologies.
 
 ---
 
-## 9. Accessibility floor
+## 10. Accessibility floor
 
 Not optional, not polish-phase:
 
@@ -655,7 +733,7 @@ technology. Where the two disagree, this is the rule.
 
 ---
 
-## 10. Out of scope
+## 11. Out of scope
 
 The mock shows a few things beyond the original spec. Ship them only if the core
 loop is done: search-term highlighting in card titles, "Review the 2 you missed"

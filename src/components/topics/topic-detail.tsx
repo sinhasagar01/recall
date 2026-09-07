@@ -10,6 +10,8 @@ import { Lightbox } from '@/components/ui/lightbox'
 import { Modal } from '@/components/ui/modal'
 import { Definition, MentalModel, RegisterSection } from '@/components/ui/register'
 import { EvidenceSection } from '@/components/evidence/evidence-section'
+import { TopicCapabilityLine } from '@/components/phases/topic-capability-line'
+import type { Capability, Phase } from '@/lib/domain/phases'
 import { TopicSourceLine } from '@/components/sources/topic-source-line'
 import type { SourceSummary } from '@/lib/domain/sources'
 import { takesEvidence } from '@/lib/domain/evidence'
@@ -30,6 +32,8 @@ export function TopicDetail({
   imageUrl,
   source,
   sourceOptions,
+  capability,
+  capabilityOptions,
 }: {
   topic: Topic
   categories: CategoryOption[]
@@ -38,6 +42,9 @@ export function TopicDetail({
   /** Read separately: `source_id` is not on the domain Topic. */
   source: { source: SourceSummary; siblings: number } | null
   sourceOptions: { id: string; title: string }[]
+  /** Read separately too: `capability_id` is not on the domain Topic either. */
+  capability: { capability: Capability; phase: Phase } | null
+  capabilityOptions: { phase: string; options: { id: string; name: string }[] }[]
 }) {
   const [editing, setEditing] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
@@ -143,6 +150,16 @@ export function TopicDetail({
       */}
       {source ? <TopicSourceLine source={source.source} siblings={source.siblings} /> : null}
 
+      {/*
+        After the source and before Evidence: where it came from, then what it is
+        for, then what you have done with it. Arrives as a prop rather than off
+        the topic because `capability_id` is deliberately not on the domain Topic;
+        see topic-mapping.ts.
+      */}
+      {capability ? (
+        <TopicCapabilityLine capability={capability.capability} phase={capability.phase} />
+      ) : null}
+
       {takesEvidence(topic) ? <EvidenceSection topic={topic} /> : null}
 
       <RegisterSection title="Recall history">
@@ -189,8 +206,10 @@ export function TopicDetail({
         rather than an effect copying props into state after the fact.
       */}
       <TopicSheet
-          sourceId={source?.source.id ?? null}
-          sourceOptions={sourceOptions}
+        sourceId={source?.source.id ?? null}
+        sourceOptions={sourceOptions}
+        capabilityId={capability?.capability.id ?? null}
+        capabilityOptions={capabilityOptions}
         key={topic.id}
         open={editing}
         onClose={() => setEditing(false)}

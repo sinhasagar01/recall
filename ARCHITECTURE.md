@@ -164,6 +164,31 @@ The cost is asymmetric, which is what makes the rule worth having: a screenshot 
 agrees costs one call, and a false failure costs a wrong bug report, or worse, a "fix" to
 something that was never broken.
 
+### A clause can be correct, load-bearing, and not independently observable
+
+Arc 3 perturbed the `phases` update policy's `with check` to `true` and the suite stayed
+**green**. The obvious readings — "the clause is redundant" or "delete it" — are both
+wrong.
+
+The forged-owner update is refused before that clause is ever reached. **Postgres applies
+the SELECT policy to the NEW row on update**, so moving a row to another owner would make
+it invisible to you, and that is what raises. Confirmed directly: relax
+`phases_select_own` to `using (true)` and the same reassignment succeeds.
+
+The two policies test the *same expression* — `(select auth.uid()) = user_id` — so **no
+statement can separate them.** The update `with check` is defence in depth against a future
+change to the select policy, and it is unobservable while that policy stands.
+
+> **When a perturbation does not bite, there are exactly three honest outcomes: the clause
+> is redundant, the test is missing, or the clause is unobservable given another policy.
+> Say which.** "It did not bite" is not a conclusion.
+
+The consequence for the test rather than the schema: the assertion that looked like it
+proved the update `with check` proved the select policy instead. **Relabel, do not delete.**
+It still asserts something true and worth holding — a row cannot be moved to another owner
+— and it now says that rather than claiming evidence it never had. An assertion that passes
+for a reason nobody has checked is the thing this whole discipline exists to prevent.
+
 ### Testing RLS: a `with check` failure raises, a `using` failure does not
 
 A fact about Postgres rather than about this schema, and every future table will need it.
@@ -1799,6 +1824,29 @@ The general form: when local and production differ in a *default*, no amount of
 testing against local proves anything about production. The assertion has to move to
 the artefact that is identical in both — here, the SQL itself.
 
+### The GRANT gap is now demonstrated, not argued
+
+Arc 2 learned this from an outage. Arc 3 proved it on purpose: **both grants were removed
+from the phases migration and the entire pgTAP suite stayed green.** 59 assertions,
+including four `has_table_privilege` checks per table, and not one of them moved.
+
+The reason is the one the outage taught. The local stack grants new tables in `public`
+through Supabase's default ACLs, so `has_table_privilege` is true whether or not any
+migration says so. A hosted project does not apply those defaults to a table created by a
+migration on a running project. **The local database is structurally incapable of answering
+this question**, which means every pgTAP privilege assertion in this repo catches a fresh
+database and nothing else.
+
+The only guard is `src/lib/data/table-grants.test.ts`, which reads the **migrations** rather
+than the database. Perturbed in arc 3 by deleting both grant statements, it named all eight
+missing privileges across the two tables.
+
+> **Where local and production differ in a default, no test against local proves anything
+> about production. The assertion has to move to the artefact that is identical in both.**
+
+Worth stating plainly because the trap is not the mistake, it is the *feedback*: a full
+green suite is exactly what you get when this is broken.
+
 ### RLS and GRANT fail in opposite directions, which is why the loud one hides
 
 Recorded under topics and worth restating with a second instance behind it. Without
@@ -1807,3 +1855,45 @@ error, which reads like the data vanished. The loud failure is the safe one, and
 temptation after fixing it is to assume the quiet gate was also exercised — it was
 not. Here the policies were correct throughout and completely irrelevant, because
 GRANT is checked first and nothing ever reached them.
+
+### Why a capability is a table and not a text[] on phases
+
+The arc 2 rule was "do not invent an entity for something that is already a topic", and it
+admits phases and capabilities the way it admitted sources: neither is practised, neither
+has a confidence, neither is graded. But that only says they do not belong in `topics`. The
+sharper question was whether capabilities could be an array column on `phases`.
+
+They could not, for one decisive reason and two supporting ones:
+
+- **`topics.capability_id` needs a stable FK target.** An array element has no identity, so
+  the central link of the whole arc — a topic pointing at one capability — is
+  unexpressible. Everything else follows from this.
+- **`on delete set null` needs a real referent.** Editing a capability's wording would
+  silently rewrite the array entry that every linked topic depends on.
+- Each capability carries its own derived state and its own row in the UI.
+
+Two tables because there are two entities with two lifetimes, and the migration carries
+both cascade directions at once: `on delete cascade` from phase to capability, `on delete
+set null` from capability to topic. Written together on purpose — they are the same
+sentence in the delete confirmation, and reading them side by side is what makes that
+sentence checkable.
+
+### Three columns omitted from the domain Topic, for two reasons
+
+`search_text` because nothing reads it. `source_id` and `capability_id` because plenty
+reads them and the queue must not be able to.
+
+The pattern is now established enough to state as a rule: **when a new table links to
+`topics`, its foreign key goes on the row and stays off the domain type.** If the domain
+`Topic` carried it, `TopicBoundaryIsSound` would oblige every read to return it — including
+`practice_ordered_page` — and the boundary test could no longer forbid *every* column of
+the new concept in a queue module without carving out an exception for the one module it
+most needs to cover.
+
+The compiler enforces the choice rather than a convention: a new column on the row fails
+`TopicBoundaryIsSound` at build time until someone decides explicitly whether it belongs on
+the domain type. In arc 3 that failure arrived before the line was written, which is the
+right order.
+
+The cost, measured across two arcs: one word in one `Omit`, one prop per consumer, and one
+extra query on the topic detail page per link. Two boundaries with no exception in either.

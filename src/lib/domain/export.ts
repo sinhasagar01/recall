@@ -82,6 +82,8 @@ export function renderLibraryMarkdown(
     missingPaths,
     sources = [],
     sourceOf = {},
+    capabilities = [],
+    capabilityOf = {},
   }: {
     exportedAt: Date
     missingPaths: Set<string>
@@ -89,6 +91,8 @@ export function renderLibraryMarkdown(
     sources?: SourceSummary[]
     /** topic id → source id, since `source_id` is not on the domain Topic. */
     sourceOf?: Record<string, string>
+    capabilities?: ExportCapability[]
+    capabilityOf?: Record<string, string>
   },
 ): string {
   const missingCount = topics.filter(
@@ -211,12 +215,26 @@ export function renderLibraryMarkdown(
       )
     }
 
+    /*
+      What this is for. After the source and before the practice line — the detail
+      page's order, so the file reads the way the product does. Omitted when there
+      is no capability, the rule Definition and Visual already follow.
+    */
+    const serves = capabilities.find((c) => c.id === capabilityOf[topic.id])
+    if (serves) {
+      lines.push('## What this is for', '', `${serves.name} — ${serves.phase}`, '')
+    }
+
     lines.push(practiceLine(topic), '')
     return lines.join('\n')
   })
 
   if (sources.length > 0) {
     body.push(sourcesSection(sources))
+  }
+
+  if (capabilities.length > 0) {
+    body.push(capabilitiesSection(capabilities))
   }
 
   return [...head, ...body].join('\n').trimEnd() + '\n'
@@ -261,4 +279,42 @@ function sourcesSection(sources: SourceSummary[]): string {
   }
 
   return lines.join('\n') + '\n'
+}
+
+export interface ExportCapability {
+  id: string
+  name: string
+  phase: string
+  /** Derived at export time, never stored — see lib/domain/phases.ts. */
+  demonstrated: boolean
+}
+
+/**
+ * The capabilities, grouped by phase.
+ *
+ * `demonstrated` is exported as the derived value it is, with the rule stated
+ * beside it — otherwise a reader would reasonably assume it was a stored flag
+ * someone ticked, which is the one thing this feature refuses.
+ */
+function capabilitiesSection(capabilities: ExportCapability[]): string {
+  const lines = ['', '---', '', '# Phases and capabilities', '']
+
+  lines.push(
+    'What you were working towards. A capability is **demonstrated** when something linked',
+    'to it is at okay or better on recall AND something linked to it carries rebuild,',
+    'challenge or production evidence. It is derived from your library every time, never a',
+    'flag anyone ticked — including here.',
+    '',
+  )
+
+  let phase: string | null = null
+  for (const capability of capabilities) {
+    if (capability.phase !== phase) {
+      phase = capability.phase
+      lines.push('', `## ${phase}`, '')
+    }
+    lines.push(`- ${capability.demonstrated ? '[demonstrated]' : '[not yet]'} ${capability.name}`)
+  }
+
+  return lines.join('\n')
 }

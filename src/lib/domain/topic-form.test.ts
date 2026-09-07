@@ -4,6 +4,7 @@ import { kindFrom, parseTopicForm, type TopicFormInput } from '@/lib/domain/topi
 const form = (overrides: Partial<TopicFormInput> = {}): TopicFormInput => ({
   kind: 'topic',
   sourceId: '',
+  capabilityId: '',
   title: 'Stacking contexts',
   definition: 'A z-index only competes inside one.',
   mentalModel: '',
@@ -37,6 +38,7 @@ describe('a topic', () => {
       category: 'CSS',
       tags: [],
       source_id: null,
+      capability_id: null,
       options: null,
       correct_option: null,
     })
@@ -65,6 +67,7 @@ describe('a quiz', () => {
       category: 'CSS',
       tags: [],
       source_id: null,
+      capability_id: null,
       options: ['Yes', 'No'],
       correct_option: 0,
     })
@@ -142,5 +145,21 @@ describe('the source link', () => {
   it('carries the id through when one is chosen', () => {
     const id = '00000000-0000-4000-8000-000000000001'
     expect(parseTopicForm(form({ sourceId: id })).value?.source_id).toBe(id)
+  })
+})
+
+describe('linking a capability', () => {
+  it('carries the chosen capability onto the write shape', () => {
+    const parsed = parseTopicForm(form({ capabilityId: 'cap-1' }))
+
+    expect(parsed.error).toBeUndefined()
+    expect(parsed.value?.capability_id).toBe('cap-1')
+  })
+
+  it('sends null rather than an empty string when nothing is chosen', () => {
+    // The column is a uuid FK: '' is not a missing value, it is a type error
+    // waiting to be reported as one.
+    expect(parseTopicForm(form({ capabilityId: '' })).value?.capability_id).toBeNull()
+    expect(parseTopicForm(form({ capabilityId: '   ' })).value?.capability_id).toBeNull()
   })
 })

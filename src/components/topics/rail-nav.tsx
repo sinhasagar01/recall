@@ -38,11 +38,15 @@ export function RailNav({
   queued,
   needsReview,
   sources,
+  capabilities,
+  demonstrated,
 }: {
   total: number
   queued: number
   needsReview: number
   sources: number
+  capabilities: number
+  demonstrated: number
 }) {
   const pathname = usePathname()
 
@@ -63,7 +67,16 @@ export function RailNav({
     for the same attention, which is the same reason a source row is not a topic
     card.
   */
+  /*
+    Phases above Sources: a phase is what you are trying to become able to do,
+    and a source is the raw material you do it with. The reference draws them in
+    that order for the same reason.
+
+    The count is `demonstrated / total capabilities` — the one number this
+    section exists to show. Not a percentage, and not a week counter.
+  */
   const apprenticeship: Destination[] = [
+    { href: '/phases', label: 'Phases', count: `${demonstrated} / ${capabilities}` },
     { href: '/sources', label: 'Sources', count: String(sources) },
   ]
 

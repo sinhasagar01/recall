@@ -3,6 +3,7 @@ import 'server-only'
 import { toTopic, type TopicRow } from '@/lib/data/topic-mapping'
 import type { SourceSummary } from '@/lib/domain/sources'
 import type { Topic } from '@/lib/domain/types'
+import type { ExportCapability } from '@/lib/domain/export'
 import { createClient } from '@/lib/supabase/server'
 
 /**
@@ -114,4 +115,75 @@ export async function fetchImage(path: string): Promise<FetchedImage | null> {
   if (error || !data) return null
 
   return { path, bytes: new Uint8Array(await data.arrayBuffer()) }
+}
+
+/**
+ * Capabilities for the export, with `demonstrated` derived at read time.
+ *
+ * Derived here rather than stored, because it is derived everywhere: there is no
+ * column to read it from. The linked rows come back with just enough to run the
+ * rule — confidence and the three markers — rather than the whole library.
+ */
+export async function readCapabilitiesForExport(): Promise<{
+  capabilities: ExportCapability[]
+  capabilityOf: Record<string, string>
+}> {
+  const supabase = await createClient()
+
+  const [phases, links] = await Promise.all([
+    supabase
+      .from('phases')
+      .select('name, created_at, capabilities ( id, name, created_at )')
+      .order('created_at', { ascending: true }),
+    supabase
+      .from('topics')
+      .select('id, capability_id, kind, confidence, rebuild_at, challenge_at, production_at')
+      .not('capability_id', 'is', null),
+  ])
+
+  if (phases.error) fail('Reading your phases', phases.error)
+  if (links.error) fail('Reading what serves them', links.error)
+
+  const rows = links.data as {
+    id: string
+    capability_id: string
+    kind: string
+    confidence: string
+    rebuild_at: string | null
+    challenge_at: string | null
+    production_at: string | null
+  }[]
+
+  const capabilityOf: Record<string, string> = {}
+  const recall = new Set<string>()
+  const evidence = new Set<string>()
+
+  for (const row of rows) {
+    capabilityOf[row.id] = row.capability_id
+    if (row.confidence === 'okay' || row.confidence === 'strong') recall.add(row.capability_id)
+    // The same kind filter the rule uses — see demonstrationOf.
+    if (
+      row.kind === 'topic' &&
+      (row.rebuild_at !== null || row.challenge_at !== null || row.production_at !== null)
+    ) {
+      evidence.add(row.capability_id)
+    }
+  }
+
+  const capabilities: ExportCapability[] = []
+  for (const phase of phases.data as unknown as {
+    name: string
+    capabilities: { id: string; name: string }[]
+  }[]) {
+    for (const capability of phase.capabilities) {
+      capabilities.push({
+        id: capability.id,
+        name: capability.name,
+        phase: phase.name,
+        demonstrated: recall.has(capability.id) && evidence.has(capability.id),
+      })
+    }
+  }
+
+  return { capabilities, capabilityOf }
 }

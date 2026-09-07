@@ -1,5 +1,6 @@
 import { LibraryView } from '@/components/topics/library-view'
 import { listLibrary, railCounts } from '@/lib/data/library'
+import { listCapabilityOptions } from '@/lib/data/phases'
 import { listSourceOptions } from '@/lib/data/sources'
 import type { QuickFilter, TopicFilters } from '@/lib/domain/search-filter'
 import type { Confidence, Difficulty, Kind } from '@/lib/domain/types'
@@ -61,10 +62,11 @@ export default async function LibraryPage({
 
   // railCounts is cache()d and the layout has already called it this request, so
   // the account figures cost nothing extra here.
-  const [data, account, sourceOptions] = await Promise.all([
+  const [data, account, sourceOptions, capabilityOptions] = await Promise.all([
     listLibrary(readFilters(params)),
     railCounts(),
     listSourceOptions(),
+    listCapabilityOptions(),
   ])
 
   return (
@@ -72,6 +74,7 @@ export default async function LibraryPage({
       data={data}
       account={{ topics: account.total, images: account.withImages }}
       sourceOptions={sourceOptions}
+      capabilityOptions={capabilityOptions}
     />
   )
 }
