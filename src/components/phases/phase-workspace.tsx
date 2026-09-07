@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { addCapability, removePhase } from '@/app/(app)/phases/actions'
 import { deletePhaseCopy, demonstrationOf } from '@/lib/domain/phases'
+import type { ProjectItem } from '@/lib/domain/ledger'
 import type { Capability, Phase } from '@/lib/domain/phases'
 import { plural } from '@/lib/domain/plural'
 import type { Topic } from '@/lib/domain/types'
@@ -15,6 +16,8 @@ import type { Topic } from '@/lib/domain/types'
 export interface CapabilityView {
   capability: Capability
   entries: Topic[]
+  /** Context only — see CapabilityRow. */
+  ledger?: ProjectItem[]
 }
 
 /**
@@ -97,6 +100,7 @@ export function PhaseWorkspace({
               key={view.capability.id}
               capability={view.capability}
               entries={view.entries}
+              ledger={view.ledger}
             />
           ))
         )}

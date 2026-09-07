@@ -203,53 +203,36 @@ test.describe('phases', () => {
   })
 })
 
+/*
+  ── The arc 3 mobile assertion moved, it was not deleted ────────────────────
+
+  Arc 3 asserted a wrapping five-item inline cluster in the library head, with
+  measurements to match. Arc 4 replaced that cluster with a single More link
+  opening a sheet, because Ledger is the sixth destination and six inline items
+  wrap to three lines.
+
+  Leaving the old test would have been worse than deleting it: it located the
+  cluster by `filter({ has: a[href="/phases"] })`, which now matches nothing, so
+  it would have passed by asserting over an empty set while appearing to guard the
+  mobile head.
+
+  Its invariants live in e2e/ledger.spec.ts, "More opens a sheet with all six, and
+  the head is shorter than the wrapped row": no horizontal overflow, h1 on one
+  line, the tab bar at exactly three, and the head measured against the 95px this
+  arc recorded. What remains here is the part that is about phases rather than
+  about the head — that /phases is reachable from a phone at all.
+*/
 test.describe('phases on a phone', () => {
   test.use({ viewport: { width: 390, height: 844 } })
 
-  test('is reached from the wrapped library head cluster, without overflow', async ({ page }) => {
+  test('is reachable from the More sheet', async ({ page }) => {
     await signInAs(page, 'main')
-    await page.locator('main a[href="/settings"]').waitFor()
 
-    /*
-      Five items now. Presence is not the assertion — five links that all exist
-      and push the page 40px wide is a passing test and a broken screen. So: all
-      five present, no horizontal overflow, and the head no TALLER than before.
+    await page.getByRole('button', { name: 'More' }).click()
+    const sheet = page.getByRole('dialog', { name: 'More' })
+    await sheet.getByRole('link', { name: /^Phases/ }).click()
 
-      Measured during the arc: five inline overflows by 51px; wrapped, the cluster
-      collapses from 290px to 164px, the title column grows 111px → 166px, and the
-      head shrinks 150px → 95px because "My knowledge" stops wrapping. See
-      TASKS.md — the prediction that it would grow by one line was wrong.
-    */
-    const cluster = page.locator('main div').filter({ has: page.locator('a[href="/phases"]') }).last()
-    for (const href of ['/phases', '/sources', '/settings']) {
-      await expect(cluster.locator(`a[href="${href}"]`)).toHaveCount(1)
-    }
-    await expect(cluster.getByRole('button', { name: 'Sign out' })).toHaveCount(1)
-    await expect(cluster.getByRole('button', { name: 'Delete account' })).toHaveCount(1)
-
-    const metrics = await page.evaluate(() => {
-      const head = document.querySelector('main > div') as HTMLElement
-      const h1 = head.querySelector('h1') as HTMLElement
-      const line = parseFloat(getComputedStyle(h1).lineHeight)
-      return {
-        scrollWidth: document.documentElement.scrollWidth,
-        clientWidth: document.documentElement.clientWidth,
-        headHeight: Math.round(head.getBoundingClientRect().height),
-        h1Lines: Math.round(h1.getBoundingClientRect().height / line),
-      }
-    })
-
-    expect(metrics.scrollWidth, 'the page is wider than the phone').toBe(metrics.clientWidth)
-    expect(metrics.h1Lines, 'the title should fit on one line once the cluster wraps').toBe(1)
-    expect(metrics.headHeight, 'the head must not grow to fit a fifth item').toBeLessThanOrEqual(150)
-
-    // And the tab bar is untouched — two destinations plus add.
-    const tabs = page.getByRole('navigation', { name: 'Main' })
-    await expect(tabs.locator('a[href="/phases"]')).toHaveCount(0)
-    await expect(tabs.locator('a[href="/library"]')).toHaveCount(1)
-    await expect(tabs.locator('a[href="/practice"]')).toHaveCount(1)
-
-    await cluster.locator('a[href="/phases"]').click()
     await expect(page).toHaveURL(/\/phases$/)
+    await expect(page.getByRole('heading', { level: 1, name: 'Phases' })).toBeVisible()
   })
 })

@@ -29,26 +29,49 @@ export function Sheet({
   title,
   children,
   footer,
+  placement = 'side',
 }: {
   open: boolean
   onClose: () => void
   title: string
   children: React.ReactNode
   footer?: React.ReactNode
+  /**
+   * Where the panel comes from.
+   *
+   * `side` is the original and the default, so the four existing call sites are
+   * untouched. `bottom` is the mobile More menu — a short sheet rising from the
+   * bottom edge, which is where a thumb already is.
+   *
+   * A PROP rather than a second component, because the focus trap, the Escape
+   * handling and the scrim-press rule are exactly the parts that must not
+   * diverge. A second overlay primitive is how two overlays end up trapping focus
+   * differently, and only one of them correctly.
+   */
+  placement?: 'side' | 'bottom'
 }) {
   const containerRef = useFocusTrap({ open, onClose })
 
   if (!open) return null
 
   return (
-    <Scrim onClose={onClose} className="fixed inset-0 z-60 flex justify-end bg-ink/34">
+    <Scrim
+      onClose={onClose}
+      className={`fixed inset-0 z-60 flex bg-ink/34 ${
+        placement === 'bottom' ? 'items-end justify-center' : 'justify-end'
+      }`}
+    >
       <div
         ref={containerRef}
         role="dialog"
         aria-modal="true"
         aria-label={title}
         tabIndex={-1}
-        className="flex h-full w-full flex-col bg-surface shadow-pop md:w-[min(560px,100%)] md:border-l md:border-rule"
+        className={
+          placement === 'bottom'
+            ? 'flex max-h-[80vh] w-full flex-col rounded-t-lg bg-surface shadow-pop md:mb-6 md:w-[min(460px,100%)] md:rounded-lg'
+            : 'flex h-full w-full flex-col bg-surface shadow-pop md:w-[min(560px,100%)] md:border-l md:border-rule'
+        }
       >
         <div className="flex shrink-0 items-center justify-between gap-4 px-5 pt-5 pb-[22px] md:px-[30px] md:pt-[26px]">
           <h2 className="font-display text-[19px] font-medium tracking-[-0.02em] md:text-[23px]">

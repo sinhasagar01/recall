@@ -3,7 +3,8 @@ import 'server-only'
 import { toTopic, type TopicRow } from '@/lib/data/topic-mapping'
 import type { SourceSummary } from '@/lib/domain/sources'
 import type { Topic } from '@/lib/domain/types'
-import type { ExportCapability } from '@/lib/domain/export'
+import type { ExportCapability, ExportLedgerItem } from '@/lib/domain/export'
+import { statusLabel, type Kind, type Status } from '@/lib/domain/ledger'
 import { createClient } from '@/lib/supabase/server'
 
 /**
@@ -186,4 +187,37 @@ export async function readCapabilitiesForExport(): Promise<{
   }
 
   return { capabilities, capabilityOf }
+}
+
+/** The ledger for the export, with each status already in its kind's words. */
+export async function readLedgerForExport(): Promise<ExportLedgerItem[]> {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('project_items')
+    .select('kind, title, link, note, status, created_at, capabilities ( name )')
+    .order('created_at', { ascending: false })
+
+  if (error) fail('Reading your ledger', error)
+
+  return (
+    data as unknown as {
+      kind: Kind
+      title: string
+      link: string | null
+      note: string | null
+      status: Status
+      created_at: string
+      capabilities: { name: string } | null
+    }[]
+  ).map((row) => ({
+    kind: row.kind,
+    title: row.title,
+    link: row.link,
+    note: row.note,
+    // Rendered here so the file reads the way the screen does, from one mapping.
+    status: statusLabel(row.kind, row.status),
+    capability: row.capabilities?.name ?? null,
+    created_at: row.created_at,
+  }))
 }

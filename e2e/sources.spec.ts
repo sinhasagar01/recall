@@ -198,19 +198,19 @@ test('signed out, sources is not reachable', async ({ page }) => {
 test.describe('sources on a phone', () => {
   test.use({ viewport: { width: 390, height: 844 } })
 
-  test('is reached from the account foot, and the transcript is collapsed', async ({ page }) => {
+  test('is reached from the More sheet, and the transcript is collapsed', async ({ page }) => {
     await signInAs(page, 'main')
 
     /*
-      Not a fourth tab-bar entry. The tab bar stays two destinations plus add —
-      DESIGN.md rule 13 — and Sources follows the precedent Settings set.
-      sources-reference.html drew the mobile screens without showing the route in;
-      that gap is corrected in the file.
+      Not a tab-bar entry. The tab bar stays two destinations plus add — DESIGN.md
+      rule 13 — and Sources is reached from the More sheet, which arc 4 introduced
+      when the account cluster reached six items.
     */
-    const tabs = page.getByRole('navigation').last()
+    const tabs = page.getByRole('navigation', { name: 'Main' })
     await expect(tabs.getByRole('link', { name: 'Sources' })).toHaveCount(0)
 
-    await page.getByRole('link', { name: 'Sources' }).click()
+    await page.getByRole('button', { name: 'More' }).click()
+    await page.getByRole('dialog', { name: 'More' }).getByRole('link', { name: /^Sources/ }).click()
     await expect(page).toHaveURL(/\/sources$/)
 
     await cardFor(page, SEEDED).first().click()

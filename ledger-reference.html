@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recall — ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;450;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#E9EAF0; --surface:#FFFFFF; --surface-2:#F5F5FA; --surface-3:#EDEEF4;
+  --ink:#12131A; --ink-2:#53555F; --ink-3:#83858F;
+  --rule:#E1E1E9; --rule-strong:#C9C9D4;
+  --accent:#3F3AC7; --accent-soft:#EDECFB; --accent-ink:#2E2A9E;
+  --flag:#B4325C; --flag-soft:#FBEBF1;
+  --ok:#1B6B4F; --ok-soft:#E6F2EC;
+  --radius:6px; --radius-lg:10px;
+  --shadow:0 1px 2px rgba(18,19,26,.05), 0 1px 1px rgba(18,19,26,.03);
+  --shadow-pop:0 4px 8px rgba(18,19,26,.06), 0 12px 32px rgba(18,19,26,.10);
+  --font-display:"Newsreader",Georgia,serif;
+  --font-body:"IBM Plex Sans",system-ui,sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:14.5px;line-height:1.55;-webkit-font-smoothing:antialiased}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+code{font-family:var(--font-mono);font-size:.86em}
+.chrome{position:sticky;top:0;z-index:60;display:flex;gap:6px;align-items:center;padding:9px 16px;
+  background:var(--surface);border-bottom:1px solid var(--rule);flex-wrap:wrap}
+.chrome__label{font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin-right:6px}
+.tab{font-family:var(--font-mono);font-size:11.5px;padding:5px 9px;border:1px solid transparent;border-radius:var(--radius);
+  background:none;color:var(--ink-2);cursor:pointer}
+.tab:hover{background:var(--surface-2);color:var(--ink)}
+.tab[aria-selected="true"]{background:var(--accent-soft);color:var(--accent-ink);border-color:var(--accent)}
+
+.eyebrow{font-family:var(--font-mono);font-size:10.5px;font-weight:500;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3)}
+.meta{font-family:var(--font-mono);font-size:11.5px;color:var(--ink-3)}
+.btn{font-family:var(--font-body);font-size:13.5px;font-weight:500;display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  padding:10px 15px;border-radius:var(--radius);border:1px solid var(--rule-strong);background:var(--surface);color:var(--ink);cursor:pointer}
+.btn--primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn--ghost{background:none;border-color:transparent;color:var(--ink-2)}
+.btn--sm{padding:6px 11px;font-size:12.5px}
+.btn--block{width:100%}
+.chip{font-family:var(--font-mono);font-size:11px;padding:3px 8px;border-radius:100px;border:1px solid var(--rule);background:var(--surface-2);color:var(--ink-2)}
+.field{display:block;margin-bottom:14px}
+.field__label{display:block;margin-bottom:6px;font-size:13px;font-weight:500}
+.field__hint{font-family:var(--font-mono);font-size:10.5px;color:var(--ink-3);font-weight:400;margin-left:6px}
+.input,.textarea{width:100%;font-family:var(--font-body);font-size:14.5px;color:var(--ink);background:var(--surface);
+  border:1px solid var(--rule-strong);border-radius:var(--radius);padding:10px 12px;line-height:1.5}
+.textarea{min-height:56px;resize:vertical}
+
+.screen{display:none}.screen[data-active]{display:block}
+.app{display:grid;grid-template-columns:212px 1fr;min-height:calc(100vh - 44px)}
+.rail{border-right:1px solid var(--rule);padding:22px 14px;display:flex;flex-direction:column;gap:22px;background:var(--surface-2)}
+.wordmark{display:flex;align-items:baseline;gap:7px;padding:0 8px}
+.wordmark__name{font-family:var(--font-display);font-size:20px;font-weight:600;letter-spacing:-.02em}
+.wordmark__dot{width:5px;height:5px;border-radius:50%;background:var(--accent)}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav__group{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);padding:0 10px 6px}
+.nav__item{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border-radius:var(--radius);
+  color:var(--ink-2);font-size:13.5px;cursor:pointer}
+.nav__item:hover{background:var(--surface);color:var(--ink)}
+.nav__item[aria-current]{background:var(--surface);color:var(--ink);font-weight:500;box-shadow:var(--shadow)}
+.nav__count{font-family:var(--font-mono);font-size:11px;color:var(--ink-3)}
+.nav__count--flag{color:var(--flag)}
+.main{padding:28px 32px 70px;max-width:1000px}
+.page-title{font-family:var(--font-display);font-size:29px;font-weight:500;letter-spacing:-.022em}
+.page-sub{margin-top:4px;font-family:var(--font-mono);font-size:11.5px;color:var(--ink-3)}
+.page-head{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:20px}
+.rule{display:flex;align-items:center;gap:12px;margin:30px 0 12px}
+.rule::after{content:"";flex:1;height:1px;background:var(--rule)}
+.note{max-width:70ch;color:var(--ink-2);font-size:13.5px;margin-top:26px;padding-top:18px;border-top:1px solid var(--rule)}
+.callout{background:var(--surface);border:1px solid var(--accent);border-left-width:3px;border-radius:var(--radius);padding:14px 18px;margin:20px 0;max-width:74ch}
+.callout__t{font-weight:500;color:var(--accent-ink);margin-bottom:4px}
+.panel{background:var(--surface);border:1px solid var(--rule);border-radius:var(--radius-lg);box-shadow:var(--shadow)}
+.panel__body{padding:17px}
+
+/* filter chips */
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+.fchip{font-family:var(--font-mono);font-size:11px;padding:4px 10px;border-radius:100px;border:1px solid var(--rule);
+  background:none;color:var(--ink-3);cursor:pointer}
+.fchip:hover{color:var(--ink);border-color:var(--rule-strong)}
+.fchip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--surface)}
+
+/* ledger rows */
+.led{border:1px solid var(--rule);border-radius:var(--radius-lg);overflow:hidden;background:var(--surface)}
+.ledrow{display:flex;align-items:center;gap:14px;padding:14px 17px;border-bottom:1px solid var(--rule)}
+.ledrow:last-child{border-bottom:none}
+.ledrow:hover{background:var(--surface-2)}
+.kind{font-family:var(--font-mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;padding:3px 7px;border-radius:3px;
+  border:1px solid var(--rule-strong);color:var(--ink-3);background:var(--surface-2);flex:none;width:82px;text-align:center}
+.kind--adr{border-color:var(--accent);color:var(--accent-ink);background:var(--accent-soft)}
+.ledrow__m{flex:1;min-width:0}
+.ledrow__t{font-size:14px;font-weight:500;line-height:1.35}
+.ledrow__t a{color:inherit;text-decoration:none}
+.ledrow__t a:hover{text-decoration:underline;text-decoration-color:var(--rule-strong)}
+.ledrow__s{font-family:var(--font-mono);font-size:10.5px;color:var(--ink-3);margin-top:3px;display:flex;flex-wrap:wrap;gap:3px 10px}
+.ledrow__s a{color:var(--accent-ink);text-decoration:underline}
+.status{font-family:var(--font-mono);font-size:10.5px;white-space:nowrap;flex:none;display:flex;align-items:center;gap:6px}
+.dot{width:7px;height:7px;border-radius:50%;border:1px solid var(--rule-strong);flex:none}
+.status--open .dot{border-style:dashed}
+.status--open{color:var(--ink-3)}
+/* CORRECTED: no green. --ok marks what the app DERIVES — a quiz's correct option,
+   a recorded evidence marker, a demonstrated capability. A ledger status is a
+   SELF-REPORT, and this page's own callout says the product cannot know whether
+   you shipped what a URL points at. Same argument the palette already makes about
+   confidence, which is drawn in ink because it is a judgement. Told apart by
+   shape and weight instead. */
+.status--done .dot{background:var(--ink);border-color:var(--ink)}
+.status--done{color:var(--ink)}
+.status--sup .dot{background:var(--ink-3);border-color:var(--ink-3)}
+.status--sup{color:var(--ink-3)}
+.ext{flex:none;color:var(--ink-3);display:flex}
+.nolink{font-family:var(--font-mono);font-size:10px;color:var(--ink-3);border:1px dashed var(--rule-strong);border-radius:3px;padding:2px 6px}
+
+.state{border:1px dashed var(--rule-strong);border-radius:var(--radius-lg);padding:50px 32px;text-align:center;background:var(--surface-2);
+  display:flex;flex-direction:column;align-items:center;gap:8px}
+.state__title{font-family:var(--font-display);font-size:21px;font-weight:500}
+.state__body{color:var(--ink-2);max-width:46ch;font-size:14px}
+
+.cap{display:flex;align-items:flex-start;gap:13px;padding:15px 0;border-bottom:1px solid var(--rule)}
+.cap:last-child{border-bottom:none}
+.box{width:17px;height:17px;flex:none;margin-top:2px;border:1px solid var(--rule-strong);border-radius:4px;display:grid;place-items:center;font-size:10px}
+.box--done{border-color:var(--ok);background:var(--ok-soft);color:var(--ok)}
+.box--dash{border-style:dashed}
+.cap__m{flex:1;min-width:0}
+.cap__t{font-size:14px;line-height:1.5}
+.cap__e{font-family:var(--font-mono);font-size:10.5px;color:var(--ink-3);margin-top:6px;display:flex;flex-wrap:wrap;gap:4px 10px}
+.cap__e a{color:var(--accent-ink);text-decoration:underline;cursor:pointer}
+
+/* phone */
+.frames{display:flex;gap:24px;flex-wrap:wrap;margin-top:20px}
+.frame{width:372px;max-width:100%}
+.frame__cap{font-family:var(--font-mono);font-size:11px;color:var(--ink-3);text-align:center;margin-bottom:10px}
+.phone{border:1px solid var(--rule-strong);border-radius:24px;overflow:hidden;background:var(--bg);height:600px;
+  display:flex;flex-direction:column;box-shadow:var(--shadow);position:relative}
+.phone__body{flex:1;overflow:auto;padding:19px 17px}
+.headrow{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding-bottom:14px;border-bottom:1px solid var(--rule)}
+.morelink{font-family:var(--font-body);font-size:13px;color:var(--ink-2);text-decoration:underline;flex:none;white-space:nowrap}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--rule);
+  border-radius:var(--radius-lg) var(--radius-lg) 0 0;box-shadow:var(--shadow-pop);padding:8px 0 14px}
+.sheet__grab{width:34px;height:4px;border-radius:2px;background:var(--rule-strong);margin:0 auto 10px}
+.sheet__item{display:flex;align-items:center;justify-content:space-between;padding:13px 20px;font-size:14.5px;border-bottom:1px solid var(--rule)}
+.sheet__item:last-child{border-bottom:none}
+.sheet__item--danger{color:var(--flag)}
+.scrim{position:absolute;inset:0;background:rgba(18,19,26,.32)}
+
+.ruleset{background:var(--surface);border:1px solid var(--rule);border-radius:var(--radius-lg);padding:4px 22px;margin-top:14px;box-shadow:var(--shadow)}
+.ruleset li{list-style:none;padding:13px 0;border-bottom:1px solid var(--rule);font-size:13.5px;color:var(--ink-2)}
+.ruleset li:last-child{border-bottom:none}
+.ruleset strong{color:var(--ink);font-weight:500;display:block;margin-bottom:2px}
+</style>
+</head>
+<body>
+
+<div class="chrome">
+  <span class="chrome__label">Screen</span>
+  <button class="tab" data-go="ledger" aria-selected="true">The ledger</button>
+  <button class="tab" data-go="add">Adding</button>
+  <button class="tab" data-go="states">Every state</button>
+  <button class="tab" data-go="cap">On a capability</button>
+  <button class="tab" data-go="mobile">Mobile · the sixth item</button>
+  <button class="tab" data-go="rules">The rules</button>
+</div>
+
+<!-- ============ LEDGER ============ -->
+<section class="screen" data-screen="ledger" data-active>
+<div class="app">
+  <aside class="rail">
+    <div class="wordmark"><span class="wordmark__name">Recall</span><span class="wordmark__dot"></span></div>
+    <nav class="nav">
+      <a class="nav__item"><span>Library</span><span class="nav__count">29</span></a>
+      <a class="nav__item"><span>Practice</span><span class="nav__count">10 queued</span></a>
+      <a class="nav__item"><span>Weak topics</span><span class="nav__count nav__count--flag">8</span></a>
+    </nav>
+    <div><div class="nav__group">Apprenticeship</div>
+      <nav class="nav">
+        <a class="nav__item"><span>Phases</span><span class="nav__count">2 / 8</span></a>
+        <a class="nav__item" aria-current="page"><span>Ledger</span><span class="nav__count">9</span></a>
+        <a class="nav__item"><span>Sources</span><span class="nav__count">6</span></a>
+      </nav></div>
+    <button class="btn btn--primary btn--block" style="margin-top:auto">+ Add topic</button>
+  </aside>
+
+  <main class="main">
+    <div class="page-head">
+      <div><h1 class="page-title">Ledger</h1>
+        <p class="page-sub">9 items · 4 open · newest first</p></div>
+      <button class="btn btn--primary">+ Add an item</button>
+    </div>
+
+    <div class="chips">
+      <button class="fchip" aria-pressed="true">All 9</button>
+      <button class="fchip">Open 4</button>
+      <button class="fchip">ADRs 3</button>
+      <button class="fchip">Tasks 3</button>
+      <button class="fchip">Diagrams 1</button>
+      <button class="fchip">Incidents 1</button>
+      <button class="fchip">Milestones 1</button>
+    </div>
+
+    <div class="led">
+      <div class="ledrow">
+        <span class="kind kind--adr">ADR-002</span>
+        <div class="ledrow__m">
+          <div class="ledrow__t"><a href="#">Search state ownership: URL over client store</a></div>
+          <div class="ledrow__s"><span>Sep 4</span><span>·</span><span>github.com/…/adr-002.md</span><span>·</span><span>serves <a>Design server / URL / local state boundaries</a></span></div>
+        </div>
+        <span class="status status--done"><i class="dot"></i>Decided</span>
+        <span class="ext" aria-label="opens externally">↗</span>
+      </div>
+
+      <div class="ledrow">
+        <span class="kind">Incident</span>
+        <div class="ledrow__m">
+          <div class="ledrow__t"><a href="#">New table shipped without a GRANT — app down 40 minutes</a></div>
+          <div class="ledrow__s"><span>Sep 3</span><span>·</span><span>github.com/…/issues/23</span></div>
+        </div>
+        <span class="status status--done"><i class="dot"></i>Closed</span>
+        <span class="ext">↗</span>
+      </div>
+
+      <div class="ledrow">
+        <span class="kind">Task</span>
+        <div class="ledrow__m">
+          <div class="ledrow__t"><a href="#">Request cancellation on the search endpoint</a></div>
+          <div class="ledrow__s"><span>Sep 2</span><span>·</span><span>github.com/…/pull/41</span><span>·</span><span>serves <a>Design server / URL / local state boundaries</a></span></div>
+        </div>
+        <span class="status status--open"><i class="dot"></i>Open</span>
+        <span class="ext">↗</span>
+      </div>
+
+      <div class="ledrow">
+        <span class="kind kind--adr">ADR-001</span>
+        <div class="ledrow__m">
+          <div class="ledrow__t"><a href="#">Modular monolith over microfrontends</a></div>
+          <div class="ledrow__s"><span>Aug 30</span><span>·</span><span>github.com/…/adr-001.md</span></div>
+        </div>
+        <span class="status status--done"><i class="dot"></i>Decided</span>
+        <span class="ext">↗</span>
+      </div>
+
+      <div class="ledrow">
+        <span class="kind">Diagram</span>
+        <div class="ledrow__m">
+          <div class="ledrow__t"><a href="#">C4 context: collaborative SaaS</a></div>
+          <div class="ledrow__s"><span>Aug 28</span><span>·</span><span>excalidraw.com/…</span></div>
+        </div>
+        <span class="status status--done"><i class="dot"></i>Done</span>
+        <span class="ext">↗</span>
+      </div>
+
+      <div class="ledrow">
+        <span class="kind kind--adr">ADR-000</span>
+        <div class="ledrow__m">
+          <div class="ledrow__t"><a href="#">Client-side search over server search</a></div>
+          <div class="ledrow__s"><span>Aug 24</span><span>·</span><span>github.com/…/adr-000.md</span><span>·</span><span>superseded by ADR-002</span></div>
+        </div>
+        <span class="status status--sup"><i class="dot"></i>Superseded</span>
+        <span class="ext">↗</span>
+      </div>
+    </div>
+
+    <div class="callout">
+      <div class="callout__t">There is no ledger item detail page</div>
+      <p style="color:var(--ink-2);font-size:13.5px">A row <em>is</em> the item. The title links straight out to where the thing actually lives — a PR, a markdown ADR in the repo, an Excalidraw board, a GitHub issue. Building a page to display a title and a URL would be a place to look at a link instead of following it, and storing the ADR's context, alternatives and consequences would make this a document store, which is the decision already taken against.</p>
+    </div>
+
+    <p class="note">Newest first, one list, filter chips with counts. No board, no columns, no drag, no burn-down. The only thing this page knows that a folder of links does not is which capability an item serves — and that is the whole reason it is in Recall rather than in a bookmark bar.</p>
+  </main>
+</div>
+</section>
+
+<!-- ============ ADDING ============ -->
+<section class="screen" data-screen="add">
+<div style="max-width:980px;margin:0 auto;padding:28px 26px 80px">
+  <h1 class="page-title">Adding an item</h1>
+  <p style="color:var(--ink-2);max-width:62ch;margin-top:6px">One small form. Everything except the title and the kind is optional, because a decision you have made but not written up yet is still a decision.</p>
+
+  <div class="panel" style="max-width:520px;margin-top:20px"><div class="panel__body">
+    <div class="field"><span class="field__label">Kind</span>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="fchip" aria-pressed="true">ADR</button><button class="fchip">Task</button>
+        <button class="fchip">Diagram</button><button class="fchip">Incident</button>
+        <button class="fchip">Milestone</button><button class="fchip">Scale exercise</button>
+      </div></div>
+
+    <label class="field"><span class="field__label">Title</span>
+      <input class="input" value="Search state ownership: URL over client store"></label>
+
+    <label class="field"><span class="field__label">Link <span class="field__hint">optional · where the thing actually lives</span></span>
+      <input class="input" value="https://github.com/…/adr-002.md"></label>
+
+    <div class="field"><span class="field__label">Status</span>
+      <div style="display:flex;gap:6px">
+        <button class="fchip">Draft</button><button class="fchip" aria-pressed="true">Decided</button><button class="fchip">Superseded</button>
+      </div>
+      <p class="meta" style="margin-top:7px">Three states, and the words change with the kind: an ADR is <em>Draft · Decided · Superseded</em>, a task is <em>Open · Done · Dropped</em>, an incident is <em>Open · Closed · Dropped</em>. <strong>Corrected:</strong> this form showed “Open” for an ADR while the States tab defined it as “Draft”. The States tab is the definition, and the form renders the selected kind's own vocabulary.</p></div>
+
+    <div class="field"><span class="field__label">Serves <span class="field__hint">optional · a capability</span></span>
+      <button class="btn" style="width:100%;justify-content:space-between;font-family:var(--font-mono);font-size:12px">
+        Design server / URL / local state boundaries <span style="opacity:.6">▾</span></button></div>
+
+    <label class="field"><span class="field__label">Note <span class="field__hint">optional · one line, for future you</span></span>
+      <textarea class="textarea" placeholder="Why this, in a sentence…"></textarea></label>
+
+    <button class="btn btn--primary">Save item</button>
+  </div></div>
+
+  <p class="note">No date field — the item is stamped when you add it, and back-dating a decision you made last week is the kind of tidying that turns a record into a story. No ADR body, no alternatives, no consequences: those live at the link, in a file you can diff, which is what an ADR is for.</p>
+</div>
+</section>
+
+<!-- ============ STATES ============ -->
+<section class="screen" data-screen="states">
+<div style="max-width:1000px;margin:0 auto;padding:28px 26px 80px">
+  <h1 class="page-title">Every state</h1>
+
+  <div class="rule"><span class="eyebrow">Nothing yet</span></div>
+  <div class="state">
+    <span class="eyebrow">Ledger</span>
+    <h2 class="state__title">Nothing here yet</h2>
+    <p class="state__body">Record the decisions, PRs, diagrams and incidents your capstone produces. Each one is a title and a link — the thing itself lives where you made it.</p>
+    <div style="margin-top:12px"><button class="btn btn--primary">+ Add an item</button></div>
+  </div>
+
+  <div class="rule"><span class="eyebrow">An item with no link</span></div>
+  <div class="led"><div class="ledrow">
+    <span class="kind">Task</span>
+    <div class="ledrow__m"><div class="ledrow__t">Add optimistic updates to the comment thread</div>
+      <div class="ledrow__s"><span>Sep 6</span><span>·</span><span class="nolink">no link yet</span></div></div>
+    <span class="status status--open"><i class="dot"></i>Open</span>
+  </div></div>
+  <p class="meta" style="margin-top:9px">The title is not a link, and the row says why rather than looking broken. There is no ↗ — nothing to open.</p>
+
+  <div class="rule"><span class="eyebrow">Superseded</span></div>
+  <div class="led"><div class="ledrow">
+    <span class="kind kind--adr">ADR-000</span>
+    <div class="ledrow__m"><div class="ledrow__t"><a href="#">Client-side search over server search</a></div>
+      <div class="ledrow__s"><span>Aug 24</span><span>·</span><span>superseded by ADR-002</span></div></div>
+    <span class="status status--sup"><i class="dot"></i>Superseded</span><span class="ext">↗</span>
+  </div></div>
+  <p class="meta" style="margin-top:9px">Superseded rows stay in the list, at their original date, in grey. A ledger that deletes what you changed your mind about is not a record. "Superseded by" is free text, not a link to another row — modelling it would mean a self-referencing FK for one line of prose.</p>
+
+  <div class="rule"><span class="eyebrow">The three statuses, in each kind's words</span></div>
+  <div class="led">
+    <div class="ledrow"><span class="kind kind--adr">ADR</span><div class="ledrow__m"><div class="ledrow__t">Draft · Decided · Superseded</div></div><span class="meta">decision</span></div>
+    <div class="ledrow"><span class="kind">Task</span><div class="ledrow__m"><div class="ledrow__t">Open · Done · Dropped</div></div><span class="meta">work</span></div>
+    <div class="ledrow"><span class="kind">Incident</span><div class="ledrow__m"><div class="ledrow__t">Open · Closed · Dropped</div></div><span class="meta">event</span></div>
+    <div class="ledrow"><span class="kind">Diagram</span><div class="ledrow__m"><div class="ledrow__t">Draft · Done · Superseded</div></div><span class="meta">artefact</span></div>
+    <div class="ledrow"><span class="kind">Milestone</span><div class="ledrow__m"><div class="ledrow__t">Planned · Reached · Dropped</div></div><span class="meta">added</span></div>
+    <div class="ledrow"><span class="kind">Scale exercise</span><div class="ledrow__m"><div class="ledrow__t">Open · Done · Dropped</div></div><span class="meta">added</span></div>
+  </div>
+  <p class="meta" style="margin-top:9px"><strong>Added:</strong> this tab defined four of the six kinds. A milestone retires as <em>Dropped</em>, never “Missed” — a missed milestone is the product working out that you are behind, which is the thing the free-text “When” rule on a phase exists to refuse. A scale exercise is work, so it borrows the task vocabulary rather than inventing a fifth.</p>
+  <p class="meta" style="margin-top:9px">One stored enum — <code>open</code>, <code>settled</code>, <code>retired</code> — rendered in the kind's own vocabulary. Three statuses is enough for every kind; six would be a workflow.</p>
+
+  <div class="rule"><span class="eyebrow">Deleting</span></div>
+  <div class="panel"><div class="panel__body">
+    <div style="font-family:var(--font-display);font-size:20px;font-weight:500;margin-bottom:5px">Delete “Search state ownership”?</div>
+    <p style="color:var(--ink-2);font-size:13.5px;max-width:54ch">This removes the ledger entry. <strong>Nothing at the link is touched</strong> — the ADR stays in your repo. It can't be undone.</p>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
+      <button class="btn">Keep it</button><button class="btn" style="background:var(--flag);border-color:var(--flag);color:#fff">Delete entry</button></div>
+  </div></div>
+  <p class="meta" style="margin-top:9px">The confirmation's job here is to say what is <em>not</em> deleted. A ledger of links is the one place a delete is nearly free, and the sentence should say so.</p>
+</div>
+</section>
+
+<!-- ============ ON A CAPABILITY ============ -->
+<section class="screen" data-screen="cap">
+<div class="app">
+  <aside class="rail">
+    <div class="wordmark"><span class="wordmark__name">Recall</span><span class="wordmark__dot"></span></div>
+    <nav class="nav">
+      <a class="nav__item"><span>Library</span><span class="nav__count">29</span></a>
+      <a class="nav__item"><span>Practice</span><span class="nav__count">10 queued</span></a>
+      <a class="nav__item"><span>Weak topics</span><span class="nav__count nav__count--flag">8</span></a>
+    </nav>
+    <div><div class="nav__group">Apprenticeship</div>
+      <nav class="nav">
+        <a class="nav__item" aria-current="page"><span>Phases</span><span class="nav__count">2 / 8</span></a>
+        <a class="nav__item"><span>Ledger</span><span class="nav__count">9</span></a>
+        <a class="nav__item"><span>Sources</span><span class="nav__count">6</span></a>
+      </nav></div>
+  </aside>
+
+  <main class="main">
+    <div class="page-head"><div>
+      <div class="meta" style="margin-bottom:8px"><a style="color:var(--accent-ink);text-decoration:underline;cursor:pointer">← Phases</a></div>
+      <h1 class="page-title">Senior and staff frontend</h1>
+      <p class="page-sub">Weeks 3–7 · 1 of 4 demonstrated · current</p></div></div>
+
+    <div class="panel"><div class="panel__body" style="padding-top:4px;padding-bottom:6px">
+      <div class="cap">
+        <span class="box box--done">✓</span>
+        <div class="cap__m">
+          <div class="cap__t" style="color:var(--ok)">Design server / URL / local state boundaries and defend the placement.</div>
+          <div class="cap__e"><span><a>3 topics</a></span><span>·</span><span>2 at okay or better</span><span>·</span><span>1 production · Sep 4</span></div>
+          <div class="cap__e" style="margin-top:3px"><span>Ledger · <a>ADR-002</a>, <a>1 task</a></span></div>
+        </div>
+      </div>
+      <div class="cap">
+        <span class="box box--dash"></span>
+        <div class="cap__m">
+          <div class="cap__t">Type a data layer end to end with no <code>any</code> at the boundary.</div>
+          <div class="cap__e"><span><a>2 topics</a></span><span>·</span><span>2 at okay or better</span><span>·</span><span style="color:var(--ink-3)">no rebuild, challenge or production</span></div>
+        </div>
+      </div>
+    </div></div>
+
+    <div class="callout">
+      <div class="callout__t">The ledger line does not change whether a capability is demonstrated</div>
+      <p style="color:var(--ink-2);font-size:13.5px">Demonstrated is still recall plus evidence, exactly as arc 3 defined it. A ledger item is a link to something outside the app — the product cannot know whether you actually shipped it, and a rule that trusted a pasted URL would be a rule you could satisfy with a bookmark. The line is context, not a third half.</p>
+    </div>
+
+    <p class="note">A capability with no ledger items shows no ledger line at all, the rule every section on these pages follows. The count links to the ledger filtered to that capability — the one filter this arc adds, because it is the reason an item knows about a capability in the first place.</p>
+  </main>
+</div>
+</section>
+
+<!-- ============ MOBILE ============ -->
+<section class="screen" data-screen="mobile">
+<div style="max-width:1000px;margin:0 auto;padding:28px 26px 70px">
+  <h1 class="page-title">Mobile — the sixth item arrives</h1>
+  <p style="color:var(--ink-2);max-width:66ch;margin-top:6px">Arc 3 recorded that the account cluster was at five items and becoming a menu, as an open question for whenever a sixth arrived. Ledger is the sixth. Five wrapped to two lines and cost the head 95px; six is where an inline row stops being a row.</p>
+
+  <div class="frames">
+    <div class="frame"><div class="frame__cap">Library head — one More link</div>
+      <div class="phone"><div class="phone__body">
+        <div class="headrow">
+          <div>
+            <h2 style="font-family:var(--font-display);font-size:24px;font-weight:500">My knowledge</h2>
+            <p class="meta" style="margin-top:4px">29 topics · 8 need review</p>
+          </div>
+          <span class="morelink">More</span>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:14px">
+          <span class="chip">All 29</span><span class="chip">Weak 8</span><span class="chip">Never practised 4</span></div>
+        <p class="meta" style="margin-top:16px">Title back on one line. Head is shorter than the five-item version, and stays that size no matter how many destinations exist.</p>
+      </div></div>
+    </div>
+
+    <div class="frame"><div class="frame__cap">More — a sheet, not a wrapping row</div>
+      <div class="phone">
+        <div class="phone__body">
+          <div class="headrow">
+            <div><h2 style="font-family:var(--font-display);font-size:24px;font-weight:500">My knowledge</h2>
+              <p class="meta" style="margin-top:4px">29 topics · 8 need review</p></div>
+            <span class="morelink">More</span>
+          </div>
+        </div>
+        <div class="scrim"></div>
+        <div class="sheet">
+          <div class="sheet__grab"></div>
+          <div class="sheet__item"><span>Phases</span><span class="meta">2 / 8</span></div>
+          <div class="sheet__item"><span>Ledger</span><span class="meta">9</span></div>
+          <div class="sheet__item"><span>Sources</span><span class="meta">6</span></div>
+          <div class="sheet__item"><span>Settings</span></div>
+          <div class="sheet__item"><span>Sign out</span></div>
+          <div class="sheet__item sheet__item--danger"><span>Delete account</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout">
+    <div class="callout__t">Why a sheet and not a fourth tab</div>
+    <p style="color:var(--ink-2);font-size:13.5px">DESIGN.md rule 13 — mobile has two destinations plus add — survives untouched, because none of these six is a destination you bounce between. They are places you go deliberately, once. The sheet reuses the existing focus trap and Escape handling, carries the same counts the rail does, and puts Delete account at the bottom in <code>--flag</code>, which is the one place it belongs.</p>
+  </div>
+
+  <p class="note">This replaces the wrapping cluster shipped in arc 3. That row was correct at five and this is what it becomes at six — the arc 3 measurement is the evidence, not a change of mind: five inline overflowed by 51px, five wrapped cost a second line, and six would wrap to three.</p>
+</div>
+</section>
+
+<!-- ============ RULES ============ -->
+<section class="screen" data-screen="rules">
+<div style="max-width:1000px;margin:0 auto;padding:28px 26px 80px">
+  <h1 class="page-title">The rules</h1>
+  <p style="color:var(--ink-2);max-width:66ch;margin-top:6px">Every decision this reference encodes. Where this page and the screens disagree, the screens win.</p>
+
+  <div class="rule"><span class="eyebrow">Data</span></div>
+  <ul class="ruleset">
+    <li><strong>One new table, <code>project_items</code></strong>Kind and title required; link, note, status and capability optional. Nullable <code>capability_id</code> with <code>on delete set null</code>, the same shape as <code>source_id</code> and <code>topics.capability_id</code>.</li>
+    <li><strong>Six kinds, three statuses</strong>Kinds: adr, task, diagram, incident, milestone, scale_exercise. Statuses: <code>open</code>, <code>settled</code>, <code>retired</code> — one stored enum, rendered in each kind's own vocabulary. Six statuses would be a workflow.</li>
+    <li><strong>No documents, ever</strong>No ADR body, context, alternatives or consequences. No file upload, no image storage. The link is the integration, and the thing lives where you made it.</li>
+    <li><strong>No detail page</strong>A row is the item; the title opens the link. A page to display a title and a URL is a place to look at a link instead of following it.</li>
+    <li><strong>"Superseded by" is free text</strong>Not a self-referencing FK. One line of prose does not justify a graph.</li>
+  </ul>
+
+  <div class="rule"><span class="eyebrow">Behaviour</span></div>
+  <ul class="ruleset">
+    <li><strong>The ledger never changes whether a capability is demonstrated</strong>Demonstrated stays recall plus evidence, exactly as arc 3 defined it. The product cannot know whether you shipped what a URL points at, and a rule satisfiable with a bookmark is not a rule. The ledger line on a capability is context.</li>
+    <li><strong>Ledger items are never practised</strong>No confidence, never in the queue or on the weak page. Asserted the way arcs 1, 2 and 3 assert their boundaries — four arcs, one boundary, four directions.</li>
+    <li><strong>Stamped when added, never back-dated</strong>No date field. Back-dating a decision you made last week turns a record into a story.</li>
+    <li><strong>Superseded rows stay</strong>In place, at their original date, in grey. A ledger that deletes what you changed your mind about is not a record.</li>
+    <li><strong>The delete confirmation says what is not deleted</strong>"Nothing at the link is touched — the ADR stays in your repo."</li>
+  </ul>
+
+  <ul class="ruleset">
+    <li><strong>Status is drawn in ink, never green — corrected</strong>An earlier draft of this page painted the settled status in <code>--ok</code>. DESIGN.md reserves that colour for what the app <em>derives</em>, and a ledger status is something you set by hand — this page's own callout argues the product cannot know whether you shipped what a URL points at. The three states are told apart by shape and weight: dashed hollow, filled ink, hollow grey. Four references running have reached for a colour that means “good” or “bad” without checking what the token means; the check is to ask what kind of claim the thing makes, not how it should feel.</li>
+  </ul>
+
+  <div class="rule"><span class="eyebrow">Mobile — the sixth item</span></div>
+  <ul class="ruleset">
+    <li><strong>The account cluster becomes a More sheet</strong>Arc 3 recorded this as an open question for when a sixth arrived. Ledger is the sixth. One <em>More</em> link in the library head opens a sheet with all six, counts included, Delete account last in <code>--flag</code>.</li>
+    <li><strong>Rule 13 survives untouched</strong>Two destinations plus add. None of the six is a destination you bounce between, which is what rule 13 is about.</li>
+    <li><strong>Reuse the existing sheet</strong>Same focus trap, same Escape handling, same scrim-press rule as every other overlay. No new overlay primitive.</li>
+  </ul>
+
+  <div class="rule"><span class="eyebrow">Not built</span></div>
+  <ul class="ruleset">
+    <li><strong>No AI in this arc</strong>Nothing stubbed for arc 6.</li>
+    <li><strong>No board, no columns, no drag, no burn-down, no due dates</strong>A list, newest first, with filter chips.</li>
+    <li><strong>No Today</strong>Arc 5. Scheduling, dashboards, analytics and gamification stay excluded.</li>
+  </ul>
+</div>
+</section>
+
+<script>
+  const screens=document.querySelectorAll('[data-screen]');
+  document.querySelector('.chrome').addEventListener('click',e=>{
+    const b=e.target.closest('[data-go]'); if(!b) return;
+    document.querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-selected',t===b));
+    screens.forEach(s=>s.toggleAttribute('data-active',s.dataset.screen===b.dataset.go));
+    window.scrollTo(0,0);
+  });
+</script>
+</body>
+</html>

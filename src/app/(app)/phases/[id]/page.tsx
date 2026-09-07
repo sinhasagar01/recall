@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { PhaseWorkspace } from '@/components/phases/phase-workspace'
+import { ledgerByCapability } from '@/lib/data/ledger'
 import { listPhases, readPhase } from '@/lib/data/phases'
 import { currentPhaseId, demonstrationOf } from '@/lib/domain/phases'
 
@@ -14,7 +15,9 @@ export default async function PhasePage({ params }: PageProps<'/phases/[id]'>) {
     not fully demonstrated. So the detail page asks the list, rather than
     inventing a second definition that could disagree with the one on /phases.
   */
-  const all = await listPhases()
+  // One query for the whole page, grouped in the data layer — not one per
+  // capability. The shape arcs 2 and 3 both use.
+  const [all, ledger] = await Promise.all([listPhases(), ledgerByCapability()])
   const current = currentPhaseId(
     all.map((phase) => ({
       id: phase.phase.id,
@@ -31,7 +34,10 @@ export default async function PhasePage({ params }: PageProps<'/phases/[id]'>) {
       </p>
       <PhaseWorkspace
         phase={view.phase}
-        capabilities={view.capabilities}
+        capabilities={view.capabilities.map((c) => ({
+          ...c,
+          ledger: ledger.get(c.capability.id) ?? [],
+        }))}
         isCurrent={view.phase.id === current}
       />
     </>

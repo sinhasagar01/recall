@@ -84,6 +84,7 @@ export function renderLibraryMarkdown(
     sourceOf = {},
     capabilities = [],
     capabilityOf = {},
+    ledger = [],
   }: {
     exportedAt: Date
     missingPaths: Set<string>
@@ -93,6 +94,7 @@ export function renderLibraryMarkdown(
     sourceOf?: Record<string, string>
     capabilities?: ExportCapability[]
     capabilityOf?: Record<string, string>
+    ledger?: ExportLedgerItem[]
   },
 ): string {
   const missingCount = topics.filter(
@@ -237,6 +239,10 @@ export function renderLibraryMarkdown(
     body.push(capabilitiesSection(capabilities))
   }
 
+  if (ledger.length > 0) {
+    body.push(ledgerSection(ledger))
+  }
+
   return [...head, ...body].join('\n').trimEnd() + '\n'
 }
 
@@ -314,6 +320,44 @@ function capabilitiesSection(capabilities: ExportCapability[]): string {
       lines.push('', `## ${phase}`, '')
     }
     lines.push(`- ${capability.demonstrated ? '[demonstrated]' : '[not yet]'} ${capability.name}`)
+  }
+
+  return lines.join('\n')
+}
+
+export interface ExportLedgerItem {
+  kind: string
+  title: string
+  link: string | null
+  note: string | null
+  /** Already rendered in the kind's vocabulary — see lib/domain/ledger.ts. */
+  status: string
+  capability: string | null
+  created_at: string
+}
+
+/**
+ * The ledger, newest first.
+ *
+ * Links, and that is the whole point: what the export carries is a list of where
+ * the work actually lives, which is exactly what the ledger is. There is no body
+ * to omit here — unlike a transcript, nothing was ever stored to leave out.
+ */
+function ledgerSection(items: ExportLedgerItem[]): string {
+  const lines = ['', '---', '', '# The ledger', '']
+
+  lines.push(
+    'What the capstone produced. Each entry is a title and a link — the thing itself lives',
+    'where it was made, so this is a map rather than a copy. The status word is the one that',
+    "kind uses: an ADR is Decided, a task is Done, an incident is Closed.",
+    '',
+  )
+
+  for (const item of items) {
+    const where = item.link ?? 'no link'
+    const serves = item.capability ? ` · serves ${item.capability}` : ''
+    lines.push(`- **${item.title}** — ${item.kind}, ${item.status}${serves}`, `  ${where}`)
+    if (item.note) lines.push(`  ${item.note}`)
   }
 
   return lines.join('\n')
