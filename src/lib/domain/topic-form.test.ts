@@ -3,6 +3,7 @@ import { kindFrom, parseTopicForm, type TopicFormInput } from '@/lib/domain/topi
 
 const form = (overrides: Partial<TopicFormInput> = {}): TopicFormInput => ({
   kind: 'topic',
+  sourceId: '',
   title: 'Stacking contexts',
   definition: 'A z-index only competes inside one.',
   mentalModel: '',
@@ -35,6 +36,7 @@ describe('a topic', () => {
       mental_model: null,
       category: 'CSS',
       tags: [],
+      source_id: null,
       options: null,
       correct_option: null,
     })
@@ -62,6 +64,7 @@ describe('a quiz', () => {
       mental_model: 'Because the transform establishes a new context.',
       category: 'CSS',
       tags: [],
+      source_id: null,
       options: ['Yes', 'No'],
       correct_option: 0,
     })
@@ -127,5 +130,17 @@ describe('kindFrom', () => {
     for (const raw of [null, undefined, '', 'flashcard', 42]) {
       expect(kindFrom(raw)).toBe('topic')
     }
+  })
+})
+
+describe('the source link', () => {
+  it('is null when nothing is chosen, never a blank string', () => {
+    // A blank string would fail the foreign key rather than mean "no source".
+    expect(parseTopicForm(form({ sourceId: '   ' })).value?.source_id).toBeNull()
+  })
+
+  it('carries the id through when one is chosen', () => {
+    const id = '00000000-0000-4000-8000-000000000001'
+    expect(parseTopicForm(form({ sourceId: id })).value?.source_id).toBe(id)
   })
 })

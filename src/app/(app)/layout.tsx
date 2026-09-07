@@ -5,6 +5,7 @@ import { RailNav } from '@/components/topics/rail-nav'
 import { Kbd } from '@/components/ui/kbd'
 import { Wordmark } from '@/components/ui/wordmark'
 import { railCounts } from '@/lib/data/library'
+import { countSources } from '@/lib/data/sources'
 import { practiceQueueSize } from '@/lib/domain/practice-selection'
 import { createClient } from '@/lib/supabase/server'
 import { signOut } from '../(auth)/actions'
@@ -28,7 +29,11 @@ export default async function AppLayout({ children }: LayoutProps<'/'>) {
     verified. This is display, not authorization: the proxy did the authorizing.
   */
   const supabase = await createClient()
-  const [{ data }, counts] = await Promise.all([supabase.auth.getClaims(), railCounts()])
+  const [{ data }, counts, sourceCount] = await Promise.all([
+    supabase.auth.getClaims(),
+    railCounts(),
+    countSources(),
+  ])
 
   /*
     Three counts rather than the whole library. This runs on every page in the
@@ -68,7 +73,12 @@ export default async function AppLayout({ children }: LayoutProps<'/'>) {
           <Wordmark />
         </div>
 
-        <RailNav total={counts.total} queued={queued} needsReview={counts.needsReview} />
+        <RailNav
+          total={counts.total}
+          queued={queued}
+          needsReview={counts.needsReview}
+          sources={sourceCount}
+        />
 
         <div className="mt-auto flex flex-col gap-2.5 px-2">
           <p className="font-mono text-mono leading-[1.9] text-ink-3">
@@ -87,9 +97,12 @@ export default async function AppLayout({ children }: LayoutProps<'/'>) {
             {data?.claims.email}
           </p>
           {/*
-            Beside Sign out, in the account foot — not a fourth nav entry. The
-            mobile tab bar is two destinations plus the add button and stays that
-            way (DESIGN.md, "Mobile has two destinations plus add").
+            The account foot, which is a DESKTOP surface: this whole aside is
+            `hidden` below `md`. Its mobile counterpart is the `md:hidden` cluster
+            in the library head (library-view.tsx), and that is where Sources goes
+            on a phone — beside Settings, exactly as here, rather than becoming a
+            fourth tab entry. Sources needs no entry in this foot because the rail
+            above already gives it its own group.
           */}
           <Link href="/settings" className={`${footLink} hover:text-ink`}>
             Settings

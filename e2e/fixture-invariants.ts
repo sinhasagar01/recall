@@ -30,13 +30,19 @@ interface Invariant {
   must: string
   /** Which spec falls over when it is not. Names the cost of the violation. */
   reliedOnBy: string
-  holds: (library: { titles: string[]; count: number }) => boolean
+  holds: (library: { titles: string[]; count: number; sourceTitles: string[] }) => boolean
 }
 
 const has =
   (...titles: string[]) =>
   (library: { titles: string[] }) =>
     titles.every((title) => library.titles.some((existing) => existing.includes(title)))
+
+/** Sources live in their own table, so they need their own predicate. */
+const hasSources =
+  (...titles: string[]) =>
+  (library: { sourceTitles: string[] }) =>
+    titles.every((title) => library.sourceTitles.some((existing) => existing.includes(title)))
 
 export const INVARIANTS: Invariant[] = [
   {
@@ -65,6 +71,12 @@ export const INVARIANTS: Invariant[] = [
     must: 'hold the two evidence topics — one with all three markers, one with a rebuild',
     reliedOnBy: 'e2e/evidence.spec.ts — the card squares and the weak-with-all-three case',
     holds: has('Debouncing a scroll handler', 'The backpack'),
+  },
+  {
+    fixture: 'main',
+    must: 'hold the two seeded sources — one with entries, one stale with nothing',
+    reliedOnBy: 'e2e/sources.spec.ts — the workspace, the derived list and the crimson yield',
+    holds: hasSources('Closures, in depth', 'Database indexing internals'),
   },
   {
     fixture: 'few',
@@ -122,7 +134,7 @@ export async function checkFixtureInvariants(): Promise<void> {
   const idFor = new Map(accounts.users.map((user) => [user.email, user.id]))
   const fixtures = [...new Set(INVARIANTS.map((invariant) => invariant.fixture))]
 
-  const libraries = new Map<Fixture, { titles: string[]; count: number }>()
+  const libraries = new Map<Fixture, { titles: string[]; count: number; sourceTitles: string[] }>()
   for (const fixture of fixtures) {
     const id = idFor.get(CREDENTIALS[fixture].email)
     if (!id) throw new Error(`Fixture user "${fixture}" does not exist. Run: npm run seed:e2e`)
@@ -133,7 +145,21 @@ export async function checkFixtureInvariants(): Promise<void> {
       .eq('user_id', id)
 
     if (error) throw new Error(`Fixture check could not read ${fixture}: ${error.message}`)
-    libraries.set(fixture, { titles: (data ?? []).map((row) => row.title), count: count ?? 0 })
+
+    const { data: sources, error: sourceError } = await admin
+      .from('sources')
+      .select('title')
+      .eq('user_id', id)
+
+    if (sourceError) {
+      throw new Error(`Fixture check could not read ${fixture}'s sources: ${sourceError.message}`)
+    }
+
+    libraries.set(fixture, {
+      titles: (data ?? []).map((row) => row.title),
+      count: count ?? 0,
+      sourceTitles: (sources ?? []).map((row) => row.title),
+    })
   }
 
   const broken = INVARIANTS.filter(

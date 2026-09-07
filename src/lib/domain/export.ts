@@ -2,6 +2,7 @@ import { categoryOf } from '@/lib/domain/category-suggest'
 import { CONFIDENCE_LABEL } from '@/lib/domain/confidence'
 import { EVIDENCE_COPY, evidenceEntries } from '@/lib/domain/evidence'
 import { DIFFICULTY_LABEL, formatShortDate } from '@/lib/domain/library'
+import type { SourceSummary } from '@/lib/domain/sources'
 import type { Topic } from '@/lib/domain/types'
 
 /**
@@ -76,7 +77,19 @@ function practiceLine(topic: Topic): string {
  */
 export function renderLibraryMarkdown(
   topics: Topic[],
-  { exportedAt, missingPaths }: { exportedAt: Date; missingPaths: Set<string> },
+  {
+    exportedAt,
+    missingPaths,
+    sources = [],
+    sourceOf = {},
+  }: {
+    exportedAt: Date
+    missingPaths: Set<string>
+    /** Records only. Transcript bodies are deliberately not exported — see below. */
+    sources?: SourceSummary[]
+    /** topic id → source id, since `source_id` is not on the domain Topic. */
+    sourceOf?: Record<string, string>
+  },
 ): string {
   const missingCount = topics.filter(
     (topic) =>
@@ -182,9 +195,70 @@ export function renderLibraryMarkdown(
       }
     }
 
+    /*
+      Where this came from. One line, after the mental model and before the
+      practice line — the detail page's order, so the file reads the way the
+      product does. Omitted when there is no source, the rule Definition and
+      Visual already follow.
+    */
+    const from = sources.find((source) => source.id === sourceOf[topic.id])
+    if (from) {
+      lines.push(
+        '## Where this came from',
+        '',
+        `${from.title}${from.course ? ` · ${from.course}` : ''}${from.url ? ` — ${from.url}` : ''}`,
+        '',
+      )
+    }
+
     lines.push(practiceLine(topic), '')
     return lines.join('\n')
   })
 
+  if (sources.length > 0) {
+    body.push(sourcesSection(sources))
+  }
+
   return [...head, ...body].join('\n').trimEnd() + '\n'
+}
+
+/**
+ * The sources, as records.
+ *
+ * **Transcript bodies are deliberately not exported, and the file says so.** A
+ * transcript is third-party text you pasted as scratch and that the product tells
+ * you to delete; shipping megabytes of it in a file meant to be readable is a
+ * cost paid on every export for material you are asked to throw away. The word
+ * count is exported so a reader finding a source with a count and no text can see
+ * that was a decision rather than a bug.
+ *
+ * This is a stated exception to `library.json`'s "every column, not a summary",
+ * which was asserted about topics. Recorded in DESIGN.md as well as here.
+ */
+function sourcesSection(sources: SourceSummary[]): string {
+  const lines = ['', '---', '', '# Sources', '']
+
+  lines.push(
+    'Where these topics came from. Transcript text is **not** exported: it is scratch',
+    'pasted from elsewhere, not your writing, and the product asks you to delete it once',
+    'you have distilled from it. The word count is here so a source with no text reads as',
+    'a decision rather than a loss.',
+    '',
+  )
+
+  for (const source of sources) {
+    const words =
+      source.transcript_words === null
+        ? source.transcript_deleted_at === null
+          ? 'no transcript'
+          : 'transcript deleted'
+        : `${source.transcript_words.toLocaleString()} words, not exported`
+
+    lines.push(
+      `- **${source.title}**${source.course ? ` · ${source.course}` : ''}`,
+      `  ${source.url ?? 'no link'} · ${words}`,
+    )
+  }
+
+  return lines.join('\n') + '\n'
 }

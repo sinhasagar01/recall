@@ -47,6 +47,12 @@ else re-introduces the scolding this palette was built to avoid. **Never for
 confidence**, which is a judgement rather than a fact, and the one thing this palette
 refuses to colour-code.
 
+`--flag` has one further case, and it is deliberately narrow: **a stale source's yield
+label** — "Nothing · 15 days" on a source that has produced nothing in a fortnight. The
+label takes the colour; **the row does not**. A crimson row would read as an error, and a
+stale source is not an error, it is a fact about you. `sources-reference.html` argued for
+the row without checking this rule and has been corrected. Nowhere else.
+
 ### Type
 
 | Role | Family | Where |
@@ -525,7 +531,90 @@ across 390pt would each be under 44px.
 
 ---
 
-## 7. Copy rules
+## 7. Sources
+
+`sources-reference.html` is the visual source of truth for this section, read the way
+`design-reference.html` is: the screens win on visual and interaction detail, and a
+shipped decision with recorded reasoning wins over the screens.
+
+A source is the video or article a topic came from — **title required, course and URL
+optional, transcript optional and deletable**. The transcript is scratch you work from,
+never a library of its own.
+
+### A source is never practised
+
+It has no confidence, never enters the practice queue, and never appears on the weak page.
+This is the failure mode the whole section is built against: the moment the queue can see
+a `source_id`, a transcript is one join away from being something you are asked to recall.
+It is enforced structurally rather than by care — `source_id` is deliberately absent from
+the domain `Topic`, so a queue module has no column to name. See ARCHITECTURE.md.
+
+### The transcript is never searched from the library
+
+Library search reads `search_text`, which is generated on `topics`; a transcript is not in
+that table, so it cannot be found there. Inside a source's own workspace it **is**
+searchable, client-side over text already on screen. There is deliberately no server-side
+way to search a transcript, because that machinery is what someone would later reuse to
+"just also search transcripts", and a transcript matching a word would bury the topic you
+wrote about it under the paragraph that taught it to you.
+
+### Selecting transcript text fills the definition, never the mental model
+
+Someone else's words are fine for the fact. The mental model is the correction only you
+can write, and a prefilled one would be a quotation pretending to be understanding. The
+domain function returns a definition and has no field to put a model in, so there is no
+path from a selection to that input.
+
+### Four of the five extractions are derived
+
+A definition, a mental model, a challenge attempted, and three retrieval questions all come
+from what is linked to the source. Only **"when not to use it"** is a stored tick, because
+nothing in the data distinguishes that topic from any other — and the UI labels it as the
+exception. Derived means it cannot be gamed: you cannot claim three retrieval questions
+with two quizzes written, in the same way you cannot claim a capability by finishing a
+video.
+
+### Deleting
+
+Two different deletions, and the copy distinguishes them because the data does. Deleting
+the **transcript** keeps the record: *"Deleted. The title, course and link are kept."*
+Deleting the **source** keeps its topics — `on delete set null`, so the entries stay and
+lose the line saying where they came from, and the confirmation says exactly that. A
+source that never had a transcript reads *"No transcript. Distil from your own notes"*,
+which is why `transcript_deleted_at` exists at all.
+
+### On a phone
+
+Sources is reached from the **account surface beside Settings**, not from a fourth tab
+entry: the tab bar stays two destinations plus add (rule 13, above). Note that the account
+foot in the desktop rail is not that surface — the whole rail is `hidden` below
+`--breakpoint-md`, so the mobile account surface is the `md:hidden` cluster in the library
+head, where Settings and Sign out already live. The workspace stops being two columns: the
+transcript collapses behind Show, and select-to-fill is not offered, because text selection
+on a touch screen fights the browser's own selection UI. On a phone you read and type.
+
+### In the export — the one stated exception
+
+`library.json`'s promise is "every column, not a summary". **Transcript bodies are the
+exception, and both files say so.** Each source exports its whole record plus
+`transcript_words`; `library.md` gains a *"Where this came from"* line per topic and a
+`# Sources` section, and states in the file that transcript text is deliberately not
+exported and why.
+
+The reason: the export's promise is that your **library** survives Recall, and a transcript
+is explicitly the thing the product tells you to delete — third-party text pasted as
+scratch. Shipping megabytes of it in a file meant to be readable is a cost paid on every
+export for material you are asked to throw away.
+
+The word count is exported precisely so the omission is legible: a reader finding a source
+with a count and no text can tell that was a decision rather than a bug. Asserted twice —
+that the rendered file carries the count and not the body even when handed one, and that
+the export query never selects the body in the first place, which is what protects
+`library.json`, since it is serialised straight from the query result.
+
+---
+
+## 8. Copy rules
 
 Sentence case everywhere. Active voice. An action keeps its name through the
 whole flow — the button that says "Save topic" produces a toast that says
@@ -537,7 +626,7 @@ invitations, not apologies.
 
 ---
 
-## 8. Accessibility floor
+## 9. Accessibility floor
 
 Not optional, not polish-phase:
 
@@ -566,7 +655,7 @@ technology. Where the two disagree, this is the rule.
 
 ---
 
-## 9. Out of scope
+## 10. Out of scope
 
 The mock shows a few things beyond the original spec. Ship them only if the core
 loop is done: search-term highlighting in card titles, "Review the 2 you missed"

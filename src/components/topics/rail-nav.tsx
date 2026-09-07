@@ -37,10 +37,12 @@ export function RailNav({
   total,
   queued,
   needsReview,
+  sources,
 }: {
   total: number
   queued: number
   needsReview: number
+  sources: number
 }) {
   const pathname = usePathname()
 
@@ -53,6 +55,16 @@ export function RailNav({
       count: String(needsReview),
       countClass: 'text-flag',
     },
+  ]
+
+  /*
+    Sources sits under its own group, below the three that matter. A source is
+    raw material; putting it beside Library would let it compete with the library
+    for the same attention, which is the same reason a source row is not a topic
+    card.
+  */
+  const apprenticeship: Destination[] = [
+    { href: '/sources', label: 'Sources', count: String(sources) },
   ]
 
   return (
@@ -83,6 +95,25 @@ export function RailNav({
           </Link>
         )
       })}
+
+      <span className="mt-5 mb-1.5 px-3 font-mono text-[9.5px] tracking-[0.14em] text-ink-3 uppercase">
+        Apprenticeship
+      </span>
+      {apprenticeship.map((destination) => (
+        <Link
+          key={destination.href}
+          href={destination.href}
+          aria-current={pathname.startsWith(destination.href) ? 'page' : undefined}
+          className={`${ITEM} ${
+            pathname.startsWith(destination.href)
+              ? 'bg-surface text-ink'
+              : 'hover:bg-surface hover:text-ink'
+          }`}
+        >
+          <span>{destination.label}</span>
+          <span className="font-mono text-mono-sm text-ink-3">{destination.count}</span>
+        </Link>
+      ))}
     </nav>
   )
 }

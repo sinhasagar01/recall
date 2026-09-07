@@ -34,6 +34,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      sources: {
+        Row: {
+          caveat_noted: boolean
+          course: string | null
+          created_at: string
+          id: string
+          title: string
+          transcript: string | null
+          transcript_deleted_at: string | null
+          transcript_words: number | null
+          updated_at: string
+          url: string | null
+          user_id: string
+        }
+        Insert: {
+          caveat_noted?: boolean
+          course?: string | null
+          created_at?: string
+          id?: string
+          title: string
+          transcript?: string | null
+          transcript_deleted_at?: string | null
+          transcript_words?: number | null
+          updated_at?: string
+          url?: string | null
+          user_id?: string
+        }
+        Update: {
+          caveat_noted?: boolean
+          course?: string | null
+          created_at?: string
+          id?: string
+          title?: string
+          transcript?: string | null
+          transcript_deleted_at?: string | null
+          transcript_words?: number | null
+          updated_at?: string
+          url?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       topics: {
         Row: {
           category: string | null
@@ -59,6 +101,7 @@ export type Database = {
           rebuild_note: string | null
           rebuild_url: string | null
           search_text: string | null
+          source_id: string | null
           tags: string[]
           title: string
           updated_at: string
@@ -88,6 +131,7 @@ export type Database = {
           rebuild_note?: string | null
           rebuild_url?: string | null
           search_text?: string | null
+          source_id?: string | null
           tags?: string[]
           title: string
           updated_at?: string
@@ -117,12 +161,21 @@ export type Database = {
           rebuild_note?: string | null
           rebuild_url?: string | null
           search_text?: string | null
+          source_id?: string | null
           tags?: string[]
           title?: string
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "topics_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "sources"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
@@ -158,6 +211,9 @@ export type Database = {
         }
         Returns: {
           category: string
+          challenge_at: string
+          challenge_note: string
+          challenge_url: string
           confidence: string
           correct_option: number
           created_at: string
@@ -170,6 +226,12 @@ export type Database = {
           mental_model_image_path: string
           options: string[]
           practice_count: number
+          production_at: string
+          production_note: string
+          production_url: string
+          rebuild_at: string
+          rebuild_note: string
+          rebuild_url: string
           tags: string[]
           title: string
           updated_at: string

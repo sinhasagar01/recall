@@ -366,6 +366,58 @@ if (evidenceError) {
 }
 console.log('Evidence topics seeded: 2 (one with all three markers, one with a rebuild)')
 
+/*
+  One source with a transcript and linked entries, and one stale source with
+  nothing — the two states the list exists to distinguish.
+
+  The stale one is backdated past UNDISTILLED_WINDOW_DAYS so the crimson yield
+  label has something to say. A fixture where every source was created seconds
+  ago cannot express it, which is the lesson recorded in ARCHITECTURE.md.
+*/
+const { data: seededSources, error: sourceError } = await admin
+  .from('sources')
+  .insert([
+    {
+      user_id: mainUserId,
+      title: 'Closures, in depth',
+      course: 'JavaScript: The Hard Parts',
+      url: 'https://example.com/closures',
+      transcript: [
+        'A closure is the combination of a function and the lexical environment within which that function was declared.',
+        'When we return a function from another function, it carries a live reference to the variables that were in scope where it was defined.',
+        'Some people call this the backpack. The returned function walks away carrying a backpack of everything it might still need.',
+        'The crucial thing is that it is not a copy. It is a live reference.',
+      ].join('\n'),
+      created_at: daysAgo(9),
+    },
+    {
+      user_id: mainUserId,
+      title: 'Database indexing internals',
+      transcript: 'A B-tree keeps its leaves at the same depth, which is what bounds the lookup.',
+      created_at: daysAgo(21),
+    },
+  ])
+  .select('id, title')
+
+if (sourceError) {
+  console.error(`Could not seed the sources: ${sourceError.message}`)
+  process.exit(1)
+}
+
+const closures = seededSources?.find((row) => row.title === 'Closures, in depth')
+if (closures) {
+  const { error: linkError } = await admin
+    .from('topics')
+    .update({ source_id: closures.id })
+    .in('title', ['The backpack', 'Debouncing a scroll handler'])
+  if (linkError) {
+    console.error(`Could not link the seeded entries: ${linkError.message}`)
+    process.exit(1)
+  }
+}
+
+console.log('Sources seeded: 2 (one with entries, one stale with nothing)')
+
 const { error: quizError } = await admin.from('topics').insert([
   {
     user_id: mainUserId,

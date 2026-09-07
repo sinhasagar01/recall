@@ -1,7 +1,7 @@
 import { Zip, ZipPassThrough } from 'fflate'
 import { NextResponse } from 'next/server'
 
-import { fetchImage, readEntireLibrary } from '@/lib/data/export'
+import { fetchImage, readEntireLibrary, readSourcesForExport } from '@/lib/data/export'
 import { exportFilename, imageEntryName, renderLibraryMarkdown } from '@/lib/domain/export'
 import { createClient } from '@/lib/supabase/server'
 
@@ -32,7 +32,10 @@ export async function GET() {
   if (!data?.claims) return NextResponse.json({ error: 'Not signed in' }, { status: 401 })
 
   const exportedAt = new Date()
-  const topics = await readEntireLibrary()
+  const [topics, { sources, sourceOf }] = await Promise.all([
+    readEntireLibrary(),
+    readSourcesForExport(),
+  ])
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
@@ -84,7 +87,9 @@ export async function GET() {
 
         write(
           'library.md',
-          encoder.encode(renderLibraryMarkdown(topics, { exportedAt, missingPaths })),
+          encoder.encode(
+            renderLibraryMarkdown(topics, { exportedAt, missingPaths, sources, sourceOf }),
+          ),
         )
 
         write(
@@ -102,6 +107,17 @@ export async function GET() {
                   missing: [...missingPaths],
                 },
                 topics,
+                /*
+                  Sources carry their record and their word count, never the
+                  transcript body. A stated exception to "every column, not a
+                  summary", which was asserted about topics — the note below is in
+                  the file so a reader finding a count and no text can tell a
+                  decision from a bug.
+                */
+                sourceNote:
+                  'Transcript bodies are deliberately not exported: scratch text pasted from elsewhere, not your writing. transcript_words is kept so their absence reads as a decision.',
+                sources,
+                sourceOf,
               },
               null,
               2,

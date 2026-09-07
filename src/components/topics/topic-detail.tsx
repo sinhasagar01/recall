@@ -10,6 +10,8 @@ import { Lightbox } from '@/components/ui/lightbox'
 import { Modal } from '@/components/ui/modal'
 import { Definition, MentalModel, RegisterSection } from '@/components/ui/register'
 import { EvidenceSection } from '@/components/evidence/evidence-section'
+import { TopicSourceLine } from '@/components/sources/topic-source-line'
+import type { SourceSummary } from '@/lib/domain/sources'
 import { takesEvidence } from '@/lib/domain/evidence'
 import { Toast } from '@/components/ui/toast'
 import { deleteTopic } from '@/app/(app)/topic/[id]/actions'
@@ -26,11 +28,16 @@ export function TopicDetail({
   topic,
   categories,
   imageUrl,
+  source,
+  sourceOptions,
 }: {
   topic: Topic
   categories: CategoryOption[]
   /** Signed during the server render, so it is present at first paint. */
   imageUrl: string | null
+  /** Read separately: `source_id` is not on the domain Topic. */
+  source: { source: SourceSummary; siblings: number } | null
+  sourceOptions: { id: string; title: string }[]
 }) {
   const [editing, setEditing] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
@@ -128,6 +135,14 @@ export function TopicDetail({
         concept, and `topics_evidence_is_consistent` refuses the columns outright,
         so this branch and the database say the same thing.
       */}
+      {/*
+        One line, after the mental model and before Evidence. A topic with no
+        source omits the section — the rule Definition and Visual already follow.
+        It arrives as a prop rather than off the topic because `source_id` is
+        deliberately not on the domain Topic; see topic-mapping.ts.
+      */}
+      {source ? <TopicSourceLine source={source.source} siblings={source.siblings} /> : null}
+
       {takesEvidence(topic) ? <EvidenceSection topic={topic} /> : null}
 
       <RegisterSection title="Recall history">
@@ -174,6 +189,8 @@ export function TopicDetail({
         rather than an effect copying props into state after the fact.
       */}
       <TopicSheet
+          sourceId={source?.source.id ?? null}
+          sourceOptions={sourceOptions}
         key={topic.id}
         open={editing}
         onClose={() => setEditing(false)}

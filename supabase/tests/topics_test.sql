@@ -86,8 +86,11 @@ select columns_are('public'::name, 'topics'::name, ARRAY[
   -- document, so the type boundary and the CHECK both stay provable.
   'rebuild_at', 'rebuild_note', 'rebuild_url',
   'challenge_at', 'challenge_note', 'challenge_url',
-  'production_at', 'production_note', 'production_url'
-]::name[], 'topics has exactly the columns in the brief, plus search_text, the quiz shape and evidence');
+  'production_at', 'production_note', 'production_url',
+  -- Arc 2. Nullable, ON DELETE SET NULL, and deliberately absent from the domain
+  -- Topic — see supabase/tests/sources_test.sql and topic-mapping.ts.
+  'source_id'
+]::name[], 'topics has exactly the columns in the brief, plus search_text, the quiz shape, evidence and source_id');
 
 select is(
   (select is_generated from information_schema.columns

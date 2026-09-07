@@ -1,6 +1,7 @@
 import 'server-only'
 
 import { toTopic, type TopicRow } from '@/lib/data/topic-mapping'
+import type { SourceSummary } from '@/lib/domain/sources'
 import type { Topic } from '@/lib/domain/types'
 import { createClient } from '@/lib/supabase/server'
 
@@ -51,6 +52,43 @@ export async function readEntireLibrary(): Promise<Topic[]> {
     topics.push(...(data as TopicRow[]).map(toTopic))
     if (data.length < PAGE) return topics
   }
+}
+
+/**
+ * Every source's RECORD, and the map from topic to source.
+ *
+ * `source_id` is not on the domain `Topic`, so the mapping is returned alongside
+ * rather than read off the rows — the same arrangement the detail page uses.
+ *
+ * **The transcript body is not selected.** It is deliberately not exported: see
+ * `sourcesSection` in src/lib/domain/export.ts for the reasoning, which the
+ * exported file itself states so a reader can tell a decision from a bug.
+ */
+export async function readSourcesForExport(): Promise<{
+  sources: SourceSummary[]
+  sourceOf: Record<string, string>
+}> {
+  const supabase = await createClient()
+
+  const [sources, links] = await Promise.all([
+    supabase
+      .from('sources')
+      .select(
+        'id, user_id, title, course, url, transcript_words, transcript_deleted_at, caveat_noted, created_at, updated_at',
+      )
+      .order('created_at', { ascending: false }),
+    supabase.from('topics').select('id, source_id').not('source_id', 'is', null),
+  ])
+
+  if (sources.error) fail('Reading your sources', sources.error)
+  if (links.error) fail('Reading where your topics came from', links.error)
+
+  const sourceOf: Record<string, string> = {}
+  for (const row of links.data as { id: string; source_id: string }[]) {
+    sourceOf[row.id] = row.source_id
+  }
+
+  return { sources: sources.data as unknown as SourceSummary[], sourceOf }
 }
 
 export interface FetchedImage {
