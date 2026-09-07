@@ -5,6 +5,7 @@ import { RailNav } from '@/components/topics/rail-nav'
 import { Kbd } from '@/components/ui/kbd'
 import { Wordmark } from '@/components/ui/wordmark'
 import { railCounts } from '@/lib/data/library'
+import { phaseCounts } from '@/lib/data/phases'
 import { countSources } from '@/lib/data/sources'
 import { practiceQueueSize } from '@/lib/domain/practice-selection'
 import { createClient } from '@/lib/supabase/server'
@@ -29,10 +30,11 @@ export default async function AppLayout({ children }: LayoutProps<'/'>) {
     verified. This is display, not authorization: the proxy did the authorizing.
   */
   const supabase = await createClient()
-  const [{ data }, counts, sourceCount] = await Promise.all([
+  const [{ data }, counts, sourceCount, phases] = await Promise.all([
     supabase.auth.getClaims(),
     railCounts(),
     countSources(),
+    phaseCounts(),
   ])
 
   /*
@@ -78,6 +80,8 @@ export default async function AppLayout({ children }: LayoutProps<'/'>) {
           queued={queued}
           needsReview={counts.needsReview}
           sources={sourceCount}
+          capabilities={phases.total}
+          demonstrated={phases.demonstrated}
         />
 
         <div className="mt-auto flex flex-col gap-2.5 px-2">

@@ -1022,6 +1022,107 @@ computes to `display: flex`, sits at x=399, and makes the page 106px wider than 
 Pre-existing, unrelated to this arc, and left for its own change rather than widened into
 this one.
 
+## Arc 3 — phases and capabilities
+
+What you are trying to become able to do. A phase is a stretch of weeks and the handful of
+things you will be able to do at the end of it; a capability is one of those, written as an
+ability. Topics link to a capability, and **a capability is demonstrated by evidence, never
+by a tick**. Specified by `phases-reference.html`.
+
+**Two tables, and the reason is the FK.** A capability could not be a `text[]` on `phases`:
+an array element has no identity, so `topics.capability_id` — the central link of the whole
+arc — would be unexpressible, and editing a capability's wording would silently rewrite the
+entry every linked topic depends on. Two entities, two lifetimes, and the migration carries
+both cascade directions at once so they can be read side by side.
+
+**`capability_id` is omitted from the domain `Topic`**, the third column omitted and the
+second for that reason. The compiler found it before I wrote the line: regenerating the
+types failed `TopicBoundaryIsSound` with `Type 'false' does not satisfy the constraint
+'true'`, which is the guard working — a new column on the row stops the build until someone
+decides explicitly whether it belongs on the domain type.
+
+**Demonstrated is derived, and the kind filter is in the rule.** Recall half: any linked row
+at okay or better. Evidence half: any linked row **where `kind = 'topic'`** carrying
+rebuild, challenge or production. A quiz can satisfy the first and never the second. That
+filter changes no result today, because `topics_evidence_is_consistent` already refuses
+those columns on a quiz — it is there so the rule states its own condition instead of being
+accidentally true because of a constraint in another file.
+
+### Three corrections written back into `phases-reference.html`
+
+1. **Crimson only where it marks weak confidence.** The reference coloured all four missing
+   halves in `--flag`. "At weak" and "all weak or new" keep it because they *are* weak
+   confidence; "no rebuild, challenge or production" and "nothing linked" are absences, and
+   an absence is not an error. DESIGN.md is unchanged — a second widening of a rule twice
+   called narrow would make it not narrow.
+2. **How a phase becomes current.** The reference drew "Current" twice and never said what
+   produced it. It is the earliest phase not fully demonstrated: derived, no storage, no
+   dates, none when all are demonstrated.
+3. **The mobile account surface.** The reference redrew a shipped surface as a chip row and
+   dropped Delete account. Both corrected: the shipped inline links stay, the row wraps, and
+   Delete account stays. A drawing that drops a shipped control is how a feature quietly
+   disappears.
+
+Plus a cosmetic slip: "The four capability states" over five drawn rows.
+
+### The perturbation run found two things a green/red reading would have missed
+
+**A policy clause that is correct and unobservable.** Relaxing the `phases` update policy's
+`with check` to `true` left the suite green. The forged-owner update is refused earlier:
+Postgres applies the SELECT policy to the *new* row, so handing a row away makes it
+invisible to you. The two policies test the same expression, so no statement can separate
+them. The assertion was relabelled to say what it proves rather than claiming evidence it
+never had.
+
+**The GRANT gap, demonstrated rather than argued.** Removing both grants left all 59 pgTAP
+assertions green, including four `has_table_privilege` checks per table, because the local
+stack grants new `public` tables through default ACLs regardless. `table-grants.test.ts` —
+which reads the migrations — named all eight missing privileges. This is the arc 2 outage
+reproduced deliberately, and it confirms the local database is structurally incapable of
+answering the question.
+
+A third result was a bug in my own perturbation driver: the stored-boolean perturbation
+first reported "anchor not found". Re-run standalone and verified in `information_schema`,
+it fails both no-stored-boolean assertions. Had I trusted the first run I would have
+reported the arc's central guard as unproven.
+
+### Fixture
+
+The seed carries **both opposite middle states**, because those are the point of the screen:
+one capability with recall and no evidence, one with evidence and no recall. Nothing already
+seeded was okay-or-better *without* evidence — "The backpack" looks like the candidate and
+is not, since the evidence seed gives it a rebuild marker — so that state needed its own
+row. Phases are now cleared per run: a failed run used to leave one behind, and the next
+run's counts would include it.
+
+### A prediction I got wrong, and the number that corrected it
+
+The arc 3 brief asked the 390px assertion to check that the library head's height "changes
+only by the wrapped line" when the account cluster gains a fifth item and is allowed to
+wrap. Measured against the production build, that is wrong in the interesting direction:
+**the head gets shorter, not taller.**
+
+| | h1 | title column | cluster | head |
+| --- | --- | --- | --- | --- |
+| four inline (shipped) | 2 lines, 74px | 111px | 228px | 150px |
+| five inline | 2 lines, 74px | 111px | 290px | **51px overflow** |
+| five, wrapped | **1 line, 37px** | **166px** | 164px | **95px** |
+
+Five inline overflows by 51px, which is what the wrap is for. The counterintuitive part is
+the rest: wrapping lets the cluster collapse toward its widest item rather than demanding
+one line, the title column grows from 111px to 166px, and "My knowledge" stops wrapping.
+**The line the title stops spending is larger than the line the cluster gains** — 150px to
+95px.
+
+So the assertion is: five links present, `scrollWidth === 390`, the head **no taller** than
+before, and the h1 on one line. Asserting "taller by exactly one line" would have failed
+against correct behaviour, which is the expensive kind of wrong test.
+
+Recorded because the guess was reasonable and still wrong. A layout prediction about a flex
+container under `justify-between` is worth a measurement rather than an argument.
+
+---
+
 ---
 
 ## The backlog

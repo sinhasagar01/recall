@@ -33,6 +33,7 @@ interface NewShared {
     domain type must not carry it.
   */
   source_id: string | null
+  capability_id: string | null
 }
 
 /**
@@ -85,6 +86,7 @@ function rowFor(input: NewTopic) {
     tags: input.tags,
     kind: input.kind,
     source_id: input.source_id,
+    capability_id: input.capability_id,
     definition: input.definition,
     options: input.options,
     correct_option: input.correct_option,

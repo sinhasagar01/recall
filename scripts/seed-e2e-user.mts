@@ -468,3 +468,109 @@ for (const userId of [mainUserId, emptyUserId, fewUserId, strongUserId, largeUse
   }
 }
 console.log('Fixture users\' storage folders purged')
+
+/*
+  Two phases, so "current" has something to choose between, and four capabilities
+  spanning the states the screen exists to distinguish.
+
+  Deliberately NOT one of each state: the fixture carries the two opposite middle
+  cases — recall without evidence, and evidence without recall — because those are
+  the two the reference calls the point of the whole screen, and a fixture that
+  only had "done" and "nothing" could not tell them apart.
+*/
+/*
+  Cleared first, like the topics above. A run that fails between creating a phase
+  and deleting it leaves the phase behind, and the next run's assertions then
+  count rows a previous run made — the leak class issue #21 already tracks for
+  users. Deleting the phase cascades to its capabilities and nulls its topics'
+  capability_id, so this is also a live check that the cascade works.
+*/
+await admin.from('phases').delete().eq('user_id', mainUserId)
+
+const { data: seededPhases, error: phaseError } = await admin
+  .from('phases')
+  .insert([
+    {
+      user_id: mainUserId,
+      name: 'Core engineering foundations',
+      when_text: 'Weeks 1-2',
+      sources_text: 'JavaScript: The Hard Parts · Full Stack Fundamentals',
+      created_at: daysAgo(30),
+    },
+    {
+      user_id: mainUserId,
+      name: 'Senior and staff frontend',
+      when_text: 'Weeks 3-7',
+      created_at: daysAgo(10),
+    },
+  ])
+  .select('id, name')
+
+if (phaseError) {
+  console.error(`Could not seed the phases: ${phaseError.message}`)
+  process.exit(1)
+}
+
+const core = seededPhases?.find((row) => row.name === 'Core engineering foundations')
+const senior = seededPhases?.find((row) => row.name === 'Senior and staff frontend')
+
+if (core && senior) {
+  const { data: seededCapabilities, error: capabilityError } = await admin
+    .from('capabilities')
+    .insert([
+      { user_id: mainUserId, phase_id: core.id, name: 'Explain closures without notes', created_at: daysAgo(30) },
+      { user_id: mainUserId, phase_id: core.id, name: 'Debounce and throttle from memory', created_at: daysAgo(29) },
+      { user_id: mainUserId, phase_id: core.id, name: 'Trace a click from browser to database', created_at: daysAgo(28) },
+      { user_id: mainUserId, phase_id: senior.id, name: 'Design a component API others can extend', created_at: daysAgo(10) },
+    ])
+    .select('id, name')
+
+  if (capabilityError) {
+    console.error(`Could not seed the capabilities: ${capabilityError.message}`)
+    process.exit(1)
+  }
+
+  const byName = (name: string) => seededCapabilities?.find((row) => row.name === name)?.id
+
+  /*
+    The two opposite middle states, which is the whole point of the screen.
+
+    "Debouncing a scroll handler" is already weak AND carries all three evidence
+    markers → evidence without recall. Nothing seeded was okay-or-better WITHOUT
+    evidence, so the other half needs its own row: "The backpack" looks like the
+    candidate and is not, because the evidence seed gives it a rebuild marker,
+    which would make it demonstrated rather than half-done.
+  */
+  const { error: recallOnlyError } = await admin.from('topics').insert({
+    user_id: mainUserId,
+    title: 'Lexical scope at definition time',
+    definition: 'Scope is fixed where a function is written, not where it is called.',
+    mental_model: 'The address on the envelope, not the postbox you drop it in.',
+    category: 'JavaScript',
+    tags: ['closures'],
+    confidence: 'okay',
+    practice_count: 3,
+    last_practiced_at: daysAgo(5),
+    created_at: daysAgo(20),
+  })
+
+  if (recallOnlyError) {
+    console.error(`Could not seed the recall-only topic: ${recallOnlyError.message}`)
+    process.exit(1)
+  }
+
+  for (const [title, capability] of [
+    ['Lexical scope at definition time', 'Explain closures without notes'],
+    ['Debouncing a scroll handler', 'Debounce and throttle from memory'],
+  ] as const) {
+    const id = byName(capability)
+    if (!id) continue
+    const { error } = await admin.from('topics').update({ capability_id: id }).eq('title', title).eq('user_id', mainUserId)
+    if (error) {
+      console.error(`Could not link ${title} to a capability: ${error.message}`)
+      process.exit(1)
+    }
+  }
+}
+
+console.log('Phases seeded: 2 (4 capabilities, spanning both middle states)')

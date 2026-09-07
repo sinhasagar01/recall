@@ -54,6 +54,8 @@ export function TopicSheet({
   initialTitle = '',
   sourceId = null,
   sourceOptions = [],
+  capabilityId = null,
+  capabilityOptions = [],
   initialDefinition = '',
   initialKind = 'topic',
 }: {
@@ -71,6 +73,8 @@ export function TopicSheet({
   */
   sourceId?: string | null
   sourceOptions?: { id: string; title: string }[]
+  capabilityId?: string | null
+  capabilityOptions?: { phase: string; options: { id: string; name: string }[] }[]
   /** A transcript selection. Fills the definition, and there is no other field it can reach. */
   initialDefinition?: string
   initialKind?: Kind
@@ -104,6 +108,7 @@ export function TopicSheet({
   */
   const [chosenCategory, setChosenCategory] = useState<string | null>(topic?.category ?? null)
   const [chosenSource, setChosenSource] = useState<string>(sourceId ?? '')
+  const [chosenCapability, setChosenCapability] = useState<string>(capabilityId ?? '')
   const [tags, setTags] = useState<string[]>(topic?.tags ?? [])
   const isEdit = topic !== undefined
   const [difficulty, setDifficulty] = useState<Difficulty>(topic?.difficulty ?? 'medium')
@@ -444,6 +449,44 @@ export function TopicSheet({
                 <option key={option.id} value={option.id}>
                   {option.title}
                 </option>
+              ))}
+            </select>
+          </div>
+        ) : null}
+
+        {/*
+          One optional field, exactly like Source. Grouped by phase because a
+          capability's wording only makes sense under the phase that set it — two
+          phases can reasonably both contain "Explain it without notes".
+
+          A topic serves at most ONE capability. If it genuinely serves two, the
+          capability is written too broadly and should be split; a many-to-many
+          would hide that signal rather than surface it.
+        */}
+        {capabilityOptions.length > 0 ? (
+          <div className="mb-[18px]">
+            <label htmlFor="capability_id" className="mb-1.5 block text-label font-medium text-ink">
+              Capability
+              <span className="ml-1.5 font-mono text-mono font-normal text-ink-3">
+                optional — what this is for
+              </span>
+            </label>
+            <select
+              id="capability_id"
+              name="capability_id"
+              value={chosenCapability}
+              onChange={(event) => setChosenCapability(event.target.value)}
+              className="w-full rounded-md border border-rule-strong bg-surface px-3 py-2.5 text-body text-ink outline-offset-[-1px] focus:border-accent focus:outline-2 focus:outline-accent"
+            >
+              <option value="">No capability</option>
+              {capabilityOptions.map((group) => (
+                <optgroup key={group.phase} label={group.phase}>
+                  {group.options.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.name}
+                    </option>
+                  ))}
+                </optgroup>
               ))}
             </select>
           </div>

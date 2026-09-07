@@ -18,6 +18,7 @@ export const GUARDED = [
   '/weak',
   '/settings',
   '/sources',
+  '/phases',
 ]
 
 /** Routes a signed-in user has no reason to see. */

@@ -3,6 +3,7 @@ import { TopicDetail } from '@/components/topics/topic-detail'
 import { libraryTotals } from '@/lib/data/library'
 import { getTopic, signedImageUrl } from '@/lib/data/topics'
 import { listSourceOptions, readTopicSource } from '@/lib/data/sources'
+import { listCapabilityOptions, readTopicCapability } from '@/lib/data/phases'
 import { categoryOptionsFromCounts } from '@/lib/domain/library'
 
 export default async function TopicPage({ params }: PageProps<'/topic/[id]'>) {
@@ -26,11 +27,28 @@ export default async function TopicPage({ params }: PageProps<'/topic/[id]'>) {
     client-side fetch would leave a hole in the layout while it resolved; this way
     there is nothing to resolve.
   */
-  const [imageUrl, source, sourceOptions] = await Promise.all([
+  const [imageUrl, source, sourceOptions, capability, capabilityOptions] = await Promise.all([
     signedImageUrl(topic.mental_model_image_path),
     readTopicSource(id),
     listSourceOptions(),
+    /*
+      Two extra reads on this one page, and the price of the boundary: neither
+      `source_id` nor `capability_id` is on the domain Topic, so neither arrives
+      with the topic. In exchange the queue has no way to name either.
+    */
+    readTopicCapability(id),
+    listCapabilityOptions(),
   ])
 
-  return <TopicDetail topic={topic} categories={categoryOptionsFromCounts(counts.byCategory, counts.total)} imageUrl={imageUrl} source={source} sourceOptions={sourceOptions} />
+  return (
+    <TopicDetail
+      topic={topic}
+      categories={categoryOptionsFromCounts(counts.byCategory, counts.total)}
+      imageUrl={imageUrl}
+      source={source}
+      sourceOptions={sourceOptions}
+      capability={capability}
+      capabilityOptions={capabilityOptions}
+    />
+  )
 }

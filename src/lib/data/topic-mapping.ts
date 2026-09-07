@@ -2,7 +2,7 @@ import type { Database } from '@/lib/database.types'
 import type { Confidence, Difficulty, Quiz, Topic, TopicRecord } from '@/lib/domain/types'
 
 /**
- * Two columns are omitted deliberately, for two different reasons.
+ * Three columns are omitted deliberately, for two different reasons.
  *
  * **`search_text`** is a generated column that exists only so the trigram index
  * has something to index — derived from columns the domain already has, never
@@ -19,16 +19,24 @@ import type { Confidence, Difficulty, Quiz, Topic, TopicRecord } from '@/lib/dom
  * cheapest way to guarantee that is for the practice path to have no way to name
  * it.
  *
- * The cost, stated: the topic detail page reads its source with its own query,
- * and the edit sheet takes the current source as a prop rather than reading it
- * off the topic. One prop, in exchange for a boundary with no exception in it.
+ * **`capability_id`** is omitted for the same reason as `source_id`, and the
+ * reason bears repeating rather than being inherited by proximity: a capability
+ * is never practised either. If the domain Topic carried it,
+ * `phases-boundary.test.ts` would have to permit the one column it exists to
+ * forbid, in the one module that matters most.
  *
- * Omitting exactly these two is what keeps the assertion honest: every OTHER
- * column difference still fails the build.
+ * The cost, stated: the topic detail page reads its source and its capability
+ * with their own queries, and the edit sheet takes each as a prop rather than
+ * reading them off the topic. Props, in exchange for two boundaries with no
+ * exception in either.
+ *
+ * Omitting exactly these three is what keeps the assertion honest: every OTHER
+ * column difference still fails the build — as `capability_id` itself did, the
+ * moment the migration landed and before this line was written.
  */
 export type TopicRow = Omit<
   Database['public']['Tables']['topics']['Row'],
-  'search_text' | 'source_id'
+  'search_text' | 'source_id' | 'capability_id'
 >
 
 /*
