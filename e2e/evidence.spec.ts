@@ -197,3 +197,71 @@ test.describe('recording evidence', () => {
     await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 15_000 })
   })
 })
+
+/*
+  The Edit button must not sit on the date line.
+
+  It is absolutely positioned, so it never shifted the layout — it simply landed
+  ON `Sep 5 · link` whenever a note wrapped to two lines, which is what a real
+  note does. The cell now reserves room for it unconditionally, so the gap exists
+  whether or not the button is showing and nothing overlaps at any note length.
+
+  Asserted as non-intersection of two bounding boxes rather than as a screenshot:
+  a visual diff would have to be looked at, and this fails on a number.
+*/
+test.describe('the evidence cell reserves room for its button', () => {
+  test.use({ viewport: { width: 1280, height: 900 } })
+
+  test('a wrapping note never collides with the Edit button', async ({ page }) => {
+    await signInAs(page, 'main')
+
+    const title = `Overlap check ${Date.now()}`
+    await page.getByRole('button', { name: /Add topic/ }).first().click()
+    const sheet = page.getByRole('dialog')
+    await sheet.getByRole('textbox', { name: 'Topic', exact: true }).fill(title)
+    await sheet.getByLabel('Definition').fill('A topic whose evidence note is deliberately long.')
+    await sheet.getByRole('button', { name: 'Save topic' }).click()
+    await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 15_000 })
+
+    await openTopic(page, title)
+    await page.getByRole('button', { name: 'Record rebuild' }).click()
+    const dialog = page.getByRole('dialog')
+    // Long enough to wrap to two lines in a quarter-width cell, which is the case
+    // that used to collide.
+    await dialog
+      .getByLabel('What you did')
+      .fill('Rebuilt once(), a memoiser and a debouncer from memory, in isolation, twice')
+    await dialog.getByLabel('When').fill('2026-09-05')
+    await dialog.getByLabel(/^Link/).fill('https://gist.github.com/example/long')
+    await dialog.getByRole('button', { name: 'Save' }).click()
+    await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 15_000 })
+
+    const detail = page.getByTestId('evidence-detail-rebuild')
+    const button = page.getByRole('button', { name: 'Edit rebuild' })
+
+    // Hover the cell so the button is actually laid out where a person sees it.
+    await detail.hover()
+    await expect(button).toBeVisible()
+
+    const [dateBox, buttonBox] = [await detail.boundingBox(), await button.boundingBox()]
+    expect(dateBox).not.toBeNull()
+    expect(buttonBox).not.toBeNull()
+
+    const overlaps =
+      dateBox!.x < buttonBox!.x + buttonBox!.width &&
+      buttonBox!.x < dateBox!.x + dateBox!.width &&
+      dateBox!.y < buttonBox!.y + buttonBox!.height &&
+      buttonBox!.y < dateBox!.y + dateBox!.height
+
+    expect(
+      overlaps,
+      `date line ${JSON.stringify(dateBox)} intersects button ${JSON.stringify(buttonBox)}`,
+    ).toBe(false)
+
+    // The note really did wrap — otherwise this asserts nothing.
+    const noteBox = await page
+      .getByText('Rebuilt once(), a memoiser and a debouncer from memory, in isolation, twice')
+      .boundingBox()
+    expect(noteBox!.height).toBeGreaterThan(20)
+  })
+})

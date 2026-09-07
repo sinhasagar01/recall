@@ -880,3 +880,48 @@ outside the app by decision. No dashboard, phase progress, capability map, Today
 course checklist. No completion state, badge or celebration. No document storage: an ADR is
 a URL. No AI, no analytics. Evidence is not searchable — the note names the artefact, not
 the concept, so "the capstone" would match every topic used in it.
+
+### Closing the evidence phase
+
+Shipped in `cb743b6` and verified on production: the schema push left all 56 rows intact
+and gave none of them evidence, the constraint was proven to *reject* there (five invalid
+writes, all `23514`, nothing left behind), and `practice_ordered_page` still cannot see an
+evidence column. Recorded a rebuild by hand, confirmed it on the detail page and as a
+single square on the card **with a query active** — the filtered read takes the SQL path
+and is where the missing `RETURNS TABLE` columns had made every card claim three markers.
+Confirmed a quiz renders no section, and that `library.md` reads well with the Evidence
+block between the mental model and the practice line. The test evidence was removed
+afterwards: it claimed work that had not been done.
+
+One follow-up fix: the hover-revealed Edit button sat on the date line once a note wrapped
+to two lines. It is now in normal flow with `mt-auto` rather than absolutely positioned, so
+overlap is impossible by construction rather than by a reserved-padding guess — and the
+first guess *was* wrong, because a Tailwind size override loses to class ordering and the
+button is 42px rather than the 27px it looks like. Asserted as non-intersection of two
+bounding boxes, with the note verified to have actually wrapped, and proven by restoring
+the absolute positioning and watching it fail.
+
+## The backlog
+
+**Issues**
+
+| | |
+| --- | --- |
+| [#21](https://github.com/sinhasagar01/recall/issues/21) | `journey.spec.ts` leaks a user per run and fails silently |
+| [#20](https://github.com/sinhasagar01/recall/issues/20) | Keep the recall attempt — planned, never approved, still open |
+| [#7](https://github.com/sinhasagar01/recall/issues/7) | Subscriptions, Stripe webhook, quota enforcement. Only when there is something to bill for |
+
+**The apprenticeship arcs.** Arc 1 — evidence on a topic — is closed. Four remain, plus a
+sixth that is a different kind of decision:
+
+| Arc | |
+| --- | --- |
+| 2 · Sources | Where a topic came from, so you can go back to it |
+| 3 · Phases | A subject studied as a set rather than an endless ten |
+| 4 · Ledger | The record of what was done, over time |
+| 5 · Today | One surface answering what to do now |
+| 6 · AI | Excluded by the product spec today. A decision to be argued on its own merits, not smuggled in with a feature |
+
+Nothing in arcs 2–6 is being designed here, and each of the exclusions the spec already
+holds — no scheduling, no dashboard, no analytics, no gamification — survives until a
+decision explicitly overturns it.

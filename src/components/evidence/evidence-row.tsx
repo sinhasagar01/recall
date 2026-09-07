@@ -83,6 +83,7 @@ export function EvidenceRow({
           return (
             <Cell
               key={kind}
+              testId={`evidence-detail-${kind}`}
               tone={entry === null ? 'todo' : 'done'}
               done={entry !== null}
               label={label}
@@ -123,7 +124,7 @@ export function EvidenceRow({
                   cell is the hover target, so the button is visible before anyone
                   could reach it with a pointer.
                 */
-                <span className="absolute right-[10px] bottom-[10px] opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+                <span className="block opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
                   {/*
                     An explicit aria-label, not visible text plus an sr-only span.
                     Accessible-name computation concatenates text nodes WITHOUT
@@ -167,6 +168,7 @@ function Cell({
   value,
   detail,
   action,
+  testId,
 }: {
   tone: 'recall' | 'done' | 'todo'
   done: boolean
@@ -174,10 +176,25 @@ function Cell({
   value: React.ReactNode
   detail: React.ReactNode
   action?: React.ReactNode
+  testId?: string
 }) {
   return (
     <div
-      className={`group relative border-r border-b border-rule p-[13px_14px_15px] last:border-r-0 md:border-b-0 ${
+      /*
+        The button sits in normal flow, not absolutely positioned.
+
+        Absolute positioning meant it never shifted the layout and always sat ON
+        the date line once a note wrapped to two lines — the common case for a real
+        note. Reserving a fixed bottom padding would have been a guess at the
+        button's height, and the first guess was wrong: the size override loses to
+        Tailwind's class ordering, so the button is 42px rather than the 27px it
+        looks like.
+
+        In flow with `mt-auto` it occupies its own space at the bottom of the cell
+        whether or not it is visible, so nothing moves when it appears and nothing
+        can overlap at any note length. Structural rather than numeric.
+      */
+      className={`group flex flex-col border-r border-b border-rule px-[14px] pt-[13px] pb-[13px] last:border-r-0 md:border-b-0 ${
         tone === 'recall' ? 'bg-surface-2' : tone === 'done' ? 'bg-ok-soft' : ''
       }`}
     >
@@ -209,8 +226,11 @@ function Cell({
         {value}
       </div>
 
-      <div className="mt-[5px] font-mono text-[11px] text-ink-3">{detail}</div>
-      {action}
+      <div data-testid={testId} className="mt-[5px] font-mono text-[11px] text-ink-3">
+        {detail}
+      </div>
+      {/* mt-auto pins it to the bottom while still taking part in the layout. */}
+      {action ? <div className="mt-auto pt-2.5">{action}</div> : null}
     </div>
   )
 }
