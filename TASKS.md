@@ -1166,8 +1166,6 @@ container under `justify-between` is worth a measurement rather than an argument
 
 ## Arc 4 — the project ledger
 
-*In progress.*
-
 What the capstone produced: decisions, PRs, diagrams, incidents, milestones. **Links, not
 documents** — the thing lives where you made it, and the ledger knows its title, kind,
 status and which capability it serves. Specified by `ledger-reference.html`.
@@ -1255,6 +1253,65 @@ Measured at 390px, against arc 3's wrapped row:
 
 The head costs one word now, at any number of destinations — which is the property the
 wrapping row could not promise.
+
+### Five more specs asserted over an empty set — the same failure, twice in two arcs
+
+Replacing the cluster broke five shipped tests, and **all five failed the same way the arc 3
+mobile assertion would have**: they located the inline links, which no longer exist, so each
+would have passed over an empty set while appearing to guard the mobile head. `mobile.spec.ts`
+×3, `settings.spec.ts`, `sources.spec.ts` — one of them this project's own **#22 regression
+test**, which waited on `main a[href="/settings"]`.
+
+They failed loudly only because the elements vanished entirely. Had the cluster survived in
+some reduced form, they would have gone green and tested nothing. Each was rerouted through
+the sheet rather than weakened: same assertion, the way a person now reaches it.
+
+The general shape, now seen twice: **a UI change that deletes a surface silently converts
+every test that located things on it into a test of nothing.** After removing a surface, grep
+for what located it — the compiler cannot help, and a green suite is the expected result of
+getting this wrong.
+
+### "Could not measure" read as a result again, one hour after the rule was written
+
+The production anon probe returned **404 on all four operations** — which reads exactly like
+denial. It was not: the page the probe ran from did not carry the Supabase host in its
+chunks, so the URL was `undefined` and every request went to airlocklab.com instead.
+
+That is precisely the finding recorded in ARCHITECTURE.md during this same arc — *when a tool
+reports a negative result, ask whether it can distinguish "no effect" from "could not
+measure"* — arriving again within the hour, in a different instrument. Re-run from a page
+that carries the host, with a guard that **throws when the host is not found**: four
+operations, all 401 / 42501, against `yzumtamtjhtzfoeszbtw.supabase.co`.
+
+Worth recording because it says something about the rule: knowing it was not enough. What
+caught it was the shape of the output — four identical 404s with no error code, where a real
+denial carries `42501`. The durable fix is not vigilance but the assertion, so the probe now
+refuses to run unless it can name the host it is pointed at.
+
+### The delete confirmation covered two of three things
+
+A phase delete destroys its capabilities and leaves **both** the linked topics and the linked
+ledger entries standing. The sentence named only the topics — true, and incomplete the moment
+the ledger existed. Now it names both, agreeing over the **total** that survives rather than
+either count, since one topic and one entry is two things. Each half disappears independently,
+so 1 topic / 0 entries is a different sentence from 0 topics / 1 entry; tested at all nine
+combinations of 0, 1 and 2.
+
+### Recorded as a gap, again: no production 390px numbers
+
+The browser tab reports resizes as successful while `innerWidth` stays 1920 — the same
+limitation as arc 3, and still unsolved. Verified structurally on production instead: the
+`More` button present with `md:hidden`, `aria-haspopup="dialog"`, the old wrapping cluster
+**absent** from the markup, and the tab bar at exactly three. The geometry above was measured
+at 390×844 against the production build of this commit — the identical bundle, but not a
+measurement on airlocklab.com.
+
+### One thing found and left
+
+The phase-delete confirmation gap above was found by reading the production dialog, not by a
+test. Nothing asserted that the sentence covered everything a phase delete touches, and
+nothing would have: the test asserted the string it was given. **A test can only hold copy to
+what someone thought to say.**
 
 ---
 

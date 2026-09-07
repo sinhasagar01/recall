@@ -49,7 +49,10 @@ export function PhaseWorkspace({
   ).length
 
   const linkedTopics = capabilities.reduce((total, view) => total + view.entries.length, 0)
-  const copy = deletePhaseCopy(capabilities.length, linkedTopics)
+  // Ledger entries survive a phase delete exactly as topics do, so the
+  // confirmation names both — see deletePhaseCopy.
+  const linkedItems = capabilities.reduce((total, view) => total + (view.ledger?.length ?? 0), 0)
+  const copy = deletePhaseCopy(capabilities.length, linkedTopics, linkedItems)
 
   const submitCapability = (formData: FormData) => {
     setError(null)

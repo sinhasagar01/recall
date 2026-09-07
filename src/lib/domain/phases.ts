@@ -187,36 +187,65 @@ export function currentPhaseId(
 /**
  * What the delete confirmation says.
  *
- * Two counts and a verb that has to agree with the second of them — the exact
- * defect arc 2 shipped ("The 1 entry you distilled from it stay in your
- * library"). Domain copy for the same reason as `deleteSourceCopy`: the sentence
- * makes a promise the schema keeps (`on delete cascade` to capabilities,
- * `on delete set null` to topics), and the two must not drift.
+ * A phase delete touches **three** things, and the sentence has to cover all
+ * three: the phase and its capabilities die, and both the linked topics and the
+ * linked ledger entries survive, each losing the line saying which capability it
+ * served. An earlier version named only the topics — true, but incomplete once
+ * the ledger arrived, and an incomplete reassurance is the kind that gets found
+ * out the first time someone checks.
  *
- * Zero linked topics is not a smaller version of the sentence — "The 0 topics
- * linked to them stay in your library" is a claim about nothing — so it gets no
- * consequence clause at all.
+ * Domain copy for the reason `missingHalf` and `deleteItemCopy` are: the sentence
+ * makes a promise the schema keeps (`on delete cascade` to capabilities, `on
+ * delete set null` to both the topics and the ledger entries), and the two must
+ * not drift.
+ *
+ * Note the wording: "ledger entries", not the table's name. `ledger-boundary.test.ts`
+ * forbids this module from naming that table at all, and caught the first draft of
+ * this comment doing it. A mention-guard is blunt on purpose — "it is only a
+ * comment" is how the first real reference arrives.
+ *
+ * ── The zero cases, which are the whole difficulty ──────────────────────────
+ * Each half disappears independently. "The 0 topics stay in your library" is a
+ * claim about nothing, and so is its ledger twin — so a count of zero contributes
+ * no clause at all, and zero of both contributes no sentence. That means
+ * 1 topic / 0 items and 0 topics / 1 item are different sentences, not the same
+ * sentence with a number swapped.
+ *
+ * Agreement is over the TOTAL that survives, not over either count: one topic and
+ * one entry is two things, and two things stay rather than stays.
  */
 export function deletePhaseCopy(
   capabilityCount: number,
   topicCount: number,
+  itemCount: number = 0,
 ): { removes: string; kept: string } {
   const removes =
     capabilityCount === 0
       ? 'This removes the phase. It has no capabilities yet'
       : `This removes the phase and its ${plural(capabilityCount, 'capability', 'capabilities')}`
 
-  if (topicCount === 0) {
+  const surviving = topicCount + itemCount
+  if (surviving === 0) {
     return { removes, kept: '' }
   }
 
-  const subject = topicCount === 1 ? 'It loses' : 'They lose'
-  const possessive = topicCount === 1 ? 'it serves' : 'they serve'
-
-  return {
-    removes,
-    kept: `The ${plural(topicCount, 'topic', 'topics')} linked to ${
-      capabilityCount === 1 ? 'it' : 'them'
-    } ${topicCount === 1 ? 'stays' : 'stay'} in your library — ${subject.toLowerCase()} the line saying which capability ${possessive}`,
+  const parts: string[] = []
+  const places: string[] = []
+  if (topicCount > 0) {
+    parts.push(plural(topicCount, 'topic'))
+    places.push('library')
   }
+  if (itemCount > 0) {
+    parts.push(plural(itemCount, 'ledger entry', 'ledger entries'))
+    places.push('ledger')
+  }
+
+  const one = surviving === 1
+  const kept =
+    `The ${parts.join(' and ')} linked to ${capabilityCount === 1 ? 'it' : 'them'} ` +
+    `${one ? 'stays' : 'stay'} in your ${places.join(' and ')} — ` +
+    `${one ? 'it loses' : 'they lose'} the line saying which capability ` +
+    `${one ? 'it serves' : 'they serve'}`
+
+  return { removes, kept }
 }

@@ -173,38 +173,76 @@ describe('which phase is current', () => {
 })
 
 describe('what the delete confirmation says', () => {
-  it('makes no claim about topics when none are linked', () => {
-    const copy = deletePhaseCopy(2, 0)
+  /*
+    A phase delete touches three things. Each surviving half appears only when it
+    has something to say, so the two counts are varied independently — 1 topic and
+    0 entries is a different sentence from 0 topics and 1 entry, not the same one
+    with a number moved.
+  */
+  it('makes no claim at all when nothing survives', () => {
+    const copy = deletePhaseCopy(2, 0, 0)
 
     expect(copy.removes).toBe('This removes the phase and its 2 capabilities')
     expect(copy.kept).toBe('')
   })
 
-  it('agrees throughout at one capability and one topic', () => {
-    const copy = deletePhaseCopy(1, 1)
-
-    expect(copy.removes).toBe('This removes the phase and its 1 capability')
-    expect(copy.kept).toBe(
+  it('names only the topics when there are no ledger entries', () => {
+    expect(deletePhaseCopy(1, 1, 0).kept).toBe(
       'The 1 topic linked to it stays in your library — it loses the line saying which capability it serves',
     )
-    for (const wrong of ['capabilities', '1 topics', 'stay in', 'they lose', 'they serve']) {
-      expect(`${copy.removes} ${copy.kept}`).not.toContain(wrong)
-    }
+    expect(deletePhaseCopy(1, 2, 0).kept).toBe(
+      'The 2 topics linked to it stay in your library — they lose the line saying which capability they serve',
+    )
+    expect(deletePhaseCopy(1, 2, 0).kept).not.toContain('ledger')
   })
 
-  it('agrees throughout at many', () => {
-    const copy = deletePhaseCopy(4, 11)
-
-    expect(copy.removes).toBe('This removes the phase and its 4 capabilities')
-    expect(copy.kept).toBe(
-      'The 11 topics linked to them stay in your library — they lose the line saying which capability they serve',
+  it('names only the ledger entries when there are no topics', () => {
+    expect(deletePhaseCopy(1, 0, 1).kept).toBe(
+      'The 1 ledger entry linked to it stays in your ledger — it loses the line saying which capability it serves',
     )
-    for (const wrong of ['1 capability ', 'stays in', 'it loses']) {
-      expect(`${copy.removes} ${copy.kept}`).not.toContain(wrong)
+    expect(deletePhaseCopy(1, 0, 2).kept).toBe(
+      'The 2 ledger entries linked to it stay in your ledger — they lose the line saying which capability they serve',
+    )
+    expect(deletePhaseCopy(1, 0, 2).kept).not.toContain('topic')
+    expect(deletePhaseCopy(1, 0, 2).kept).not.toContain('library')
+  })
+
+  it('names both, and agrees over the total rather than either count', () => {
+    /*
+      One topic and one entry is TWO things. Agreeing over either count alone
+      would produce "The 1 topic and 1 ledger entry ... stays", which is the bug
+      this arrangement exists to avoid.
+    */
+    expect(deletePhaseCopy(2, 1, 1).kept).toBe(
+      'The 1 topic and 1 ledger entry linked to them stay in your library and ledger — they lose the line saying which capability they serve',
+    )
+    expect(deletePhaseCopy(2, 2, 1).kept).toBe(
+      'The 2 topics and 1 ledger entry linked to them stay in your library and ledger — they lose the line saying which capability they serve',
+    )
+  })
+
+  it('agrees on the capability count independently of what survives', () => {
+    expect(deletePhaseCopy(1, 1, 0).kept).toContain('linked to it ')
+    expect(deletePhaseCopy(2, 1, 0).kept).toContain('linked to them ')
+  })
+
+  it('never mismatches a number and its noun, at any of the nine combinations', () => {
+    for (const topics of [0, 1, 2]) {
+      for (const items of [0, 1, 2]) {
+        const { kept } = deletePhaseCopy(1, topics, items)
+        const where = `topics=${topics} items=${items}`
+
+        for (const wrong of ['1 topics', '1 ledger entries', '2 topic ', '2 ledger entry']) {
+          expect(kept, `${where}: ${wrong}`).not.toContain(wrong)
+        }
+        if (topics + items === 1) expect(kept, where).not.toContain(' stay in')
+        if (topics + items > 1) expect(kept, where).not.toContain(' stays in')
+        if (topics + items === 0) expect(kept, where).toBe('')
+      }
     }
   })
 
   it('says so when the phase has no capabilities yet', () => {
-    expect(deletePhaseCopy(0, 0).removes).toBe('This removes the phase. It has no capabilities yet')
+    expect(deletePhaseCopy(0, 0, 0).removes).toBe('This removes the phase. It has no capabilities yet')
   })
 })
