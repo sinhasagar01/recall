@@ -7,7 +7,7 @@
 -- Written and run RED before the migration exists.
 
 begin;
-select plan(42);
+select plan(46);
 
 create function tests_create_user(uid uuid, email text) returns uuid
 language plpgsql as $fn$
@@ -345,6 +345,35 @@ select isnt(
   '',
   'and the control is a real order rather than an empty string comparing equal to itself'
 );
+
+-- ===========================================================================
+-- Table privileges
+--
+-- RLS and GRANT are two independent gates, and only one of them fails loudly.
+-- This arc learned that the hard way: every assertion above passed, the e2e suite
+-- passed against a real Supabase, and the hosted project still answered
+-- "permission denied for table sources" — taking down every page in the (app)
+-- group, because countSources() runs in the shared layout. The policies were
+-- correct throughout and irrelevant, since GRANT is checked first.
+--
+-- Note what these four do and do not buy. The local stack grants them through
+-- Supabase's default ACLs for new tables in `public`, so they pass here whether
+-- or not *_sources_grants.sql exists — they catch a fresh database, not this
+-- mistake. The test that catches this mistake is table-grants.test.ts, which
+-- reads the migrations and asserts every created table has an explicit grant.
+--
+-- Asked per privilege rather than with table_privs_are(), which asserts an exact
+-- set: pinning the full default ACL would make this fail on any platform change
+-- that has nothing to do with what the app needs.
+-- ===========================================================================
+select ok(has_table_privilege('authenticated', 'public.sources', 'SELECT'),
+  'authenticated may SELECT sources');
+select ok(has_table_privilege('authenticated', 'public.sources', 'INSERT'),
+  'authenticated may INSERT sources');
+select ok(has_table_privilege('authenticated', 'public.sources', 'UPDATE'),
+  'authenticated may UPDATE sources');
+select ok(has_table_privilege('authenticated', 'public.sources', 'DELETE'),
+  'authenticated may DELETE sources');
 
 select * from finish();
 rollback;

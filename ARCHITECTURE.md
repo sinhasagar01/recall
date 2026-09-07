@@ -1714,3 +1714,40 @@ Rewritten to name the three destinations and assert Settings is not among them �
 what the sentence meant, and which the mobile half of the same file had already worked out
 for itself: *"counting links would read 3 and mean nothing. The invariant is which
 destinations are there."*
+
+### A new table needs an explicit GRANT, and no local test can tell you it is missing
+
+`sources` shipped with four RLS policies and no grant. Every local check passed —
+42 pgTAP assertions, the full e2e suite against a real Supabase — and the hosted
+project answered `42501 · permission denied for table sources`. It took down every
+page in the (app) group rather than only `/sources`, because `countSources()` runs
+in the shared layout.
+
+This is the second time. `20260828052220_topics_grants.sql` exists for exactly this
+and says so in its own comment; the lesson had been recorded and was still repeated,
+because nothing enforced it.
+
+The trap is that **the local stack cannot answer the question.** Supabase grants new
+tables in `public` through default ACLs locally, so `has_table_privilege` passes
+whether or not the grant migration exists. A hosted project does not apply those
+defaults to a table created by a migration on a running project. A test that reads
+the database is therefore structurally incapable of catching this — which is why
+`topics_test.sql`'s privilege assertions, which look like the guard, never were one.
+They catch a fresh database, not a forgotten migration.
+
+So the guard reads the **migrations**: `src/lib/data/table-grants.test.ts` extracts
+every `create table public.x` and asserts a matching `grant … to authenticated`.
+Proven by deleting the grant migration and watching it name all four privileges.
+
+The general form: when local and production differ in a *default*, no amount of
+testing against local proves anything about production. The assertion has to move to
+the artefact that is identical in both — here, the SQL itself.
+
+### RLS and GRANT fail in opposite directions, which is why the loud one hides
+
+Recorded under topics and worth restating with a second instance behind it. Without
+the GRANT you get a 500 naming the table. Without the policy you get zero rows and no
+error, which reads like the data vanished. The loud failure is the safe one, and the
+temptation after fixing it is to assume the quiet gate was also exercised — it was
+not. Here the policies were correct throughout and completely irrelevant, because
+GRANT is checked first and nothing ever reached them.
