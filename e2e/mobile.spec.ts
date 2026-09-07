@@ -162,3 +162,29 @@ test.describe('the add sheet on a phone', () => {
     await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 15_000 })
   })
 })
+
+test('the library does not scroll sideways on a phone', async ({ page }) => {
+  /*
+    The regression for a shipped bug. `+ Add topic` carries `hidden md:inline-flex`,
+    but `Button` hardcoded `inline-flex` and Tailwind resolves two utilities in the
+    same group by stylesheet order rather than class-attribute order — so the class
+    was silently inert, the button rendered at every width, and /library was 106px
+    wider than a 390px screen.
+
+    Asserted on the document rather than on the button, because the symptom is what
+    a person experiences: a page that slides under the thumb. A later change that
+    reintroduces the overflow by some other route should fail here too.
+  */
+  await signInAs(page, 'main')
+  await page.locator('main a[href="/settings"]').waitFor()
+
+  const { scrollWidth, clientWidth } = await page.evaluate(() => ({
+    scrollWidth: document.documentElement.scrollWidth,
+    clientWidth: document.documentElement.clientWidth,
+  }))
+
+  expect(scrollWidth, 'the library page is wider than the phone it is on').toBe(clientWidth)
+
+  // And the desktop-only action really is absent, not merely off-screen.
+  await expect(page.getByRole('button', { name: '+ Add topic' })).toHaveCount(0)
+})

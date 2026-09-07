@@ -1049,6 +1049,36 @@ and sets it directly in the open handler. Effects that call `setState` to keep o
 piece of state consistent with another cost an extra render pass for a value that was
 derivable — the project's ESLint config rejects them.
 
+### A caller's display class must beat the component's, and a variant-prefixed one must not
+
+`Button` hardcodes `inline-flex`. Tailwind resolves two utilities in the same group by
+the order of the **generated stylesheet**, not by the order of the class attribute, so a
+caller writing `className="hidden md:inline-flex"` lost — at every width, silently. The
+class was accepted, had no effect, and nothing failed. That shipped: `/library` was 106px
+wider than a 390px screen, and the only signal was a page that slid sideways under the
+thumb.
+
+The rule the component now follows, and the half that is easy to get backwards:
+
+> **An unprefixed display class from the caller replaces the component's own. A
+> variant-prefixed one does not.**
+
+`hidden md:inline-flex` means *"not displayed, except at md"* — the base must stand down,
+or the caller's `hidden` never applies. `md:hidden` alone means *"inline-flex, except at
+md"* — the base must stay, because the variant is emitted after the base utility and wins
+unaided. Standing it down there would leave the element with **no display at all below the
+breakpoint**, which is the same bug pointed the other way: a shipped control vanishing at
+one breakpoint rather than appearing at all of them.
+
+That second case is not hypothetical — `source-workspace.tsx:115` passes `md:hidden` today
+and would have broken.
+
+The general form, worth keeping past this component: **a prop that composes with CSS is a
+contract, not a passthrough.** If a component hardcodes a utility a caller can also set, it
+has to say which wins, and prove it — the failure is invisible to the compiler, invisible
+to the linter, and invisible in review, because the class is right there in the source
+looking like it works.
+
 ## Test layers
 
 Four layers. Each covers something the others structurally cannot. **A Supabase
