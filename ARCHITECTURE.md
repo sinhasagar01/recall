@@ -105,7 +105,121 @@ the whole conjunction NULL.
 has to be shown to be total, clause by clause, and the way to show it is the
 perturbation above rather than an argument.
 
-## A discriminated union only catches reads it makes type-incompatible
+### A perturbation must be applied where the change would actually arrive
+
+The evidence phase perturbed `practice_ordered_page` by editing the migration that created
+it — a migration that runs *before* the evidence columns exist. The reset failed, every
+test went red, and the output looked exactly like a perturbation working. It was not one:
+nothing had been tested, because the schema never built.
+
+> **A perturbation that breaks the migration order fails everything for the wrong reason,
+> and that is indistinguishable from success unless you read which assertions failed.**
+> The honest version simulates how the change would really arrive — here, a later
+> migration doing `create or replace`.
+
+The same applies to any perturbation that breaks compilation rather than behaviour: a
+red suite is only evidence when the *named* assertion you predicted is the one that
+failed.
+
+### Three vacuous assertions in one phase, all caught by perturbation
+
+Worth recording as a count, because the argument for the standard is its hit rate. Every
+one of these was a green assertion that proved nothing, and reasoning had already
+approved all three:
+
+| what was wrong | how it looked | what caught it |
+| --- | --- | --- |
+| the `note is null or` disjunct was redundant | a clause with a written NULL analysis | removing it failed nothing |
+| four of nine constraint clauses untested | a thorough-looking 26-assertion file | blanking them failed nothing |
+| the queue-ordering assertion could not move | a passing pgTAP test of the failure mode | the tie-break perturbation still passed |
+
+The third is the subtlest and the most worth remembering: it was green because of **where
+the fixture put the data**, not because of any logic. Evidence had been placed on the topic
+that already sorted second, so a tie-break that promoted evidenced topics left the order
+identical. The fix was to assert both placements — evidence on the first topic and on the
+second — so a tie-break in either direction moves something.
+
+### The counterexample: a clause that provably cannot bite, and stays anyway
+
+The evidence constraint was written with this prediction attached, in the migration, in
+advance:
+
+> *"the RIGHT operand IS NULL when the note is NULL. The left disjunct is the only thing
+> standing between this constraint and passing on a null note."*
+
+**Wrong, and the perturbation is what caught it.** Removing
+`x_note is null or` from `(x_note is null or length(btrim(x_note)) > 0)` fails **nothing** —
+not one assertion out of thirty.
+
+Why it cannot bite, which is worth having written down because it is the general shape:
+
+> **`NULL and false = false`.** A NULL comparison can therefore only weaken a would-be
+> TRUE into NULL — and a CHECK passes on NULL exactly as it passes on TRUE. So a NULL
+> conjunct can never *rescue* a row that another clause already rejects. The rows that
+> actually reach that clause with a null note are the rows with no evidence for that
+> marker, which must be accepted anyway.
+
+The clause that rejects a date-without-a-note is the coupling on the line above it,
+`(x_at is null) = (x_note is null)`, which is boolean on both sides and cannot be NULL.
+
+**The clause stays, relabelled.** It makes that line independently NULL-safe instead of
+borrowing its safety from the clause beside it, so if the coupling were ever loosened it
+becomes load-bearing. But it is now recorded as belt-and-braces rather than claimed as a
+guard, and that distinction is the point: every one of the three bugs above was a clause
+*assumed* to bite that did not. The rule is unchanged — **perturb every clause** — and
+what changes is what a zero-failure result means. It is not automatically dead code to
+delete; it is a claim to re-derive, and sometimes the honest answer is "redundant, kept,
+here is why".
+
+## A constraint written N times over N markers needs N tests, or you have tested the loop body once
+
+The same evidence constraint states nine clauses: three rules — a date/note coupling, a
+stray-URL guard, a blank-note guard — applied identically to `rebuild`, `challenge` and
+`production`.
+
+Perturbing them found **four of the nine failed nothing**. Not because they were
+redundant: because every assertion in the file put its blank note and its stray URL on
+`rebuild`, and no test had ever put one on the other two markers. Two thirds of a
+symmetric rule was decoration, and it read as thorough.
+
+> **When a rule is written N times over N markers, the tests must exercise all N.**
+> Testing one marker is testing the loop body once and calling the loop covered.
+
+This belongs beside "a fixture with no spread on a dimension cannot test that dimension"
+below — same family, different axis. There the fixture had no spread on a *value*; here
+the assertions had no spread across a *repetition*. Both present as a green suite that has
+never been asked the question.
+
+The four missing assertions were added and all nine clauses now bite. The perturbation run
+is what produced them, which is the argument for the standard existing at all.
+
+## What a type change catches, and what it is blind to — a matched pair
+
+Two phases ran the same experiment from opposite directions and got opposite blind spots.
+They are recorded together because neither is the lesson on its own.
+
+| | quiz phase | evidence phase |
+| --- | --- | --- |
+| The change | added a discriminant, `kind`, splitting `Topic` into two arms | added nine fields to the SHARED interface |
+| What `tsc` caught | **consumption** — using a value where its type no longer fits | **construction** — every site that builds a `Topic` must now supply them |
+| Errors | 2 | 5 |
+| What it missed | **7 of 9** `.definition` reads — every one whose result was renderable | **every consumer** — the detail page, the library card, `library.md`, `TOPIC_COLUMNS`, `COLUMNS` |
+| Who holds the gap | Playwright absence assertions | Playwright, export and pgTAP assertions |
+
+The two blind spots are complementary and together they cover most of a schema change.
+Neither compiler result is a map of the work:
+
+> **After a type change, count the errors against the number of sites you expected to
+> change.** A shortfall is not evidence there is nothing to do — it is the map of what the
+> compiler cannot see, and it is where the hand-written assertions have to go.
+
+In the evidence phase the shortfall was the whole feature: five errors, all fixtures, while
+every screen that must display evidence and every query that must select it compiled
+perfectly and was wrong. `toTopic` did not error either, correctly — it spreads the row —
+and `TopicBoundaryIsSound` stayed satisfied because both arms gained the keys at once,
+which is the assertion doing its job by *not* firing.
+
+### A discriminated union only catches reads it makes type-incompatible
 
 The same shape of lesson as the CHECK rule above, found the same way: by a test, after
 reasoning said otherwise.
@@ -140,6 +254,20 @@ after, while "the text is empty" passes in both states and proves nothing.
 The general rule: **a field present on both arms with different nullability is invisible to
 the compiler wherever null is renderable.** Adding a discriminant tells you where the
 shapes are *used* incompatibly, never where they are merely displayed.
+
+### Adding fields to a shared interface catches construction, and only construction
+
+The mirror image. The nine evidence columns went onto `TopicShared`, and `tsc` returned
+five errors: one hand-written row literal and four builder functions — `makeTopic`,
+`makeQuiz`, and the corpus's `topic()` and `quiz()`. All four builders failed identically,
+because `{...defaults, ...overrides}` with `overrides: Partial<T>` yields
+`string | null | undefined` and `undefined` is not `null`.
+
+Every *reader* compiled. That is not a smaller version of the union's blind spot, it is the
+opposite one: adding a field breaks producers and is silent about consumers, because code
+that ignores a new field is still valid code. The sites that had to change and did not
+error were the detail page, the card, the markdown export, and both explicit column lists —
+each of which would have shipped a feature that silently stored data nothing displayed.
 
 
 ## An assertion about a row in a paged, ordered list is not an assertion about the row

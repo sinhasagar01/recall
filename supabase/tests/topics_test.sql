@@ -80,8 +80,14 @@ select columns_are('public'::name, 'topics'::name, ARRAY[
   'practice_count', 'last_practiced_at', 'created_at', 'updated_at',
   'search_text',
   -- The quiz shape. See supabase/tests/quiz_shape_test.sql for what couples them.
-  'kind', 'options', 'correct_option'
-]::name[], 'topics has exactly the columns in the brief, plus search_text and the quiz shape');
+  'kind', 'options', 'correct_option',
+  -- Evidence. Three markers, each a date, a required note and an optional URL.
+  -- See supabase/tests/evidence_shape_test.sql. Nine scalars rather than a jsonb
+  -- document, so the type boundary and the CHECK both stay provable.
+  'rebuild_at', 'rebuild_note', 'rebuild_url',
+  'challenge_at', 'challenge_note', 'challenge_url',
+  'production_at', 'production_note', 'production_url'
+]::name[], 'topics has exactly the columns in the brief, plus search_text, the quiz shape and evidence');
 
 select is(
   (select is_generated from information_schema.columns

@@ -33,6 +33,32 @@ interface TopicShared {
   last_practiced_at: string | null
   created_at: string
   updated_at: string
+
+  /*
+    ── Evidence ──────────────────────────────────────────────────────────────
+    Three markers, each absent or present with a date, a required note and an
+    optional URL. Nine scalars rather than a jsonb document, so that
+    `TopicBoundaryIsSound` stays a real assertion: `supabase gen types` renders
+    jsonb as `Json`, which every object satisfies, and the boundary would have
+    gone quietly vacuous for exactly the columns being added.
+
+    They sit on the SHARED interface because the row carries them on both arms —
+    a quiz's are all null, and `topics_evidence_is_consistent` is what makes that
+    true rather than a convention. The Quiz arm narrows them to null below.
+
+    Recall is NOT here. It is derived from `confidence`, `practice_count` and
+    `last_practiced_at` at render time, never stored, and never a second source
+    of truth for what the confidence meter already says.
+  */
+  rebuild_at: string | null
+  rebuild_note: string | null
+  rebuild_url: string | null
+  challenge_at: string | null
+  challenge_note: string | null
+  challenge_url: string | null
+  production_at: string | null
+  production_note: string | null
+  production_url: string | null
 }
 
 /**

@@ -308,6 +308,64 @@ if (datedError) {
 }
 console.log('Backdated topics seeded: 2 (so the fixture has a date spread)')
 
+/*
+  One topic carrying every marker, and one carrying a single marker.
+
+  The specs need a topic whose card already shows squares before they record
+  anything, and one that reads WEAK with all three recorded — the case the whole
+  feature exists to make visible, and the case the library could not show before.
+*/
+const { error: evidenceError } = await admin.from('topics').insert([
+  {
+    user_id: mainUserId,
+    title: 'Debouncing a scroll handler',
+    definition: 'Collapse a burst of events into one call by resetting a timer on every event.',
+    mental_model: 'The lift doors that keep reopening while people keep arriving.',
+    category: 'JavaScript',
+    tags: ['performance'],
+    confidence: 'weak',
+    /*
+      Practised and still weak — the case the feature exists to make visible.
+
+      Both rows in this insert set practice_count and last_practiced_at, and they
+      have to: PostgREST unions the keys across a bulk insert, so a column present
+      on one object and absent on another is sent as an explicit NULL for the
+      other rather than falling back to the column default.
+    */
+    practice_count: 3,
+    last_practiced_at: daysAgo(8),
+    created_at: daysAgo(20),
+    rebuild_at: daysAgo(10).slice(0, 10),
+    rebuild_note: 'debounce() from memory',
+    rebuild_url: 'https://gist.github.com/example/debounce',
+    challenge_at: daysAgo(6).slice(0, 10),
+    challenge_note: 'Stale search responses',
+    production_at: daysAgo(3).slice(0, 10),
+    production_note: 'Search cancellation in the capstone',
+    production_url: 'https://example.com/adr-002',
+  },
+  {
+    user_id: mainUserId,
+    title: 'The backpack',
+    definition: 'A returned function carries a live reference to the scope it was defined in.',
+    mental_model: 'The same backpack, not a photocopy.',
+    category: 'JavaScript',
+    tags: ['closures'],
+    confidence: 'strong',
+    practice_count: 6,
+    last_practiced_at: daysAgo(4),
+    created_at: daysAgo(25),
+    rebuild_at: daysAgo(12).slice(0, 10),
+    rebuild_note: 'once() from memory',
+  },
+])
+
+if (evidenceError) {
+  console.error(`Could not seed the evidence topics: ${evidenceError.message}`)
+  process.exit(1)
+}
+console.log('Evidence topics seeded: 2 (one with all three markers, one with a rebuild)')
+
 const { error: quizError } = await admin.from('topics').insert([
   {
     user_id: mainUserId,

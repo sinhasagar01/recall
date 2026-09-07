@@ -793,3 +793,90 @@ one pre-existing load flake. That flake reproduces identically on the pre-change
 the same rate, checked by stashing — `practice.spec.ts` "Escape leaves a practice session"
 and `shortcuts.spec.ts` "N opens the add sheet" trade places between runs, which is the
 signature of hydration racing under parallel load rather than anything about fixtures.
+
+---
+
+## Phase 17 — evidence on a topic
+
+Four markers. Recall is derived from confidence and never stored; Rebuild, Challenge and
+Production are each absent, or present with a date, a required note and an optional URL.
+Specified by `evidence-reference.html`. It records the three things `confidence` cannot:
+whether you can implement a variant, solve a constrained problem with it, and use it in a
+real decision.
+
+**Nine scalar columns, not a jsonb document.** `TopicBoundaryIsSound` asserts the generated
+row and the domain `Topic` are the same shape, and `supabase gen types` renders jsonb as
+`Json` — which every object satisfies — so a document would have made that assertion
+vacuous for exactly the columns being added. Scalars also perturb one clause at a time,
+which the brief required. The quiz phase set the precedent: typed columns plus a shape
+CHECK, not a second table and not a blob.
+
+**A sibling constraint, `topics_evidence_is_consistent`**, rather than an edit to
+`topics_shape_is_consistent`. Two constraints mean a violation names which rule broke, and
+it avoids rewriting a constraint that carries the hard-won `coalesce(array_length(...))`
+fix.
+
+### Evidence never touches the queue, asserted in four places
+
+The failure mode: the moment practice reads evidence there are two confidence systems.
+
+1. `src/lib/domain/evidence-boundary.test.ts` — reads the **source** of the seven queue
+   modules and the practice/weak migrations and fails on the mere *mention* of a column
+   name. Column names come from the domain, so a rename cannot orphan it.
+2. pgTAP — evidence on the first topic, then the second, must not move the order.
+3. A domain unit on `orderForPractice`.
+4. A Playwright assertion that the rail counts do not move.
+
+All four were shown failing before being trusted.
+
+### Four things the tests caught that reasoning had approved
+
+| | how it looked | what caught it |
+| --- | --- | --- |
+| the `note is null or` disjunct is redundant | a clause with a written NULL analysis | perturbation: removing it failed nothing |
+| four of nine clauses untested | a thorough 26-assertion file | perturbation: blanking them failed nothing |
+| the queue-ordering assertion could not move | a passing test of the failure mode | perturbation: the tie-break still passed |
+| `library_page` returned no evidence columns | five green `tsc` errors, all fixtures | Playwright: filtered cards showed squares for empty rows |
+
+The last is the sharpest. A **filtered** library read (`?q=`) takes the SQL path, and the
+RPC's `RETURNS TABLE` had no evidence columns — so they arrived `undefined`, and
+`undefined !== null` made every filtered card claim evidence it did not have. `tsc` cannot
+see a SQL contract. `evidenceFor` now compares with `== null` so a missing column renders
+nothing rather than inventing something, and the RPC had to be **dropped and recreated**:
+Postgres refuses to change a function's return type in place, and it says so as a migration
+error — which I missed once by sending the reset output to `/dev/null`.
+
+### Two traps tested rather than noted
+
+- **The date is a parameter.** `localDateString(now)` is a pure domain function using local
+  getters, unit-tested just after midnight and late evening — the hours where
+  `toISOString().slice(0, 10)` returns the wrong day. The dialog takes `today` as a prop
+  and never reads a clock.
+- **The Record button is keyboard-reachable while invisible.** A component test tabs to it
+  and activates it with no pointer event. It caught a real defect on the way: the
+  accessible name computed as **"Recordrebuild"**, because name computation concatenates
+  text nodes without separators, so the visible text plus an `sr-only` span announced as
+  one word. Replaced with an explicit `aria-label`.
+
+Also removed `pointer-events: none` from the hover reveal — it made the button unclickable
+until a hover had resolved, which surfaced as a 30-second Playwright timeout on a button it
+could plainly see. The reference uses opacity alone, and opacity alone is right.
+
+### Card foot, and one thing deliberately not decided
+
+The right slot holds **one** element: the squares when a topic has evidence, `Model ✓` when
+it has none, `Practiced N×` on a quiz. An early draft of the reference drew cards with no
+`Model ✓`; that was an oversight in the drawing, not a decision, and the reference now says
+so.
+
+**Open question, not decided here:** `Model ✓` appears on 26 of 26 topics, so it
+discriminates nothing. Whether it should exist at all is its own decision and was
+explicitly kept out of this feature.
+
+### Not built
+
+No scheduling — no due dates, no `next_review_at`, no 1–3–7–21; that cadence runs manually
+outside the app by decision. No dashboard, phase progress, capability map, Today page or
+course checklist. No completion state, badge or celebration. No document storage: an ADR is
+a URL. No AI, no analytics. Evidence is not searchable — the note names the artefact, not
+the concept, so "the capstone" would match every topic used in it.

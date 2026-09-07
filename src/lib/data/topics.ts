@@ -3,6 +3,7 @@ import 'server-only'
 import { cache } from 'react'
 
 import { toTopic } from '@/lib/data/topic-mapping'
+import { evidenceColumns, type EvidenceKind } from '@/lib/domain/evidence'
 import type { Confidence, Difficulty, Topic } from '@/lib/domain/types'
 import { createClient } from '@/lib/supabase/server'
 
@@ -168,6 +169,30 @@ export async function recordPractice(
   const { error } = await supabase.from('topics').update(update).eq('id', id)
 
   if (error) fail('Saving your grade', error)
+}
+
+/**
+ * Records or clears one evidence marker.
+ *
+ * Writes only that marker's three columns — the other two markers and everything
+ * else on the row are untouched, so recording a challenge cannot disturb a
+ * rebuild. `null` clears all three together, which is what
+ * `topics_evidence_is_consistent` requires: a date without a note is rejected, so
+ * a partial clear is not a state the database will hold.
+ *
+ * RLS scopes it. No user_id filter here, for the reason the rest of this module
+ * gives: writing one would imply the policy might not be doing its job.
+ */
+export async function writeEvidence(
+  id: string,
+  kind: EvidenceKind,
+  entry: { at: string; note: string; url: string | null } | null,
+): Promise<void> {
+  const supabase = await createClient()
+
+  const { error } = await supabase.from('topics').update(evidenceColumns(kind, entry)).eq('id', id)
+
+  if (error) fail(entry === null ? 'Removing that evidence' : 'Saving that evidence', error)
 }
 
 const BUCKET = 'mental-models'

@@ -1,5 +1,6 @@
 import { categoryOf } from '@/lib/domain/category-suggest'
 import { CONFIDENCE_LABEL } from '@/lib/domain/confidence'
+import { EVIDENCE_COPY, evidenceEntries } from '@/lib/domain/evidence'
 import { DIFFICULTY_LABEL, formatShortDate } from '@/lib/domain/library'
 import type { Topic } from '@/lib/domain/types'
 
@@ -147,6 +148,26 @@ export function renderLibraryMarkdown(
     */
     if (topic.mental_model !== null && topic.mental_model !== '') {
       lines.push(topic.kind === 'quiz' ? '## Why' : '## Mental model', '', topic.mental_model, '')
+    }
+
+    /*
+      Evidence, after the mental model and before the practice line — the detail
+      page's order, so the file reads the way the product does.
+
+      Omitted entirely when there is none, the rule Definition and Visual already
+      follow, so a library with no evidence exports byte-identically to before this
+      shipped. Dated prose belongs in the file that survives Recall.
+    */
+    const evidence = evidenceEntries(topic)
+    if (evidence.length > 0) {
+      lines.push('## Evidence', '')
+      for (const { kind, entry } of evidence) {
+        const link = entry.url === null ? '' : ` — ${entry.url}`
+        lines.push(
+          `- **${EVIDENCE_COPY[kind].label}** — ${formatShortDate(entry.at)} — ${entry.note}${link}`,
+        )
+      }
+      lines.push('')
     }
 
     if (topic.mental_model_image_path !== null) {

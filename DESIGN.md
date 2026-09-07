@@ -37,12 +37,15 @@ theme config. Do not hardcode hex values in components.
 `--flag` is the only alarm color. Never use it for anything that isn't weak
 confidence, a destructive action, or an error.
 
-`--ok` is the only green in the product, and it exists for one reason: a quiz's
-answer is **objective**. Everywhere else the app deliberately refuses to grade —
+`--ok` is the only green in the product, and it exists for one reason: the thing it
+marks is **binary** — a quiz's answer is right or it is not, and a piece of evidence
+is recorded or it is not. Everywhere else the app deliberately refuses to grade —
 confidence is drawn in ink and accent, never red/amber/green, because "the library
-should not scold its owner on every card". A quiz is the one place where the app
-knows you were right, so it is the one place a green is honest. Using it anywhere
-else re-introduces the scolding this palette was built to avoid.
+should not scold its owner on every card". These are the two places where the app knows a
+fact rather than holding an opinion, so they are the two places a green is honest. Using it anywhere
+else re-introduces the scolding this palette was built to avoid. **Never for
+confidence**, which is a judgement rather than a fact, and the one thing this palette
+refuses to colour-code.
 
 ### Type
 
@@ -470,7 +473,59 @@ names both shapes ("12 topics and 3 quizzes"), never calling everything a topic.
 
 ---
 
-## 6. Copy rules
+## 6. Evidence on a topic
+
+Four markers. **Recall is derived** from confidence and is never stored or edited here;
+**Rebuild, Challenge and Production** are each absent, or present with a date, a required
+note and an optional URL. Specified by `evidence-reference.html`.
+
+**It encodes one sentence, and the sentence is on screen.** *"Weak until you can explain
+it, implement a variant, and use it in a design decision."* It sits above the row in the
+product, because without it the row is four checkboxes with no reason.
+
+**Recall appears twice, deliberately.** The first cell restates the confidence the meter
+already shows, and the Recall history section below still shows it. A rule with a hole in
+it reads as three unrelated checkboxes.
+
+**An ADR is a URL.** The link field is the entire integration with any document, PR or
+diagram. The product stores no documents.
+
+**It never touches practice.** Evidence is not an input to practice selection, ordering,
+the weak page, or any count. Asserted in four places, one of which reads the source of the
+queue modules and fails on the mere mention of a column name.
+
+**It never appears on a quiz.** A quiz is a retrieval device, not a concept. The section is
+**absent, not empty**, and the shape constraint refuses the columns outright.
+
+**No completion state.** No badge, no celebration, no "complete". Four ticks are the whole
+signal. And no scheduling of any kind — that cadence runs manually, outside the app.
+
+### Three squares on a card, and the right slot holds one thing
+
+The card foot's right slot shows the **evidence squares** when a topic has any, **Model ✓**
+when it has none, and **Practiced N×** on a quiz. Never two of them, never four squares —
+the meter already carries Recall.
+
+An early draft of `evidence-reference.html` drew its cards with no `Model ✓` at all. **That
+was an oversight in the drawing, not a decision to delete a shipped element**, and the
+reference now says so in its rules tab. The fallback is the rule; the drawing is not.
+
+Separately, and *not decided here*: `Model ✓` currently appears on 26 of 26 topics, so it
+discriminates nothing. That is its own decision and TASKS.md records it as an open
+question.
+
+### Colour is never the only signal
+
+Every cell carries a tick or a dashed circle, a label and text, so done and not-yet read
+differently in greyscale. Four cells become two by two below `--breakpoint-md`, and the
+per-cell Record buttons — revealed on hover and on **focus-within**, never `display:none`,
+which would take them out of the tab order — collapse into one button that asks which kind
+first. Three hover-revealed buttons do not survive a touch screen, and four tap targets
+across 390pt would each be under 44px.
+
+---
+
+## 7. Copy rules
 
 Sentence case everywhere. Active voice. An action keeps its name through the
 whole flow — the button that says "Save topic" produces a toast that says
@@ -482,7 +537,7 @@ invitations, not apologies.
 
 ---
 
-## 7. Accessibility floor
+## 8. Accessibility floor
 
 Not optional, not polish-phase:
 
@@ -511,7 +566,7 @@ technology. Where the two disagree, this is the rule.
 
 ---
 
-## 8. Out of scope
+## 9. Out of scope
 
 The mock shows a few things beyond the original spec. Ship them only if the core
 loop is done: search-term highlighting in card titles, "Review the 2 you missed"

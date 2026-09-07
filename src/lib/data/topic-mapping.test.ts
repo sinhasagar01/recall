@@ -19,6 +19,15 @@ const row: TopicRow = {
   last_practiced_at: '2026-06-01T00:00:00.000Z',
   created_at: '2026-01-01T00:00:00.000Z',
   updated_at: '2026-01-02T00:00:00.000Z',
+  rebuild_at: null,
+  rebuild_note: null,
+  rebuild_url: null,
+  challenge_at: null,
+  challenge_note: null,
+  challenge_url: null,
+  production_at: null,
+  production_note: null,
+  production_url: null,
 }
 
 describe('toTopic', () => {

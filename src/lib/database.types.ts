@@ -37,6 +37,9 @@ export type Database = {
       topics: {
         Row: {
           category: string | null
+          challenge_at: string | null
+          challenge_note: string | null
+          challenge_url: string | null
           confidence: string
           correct_option: number | null
           created_at: string
@@ -49,6 +52,12 @@ export type Database = {
           mental_model_image_path: string | null
           options: string[] | null
           practice_count: number
+          production_at: string | null
+          production_note: string | null
+          production_url: string | null
+          rebuild_at: string | null
+          rebuild_note: string | null
+          rebuild_url: string | null
           search_text: string | null
           tags: string[]
           title: string
@@ -57,6 +66,9 @@ export type Database = {
         }
         Insert: {
           category?: string | null
+          challenge_at?: string | null
+          challenge_note?: string | null
+          challenge_url?: string | null
           confidence?: string
           correct_option?: number | null
           created_at?: string
@@ -69,6 +81,12 @@ export type Database = {
           mental_model_image_path?: string | null
           options?: string[] | null
           practice_count?: number
+          production_at?: string | null
+          production_note?: string | null
+          production_url?: string | null
+          rebuild_at?: string | null
+          rebuild_note?: string | null
+          rebuild_url?: string | null
           search_text?: string | null
           tags?: string[]
           title: string
@@ -77,6 +95,9 @@ export type Database = {
         }
         Update: {
           category?: string | null
+          challenge_at?: string | null
+          challenge_note?: string | null
+          challenge_url?: string | null
           confidence?: string
           correct_option?: number | null
           created_at?: string
@@ -89,6 +110,12 @@ export type Database = {
           mental_model_image_path?: string | null
           options?: string[] | null
           practice_count?: number
+          production_at?: string | null
+          production_note?: string | null
+          production_url?: string | null
+          rebuild_at?: string | null
+          rebuild_note?: string | null
+          rebuild_url?: string | null
           search_text?: string | null
           tags?: string[]
           title?: string

@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recall — evidence on a topic</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;450;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#E9EAF0; --surface:#FFFFFF; --surface-2:#F5F5FA; --surface-3:#EDEEF4;
+  --ink:#12131A; --ink-2:#53555F; --ink-3:#83858F;
+  --rule:#E1E1E9; --rule-strong:#C9C9D4;
+  --accent:#3F3AC7; --accent-soft:#EDECFB; --accent-ink:#2E2A9E;
+  --flag:#B4325C; --flag-soft:#FBEBF1;
+  --ok:#1B6B4F; --ok-soft:#E6F2EC;
+  --radius:6px; --radius-lg:10px;
+  --shadow:0 1px 2px rgba(18,19,26,.05), 0 1px 1px rgba(18,19,26,.03);
+  --shadow-pop:0 4px 8px rgba(18,19,26,.06), 0 12px 32px rgba(18,19,26,.10);
+  --font-display:"Newsreader",Georgia,serif;
+  --font-body:"IBM Plex Sans",system-ui,sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:14.5px;line-height:1.55;-webkit-font-smoothing:antialiased}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+code{font-family:var(--font-mono);font-size:.86em}
+
+.chrome{position:sticky;top:0;z-index:60;display:flex;gap:6px;align-items:center;padding:9px 16px;
+  background:var(--surface);border-bottom:1px solid var(--rule);flex-wrap:wrap}
+.chrome__label{font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin-right:6px}
+.tab{font-family:var(--font-mono);font-size:11.5px;padding:5px 9px;border:1px solid transparent;border-radius:var(--radius);
+  background:none;color:var(--ink-2);cursor:pointer}
+.tab:hover{background:var(--surface-2);color:var(--ink)}
+.tab[aria-selected="true"]{background:var(--accent-soft);color:var(--accent-ink);border-color:var(--accent)}
+
+.eyebrow{font-family:var(--font-mono);font-size:10.5px;font-weight:500;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3)}
+.meta{font-family:var(--font-mono);font-size:11.5px;color:var(--ink-3)}
+.btn{font-family:var(--font-body);font-size:13.5px;font-weight:500;display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  padding:10px 15px;border-radius:var(--radius);border:1px solid var(--rule-strong);background:var(--surface);color:var(--ink);cursor:pointer}
+.btn--primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn--ghost{background:none;border-color:transparent;color:var(--ink-2)}
+.btn--danger{background:none;border-color:transparent;color:var(--flag)}
+.btn--sm{padding:6px 11px;font-size:12.5px}
+.btn--block{width:100%}
+.chip{font-family:var(--font-mono);font-size:11px;padding:3px 8px;border-radius:100px;border:1px solid var(--rule);background:var(--surface-2);color:var(--ink-2)}
+.badge{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;padding:2px 7px;
+  border-radius:3px;border:1px solid var(--accent);color:var(--accent-ink);background:var(--accent-soft)}
+.field{display:block;margin-bottom:15px}
+.field__label{display:block;margin-bottom:6px;font-size:13px;font-weight:500}
+.field__hint{font-family:var(--font-mono);font-size:10.5px;color:var(--ink-3);font-weight:400;margin-left:6px}
+.input,.textarea{width:100%;font-family:var(--font-body);font-size:14.5px;color:var(--ink);background:var(--surface);
+  border:1px solid var(--rule-strong);border-radius:var(--radius);padding:10px 12px;line-height:1.5}
+.textarea{min-height:66px;resize:vertical}
+.conf{display:inline-flex;align-items:center;gap:7px}
+.conf__ticks{display:inline-flex;gap:2.5px}
+.conf__tick{width:5px;height:12px;border-radius:1.5px;border:1px solid var(--rule-strong)}
+.conf__tick--on{background:var(--ink);border-color:var(--ink)}
+.conf--new .conf__tick{border-style:dashed}
+.conf--weak .conf__tick--on{background:var(--flag);border-color:var(--flag)}
+.conf--strong .conf__tick--on{background:var(--accent);border-color:var(--accent)}
+.conf__label{font-family:var(--font-mono);font-size:11px;color:var(--ink-2)}
+.conf--weak .conf__label{color:var(--flag)}
+.conf--strong .conf__label{color:var(--accent-ink)}
+.conf--new .conf__label{color:var(--ink-3)}
+
+.screen{display:none}.screen[data-active]{display:block}
+.app{display:grid;grid-template-columns:212px 1fr;min-height:calc(100vh - 44px)}
+.rail{border-right:1px solid var(--rule);padding:22px 14px;display:flex;flex-direction:column;gap:24px;background:var(--surface-2)}
+.wordmark{display:flex;align-items:baseline;gap:7px;padding:0 8px}
+.wordmark__name{font-family:var(--font-display);font-size:20px;font-weight:600;letter-spacing:-.02em}
+.wordmark__dot{width:5px;height:5px;border-radius:50%;background:var(--accent)}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav__item{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border-radius:var(--radius);
+  color:var(--ink-2);font-size:13.5px;cursor:pointer}
+.nav__item:hover{background:var(--surface);color:var(--ink)}
+.nav__item[aria-current]{background:var(--surface);color:var(--ink);font-weight:500;box-shadow:var(--shadow)}
+.nav__count{font-family:var(--font-mono);font-size:11px;color:var(--ink-3)}
+.nav__count--flag{color:var(--flag)}
+.main{padding:28px 32px 70px;max-width:1000px}
+.page-title{font-family:var(--font-display);font-size:29px;font-weight:500;letter-spacing:-.022em}
+.page-sub{margin-top:4px;font-family:var(--font-mono);font-size:11.5px;color:var(--ink-3)}
+.rule{display:flex;align-items:center;gap:12px;margin:30px 0 12px}
+.rule::after{content:"";flex:1;height:1px;background:var(--rule)}
+.note{max-width:70ch;color:var(--ink-2);font-size:13.5px;margin-top:26px;padding-top:18px;border-top:1px solid var(--rule)}
+.callout{background:var(--surface);border:1px solid var(--accent);border-left-width:3px;border-radius:var(--radius);padding:14px 18px;margin:20px 0;max-width:74ch}
+.callout__t{font-weight:500;color:var(--accent-ink);margin-bottom:4px}
+
+/* detail */
+.detail{max-width:740px}
+.detail__title{font-family:var(--font-display);font-size:31px;font-weight:500;letter-spacing:-.025em;line-height:1.2;margin-bottom:10px}
+.detail__facts{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding-bottom:18px;border-bottom:1px solid var(--rule);margin-bottom:24px}
+.reg{margin-bottom:26px}
+.reg__body{margin-top:9px;font-size:15.5px;line-height:1.72;max-width:66ch}
+.reg--model .reg__body{background:var(--accent-soft);border-left:2px solid var(--accent);border-radius:0 var(--radius) var(--radius) 0;
+  padding:15px 19px;font-family:var(--font-display);font-size:17.5px;line-height:1.68;color:var(--accent-ink)}
+
+/* THE EVIDENCE ROW */
+.ev{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--rule);border-radius:var(--radius-lg);overflow:hidden;background:var(--surface)}
+.ev__cell{padding:14px 16px;border-right:1px solid var(--rule);position:relative}
+.ev__cell:last-child{border-right:none}
+.ev__k{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);display:flex;align-items:center;gap:6px}
+.ev__v{margin-top:8px;font-size:13.5px;font-weight:500;line-height:1.35}
+.ev__d{font-family:var(--font-mono);font-size:10.5px;color:var(--ink-3);margin-top:4px}
+.ev__d a{color:var(--accent-ink);text-decoration:underline;cursor:pointer}
+.ev__cell--recall{background:var(--surface-2)}
+.ev__cell--done{background:var(--ok-soft)}
+.ev__cell--done .ev__k{color:var(--ok)}
+.ev__cell--done .ev__v{color:var(--ok)}
+.ev__cell--todo .ev__v{color:var(--ink-3);font-weight:400}
+.ev__add{position:absolute;right:10px;bottom:10px;opacity:0}
+.ev__cell:hover .ev__add,.ev__cell:focus-within .ev__add{opacity:1}
+.tick{width:15px;height:15px;border-radius:50%;border:1px solid var(--rule-strong);display:inline-grid;place-items:center;font-size:9px;color:#fff;flex:none}
+.ev__cell--done .tick{background:var(--ok);border-color:var(--ok)}
+.ev__cell--todo .tick{border-style:dashed}
+.ev__cell--recall .tick{background:var(--ink);border-color:var(--ink)}
+.evrule{color:var(--ink-2);font-size:13.5px;max-width:66ch;margin-bottom:13px}
+
+/* squares on a card */
+.evbar{display:inline-flex;gap:3px;align-items:center}
+.evbar i{width:7px;height:7px;border-radius:2px;border:1px solid var(--rule-strong)}
+.evbar i.on{background:var(--ok);border-color:var(--ok)}
+.model{font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent)}
+
+/* cards */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(292px,1fr));gap:12px;margin-top:16px}
+.card{background:var(--surface);border:1px solid var(--rule);border-radius:var(--radius-lg);padding:20px;box-shadow:var(--shadow);
+  display:flex;flex-direction:column;gap:9px}
+.card--quiz{border-left:3px solid var(--accent)}
+.card__title{font-family:var(--font-display);font-size:18px;font-weight:500;line-height:1.3}
+.card__path{font-family:var(--font-mono);font-size:11px;color:var(--ink-3)}
+.card__excerpt{color:var(--ink-2);font-size:13.5px;line-height:1.6}
+.card__foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:3px;padding-top:11px;border-top:1px solid var(--rule)}
+
+/* modal */
+.modal-wrap{position:relative;min-height:calc(100vh - 44px)}
+.modal-scrim{position:absolute;inset:0;background:rgba(18,19,26,.38);display:grid;place-items:center;padding:24px;z-index:50}
+.modal{width:min(430px,100%);background:var(--surface);border-radius:var(--radius-lg);padding:24px;box-shadow:var(--shadow-pop)}
+.modal__title{font-family:var(--font-display);font-size:21px;font-weight:500;margin-bottom:3px}
+.modal__sub{color:var(--ink-2);font-size:13px;margin-bottom:18px}
+.modal__foot{display:flex;gap:10px;align-items:center;margin-top:6px}
+.modal__foot .btn--danger{margin-left:auto}
+
+/* phone */
+.frames{display:flex;gap:26px;flex-wrap:wrap;margin-top:22px}
+.frame{width:372px;max-width:100%}
+.frame__cap{font-family:var(--font-mono);font-size:11px;color:var(--ink-3);text-align:center;margin-bottom:10px}
+.phone{border:1px solid var(--rule-strong);border-radius:24px;overflow:hidden;background:var(--bg);height:640px;display:flex;flex-direction:column;box-shadow:var(--shadow)}
+.phone__body{flex:1;overflow:auto;padding:20px 18px}
+.phone .ev{grid-template-columns:1fr 1fr}
+.phone .ev__cell:nth-child(2){border-right:none}
+.phone .ev__cell:nth-child(1),.phone .ev__cell:nth-child(2){border-bottom:1px solid var(--rule)}
+
+/* rules */
+.ruleset{background:var(--surface);border:1px solid var(--rule);border-radius:var(--radius-lg);padding:4px 22px;margin-top:14px;box-shadow:var(--shadow)}
+.ruleset li{list-style:none;padding:13px 0;border-bottom:1px solid var(--rule);font-size:13.5px;color:var(--ink-2)}
+.ruleset li:last-child{border-bottom:none}
+.ruleset strong{color:var(--ink);font-weight:500;display:block;margin-bottom:2px}
+@media(max-width:860px){.ev{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+
+<div class="chrome">
+  <span class="chrome__label">Screen</span>
+  <button class="tab" data-go="detail" aria-selected="true">On a topic</button>
+  <button class="tab" data-go="states">Every state</button>
+  <button class="tab" data-go="record">Recording it</button>
+  <button class="tab" data-go="library">In the library</button>
+  <button class="tab" data-go="mobile">Mobile</button>
+  <button class="tab" data-go="rules">The rules</button>
+</div>
+
+<!-- ============ DETAIL ============ -->
+<section class="screen" data-screen="detail" data-active>
+<div class="app">
+  <aside class="rail">
+    <div class="wordmark"><span class="wordmark__name">Recall</span><span class="wordmark__dot"></span></div>
+    <nav class="nav">
+      <a class="nav__item" aria-current="page"><span>Library</span><span class="nav__count">28</span></a>
+      <a class="nav__item"><span>Practice</span><span class="nav__count">10 queued</span></a>
+      <a class="nav__item"><span>Weak topics</span><span class="nav__count nav__count--flag">8</span></a>
+    </nav>
+    <button class="btn btn--primary btn--block">+ Add topic</button>
+  </aside>
+
+  <main class="main">
+    <article class="detail">
+      <div class="meta" style="margin-bottom:14px"><a style="color:var(--accent-ink);text-decoration:underline;cursor:pointer">← Library</a></div>
+      <h1 class="detail__title">The backpack</h1>
+      <div class="detail__facts"><span class="chip">JavaScript</span><span class="chip">closures</span><span class="meta">·</span><span class="meta">Medium</span></div>
+
+      <div class="reg"><span class="eyebrow">Definition</span>
+        <p class="reg__body">A returned function carries a live reference to the variables in scope where it was defined — not a copy of their values.</p></div>
+
+      <div class="reg reg--model"><span class="eyebrow" style="color:var(--accent)">Mental model</span>
+        <p class="reg__body">The returned function walks away carrying a backpack of everything it might still need — and it's the same backpack, not a photocopy.</p></div>
+
+      <div class="rule" style="margin-top:0"><span class="eyebrow">Evidence</span></div>
+      <p class="evrule">Weak until you can explain it, implement a variant, and use it in a design decision.</p>
+
+      <div class="ev">
+        <div class="ev__cell ev__cell--recall">
+          <div class="ev__k"><span class="tick">✓</span> Recall</div>
+          <div class="ev__v">Strong</div>
+          <div class="ev__d">practiced 4× · last Sep 1</div>
+        </div>
+        <div class="ev__cell ev__cell--done">
+          <div class="ev__k"><span class="tick">✓</span> Rebuild</div>
+          <div class="ev__v">once() from memory</div>
+          <div class="ev__d">Aug 28 · <a>gist</a></div>
+          <button class="btn btn--ghost btn--sm ev__add">Edit</button>
+        </div>
+        <div class="ev__cell ev__cell--todo">
+          <div class="ev__k"><span class="tick"></span> Challenge</div>
+          <div class="ev__v">Not yet</div>
+          <div class="ev__d">a constrained variant</div>
+          <button class="btn btn--sm ev__add">Record</button>
+        </div>
+        <div class="ev__cell ev__cell--todo">
+          <div class="ev__k"><span class="tick"></span> Production</div>
+          <div class="ev__v">Not yet</div>
+          <div class="ev__d">used in a real decision</div>
+          <button class="btn btn--sm ev__add">Record</button>
+        </div>
+      </div>
+
+      <div class="reg" style="margin-top:30px"><span class="eyebrow">Recall history</span>
+        <div style="display:flex;gap:22px;margin-top:10px;align-items:center">
+          <span class="conf conf--strong"><span class="conf__ticks"><i class="conf__tick conf__tick--on"></i><i class="conf__tick conf__tick--on"></i><i class="conf__tick conf__tick--on"></i></span><span class="conf__label">Strong</span></span>
+          <span class="meta">Practiced 4× · last Sep 1</span>
+        </div></div>
+
+      <div style="display:flex;gap:10px;align-items:center;margin-top:30px;padding-top:20px;border-top:1px solid var(--rule)">
+        <button class="btn btn--primary">Practice this</button><button class="btn">Edit</button>
+        <button class="btn btn--danger" style="margin-left:auto">Delete</button>
+      </div>
+    </article>
+
+    <div class="callout">
+      <div class="callout__t">Why Recall appears twice, deliberately</div>
+      <p style="color:var(--ink-2);font-size:13.5px">The first cell restates the confidence you already have, and the section below still shows Recall history. That repetition is the point: the row is a claim about your own rule, and a rule with a hole in it reads as three unrelated checkboxes. The Recall cell is derived — never stored, never editable, never a second source of truth for confidence.</p>
+    </div>
+  </main>
+</div>
+</section>
+
+<!-- ============ STATES ============ -->
+<section class="screen" data-screen="states">
+<div style="max-width:1000px;margin:0 auto;padding:30px 26px 80px">
+  <h1 class="page-title">Every state</h1>
+  <p style="color:var(--ink-2);max-width:66ch;margin-top:6px">Four cells, three of them recordable. The section only exists on topics; a quiz never has one.</p>
+
+  <div class="rule"><span class="eyebrow">Nothing recorded</span></div>
+  <div class="ev">
+    <div class="ev__cell ev__cell--recall"><div class="ev__k"><span class="tick"></span> Recall</div><div class="ev__v" style="color:var(--ink-3);font-weight:400">Never practiced</div><div class="ev__d">—</div></div>
+    <div class="ev__cell ev__cell--todo"><div class="ev__k"><span class="tick"></span> Rebuild</div><div class="ev__v">Not yet</div><div class="ev__d">from memory, in isolation</div></div>
+    <div class="ev__cell ev__cell--todo"><div class="ev__k"><span class="tick"></span> Challenge</div><div class="ev__v">Not yet</div><div class="ev__d">a constrained variant</div></div>
+    <div class="ev__cell ev__cell--todo"><div class="ev__k"><span class="tick"></span> Production</div><div class="ev__v">Not yet</div><div class="ev__d">used in a real decision</div></div>
+  </div>
+  <p class="meta" style="margin-top:9px">The section still renders — it is the rule, and the rule applies to a topic you saved five seconds ago.</p>
+
+  <div class="rule"><span class="eyebrow">Partly recorded</span></div>
+  <div class="ev">
+    <div class="ev__cell ev__cell--recall"><div class="ev__k"><span class="tick">✓</span> Recall</div><div class="ev__v">Weak</div><div class="ev__d">practiced 2× · last Aug 24</div></div>
+    <div class="ev__cell ev__cell--done"><div class="ev__k"><span class="tick">✓</span> Rebuild</div><div class="ev__v">debounce() from memory</div><div class="ev__d">Aug 28 · <a>gist</a></div></div>
+    <div class="ev__cell ev__cell--todo"><div class="ev__k"><span class="tick"></span> Challenge</div><div class="ev__v">Not yet</div><div class="ev__d">a constrained variant</div></div>
+    <div class="ev__cell ev__cell--todo"><div class="ev__k"><span class="tick"></span> Production</div><div class="ev__v">Not yet</div><div class="ev__d">used in a real decision</div></div>
+  </div>
+  <p class="meta" style="margin-top:9px">Rebuilt but still weak on recall — the case the whole feature exists to make visible.</p>
+
+  <div class="rule"><span class="eyebrow">All four</span></div>
+  <div class="ev">
+    <div class="ev__cell ev__cell--recall"><div class="ev__k"><span class="tick">✓</span> Recall</div><div class="ev__v">Strong</div><div class="ev__d">practiced 6× · last Sep 3</div></div>
+    <div class="ev__cell ev__cell--done"><div class="ev__k"><span class="tick">✓</span> Rebuild</div><div class="ev__v">debounce() from memory</div><div class="ev__d">Aug 28 · <a>gist</a></div></div>
+    <div class="ev__cell ev__cell--done"><div class="ev__k"><span class="tick">✓</span> Challenge</div><div class="ev__v">Stale search responses</div><div class="ev__d">Sep 1</div></div>
+    <div class="ev__cell ev__cell--done"><div class="ev__k"><span class="tick">✓</span> Production</div><div class="ev__v">Search cancellation in the capstone</div><div class="ev__d">Sep 4 · <a>ADR-002</a></div></div>
+  </div>
+  <p class="meta" style="margin-top:9px">No celebration, no badge, no "complete" state. The four ticks are the whole signal.</p>
+
+  <div class="rule"><span class="eyebrow">On a quiz</span></div>
+  <div style="border:1px dashed var(--rule-strong);border-radius:var(--radius-lg);padding:26px;text-align:center;background:var(--surface-2);color:var(--ink-2);font-size:13.5px">
+    No evidence section at all — the element is absent, not empty.
+  </div>
+  <p class="meta" style="margin-top:9px">A quiz is a retrieval device, not a concept. There is nothing to rebuild or apply, and the shape constraint rejects evidence on a quiz row.</p>
+
+  <p class="note">Colour is never the only signal: every cell carries a tick or a dashed circle, a label, and text. Read in greyscale, done and not-yet still read differently.</p>
+</div>
+</section>
+
+<!-- ============ RECORD ============ -->
+<section class="screen" data-screen="record">
+<div class="modal-wrap">
+  <div class="app" aria-hidden="true">
+    <aside class="rail">
+      <div class="wordmark"><span class="wordmark__name">Recall</span><span class="wordmark__dot"></span></div>
+      <nav class="nav"><a class="nav__item" aria-current="page"><span>Library</span></a><a class="nav__item"><span>Practice</span></a><a class="nav__item"><span>Weak topics</span></a></nav>
+    </aside>
+    <main class="main"><h1 class="detail__title">The backpack</h1>
+      <div class="rule"><span class="eyebrow">Evidence</span></div></main>
+  </div>
+
+  <div class="modal-scrim">
+    <div class="modal">
+      <h3 class="modal__title">Record a challenge</h3>
+      <p class="modal__sub">A realistic constrained problem you solved using this.</p>
+      <label class="field"><span class="field__label">What you did</span>
+        <textarea class="textarea" placeholder="Solved stale search responses with cancellation…"></textarea></label>
+      <label class="field"><span class="field__label">When</span>
+        <input class="input" type="date" value="2026-09-06" style="font-family:var(--font-mono);font-size:13px"></label>
+      <label class="field"><span class="field__label">Link <span class="field__hint">optional — a PR, gist, ADR</span></span>
+        <input class="input" placeholder="https://…"></label>
+      <div class="modal__foot">
+        <button class="btn btn--primary">Save</button>
+        <button class="btn btn--ghost">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div style="max-width:760px;margin:0 auto;padding:22px 26px 60px">
+  <p class="note" style="margin-top:0;border-top:none;padding-top:0">Three fields, one required. The date defaults to today because you record this when you do it. The link field is where an ADR, a PR or a gist lives — the product stores a URL and nothing else, which is why there is no document store anywhere in this feature. Editing an existing entry opens the same dialog with a <strong>Remove</strong> in the footer.</p>
+</div>
+</section>
+
+<!-- ============ LIBRARY ============ -->
+<section class="screen" data-screen="library">
+<div class="app">
+  <aside class="rail">
+    <div class="wordmark"><span class="wordmark__name">Recall</span><span class="wordmark__dot"></span></div>
+    <nav class="nav">
+      <a class="nav__item" aria-current="page"><span>Library</span><span class="nav__count">28</span></a>
+      <a class="nav__item"><span>Practice</span><span class="nav__count">10 queued</span></a>
+      <a class="nav__item"><span>Weak topics</span><span class="nav__count nav__count--flag">8</span></a>
+    </nav>
+    <button class="btn btn--primary btn--block">+ Add topic</button>
+  </aside>
+
+  <main class="main">
+    <h1 class="page-title">My knowledge</h1>
+    <p class="page-sub">28 topics · 8 need review</p>
+
+    <div class="grid">
+      <div class="card">
+        <div class="card__title">The backpack</div>
+        <div class="card__path">JavaScript · closures</div>
+        <p class="card__excerpt">A returned function carries a live reference to the variables in scope where it was defined.</p>
+        <div class="card__foot">
+          <span class="conf conf--strong"><span class="conf__ticks"><i class="conf__tick conf__tick--on"></i><i class="conf__tick conf__tick--on"></i><i class="conf__tick conf__tick--on"></i></span><span class="conf__label">Strong</span></span>
+          <span class="evbar" title="rebuild, challenge, production"><i class="on"></i><i></i><i></i></span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card__title">Debouncing a scroll handler</div>
+        <div class="card__path">JavaScript · performance</div>
+        <p class="card__excerpt">Collapse a burst of events into one call by resetting a timer on every event.</p>
+        <div class="card__foot">
+          <span class="conf conf--weak"><span class="conf__ticks"><i class="conf__tick conf__tick--on"></i><i class="conf__tick"></i><i class="conf__tick"></i></span><span class="conf__label">Weak</span></span>
+          <span class="evbar"><i class="on"></i><i class="on"></i><i class="on"></i></span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card__title">Stacking contexts</div>
+        <div class="card__path">CSS · layout</div>
+        <p class="card__excerpt">z-index only competes inside its own stacking context.</p>
+        <div class="card__foot">
+          <span class="conf"><span class="conf__ticks"><i class="conf__tick conf__tick--on"></i><i class="conf__tick conf__tick--on"></i><i class="conf__tick"></i></span><span class="conf__label">Okay</span></span>
+          <span class="model">Model ✓</span>
+        </div>
+      </div>
+
+      <div class="card card--quiz">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+          <div class="card__title">Which of these creates a stacking context?</div><span class="badge">Quiz</span>
+        </div>
+        <div class="card__path">CSS · layout · 4 options</div>
+        <div class="card__foot">
+          <span class="conf conf--strong"><span class="conf__ticks"><i class="conf__tick conf__tick--on"></i><i class="conf__tick conf__tick--on"></i><i class="conf__tick conf__tick--on"></i></span><span class="conf__label">Strong</span></span>
+          <span class="meta">Practiced 3×</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout">
+      <div class="callout__t">Three squares, not four — and they replace Model ✓, never sit beside it</div>
+      <p style="color:var(--ink-2);font-size:13.5px">The card already carries a confidence meter, so a fourth square for Recall would say the same thing twice. The squares are rebuild, challenge and production only. The right-hand slot holds <strong>one</strong> thing: the squares when a topic has any evidence, and the shipped <code>Model ✓</code> when it has none — so the foot never carries three elements. A quiz keeps <code>Practiced N×</code> and never gets squares.</p>
+    </div>
+
+    <p class="note">Card three shows the fallback: no evidence, so the slot holds <code>Model ✓</code> exactly as it does today. Note the second card instead: <strong>weak on recall, all three recorded.</strong> That is the reading this makes possible and the library could not show before — you have built with it, shipped with it, and still can't explain it cold.</p>
+  </main>
+</div>
+</section>
+
+<!-- ============ MOBILE ============ -->
+<section class="screen" data-screen="mobile">
+<div style="max-width:1000px;margin:0 auto;padding:30px 26px 70px">
+  <h1 class="page-title">Mobile</h1>
+  <p style="color:var(--ink-2);max-width:60ch;margin-top:6px">Four cells become two by two below 860px. Nothing is dropped and nothing scrolls sideways.</p>
+
+  <div class="frames">
+    <div class="frame"><div class="frame__cap">Topic detail — 390pt</div>
+      <div class="phone"><div class="phone__body">
+        <h2 style="font-family:var(--font-display);font-size:24px;font-weight:500;letter-spacing:-.02em;line-height:1.2">The backpack</h2>
+        <div style="display:flex;gap:7px;margin:12px 0 18px"><span class="chip">JavaScript</span><span class="chip">closures</span></div>
+        <div style="margin-bottom:20px"><span class="eyebrow">Definition</span>
+          <p style="margin-top:8px;font-size:15px;line-height:1.7">A returned function carries a live reference to the variables in scope where it was defined.</p></div>
+        <div style="margin-bottom:22px"><span class="eyebrow" style="color:var(--accent)">Mental model</span>
+          <p style="margin-top:8px;background:var(--accent-soft);border-left:2px solid var(--accent);border-radius:0 var(--radius) var(--radius) 0;
+            padding:13px 16px;font-family:var(--font-display);font-size:16px;line-height:1.65;color:var(--accent-ink)">The same backpack, not a photocopy.</p></div>
+        <span class="eyebrow">Evidence</span>
+        <p style="color:var(--ink-2);font-size:12.5px;margin:7px 0 11px">Weak until you can explain it, implement a variant, and use it in a design decision.</p>
+        <div class="ev">
+          <div class="ev__cell ev__cell--recall"><div class="ev__k"><span class="tick">✓</span> Recall</div><div class="ev__v">Strong</div><div class="ev__d">4× · Sep 1</div></div>
+          <div class="ev__cell ev__cell--done"><div class="ev__k"><span class="tick">✓</span> Rebuild</div><div class="ev__v">once()</div><div class="ev__d">Aug 28</div></div>
+          <div class="ev__cell ev__cell--todo"><div class="ev__k"><span class="tick"></span> Challenge</div><div class="ev__v">Not yet</div></div>
+          <div class="ev__cell ev__cell--todo"><div class="ev__k"><span class="tick"></span> Production</div><div class="ev__v">Not yet</div></div>
+        </div>
+        <button class="btn btn--sm btn--block" style="margin-top:12px">Record evidence</button>
+      </div></div>
+    </div>
+
+    <div class="frame"><div class="frame__cap">Library card — squares beside the meter</div>
+      <div class="phone"><div class="phone__body">
+        <div style="display:grid;gap:12px">
+          <div class="card">
+            <div class="card__title">The backpack</div>
+            <div class="card__path">JavaScript · closures</div>
+            <p class="card__excerpt">A returned function carries a live reference to the variables in scope.</p>
+            <div class="card__foot">
+              <span class="conf conf--strong"><span class="conf__ticks"><i class="conf__tick conf__tick--on"></i><i class="conf__tick conf__tick--on"></i><i class="conf__tick conf__tick--on"></i></span><span class="conf__label">Strong</span></span>
+              <span class="evbar"><i class="on"></i><i></i><i></i></span>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card__title">Debouncing a scroll handler</div>
+            <div class="card__path">JavaScript · performance</div>
+            <p class="card__excerpt">Collapse a burst of events into one call by resetting a timer.</p>
+            <div class="card__foot">
+              <span class="conf conf--weak"><span class="conf__ticks"><i class="conf__tick conf__tick--on"></i><i class="conf__tick"></i><i class="conf__tick"></i></span><span class="conf__label">Weak</span></span>
+              <span class="evbar"><i class="on"></i><i class="on"></i><i class="on"></i></span>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card__title">Stacking contexts</div>
+            <div class="card__path">CSS · layout</div>
+            <p class="card__excerpt">z-index only competes inside its own stacking context.</p>
+            <div class="card__foot">
+              <span class="conf"><span class="conf__ticks"><i class="conf__tick conf__tick--on"></i><i class="conf__tick conf__tick--on"></i><i class="conf__tick"></i></span><span class="conf__label">Okay</span></span>
+              <span class="model">Model ✓</span>
+            </div>
+          </div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+
+  <p class="note">On the mobile detail page the per-cell Record buttons collapse into one button below the row, which opens a dialog asking which kind first. Three hover-revealed buttons do not survive a touch screen, and a row of four tap targets at 390pt would be under 44px each.</p>
+</div>
+</section>
+
+<!-- ============ RULES ============ -->
+<section class="screen" data-screen="rules">
+<div style="max-width:1000px;margin:0 auto;padding:30px 26px 80px">
+  <h1 class="page-title">The rules</h1>
+  <p style="color:var(--ink-2);max-width:66ch;margin-top:6px">Every decision this reference encodes. Where this page and the screens disagree, the screens win.</p>
+
+  <div class="rule"><span class="eyebrow">What it is</span></div>
+  <ul class="ruleset">
+    <li><strong>Four markers, three recordable</strong>Recall is derived from the existing confidence and is never stored or edited here. Rebuild, Challenge and Production are each absent, or present with a date, a required note, and an optional URL.</li>
+    <li><strong>It encodes one sentence</strong>“Weak until you can explain it, implement a variant, and use it in a design decision.” That sentence sits above the row, in the product, so the row is never four checkboxes without a reason.</li>
+    <li><strong>An ADR is a URL</strong>The link field is the entire integration with any document, PR or diagram. The product stores no documents.</li>
+  </ul>
+
+  <div class="rule"><span class="eyebrow">What it does not do</span></div>
+  <ul class="ruleset">
+    <li><strong>It never touches practice</strong>Evidence is not an input to practice selection, ordering, the weak page, or any count. The queue stays one rule I can state in a sentence.</li>
+    <li><strong>It never appears on a quiz</strong>A quiz is a retrieval device, not a concept. The shape constraint rejects evidence on a quiz row, and the section is absent rather than empty.</li>
+    <li><strong>It has no completion state</strong>No badge, no celebration, no “complete”. Four ticks is the whole signal.</li>
+    <li><strong>It is not scheduled</strong>No due dates, no next-review, no 1–3–7–21. That cadence is being run manually, outside the app, by decision.</li>
+    <li><strong>It is not counted anywhere else</strong>No dashboard, no phase progress, no capability map. Those are separate decisions and none of them is being made here.</li>
+  </ul>
+
+  <div class="rule"><span class="eyebrow">Presentation</span></div>
+  <ul class="ruleset">
+    <li><strong>Three squares on a card, not four</strong>The confidence meter already carries Recall, so a fourth square would say the same thing twice.</li>
+    <li><strong>The squares replace Model ✓ — they never sit beside it</strong>The card foot's right slot holds one element: the squares when a topic has any evidence, the shipped <code>Model ✓</code> when it has none, and <code>Practiced N×</code> on a quiz. An earlier draft of this reference drew cards with no <code>Model ✓</code> at all; that was an oversight, not a decision, and the fallback is the rule.</li>
+    <li><strong>Green already exists — corrected</strong><code>--ok #1B6B4F</code> and <code>--ok-soft #E6F2EC</code> are <em>already in the palette</em>; the quiz phase added them for a correct answer. An earlier draft of this page claimed they were new to DESIGN.md, which was false. Evidence reuses them rather than re-adding them, and it earns them for the same reason a quiz answer does: both are genuinely binary — done or not — so green is neither the indigo of selection nor the crimson of alarm. Green is still never used for confidence, which is a judgement rather than a fact.</li>
+    <li><strong>Colour is never the only signal</strong>Every cell has a tick or a dashed circle, a label and text. Readable in greyscale.</li>
+    <li><strong>Four cells become two by two below 860px</strong>and the per-cell Record buttons become one button that asks which kind.</li>
+  </ul>
+</div>
+</section>
+
+<script>
+  const screens=document.querySelectorAll('[data-screen]');
+  document.querySelector('.chrome').addEventListener('click',e=>{
+    const b=e.target.closest('[data-go]'); if(!b) return;
+    document.querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-selected',t===b));
+    screens.forEach(s=>s.toggleAttribute('data-active',s.dataset.screen===b.dataset.go));
+    window.scrollTo(0,0);
+  });
+</script>
+</body>
+</html>

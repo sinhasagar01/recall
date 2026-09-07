@@ -61,6 +61,12 @@ export const INVARIANTS: Invariant[] = [
     ),
   },
   {
+    fixture: 'main',
+    must: 'hold the two evidence topics — one with all three markers, one with a rebuild',
+    reliedOnBy: 'e2e/evidence.spec.ts — the card squares and the weak-with-all-three case',
+    holds: has('Debouncing a scroll handler', 'The backpack'),
+  },
+  {
     fixture: 'few',
     must: 'hold exactly two topics, "Specificity" and "The event loop"',
     reliedOnBy: 'export.spec.ts — asserts the count and both titles; practice.spec.ts needs it below the practice minimum',

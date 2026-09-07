@@ -3,6 +3,8 @@ import { ConfidenceMeter } from '@/components/ui/confidence-meter'
 import { topicPath } from '@/lib/domain/library'
 import type { Topic } from '@/lib/domain/types'
 import { QuizBadge } from '@/components/ui/quiz-badge'
+import { EvidenceBar } from '@/components/evidence/evidence-bar'
+import { hasEvidence } from '@/lib/domain/evidence'
 
 /*
   A link, now that /topic/[id] exists. The reference draws it as a button; a link
@@ -48,17 +50,31 @@ export function TopicCard({ topic, timestamp }: { topic: Topic; timestamp?: stri
           "Model ✓". The reference shows a practice count there instead, and omits it
           entirely before the first practice.
         */}
+        {/*
+          The right slot holds ONE element.
+
+          The evidence squares take it when a topic has any, and Model ✓ is the
+          fallback when it has none — never both, and never three things in the
+          foot. An early draft of evidence-reference.html drew cards with no
+          Model ✓ at all; that was an oversight in the drawing rather than a
+          decision to delete a shipped element, and the reference now says so.
+
+          A quiz keeps its practice count and never gets squares: the constraint
+          refuses it evidence, so there is nothing to draw.
+        */}
         {topic.kind === 'quiz'
           ? topic.practice_count > 0 && (
               <span className="font-mono text-[11.5px] text-ink-3">
                 Practiced {topic.practice_count}×
               </span>
             )
-          : topic.mental_model && (
-              <span className="font-mono text-[10px] tracking-[0.1em] text-accent uppercase">
-                Model ✓
-              </span>
-            )}
+          : hasEvidence(topic)
+            ? <EvidenceBar topic={topic} />
+            : topic.mental_model && (
+                <span className="font-mono text-[10px] tracking-[0.1em] text-accent uppercase">
+                  Model ✓
+                </span>
+              )}
       </div>
     </Link>
   )

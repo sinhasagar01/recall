@@ -24,7 +24,7 @@ import { createClient } from '@/lib/supabase/server'
 const PAGE = 1000
 
 const COLUMNS =
-  'id, user_id, title, definition, mental_model, mental_model_image_path, category, tags, difficulty, confidence, practice_count, last_practiced_at, created_at, updated_at, kind, options, correct_option'
+  'id, user_id, title, definition, mental_model, mental_model_image_path, category, tags, difficulty, confidence, practice_count, last_practiced_at, created_at, updated_at, kind, options, correct_option, rebuild_at, rebuild_note, rebuild_url, challenge_at, challenge_note, challenge_url, production_at, production_note, production_url'
 
 function fail(action: string, error: { code?: string; message: string }): never {
   throw new Error(`${action} failed: ${error.code ?? 'unknown'} · ${error.message}`)

@@ -207,3 +207,65 @@ describe('a quiz in library.md', () => {
     expect(render([makeTopic({}), makeTopic({}), quiz])).toContain('2 topics and 1 quiz, exported')
   })
 })
+
+describe('evidence in library.md', () => {
+  const marked = makeTopic({
+    title: 'Debouncing a scroll handler',
+    definition: 'Collapse a burst of events into one call.',
+    mental_model: 'The lift doors that keep reopening.',
+    rebuild_at: '2026-08-28',
+    rebuild_note: 'debounce() from memory',
+    rebuild_url: 'https://gist.github.com/x',
+    challenge_at: '2026-09-01',
+    challenge_note: 'Stale search responses',
+    production_at: '2026-09-04',
+    production_note: 'Search cancellation in the capstone',
+    production_url: 'https://example.com/adr-002',
+  })
+
+  it('renders one line per marker, in row order, with the link when there is one', () => {
+    const out = render([marked])
+
+    expect(out).toContain('## Evidence')
+    expect(out).toContain('- **Rebuild** — Aug 28 — debounce() from memory — https://gist.github.com/x')
+    expect(out).toContain('- **Challenge** — Sep 1 — Stale search responses')
+    expect(out).toContain(
+      '- **Production** — Sep 4 — Search cancellation in the capstone — https://example.com/adr-002',
+    )
+  })
+
+  it('omits the link when there is none, rather than trailing an empty dash', () => {
+    const out = render([marked])
+    expect(out).not.toContain('Stale search responses — \n')
+    expect(out).not.toContain('Stale search responses —\n')
+  })
+
+  it('sits after the mental model and before the practice line, as the detail page does', () => {
+    const out = render([marked])
+    expect(out.indexOf('## Mental model')).toBeLessThan(out.indexOf('## Evidence'))
+    expect(out.indexOf('## Evidence')).toBeLessThan(out.indexOf('Never practiced'))
+  })
+
+  it('is absent entirely when nothing is recorded', () => {
+    /*
+      The rule Definition and Visual already follow. A library with no evidence
+      exports byte-identically to before this shipped, which is the test that the
+      section costs nothing to anyone not using it.
+    */
+    expect(render([makeTopic({})])).not.toContain('## Evidence')
+  })
+
+  it('renders only the markers that exist', () => {
+    const one = makeTopic({ rebuild_at: '2026-08-28', rebuild_note: 'once() from memory' })
+    const out = render([one])
+
+    expect(out).toContain('- **Rebuild**')
+    expect(out).not.toContain('- **Challenge**')
+    expect(out).not.toContain('- **Production**')
+  })
+
+  it('never renders evidence for a quiz', () => {
+    // The constraint refuses the columns, so this is the same rule said twice.
+    expect(render([makeQuiz({ options: ['a', 'b'], correct_option: 0 })])).not.toContain('## Evidence')
+  })
+})

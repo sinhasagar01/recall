@@ -9,6 +9,8 @@ import { ConfidenceMeter } from '@/components/ui/confidence-meter'
 import { Lightbox } from '@/components/ui/lightbox'
 import { Modal } from '@/components/ui/modal'
 import { Definition, MentalModel, RegisterSection } from '@/components/ui/register'
+import { EvidenceSection } from '@/components/evidence/evidence-section'
+import { takesEvidence } from '@/lib/domain/evidence'
 import { Toast } from '@/components/ui/toast'
 import { deleteTopic } from '@/app/(app)/topic/[id]/actions'
 import { CONFIDENCE_LABEL } from '@/lib/domain/confidence'
@@ -118,6 +120,15 @@ export function TopicDetail({
           </figure>
         </RegisterSection>
       ) : null}
+
+      {/*
+        Evidence sits between the mental model and the recall history, which is the
+        reference's order: the claim about the rule, then the confidence detail it
+        restates. Absent on a quiz — not empty. A quiz is a retrieval device, not a
+        concept, and `topics_evidence_is_consistent` refuses the columns outright,
+        so this branch and the database say the same thing.
+      */}
+      {takesEvidence(topic) ? <EvidenceSection topic={topic} /> : null}
 
       <RegisterSection title="Recall history">
         <div className="mt-3 grid grid-cols-3 gap-px overflow-hidden rounded-md border border-rule bg-rule">
