@@ -1,3 +1,5 @@
+import { existsSync, readdirSync } from 'node:fs'
+import { join } from 'node:path'
 import { expect, test, type Page } from '@playwright/test'
 import { signInAs } from './auth-state'
 
@@ -17,7 +19,30 @@ import { signInAs } from './auth-state'
   rather than by naming the screens someone remembered.
 */
 
-const APP_ROUTES = ['/library', '/weak', '/settings', '/sources'] as const
+/**
+ * Derived from the route tree, never hand-maintained.
+ *
+ * This list went stale twice, one arc apart, in this same file: `/sources` was
+ * missing until arc 2 noticed, and `/phases` shipped uncovered because arc 3's
+ * plan said it would be added here and the commit never touched the file. A
+ * hand-written list of routes rots the moment someone adds a route, and nothing
+ * fails when it does — the suite stays green and simply tests less.
+ *
+ * So it is read off the filesystem, the way `guarded-routes.test.ts` derives
+ * GUARDED. The rule is mechanical: **a directory under (app) with its own
+ * page.tsx is a static route this invariant covers.** That excludes `export`
+ * (a route handler answering a file, with no page) and `topic` (dynamic only —
+ * covered by its own test below), with no exception list to maintain.
+ */
+const APP_ROUTES = readdirSync(join(process.cwd(), 'src', 'app', '(app)'), {
+  withFileTypes: true,
+})
+  .filter((entry) => entry.isDirectory() && !entry.name.startsWith('['))
+  .filter((entry) =>
+    existsSync(join(process.cwd(), 'src', 'app', '(app)', entry.name, 'page.tsx')),
+  )
+  .map((entry) => `/${entry.name}`)
+  .sort()
 
 /** Visible, not merely present: the mobile tab bar is in the DOM at desktop width. */
 async function visibleLibraryLinks(page: Page): Promise<string[]> {
@@ -35,6 +60,16 @@ test.describe('every route in the app group can reach the library', () => {
   test.use({ viewport: { width: 1280, height: 900 } })
 
   test('the static routes each offer a visible way back', async ({ page }) => {
+    /*
+      Guard the guard: an empty or shrunken derivation would make the loop below
+      pass by testing nothing, which is the failure mode this derivation replaced.
+    */
+    expect(APP_ROUTES.length, 'the route derivation found nothing').toBeGreaterThanOrEqual(6)
+    expect(APP_ROUTES).toContain('/phases')
+    expect(APP_ROUTES).toContain('/ledger')
+    expect(APP_ROUTES, 'export answers a file, not a page').not.toContain('/export')
+    expect(APP_ROUTES, 'topic is dynamic and has its own test').not.toContain('/topic')
+
     await signInAs(page, 'few')
 
     for (const route of APP_ROUTES) {

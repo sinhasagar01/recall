@@ -99,6 +99,53 @@ export type Database = {
         }
         Relationships: []
       }
+      project_items: {
+        Row: {
+          capability_id: string | null
+          created_at: string
+          id: string
+          kind: string
+          link: string | null
+          note: string | null
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          capability_id?: string | null
+          created_at?: string
+          id?: string
+          kind: string
+          link?: string | null
+          note?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          capability_id?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          link?: string | null
+          note?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_items_capability_id_fkey"
+            columns: ["capability_id"]
+            isOneToOne: false
+            referencedRelation: "capabilities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sources: {
         Row: {
           caveat_noted: boolean

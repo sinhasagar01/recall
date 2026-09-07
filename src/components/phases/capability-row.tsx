@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { topicPath } from '@/lib/domain/library'
 import { formatShortDate } from '@/lib/domain/library'
 import { demonstrationOf, missingHalf } from '@/lib/domain/phases'
+import type { ProjectItem } from '@/lib/domain/ledger'
 import type { Capability } from '@/lib/domain/phases'
 import { plural } from '@/lib/domain/plural'
 import type { Topic } from '@/lib/domain/types'
@@ -23,9 +24,19 @@ import type { Topic } from '@/lib/domain/types'
 export function CapabilityRow({
   capability,
   entries,
+  ledger = [],
 }: {
   capability: Capability
   entries: Topic[]
+  /**
+   * Context, never a third half.
+   *
+   * These do NOT enter `demonstrationOf` — it takes only the linked topics, and
+   * `ledger-boundary.test.ts` holds it to that signature. The product cannot know
+   * whether you shipped what a URL points at, and a rule satisfiable with a
+   * bookmark is not a rule.
+   */
+  ledger?: ProjectItem[]
 }) {
   const demonstration = demonstrationOf(entries)
   const reason = missingHalf(demonstration)
@@ -115,6 +126,24 @@ export function CapabilityRow({
             </>
           )}
         </p>
+
+        {/*
+          The ledger line. Absent when there is nothing — the rule every section
+          on these pages follows. The count links to the ledger filtered to this
+          capability, which is the one filter this arc adds and the reason an item
+          knows about a capability at all.
+        */}
+        {ledger.length > 0 ? (
+          <p className="mt-1.5 font-mono text-[10.5px] text-ink-3">
+            Ledger ·{' '}
+            <Link
+              href={`/ledger?capability=${capability.id}`}
+              className="text-accent-ink underline hover:text-ink"
+            >
+              {plural(ledger.length, 'item')}
+            </Link>
+          </p>
+        ) : null}
 
         {/*
           The reason is the feature. A checklist that only shows unchecked boxes

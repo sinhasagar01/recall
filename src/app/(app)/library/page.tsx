@@ -1,6 +1,8 @@
 import { LibraryView } from '@/components/topics/library-view'
 import { listLibrary, railCounts } from '@/lib/data/library'
-import { listCapabilityOptions } from '@/lib/data/phases'
+import { countLedger } from '@/lib/data/ledger'
+import { countSources } from '@/lib/data/sources'
+import { listCapabilityOptions, phaseCounts } from '@/lib/data/phases'
 import { listSourceOptions } from '@/lib/data/sources'
 import type { QuickFilter, TopicFilters } from '@/lib/domain/search-filter'
 import type { Confidence, Difficulty, Kind } from '@/lib/domain/types'
@@ -62,11 +64,19 @@ export default async function LibraryPage({
 
   // railCounts is cache()d and the layout has already called it this request, so
   // the account figures cost nothing extra here.
-  const [data, account, sourceOptions, capabilityOptions] = await Promise.all([
+  const [data, account, sourceOptions, capabilityOptions, phases, ledger, sources] =
+    await Promise.all([
     listLibrary(readFilters(params)),
     railCounts(),
     listSourceOptions(),
     listCapabilityOptions(),
+    /*
+      cache()d and already called by the layout this request, so the More sheet's
+      counts cost nothing extra and cannot disagree with the rail's.
+    */
+    phaseCounts(),
+    countLedger(),
+    countSources(),
   ])
 
   return (
@@ -75,6 +85,11 @@ export default async function LibraryPage({
       account={{ topics: account.total, images: account.withImages }}
       sourceOptions={sourceOptions}
       capabilityOptions={capabilityOptions}
+      moreCounts={{
+        phases: `${phases.demonstrated} / ${phases.total}`,
+        ledger: String(ledger),
+        sources: String(sources),
+      }}
     />
   )
 }

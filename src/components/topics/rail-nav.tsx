@@ -40,6 +40,7 @@ export function RailNav({
   sources,
   capabilities,
   demonstrated,
+  ledger,
 }: {
   total: number
   queued: number
@@ -47,6 +48,7 @@ export function RailNav({
   sources: number
   capabilities: number
   demonstrated: number
+  ledger: number
 }) {
   const pathname = usePathname()
 
@@ -77,6 +79,7 @@ export function RailNav({
   */
   const apprenticeship: Destination[] = [
     { href: '/phases', label: 'Phases', count: `${demonstrated} / ${capabilities}` },
+    { href: '/ledger', label: 'Ledger', count: String(ledger) },
     { href: '/sources', label: 'Sources', count: String(sources) },
   ]
 

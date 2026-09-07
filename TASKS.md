@@ -1164,6 +1164,100 @@ container under `justify-between` is worth a measurement rather than an argument
 
 ---
 
+## Arc 4 — the project ledger
+
+*In progress.*
+
+What the capstone produced: decisions, PRs, diagrams, incidents, milestones. **Links, not
+documents** — the thing lives where you made it, and the ledger knows its title, kind,
+status and which capability it serves. Specified by `ledger-reference.html`.
+
+**Fourth table in four arcs, and the test got sharper.** "Is this already a topic?" admitted
+the first three but would also admit a column. The question that settles it: *would every
+item necessarily have exactly one owner row on an existing table?* It would not —
+`capability_id` is **nullable**, because most incidents and milestones serve no capability,
+and a column on `capabilities` cannot hold a row belonging to no capability.
+
+**No omission from the domain `Topic` this time, and that is a decision not an oversight.**
+`source_id` and `topics.capability_id` were omitted because `TopicBoundaryIsSound`
+constrains the `topics` row, so a column there obliges every read to return it. That
+argument does not reach a new table with its own domain type — there is nothing to omit it
+*from*. Copying the defence would have been cargo-cult.
+
+### Four references running have miscoloured something
+
+`--ok` on a settled status. The pattern, now recorded as a check rather than a fourth
+incident: **a drawing reaches for the colour that means "good" or "bad" without checking
+what the token means.** Before using `--ok` or `--flag` in a reference, ask *what kind of
+claim the thing is making, not how it should feel.* A ledger status is a self-report; `--ok`
+marks what the app derives. Corrected in the file, along with the Adding tab contradicting
+the States tab on an ADR's open word, and the two status vocabularies the reference never
+defined.
+
+### The instrument was the problem, twice
+
+The perturbation driver reported "anchor not found" for a perturbation that had applied —
+in arc 3 and again here, both times on the arc's central guard. One line, carried between
+arcs: `applied = (new in now) && (old not in now)`. That predicate only holds for a
+**replacement**; an **insertion** leaves its anchor in place.
+
+Not bad luck about which cases it hit. An arc's central guard is almost always *"this column
+must not exist"*, and the only way to test that is to **add** the column — an insertion. The
+instrument was blind exactly where it mattered, and would have been every time.
+
+Fixed rather than documented around: `scripts/perturb.mjs` is now a repo script with exact
+verification, and three conditions throw instead of producing a data point — a missing
+anchor, an edit that changes nothing, and an edit that reaches the file but not the installed
+object. All three verified by triggering them.
+
+Two smaller findings alongside it. An assertion that counted `project_items` **in total** was
+coupled to every other test in the file, so one perturbation reported two failures — now
+counted by title. And the assertion guarding `demonstrationOf`'s signature used
+`toHaveLength(1)`, which is worthless: `Function.length` ignores defaulted parameters, so
+`demonstrationOf(linked, ledger = [])` — the exact widening it existed to catch — passed.
+Found by perturbing it; it now reads the signature from the source.
+
+### The arc 3 gap, and the guard that replaces it
+
+`wayfinding.spec.ts`'s `APP_ROUTES` never gained `/phases`. Arc 3's plan said it would; the
+commit never touched the file, and nothing noticed for a full arc. The list had already gone
+stale once before, in the same file.
+
+So it is no longer hand-maintained: it is **derived from the route tree**, the way
+`guarded-routes.test.ts` derives `GUARDED`. The rule is mechanical — a directory under
+`(app)` with its own `page.tsx` is a static route this invariant covers — which excludes
+`export` (a route handler) and `topic` (dynamic, with its own test) without an exception
+list. Guarded against a rotted derivation by asserting the list is non-trivial and contains
+the routes it must.
+
+### The arc 3 mobile assertion was replaced, not deleted
+
+Arc 3 asserted a wrapping five-item cluster in the library head. That cluster is gone —
+Ledger is the sixth destination, and six inline items wrap to three lines — so the
+assertion described something that no longer exists. **Leaving it would have been worse than
+deleting it**: it located the cluster by a filter that now matches nothing, so it would have
+passed by asserting over an empty set while appearing to guard the mobile head.
+
+Its invariants moved to `ledger.spec.ts` and its subject changed: no horizontal overflow, h1
+on one line, tab bar at exactly three, and the head measured against arc 3's 95px. What
+remains in `phases.spec.ts` is the part that is about phases — that `/phases` is reachable
+from a phone.
+
+Measured at 390px, against arc 3's wrapped row:
+
+| | arc 3, five wrapped | arc 4, More sheet |
+| --- | --- | --- |
+| head height | 95px | **77px** |
+| h1 | 1 line | 1 line |
+| title column | 166px | **300px** |
+| `scrollWidth` | 390 | 390 |
+| tab bar links | 3 | 3 |
+
+The head costs one word now, at any number of destinations — which is the property the
+wrapping row could not promise.
+
+---
+
 ---
 
 ## The backlog

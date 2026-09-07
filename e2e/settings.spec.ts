@@ -45,11 +45,17 @@ test.describe('reaching settings', () => {
     await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible()
   })
 
-  test('from the library head on a phone, where there is no rail', async ({ page }) => {
+  test('from the More sheet on a phone, where there is no rail', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
     await signInAs(page, 'main')
 
-    await page.getByRole('link', { name: 'Settings' }).first().click()
+    /*
+      Arc 4 replaced the wrapping account cluster with one More link opening a
+      sheet. Settings is still not a tab entry — that is the invariant — and this
+      asserts it from where it now lives.
+    */
+    await page.getByRole('button', { name: 'More' }).click()
+    await page.getByRole('dialog', { name: 'More' }).getByRole('link', { name: 'Settings' }).click()
     await expect(page).toHaveURL(/\/settings/)
 
     /*

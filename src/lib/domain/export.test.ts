@@ -438,3 +438,59 @@ describe('capabilities in library.md', () => {
     expect(render([makeTopic({})])).not.toContain('# Phases and capabilities')
   })
 })
+
+describe('the ledger in library.md', () => {
+  const items = [
+    {
+      kind: 'adr',
+      title: 'Search state ownership',
+      link: 'https://example.com/adr-002.md',
+      note: null,
+      status: 'Decided',
+      capability: 'Design state boundaries',
+      created_at: '2026-09-04T10:00:00.000Z',
+    },
+    {
+      kind: 'task',
+      title: 'Add optimistic updates',
+      link: null,
+      note: 'Not started.',
+      status: 'Open',
+      capability: null,
+      created_at: '2026-09-02T10:00:00.000Z',
+    },
+  ]
+
+  const withLedger = () =>
+    renderLibraryMarkdown([makeTopic({})], {
+      exportedAt: NOW,
+      missingPaths: new Set<string>(),
+      ledger: items,
+    })
+
+  it('carries the link, which is the whole point of the ledger', () => {
+    const out = withLedger()
+
+    expect(out).toContain('# The ledger')
+    expect(out).toContain('**Search state ownership** — adr, Decided · serves Design state boundaries')
+    expect(out).toContain('https://example.com/adr-002.md')
+  })
+
+  it('says so when there is no link, rather than printing nothing', () => {
+    expect(withLedger()).toContain('no link')
+  })
+
+  it('uses the kind’s status word, not the stored enum', () => {
+    const out = withLedger()
+
+    expect(out).toContain('Decided')
+    expect(out).toContain('Open')
+    for (const stored of ['settled', 'retired']) {
+      expect(out, 'the stored enum should never reach the file').not.toContain(stored)
+    }
+  })
+
+  it('omits the section entirely when the ledger is empty', () => {
+    expect(render([makeTopic({})])).not.toContain('# The ledger')
+  })
+})

@@ -47,7 +47,9 @@ test('every destination is reachable on a phone', async ({ page }) => {
   await page.getByRole('button', { name: /^Weak/ }).click()
   await expect(page).toHaveURL(/quick=needs-review/)
 
-  // Sign out.
+  // Sign out — now inside the More sheet, since arc 4 replaced the inline
+  // cluster with one link. The destination is the same; the route to it changed.
+  await page.getByRole('button', { name: 'More' }).click()
   await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible()
 })
 
@@ -93,7 +95,14 @@ test('practice hides the tab bar entirely', async ({ page }) => {
 test('signing out works from a phone', async ({ page }) => {
   await signInAs(page, 'main')
 
-  await page.getByRole('button', { name: 'Sign out' }).click()
+  /*
+    Through the More sheet. Arc 4 replaced the wrapping account cluster with a
+    single link, so this is the same assertion — signing out works from a phone —
+    reached the way a person now reaches it.
+  */
+  await page.getByRole('button', { name: 'More' }).click()
+  const sheet = page.getByRole('dialog', { name: 'More' })
+  await sheet.getByRole('button', { name: 'Sign out' }).click()
   await expect(page).toHaveURL(/\/sign-in/)
 })
 
@@ -176,7 +185,8 @@ test('the library does not scroll sideways on a phone', async ({ page }) => {
     reintroduces the overflow by some other route should fail here too.
   */
   await signInAs(page, 'main')
-  await page.locator('main a[href="/settings"]').waitFor()
+  // The head's account surface is one More link since arc 4.
+  await page.getByRole('button', { name: 'More' }).waitFor()
 
   const { scrollWidth, clientWidth } = await page.evaluate(() => ({
     scrollWidth: document.documentElement.scrollWidth,

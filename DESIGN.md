@@ -692,7 +692,88 @@ the reference omitted it and has been corrected.
 
 ---
 
-## 9. Copy rules
+## 9. The project ledger
+
+`ledger-reference.html` is the visual source of truth. A ledger item is **a link, not a
+document**: the thing lives where you made it — a PR, a markdown ADR, an Excalidraw board,
+a GitHub issue — and the ledger knows its title, its kind, its status, and which capability
+it serves.
+
+### No documents, and no detail page
+
+No ADR body, context, alternatives or consequences. No upload, no image. Those live at the
+link, in a file you can diff, which is what an ADR is for. **A row is the item**, and its
+title opens the link — a page built to display a title and a URL is a place to look at a
+link instead of following it. Both are structural: `ledger_test.sql` asserts the exact
+column set, so a `body` cannot be added without failing a test that says why.
+
+### One stored enum, six vocabularies
+
+`open | settled | retired`, rendered in each kind's own words — an ADR is **Decided**, a
+task is **Done**, an incident is **Closed**. Three is enough for every kind; six would be a
+workflow. The mapping lives in the domain beside the which-half copy and the delete copy,
+because a rule stated in words must not drift from the rule.
+
+A milestone retires as **Dropped**, never "Missed". A missed milestone is the product
+working out that you are behind, which is what the free-text "When" on a phase refuses.
+
+### Status is drawn in ink, never green
+
+`--ok` marks what the app **derives**. A ledger status is a **self-report** — you set it by
+hand, and the product cannot know whether you shipped what a URL points at. It is the same
+reason confidence is drawn in ink rather than red/amber/green: a judgement is not a fact.
+
+So: open is a dashed hollow dot in `--ink-3`, settled a filled `--ink` dot in ink, retired a
+hollow grey dot with grey text. Distinct without colour-coding. `--ok` stays at its three
+derived cases. `ledger-reference.html` drew settled in green and has been corrected.
+
+**The general check**, because four references running have now made this mistake: before
+using `--ok` or `--flag` in a reference, ask **what kind of claim the thing is making**, not
+how it should feel.
+
+### The ledger never changes whether a capability is demonstrated
+
+Demonstrated stays recall plus evidence, exactly as §8 defines it. A rule that counted
+ledger items would be a rule you could satisfy with a bookmark. The ledger line on a
+capability is **context** — and `demonstrationOf` takes only the linked topics, so there is
+no parameter a ledger item could arrive through.
+
+### One new filter, and only one
+
+`?capability=` on `/ledger`, linked from that line. It is the reason an item knows about a
+capability at all, so it is the one filter that survives a reload and a share. The ledger's
+own kind and status chips are local view state over an already-loaded list, derived from the
+kinds actually present so a chip never reads zero. Nothing is added to the library's
+filters.
+
+### Stamped, never back-dated
+
+No date field. Back-dating a decision you made last week is the kind of tidying that turns a
+record into a story. **Retired rows stay**, in place, at their original date — a ledger that
+deletes what you changed your mind about is not a record.
+
+### The delete says what it does not touch
+
+*"Nothing at the link is touched — the ADR stays where you wrote it."* A ledger of links is
+the one place in this product where a delete is nearly free, and the sentence should say so
+rather than borrowing the gravity of deleting a topic. The second clause names the kind's
+own noun. With no link there is no such promise to make, and the copy does not make one.
+
+### On a phone: the sixth item, and the end of the cluster
+
+Arc 3 shipped the account surface as a wrapping row of five and recorded, as an open
+question, that it was becoming a menu. Ledger is the sixth, so it became one: **a single
+`More` link opening a sheet** with all six and their counts, Delete account last in
+`--flag`.
+
+Rule 13 survives untouched — none of the six is a destination you bounce between. The head
+now costs one word at any number of destinations, which the wrapping row could not promise.
+The sheet is the existing `Sheet` at `placement="bottom"`, so the focus trap, Escape and
+scrim-press behaviour are inherited rather than reimplemented.
+
+---
+
+## 10. Copy rules
 
 Sentence case everywhere. Active voice. An action keeps its name through the
 whole flow — the button that says "Save topic" produces a toast that says
@@ -704,7 +785,7 @@ invitations, not apologies.
 
 ---
 
-## 10. Accessibility floor
+## 11. Accessibility floor
 
 Not optional, not polish-phase:
 
@@ -733,7 +814,7 @@ technology. Where the two disagree, this is the rule.
 
 ---
 
-## 11. Out of scope
+## 12. Out of scope
 
 The mock shows a few things beyond the original spec. Ship them only if the core
 loop is done: search-term highlighting in card titles, "Review the 2 you missed"

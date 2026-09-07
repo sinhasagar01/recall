@@ -574,3 +574,77 @@ if (core && senior) {
 }
 
 console.log('Phases seeded: 2 (4 capabilities, spanning both middle states)')
+
+/*
+  A small ledger: one item per state the list has to render.
+
+  Cleared first, like the phases above — a run that fails between creating an item
+  and deleting it would otherwise leave rows the next run's counts include.
+*/
+await admin.from('project_items').delete().eq('user_id', mainUserId)
+
+const closuresCapability = core
+  ? (
+      await admin
+        .from('capabilities')
+        .select('id')
+        .eq('phase_id', core.id)
+        .eq('name', 'Explain closures without notes')
+        .maybeSingle()
+    ).data?.id ?? null
+  : null
+
+const { error: ledgerError } = await admin.from('project_items').insert([
+  {
+    user_id: mainUserId,
+    kind: 'adr',
+    title: 'Search state ownership: URL over client store',
+    link: 'https://github.com/example/recall/blob/main/adr-002.md',
+    status: 'settled',
+    capability_id: closuresCapability,
+    created_at: daysAgo(4),
+  },
+  {
+    user_id: mainUserId,
+    kind: 'incident',
+    title: 'New table shipped without a GRANT — app down 40 minutes',
+    link: 'https://github.com/example/recall/issues/23',
+    note: 'RLS and GRANT are two gates.',
+    status: 'settled',
+    created_at: daysAgo(5),
+  },
+  {
+    user_id: mainUserId,
+    kind: 'task',
+    title: 'Request cancellation on the search endpoint',
+    link: 'https://github.com/example/recall/pull/41',
+    status: 'open',
+    capability_id: closuresCapability,
+    created_at: daysAgo(6),
+  },
+  // No link: the row says "no link yet" rather than looking broken.
+  {
+    user_id: mainUserId,
+    kind: 'task',
+    title: 'Add optimistic updates to the comment thread',
+    status: 'open',
+    created_at: daysAgo(7),
+  },
+  // Retired: stays in the list, in place, at its original date.
+  {
+    user_id: mainUserId,
+    kind: 'adr',
+    title: 'Client-side search over server search',
+    link: 'https://github.com/example/recall/blob/main/adr-000.md',
+    note: 'superseded by ADR-002',
+    status: 'retired',
+    created_at: daysAgo(14),
+  },
+])
+
+if (ledgerError) {
+  console.error(`Could not seed the ledger: ${ledgerError.message}`)
+  process.exit(1)
+}
+
+console.log('Ledger seeded: 5 items (settled, open, no-link and retired states)')

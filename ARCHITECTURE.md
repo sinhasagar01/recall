@@ -121,6 +121,82 @@ The same applies to any perturbation that breaks compilation rather than behavio
 red suite is only evidence when the *named* assertion you predicted is the one that
 failed.
 
+### The perturbation harness lied twice, in the same place, for one reason
+
+Two arcs running, the ad-hoc perturbation driver reported "anchor not found" for a
+perturbation that had applied perfectly — and both times it was the arc's **central
+guard**: arc 3's "a stored `demonstrated` boolean cannot be added", arc 4's "a document
+`body` column cannot be added".
+
+The cause was one line, carried from one arc to the next:
+
+```js
+applied = (newText in now) && (oldText not in now)   // WRONG
+```
+
+`oldText not in now` only holds for a **replacement**. An **insertion** — adding a
+forbidden column *before* an anchor line — leaves its anchor exactly where it was, so the
+predicate reported "not applied" for an edit that was in the file and in the database.
+
+**That it hit the central guard both times is the shape of the risk, not a coincidence.**
+The central guard of an arc is usually *"this column must not exist"*, and the only way to
+test that is to add the column — an insertion. The instrument was blind precisely where it
+mattered most, and would have been every time.
+
+Fixed rather than documented around: `scripts/perturb.mjs` is now a repo script instead of
+something re-authored per arc. Verification is exact rather than heuristic — the file after
+the edit must equal `original.replace(old, new)` and must differ from the original — so it
+works for any edit shape. And three conditions now **throw** instead of producing a data
+point: a missing anchor, an edit that does not change the file, and an edit that reaches the
+file but not the installed object. All three were verified by deliberately triggering them.
+
+> **A perturbation that cannot be applied is an error, never a result.** "0 failed" from a
+> broken instrument reads exactly like "0 failed" from a redundant clause, and points the
+> same way: delete it.
+
+── The finding, which is about instruments rather than about this bug ─────────
+
+The checker could not distinguish **"the clause had no effect"** from **"I could not
+measure it"**. Both came back as the same reassuring output, and only one of them is a
+result.
+
+That failure was not randomly placed. **An arc's central guard is almost always "this
+column must not exist"** — no stored `demonstrated`, no document `body`, no back-dated
+`occurred_at` — and the only way to test such a guard is to **add** the column, which is an
+insertion. The one edit shape the checker mishandled was the one shape its most important
+job required. It failed exactly where it mattered, twice, and would have every time.
+
+> **When a tool reports a negative result, ask whether it can distinguish "no effect" from
+> "could not measure". If it cannot, that is not a result.**
+
+This generalises past perturbation. A grep that finds nothing, a test that skips silently, a
+query that returns zero rows, a probe against the wrong host — each produces the shape of
+good news. The reflex worth keeping is to make the instrument prove it was pointed at
+something before believing what it says about what it saw: assert the anchor matched, assert
+the fixture was non-empty, assert the host answered. Several of the entries above are the
+same lesson arriving by different routes.
+
+The narrower point still stands too: the harness that checks the tests was the least-tested
+code in the loop, and it was wrong for two arcs without anyone noticing, because its failure
+mode was to report the reassuring answer.
+
+### Count by the thing under test, never by a table total
+
+`ledger_test.sql` asserted that deleting a phase keeps its ledger items by counting **every
+row in `project_items`** and expecting 7. That total depends on how many of the `throws_ok`
+inserts earlier in the file actually threw — so relaxing *any* unrelated CHECK made a
+forbidden insert succeed, the total became 8, and a single perturbation reported **two**
+failures.
+
+One of those was real and one was collateral, and a run where you have to work out which is
+a run you stop reading carefully. That is how a perturbation result gets misread.
+
+> **An assertion should fail for its own reason.** Count the row under test by name, not the
+> table by total. A whole-table count couples one assertion to every other test in the file.
+
+Confirmed by re-perturbing the title CHECK after the fix: it now fails exactly one
+assertion, its own.
+
 ### Verify the perturbation applied before believing its result
 
 Two results in the sources arc reported **"0 failed"** because the regex doing the editing
@@ -1103,6 +1179,39 @@ contract, not a passthrough.** If a component hardcodes a utility a caller can a
 has to say which wins, and prove it — the failure is invisible to the compiler, invisible
 to the linter, and invisible in review, because the class is right there in the source
 looking like it works.
+
+## Locating in tests: role and text by default, `data-` for a value in many vocabularies
+
+The default is `getByRole` and `getByText`, because that asserts **what a person
+perceives**. A test that finds a button by its accessible name fails when the button stops
+being reachable, which is the thing worth failing on.
+
+There is one case where it asserts the wrong thing:
+
+> **Use a `data-` attribute when the thing under test is a stored value rendered in more
+> than one vocabulary.**
+
+A ledger item's status is `settled` whether the row reads *Decided*, *Done* or *Closed* —
+one stored enum, six vocabularies. Asserting the word would assert the **copy**; asserting
+`data-status="settled"` asserts the **state**. Those are different claims, and a test that
+makes the first while meaning the second breaks every time a noun is reworded and passes
+when the state is wrong.
+
+The same reasoning already governs `data-demonstrated` on a capability box, added in arc 3
+for the same reason: demonstrated is a derived boolean, and the box renders it as a glyph, a
+colour and a sentence.
+
+Arc 4 is the first arc to add hooks to markup deliberately, and the honest reason is worth
+recording alongside the principled one: **locator guesswork failed twice first.**
+`page.locator('div').filter({ hasText: title }).last()` matched an inner element that did
+not contain the status, and a positional query over `querySelectorAll('a, div')` was
+measuring row order across nodes that were not rows. Both were attempts to describe the DOM
+rather than the thing. `data-testid="ledger-row"` with `data-item-title` and `data-status`
+says what the row *is*, and the tests got shorter as well as correct.
+
+The line to hold: a `data-` hook is for **identity and stored state**, never a shortcut past
+a control that is hard to reach. If a person cannot get to it by role and name, the fix is
+the component, not the selector.
 
 ## Test layers
 
