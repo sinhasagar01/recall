@@ -172,6 +172,20 @@ test.describe('sources', () => {
   })
 })
 
+test('signed out, sources is not reachable', async ({ page }) => {
+  /*
+    It answered a 500 in production rather than redirecting: the proxy's GUARDED
+    list is hand-written and this route was not in it, so a signed-out request
+    reached the server component and rendered with no session. The structural
+    regression is src/lib/supabase/guarded-routes.test.ts, which holds that list
+    to the route tree; this is the same rule stated end to end, matching the shape
+    settings.spec.ts already uses.
+  */
+  await page.context().clearCookies()
+  await page.goto('/sources')
+  await expect(page).toHaveURL(/\/sign-in/)
+})
+
 test.describe('sources on a phone', () => {
   test.use({ viewport: { width: 390, height: 844 } })
 

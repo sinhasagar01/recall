@@ -17,30 +17,56 @@ export default async function SourcesPage() {
   const distilled = views.reduce((total, view) => total + view.entries.length, 0)
   const empty = views.filter((view) => view.entries.length === 0).length
 
+  /*
+    The heading stays when the list is empty.
+
+    Every route in the (app) group carries an h1, and e2e/wayfinding.spec.ts holds
+    them to it — an empty screen that drops its title leaves you on a page that
+    does not say where you are. The weak page settled this shape first: keep the
+    header, vary the subtitle, put the invitation below it.
+  */
+  const header = (
+    <div className="mb-[26px] flex items-start justify-between gap-4">
+      <div>
+        <h1 className="font-display text-page-title font-medium tracking-[-0.022em]">Sources</h1>
+        <p className="mt-1.5 text-meta text-ink-2">
+          {views.length === 0 ? (
+            'Nothing saved yet'
+          ) : (
+            <>
+              {views.length} {views.length === 1 ? 'source' : 'sources'} · {distilled}{' '}
+              {distilled === 1 ? 'entry' : 'entries'} distilled
+              {empty > 0 ? ` · ${empty} with nothing` : ''}
+            </>
+          )}
+        </p>
+      </div>
+      <AddSourceButton label="+ Add a source" />
+    </div>
+  )
+
   if (views.length === 0) {
     return (
-      <StateBlock
-        eyebrow="Sources"
-        title="Nothing here yet"
-        body="Add the video you are watching. Its transcript is scratch you work from — what you distil out of it is the library."
-        action={<AddSourceButton label="+ Add a source" />}
-      />
+      <>
+        {header}
+        <StateBlock
+          eyebrow="Sources"
+          title="Nothing here yet"
+          body="Add the video you are watching. Its transcript is scratch you work from — what you distil out of it is the library."
+          action={<AddSourceButton label="+ Add a source" />}
+        />
+        <p className="mt-9 border-t border-rule pt-5 text-meta text-ink-2">
+          <Link href="/library" className="underline hover:text-ink">
+            Back to the library
+          </Link>
+        </p>
+      </>
     )
   }
 
   return (
     <>
-      <div className="mb-[26px] flex items-start justify-between gap-4">
-        <div>
-          <h1 className="font-display text-page-title font-medium tracking-[-0.022em]">Sources</h1>
-          <p className="mt-1.5 text-meta text-ink-2">
-            {views.length} {views.length === 1 ? 'source' : 'sources'} · {distilled}{' '}
-            {distilled === 1 ? 'entry' : 'entries'} distilled
-            {empty > 0 ? ` · ${empty} with nothing` : ''}
-          </p>
-        </div>
-        <AddSourceButton label="+ Add a source" />
-      </div>
+      {header}
 
       <div className="border-t border-rule">
         {views.map((view) => (

@@ -2,8 +2,23 @@ import { createServerClient } from '@supabase/ssr'
 import type { Database } from '@/lib/database.types'
 import { NextResponse, type NextRequest } from 'next/server'
 
-/** Routes that require a session. */
-const GUARDED = ['/library', '/topic', '/practice', '/weak', '/settings']
+/**
+ * Routes that require a session.
+ *
+ * Exported so `guarded-routes.test.ts` can hold it to the route tree. A route
+ * missing here does not leak — RLS scopes every read, so a signed-out request
+ * returns nothing — but it renders a server component with no session and answers
+ * **500 instead of redirecting to sign-in**. That is how `/sources` shipped, and
+ * `/export` had been in the same state before it.
+ */
+export const GUARDED = [
+  '/library',
+  '/topic',
+  '/practice',
+  '/weak',
+  '/settings',
+  '/sources',
+]
 
 /** Routes a signed-in user has no reason to see. */
 const AUTH_ROUTES = ['/sign-in', '/sign-up']

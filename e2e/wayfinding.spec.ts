@@ -17,7 +17,7 @@ import { signInAs } from './auth-state'
   rather than by naming the screens someone remembered.
 */
 
-const APP_ROUTES = ['/library', '/weak', '/settings'] as const
+const APP_ROUTES = ['/library', '/weak', '/settings', '/sources'] as const
 
 /** Visible, not merely present: the mobile tab bar is in the DOM at desktop width. */
 async function visibleLibraryLinks(page: Page): Promise<string[]> {
