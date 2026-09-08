@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useLocalToday } from '@/lib/domain/use-local-today'
 
 /**
  * The rail's three destinations.
@@ -41,6 +42,7 @@ export function RailNav({
   capabilities,
   demonstrated,
   ledger,
+  today,
 }: {
   total: number
   queued: number
@@ -49,8 +51,16 @@ export function RailNav({
   capabilities: number
   demonstrated: number
   ledger: number
+  /**
+   * Per-day counts for the recent window. The rail picks today's out of it,
+   * because only the browser knows which day that is.
+   */
+  today: { day: string; done: number; written: number }[]
 }) {
   const pathname = usePathname()
+  const localToday = useLocalToday()
+  const todayRow = localToday === null ? null : today.find((d) => d.day === localToday)
+  const todayCount = todayRow ? `${todayRow.done} / ${todayRow.written}` : ''
 
   const destinations: Destination[] = [
     { href: '/library', label: 'Library', count: String(total) },
@@ -78,6 +88,12 @@ export function RailNav({
     section exists to show. Not a percentage, and not a week counter.
   */
   const apprenticeship: Destination[] = [
+    /*
+      Today first: it is the only one you open every morning. Its count is absent
+      rather than "0 / 0" when nothing is written — a day you have not started is
+      not a day you are failing at.
+    */
+    { href: '/today', label: 'Today', count: todayCount },
     { href: '/phases', label: 'Phases', count: `${demonstrated} / ${capabilities}` },
     { href: '/ledger', label: 'Ledger', count: String(ledger) },
     { href: '/sources', label: 'Sources', count: String(sources) },

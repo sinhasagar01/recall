@@ -1,6 +1,7 @@
 import { LibraryView } from '@/components/topics/library-view'
 import { listLibrary, railCounts } from '@/lib/data/library'
 import { countLedger } from '@/lib/data/ledger'
+import { readRecentDayCounts } from '@/lib/data/today'
 import { countSources } from '@/lib/data/sources'
 import { listCapabilityOptions, phaseCounts } from '@/lib/data/phases'
 import { listSourceOptions } from '@/lib/data/sources'
@@ -64,7 +65,7 @@ export default async function LibraryPage({
 
   // railCounts is cache()d and the layout has already called it this request, so
   // the account figures cost nothing extra here.
-  const [data, account, sourceOptions, capabilityOptions, phases, ledger, sources] =
+  const [data, account, sourceOptions, capabilityOptions, phases, ledger, sources, dayCounts] =
     await Promise.all([
     listLibrary(readFilters(params)),
     railCounts(),
@@ -77,6 +78,7 @@ export default async function LibraryPage({
     phaseCounts(),
     countLedger(),
     countSources(),
+    readRecentDayCounts(),
   ])
 
   return (
@@ -86,6 +88,7 @@ export default async function LibraryPage({
       sourceOptions={sourceOptions}
       capabilityOptions={capabilityOptions}
       moreCounts={{
+        today: dayCounts,
         phases: `${phases.demonstrated} / ${phases.total}`,
         ledger: String(ledger),
         sources: String(sources),

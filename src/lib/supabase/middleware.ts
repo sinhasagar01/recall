@@ -20,6 +20,7 @@ export const GUARDED = [
   '/sources',
   '/phases',
   '/ledger',
+  '/today',
 ]
 
 /** Routes a signed-in user has no reason to see. */

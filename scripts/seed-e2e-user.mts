@@ -648,3 +648,87 @@ if (ledgerError) {
 }
 
 console.log('Ledger seeded: 5 items (settled, open, no-link and retired states)')
+
+/*
+  A few days, so Earlier days has something to read and Today has a carried
+  blocker to show.
+
+  Cleared first, like the phases and the ledger — a failed run that wrote a day
+  would otherwise leave a row the next run's counts include.
+
+  Dated relative to the LOCAL date, the way the app does. Seeding with a UTC slice
+  would put "yesterday" on the wrong side of midnight for a third of the day and
+  make the prefill spec flaky in exactly the way localDateString exists to prevent.
+*/
+await admin.from('days').delete().eq('user_id', mainUserId)
+// `few` writes its own day in the mobile spec — cleared so each run starts from
+// nothing, the same reason the phases and ledger seeds clear theirs.
+await admin.from('days').delete().eq('user_id', fewUserId)
+
+const localDay = (offset: number) => {
+  const date = new Date()
+  date.setDate(date.getDate() + offset)
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const dayOfMonth = String(date.getDate()).padStart(2, '0')
+  return `${date.getFullYear()}-${month}-${dayOfMonth}`
+}
+
+const { error: daysError } = await admin.from('days').insert([
+  /*
+    Yesterday: one line ticked, one left unticked. The unticked one is what Today
+    prefills, and the ticked one is what it must NOT — a finished line offered
+    back would be asking you to do it twice.
+  */
+  {
+    user_id: mainUserId,
+    day: localDay(-1),
+    explain_text: 'Finish closures and write three retrieval questions',
+    explain_done: true,
+    rebuild_text: 'Write once() from memory, no notes',
+    rebuild_done: false,
+    apply_text: null,
+    apply_done: false,
+    blocker_text: null,
+    blocker_resolved_at: null,
+  },
+  // Two days back: an unresolved blocker, so Today has one to carry.
+  {
+    user_id: mainUserId,
+    day: localDay(-2),
+    explain_text: 'Finish the event loop lesson',
+    explain_done: true,
+    rebuild_text: 'Rebuild debounce from memory',
+    rebuild_done: true,
+    apply_text: 'Ship search cancellation',
+    apply_done: false,
+    blocker_resolved_at: null,
+    blocker_text: 'Debounced search still fires after unmount. Cleanup runs, but the in-flight request resolves anyway.',
+  },
+  /*
+    Three days back: a resolved blocker, so "still open" means something.
+
+    Every key is repeated on both rows on purpose. PostgREST unions the keys
+    across a bulk insert, so a column present on only one object is sent as an
+    explicit NULL for the other — and `rebuild_done` is NOT NULL. The same trap
+    the topics seed above already documents.
+  */
+  {
+    user_id: mainUserId,
+    day: localDay(-3),
+    explain_text: 'Review the week',
+    explain_done: true,
+    rebuild_text: null,
+    rebuild_done: false,
+    apply_text: 'Write ADR-001: modular monolith',
+    apply_done: false,
+    blocker_text: 'Could not decide whether audit writes belong in the same transaction.',
+    blocker_resolved_at: new Date().toISOString(),
+  },
+])
+
+if (daysError) {
+  console.error(`Could not seed the days: ${daysError.message}`)
+  process.exit(1)
+}
+
+console.log('Days seeded: 3 (yesterday unfinished, one open blocker, one resolved)')

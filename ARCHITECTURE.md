@@ -180,22 +180,52 @@ The narrower point still stands too: the harness that checks the tests was the l
 code in the loop, and it was wrong for two arcs without anyone noticing, because its failure
 mode was to report the reassuring answer.
 
-### Count by the thing under test, never by a table total
+### Anything shared between tests in a file is a coupling
 
-`ledger_test.sql` asserted that deleting a phase keeps its ledger items by counting **every
-row in `project_items`** and expecting 7. That total depends on how many of the `throws_ok`
-inserts earlier in the file actually threw — so relaxing *any* unrelated CHECK made a
-forbidden insert succeed, the total became 8, and a single perturbation reported **two**
-failures.
+An assertion has one job: **fail for its own reason, alone.** Anything a test shares with
+its neighbours — a count that spans them, a date, an id, a title, a fixture row — is a
+channel through which one failure becomes two, and a perturbation reporting two failures
+where only one is real is a run you stop reading carefully. That is how a perturbation
+result gets misread, and misreading one is how a real clause gets deleted as redundant.
 
-One of those was real and one was collateral, and a run where you have to work out which is
-a run you stop reading carefully. That is how a perturbation result gets misread.
+> **An assertion must be able to fail for its own reason alone.** Assert on the row under
+> test by name; give each case its own key.
 
-> **An assertion should fail for its own reason.** Count the row under test by name, not the
-> table by total. A whole-table count couples one assertion to every other test in the file.
+The mechanism is not the lesson, because it keeps arriving in a new disguise:
 
-Confirmed by re-perturbing the title CHECK after the fix: it now fails exactly one
-assertion, its own.
+- **Arc 4, a table-wide count.** `ledger_test.sql` asserted that deleting a phase keeps its
+  ledger items by counting **every row in `project_items`** and expecting 7. That total
+  depended on how many `throws_ok` inserts had actually thrown, so relaxing any unrelated
+  CHECK made a forbidden insert succeed and the count wrong. Fixed by counting the row under
+  test by title.
+- **Arc 5, a shared fixture key.** `days_test.sql` had every CHECK case insert into
+  `2026-09-10`, with one later assertion using the same date. Relax any CHECK and its insert
+  succeeds, so the later row collides on the unique constraint — five perturbations each
+  reported two failures. Fixed by giving that assertion its own date.
+
+Both were found the same way: by reading *which* assertions a perturbation broke rather than
+counting how many. If a perturbation of one clause fails an assertion about a different
+clause, the test file has a coupling, whatever the mechanism turns out to be that time.
+
+### A uniqueness constraint that omits `user_id` is invisible to a single-user test suite
+
+`days` is unique on `(user_id, day)`. Perturbing it to `unique (day)` — dropping just the
+user — **passes every other assertion in the file.** One user can still write one row per
+date, every CHECK still bites, every policy still holds. The only thing that breaks is that
+the *second* user of the product can never write a date the first user has written.
+
+This is worth its own entry because of how it hides. A suite that exercises one user at a
+time cannot see it, and most assertions are written for one user at a time. The bug is not
+in what the constraint does but in what it silently makes global, and no amount of testing
+one person's data will surface it.
+
+> **Every uniqueness constraint on user-owned data needs an assertion that a second user may
+> hold the same key.** It is one line, it is the only thing that catches this, and it is
+> exactly the assertion nobody writes.
+
+`days_test.sql` has it as *"another user may have their own row for the same date"* — the
+one assertion that fails under this perturbation, and the reason the perturbation was worth
+running at all.
 
 ### Verify the perturbation applied before believing its result
 
@@ -432,6 +462,46 @@ exception is in the queue.
 
 Both reasons now sit side by side in `src/lib/data/topic-mapping.ts`, which is the
 reference for this rule. "We omit columns sometimes" is not something anyone can apply.
+
+### An accessible name that is a prefix of another matches both
+
+`getByRole('button', { name: 'Save' })` on the Today page matched **Save** and **Save
+blocker**, because Playwright's name matching is substring by default. The failure does not
+look like an ambiguous locator — it looks like the wrong element responding, or a strict-mode
+violation naming two elements you did not expect to be related.
+
+> **Use `exact: true` whenever a control's name is a prefix of another name on the same
+> screen.** Renaming one of them is the other fix, but only if the shorter name was wrong;
+> "Save" and "Save blocker" are both correct copy.
+
+Worth knowing before it costs an hour, because the same shape hides in "Delete" /
+"Delete account", "Practice" / "Practice all", "Add" / "Add topic" — pairs this codebase
+already has.
+
+### A mention-guard's token has to mean what the guard claims
+
+Arc 5's first `TODAY_COLUMNS` included the bare word **`days`**, and the boundary test
+failed on its first run — against `weak/page.tsx`, which says *"practiced in 60 days"* in a
+sentence. Nothing was wrong with the code. The token was wrong.
+
+The four earlier guards worked because their subjects could not appear by accident:
+`project_items`, `capability_id`, `from('sources')`, `phase_id`. `days` is ordinary English,
+and a guard on it reports a violation the first time anyone writes a sentence about time.
+
+> **The fix for a false positive is a better token, never a file exception.** An exception
+> list turns a guard into a guard-with-holes, and the holes are exactly where someone has
+> already written the word once.
+
+Replaced with the names a module would actually have to write to read a day's contents —
+`from('days')`, `public.days`, and the four columns that exist nowhere else. Precise, and
+still absolute: there is no way to read this table in a queue module without naming one of
+them.
+
+Worth flagging forward, because **this is the first of the five boundary guards whose subject
+had an everyday name**, and it will not be the last. *Check arc 6's tokens against the prose
+in the guarded files before writing them* — a match has to mean what the guard says it means,
+or the first false alarm teaches everyone to ignore the next real one. A guard that cries
+wolf is a guard someone turns off, which is worse than not having one.
 
 ### Two mention-guards plus one structure-guard
 

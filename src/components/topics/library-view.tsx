@@ -103,7 +103,12 @@ export function LibraryView({
   /** Grouped by phase — a capability's wording only makes sense under its phase. */
   capabilityOptions: { phase: string; options: { id: string; name: string }[] }[]
   /** The same counts the rail shows, so the two cannot disagree. */
-  moreCounts: { phases: string; ledger: string; sources: string }
+  moreCounts: {
+    today: { day: string; done: number; written: number }[]
+    phases: string
+    ledger: string
+    sources: string
+  }
 }) {
   const searchParams = useSearchParams()
   const router = useRouter()

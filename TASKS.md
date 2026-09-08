@@ -1315,6 +1315,78 @@ what someone thought to say.**
 
 ---
 
+## Arc 5 — Today
+
+Three things typed each morning — one to explain, one to rebuild, one to apply — plus a
+blocker. Free text, by hand. **The last of the five apprenticeship arcs**; arc 6 (AI) is a
+different kind of decision and was settled long ago.
+
+**Fifth table, `days`, unique on (user_id, day).** Three scalar pairs rather than jsonb — and
+the arc 1 reason does **not** transfer, which is worth saying rather than borrowing: arc 1
+avoided jsonb because `gen types` renders it as `Json` and would have made
+`TopicBoundaryIsSound` vacuous, and `days` has no domain union for that to apply to. The
+honest reasons here are that three fixed slots is the shape of the feature, that ticking one
+box is a single-column update rather than a read-modify-write that races a second tab, and
+that the not-blank CHECKs are per column.
+
+**The server cannot know what day it is.** `localDateString` needs the browser's timezone, so
+the page fetches a window of recent days and the client picks today's and yesterday's out of
+it, resolving the date after mount. Nothing in the arc calls `new Date()` inside a domain
+function; the clock enters at the client boundary, once, the way `evidence-section.tsx`
+already did it.
+
+**The clickable box does not weaken arc 3.** Its assertions are about `capabilities` — a
+stored boolean that does not exist, and a page with no checkbox anywhere. Both stay literally
+true, and the second gets *sharper*: the app now has checkboxes, and that screen deliberately
+has none. A capability is a claim about ability; an intention is a claim about what you did.
+
+### The correction written back into the reference
+
+The Today screen drew a `carried · 2 days` badge. Dropped: the practice line stays the only
+derived thing, there is no lineage stored to count, and "2 days" is a number whose only job
+is to say you are behind. A `carried` flag with no number was declined too — cheap and
+honest, and still a second derived thing for information the Clear button already carries.
+
+### Five references, two shapes — a note for whoever writes the sixth
+
+Arc 6 is still to come, so this is worth stating plainly rather than leaving as five separate
+incidents. **Every reference so far has contradicted a shipped rule or its own brief**, and
+the failures cluster into two shapes:
+
+1. **A colour used for the wrong kind of claim.** `--flag` on an absence (sources, phases);
+   `--ok` on a self-report (ledger). The check: ask *what kind of claim the thing is making,
+   not how it should feel.* `--ok` marks what the app derives; `--flag` marks weak
+   confidence, a destructive action, or an error.
+2. **A drawn affordance implying data the design does not store.** `carried · 2 days` here;
+   the mobile chip row in phases that redrew a shipped surface. The check: ask *what would
+   have to be stored, or scanned, for this to be true?*
+
+Both are things **a drawing can assert without paying for** — which is exactly what the
+precedence rule exists to catch, and why it is worth the friction every time. A reference is
+a proposal, not a specification, on any point where it touches a rule that already shipped.
+
+### What the arc proved about its own tests
+
+**The no-write claim was proven, not argued.** Decision 4 called it structural, so it got the
+same perturbation as everything else: an `.upsert(` added to the page module fails the
+source-level check, and — separately — makes the Playwright assertion fail with
+`Expected: 0, Received: 1`. That second check was verified rather than assumed: `EarlierDays`
+filters nothing on emptiness, so a row created by merely opening Today really would appear
+there.
+
+**Two more couplings, both found by the perturbation run.** A shared fixture date coupled
+five CHECK cases to one later assertion (now generalised in ARCHITECTURE.md). And two tests
+in this file wrote the same user's "today" in parallel, so whichever ran first decided
+whether "opening Today writes nothing" could still be true — the mobile test now uses its own
+fixture user.
+
+**The boundary guard's first token was wrong.** `days` is ordinary English and matched the
+weak page's prose about practice gaps. The fix is a better token, never a file exception —
+recorded, along with the note that arc 6 should check its tokens against prose before writing
+them, since this was the first guard whose subject had an everyday name.
+
+---
+
 ---
 
 ## The backlog
