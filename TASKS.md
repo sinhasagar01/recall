@@ -1715,6 +1715,30 @@ one screenshot and it caught two defects of a kind nothing else here can.** The 
 turned up nine copies of every seeded source on the main fixture — invisible to every test,
 obvious to anyone looking at the page.
 
+### Closed, on its second run
+
+The follow-up work — practise actions as buttons, the collapse rule, the five-square meter —
+was checked the same way before it was called done, and then again on production. Two mocks
+cover this screen now, so precedence had to be written down: `sources-hierarchy-mock.html`
+governs the grouping, course head, chapter band, ordering and header;
+`sources-actions-mock.html` governs the practise actions and the meter, and nothing else.
+
+That rule earned itself immediately. The newer file drew the course sub-line ending *"0 of 1
+finished"*, which contradicted the older one twice over — the count belongs in its own
+right-hand element, and the count that belongs there is **mined**, not finished. The older file
+won and the newer was corrected. **A second reference covering a screen needs a stated scope
+before it is read, not after the first disagreement.**
+
+One place a mock lost to a shipped rule rather than to another mock: the actions file says
+"buttons, not links", and these stay `Link`s wearing the Button's styling, because a
+`<Button>` wrapping a `<Link>` is invalid markup and hands a screen reader two nested
+controls — recorded when the practice line hit it in arc 5.
+
+And one thing deliberately not changed: the lesson yield column differs between the two files,
+one line against two. It is not the meter, so the older file governs and arc 6's shipped
+`sourceProgressCopy` stays. **Consistency is not a reason to widen scope**, and "while I am in
+here" is how a two-line fix becomes an arc.
+
 The copy defect found in the same review is a different animal and worth separating: *"1 of 1
 mined"* and *"0 of 1 mined out"* on one screen, three characters apart, meaning
 produced-something and fully-exhausted. That one **was** reachable by a test and had none,
