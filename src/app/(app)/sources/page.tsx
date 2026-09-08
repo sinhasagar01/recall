@@ -4,7 +4,7 @@ import { CourseGroup } from '@/components/sources/course-group'
 import { StateBlock } from '@/components/ui/state-block'
 import { listSources } from '@/lib/data/sources'
 import { groupSources, groupedHeadline } from '@/lib/domain/source-grouping'
-import { sourceProgress } from '@/lib/domain/sources'
+import { finishedCopy, finishedCount } from '@/lib/domain/sources'
 
 /**
  * The one number this screen exists to show.
@@ -81,10 +81,14 @@ export default async function SourcesPage() {
         <CourseGroup key={node.course ?? '—'} node={node} now={now} />
       ))}
 
-      {/* Lessons mined out, not videos watched. */}
+      {/*
+        FINISHED, not "mined out" — every entry okay or better, which is about
+        confidence. The course panels above count what is MINED, which is about
+        extraction. Both derive from named functions in the domain rather than
+        from two inline expressions that happened to look alike.
+      */}
       <p className="mt-6 font-mono text-[11.5px] text-ink-3">
-        {views.filter((view) => sourceProgress(view.entries).done).length} of {views.length} mined
-        out
+        {finishedCopy(finishedCount(views), views.length)}
       </p>
 
       <p className="mt-9 border-t border-rule pt-5 text-meta text-ink-2">

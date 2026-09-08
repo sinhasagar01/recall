@@ -1647,6 +1647,59 @@ damage and where it is least expected.
 
 ---
 
+## A standing limitation of this verification method — nothing compares a page to its reference
+
+**Recorded once, here, because it explains a class of defect rather than one incident.**
+
+The Sources page shipped in arc 2.1 diverging from `sources-hierarchy-mock.html` in four ways
+at once: no card treatment on a course, the chapter band as uppercase mono instead of a
+sentence-case tinted strip, "Practise this course" above the hierarchy it contains instead of
+after it, and the duration total missing from the head — the last of which is the point of
+having added length at all.
+
+**None of that is a coding mistake, and none of it would have been caught.** The arc 2.1 plan
+listed `source-row.tsx` as *"becomes the grouped list"*, every test written for it passed, and
+`npm run verify` was green through three deploys. The plan named the file and never named the
+drawing.
+
+**No assertion in this project has ever compared a rendered page to a reference.** What the
+references *are* checked against is real and has caught a great deal — shipped rules, their own
+other tabs, their own stated principles, and facts about the world; six failure shapes are
+recorded above and every one was found by reading. But all six are checks on the **drawing**.
+There is nothing pointed the other way, at the **build**.
+
+So the method has a hole with a precise shape:
+
+| Checked | How |
+| --- | --- |
+| Reference against shipped rules | by reading, before planning |
+| Reference against its own other tabs | by reading, before planning |
+| Reference against its own example data | by reading, before planning |
+| Behaviour against intent | pgTAP, domain units, Playwright, perturbation |
+| **Appearance against the reference** | **nothing** |
+
+Deliberately not building one. A screenshot-diff harness is a large piece of machinery with its
+own failure modes — it goes stale, it needs baselines regenerated on every intentional change,
+and a suite that cries wolf about a 1px shift trains you to approve diffs unread, which is
+worse than not having it. That trade may be worth making one day; it is not obviously worth it
+for a personal tool with one reader.
+
+**What replaces it, until then, is naming it.** A plan that says "becomes the grouped list" has
+not described a screen, and the reference is the specification for what that screen looks like.
+The cheap discipline: **when a plan names a component that a reference draws, the plan says
+which drawing, and the build is looked at beside it before the arc closes.** That is a human
+step, and writing it down is the only way it survives being skipped once.
+
+The copy defect found in the same review is a different animal and worth separating: *"1 of 1
+mined"* and *"0 of 1 mined out"* on one screen, three characters apart, meaning
+produced-something and fully-exhausted. That one **was** reachable by a test and had none,
+because the two counts were computed in two components by two inline expressions and neither
+could see the other's wording. Now both come from named domain functions with a test asserting
+the phrases are not near-misses. **Duplication that a type cannot see is duplication a reviewer
+has to.**
+
+---
+
 ## A standing limitation of this verification method — no production 390px numbers
 
 **Recorded once, here, rather than restated per arc.** Arcs 3, 4 and 5 each ended with the

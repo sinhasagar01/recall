@@ -63,7 +63,9 @@ describe('grouping course → chapter → lesson', () => {
       must not count it as one. The mock's header said "2 courses" for exactly
       this shape.
     */
-    expect(groupedHeadline(grouped)).toBe('1 course · 1 without one · 2 lessons · 0 entries distilled')
+    expect(groupedHeadline(grouped)).toBe(
+      '1 course · 1 without one · 2 lessons · 0 entries distilled',
+    )
   })
 
   it('keeps lessons with no chapter inside their course', () => {
@@ -164,6 +166,28 @@ describe('the counts, which are counted rather than estimated', () => {
   it('reads as English at one of everything', () => {
     expect(groupedHeadline(groupSources([view({ course: 'C', entries: 1 })]))).toBe(
       '1 course · 1 lesson · 1 entry distilled',
+    )
+  })
+
+  it('carries the duration total, which is the point of having added length', () => {
+    /*
+      A count of lessons flatters and a total of hours does not — that is the
+      whole reason both are on the head. It was missing from the first build of
+      this screen.
+    */
+    expect(
+      groupedHeadline(
+        groupSources([
+          view({ course: 'C', duration_seconds: 803, entries: 21 }),
+          view({ course: 'C', duration_seconds: null }),
+        ]),
+      ),
+    ).toBe('1 course · 2 lessons · 13m 23s of lessons · 21 entries distilled')
+  })
+
+  it('omits the total when no lesson has a length, rather than showing a zero', () => {
+    expect(groupedHeadline(groupSources([view({ course: 'C' })]))).toBe(
+      '1 course · 1 lesson · 0 entries distilled',
     )
   })
 })

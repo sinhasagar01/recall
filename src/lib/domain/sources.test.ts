@@ -2,7 +2,13 @@ import { describe, expect, it } from 'vitest'
 import {
   definitionFromSelection,
   deleteSourceCopy,
+  finishedCopy,
+  finishedCount,
+  isFinished,
+  isMined,
   isUndistilled,
+  minedCopy,
+  minedCount,
   sourceProgress,
   sourceProgressCopy,
   transcriptState,
@@ -10,6 +16,7 @@ import {
 } from '@/lib/domain/sources'
 import { parseSourceForm } from '@/lib/domain/source-form'
 import { makeQuiz, makeTopic } from '@/lib/domain/topic-fixture'
+import type { Topic } from '@/lib/domain/types'
 
 const source = (overrides: Partial<{ created_at: string }> = {}) => ({
   created_at: '2026-09-01T00:00:00.000Z',
@@ -84,6 +91,59 @@ describe('what a source has produced', () => {
     expect(progress.neverPractised).toBe(1)
     expect(progress.weak).toBe(1)
     expect(progress.topics).toBe(2)
+  })
+})
+
+describe('mined and finished are different questions', () => {
+  /*
+    They used to read "1 of 1 mined" and "0 of 1 mined out" on the same screen,
+    three characters apart, meaning different things. A reader takes the second
+    for a typo of the first.
+  */
+  const withEntries = (...confidences: Topic['confidence'][]) => ({
+    entries: confidences.map((confidence, index) =>
+      makeTopic({ id: `t${index}`, confidence }),
+    ),
+  })
+
+  it('mined is "produced something", finished is "every entry okay or better"', () => {
+    const nothing = withEntries()
+    const weak = withEntries('weak')
+    const settled = withEntries('okay', 'strong')
+
+    expect(isMined(nothing.entries)).toBe(false)
+    expect(isFinished(nothing.entries)).toBe(false)
+
+    // The case the two words exist to tell apart: mined, and NOT finished.
+    expect(isMined(weak.entries)).toBe(true)
+    expect(isFinished(weak.entries)).toBe(false)
+
+    expect(isMined(settled.entries)).toBe(true)
+    expect(isFinished(settled.entries)).toBe(true)
+  })
+
+  it('a lesson can never be finished without being mined', () => {
+    // Nothing produced is not "done with you", it is "not started".
+    for (const view of [withEntries(), withEntries('new'), withEntries('okay')]) {
+      if (isFinished(view.entries)) expect(isMined(view.entries)).toBe(true)
+    }
+    expect(isFinished(withEntries().entries)).toBe(false)
+  })
+
+  it('counts them separately across a list', () => {
+    const views = [withEntries('okay'), withEntries('weak'), withEntries()]
+
+    expect(minedCount(views)).toBe(2)
+    expect(finishedCount(views)).toBe(1)
+  })
+
+  it('says them in words that cannot be mistaken for each other', () => {
+    expect(minedCopy(2, 3)).toBe('2 of 3 mined')
+    expect(finishedCopy(1, 3)).toBe('1 of 3 finished')
+
+    // The regression: neither phrase may be a near-miss of the other.
+    expect(finishedCopy(1, 3)).not.toContain('mined')
+    expect(minedCopy(2, 3)).not.toContain('finished')
   })
 })
 
