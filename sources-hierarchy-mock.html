@@ -105,9 +105,9 @@ code{font-family:var(--font-mono);font-size:.86em}
 .lesson__y b{color:var(--accent-ink);font-weight:500}
 .lesson__y--none{color:var(--ink-3)}
 .lesson__y--stale{color:var(--flag)}
-.dots{display:inline-flex;gap:3px;flex:none}
-.dots i{width:6px;height:6px;border-radius:50%;background:var(--rule-strong)}
-.dots i.on{background:var(--accent)}
+.dots{display:inline-flex;flex:none}
+.dots i{width:7px;height:7px;border-radius:50%;background:var(--rule-strong)}
+.dots i.on{background:var(--ok)}
 
 .reg{margin-bottom:24px}
 .srcline{display:flex;align-items:center;gap:11px;padding:12px 15px;border:1px solid var(--rule);border-radius:var(--radius);
@@ -222,19 +222,19 @@ code{font-family:var(--font-mono);font-size:.86em}
     <div class="chapter">
       <div class="chapter__h"><span class="chapter__n">Principles of JavaScript</span><span class="chapter__s">3 lessons · 42m · 8 entries</span></div>
       <div class="lesson">
-        <span class="dots"><i></i><i></i><i></i><i></i><i></i></span>
+        <span class="dots"><i></i></span>
         <div class="lesson__m"><div class="lesson__n">Thread of Execution</div>
           <div class="lesson__s">21m 40s · 4,900 words · 16 days ago</div></div>
         <div class="lesson__y lesson__y--stale">Nothing · 16 days</div>
       </div>
       <div class="lesson">
-        <span class="dots"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></span>
+        <span class="dots"><i></i></span>
         <div class="lesson__m"><div class="lesson__n">Call Stack</div>
           <div class="lesson__s">6m 55s · 1,340 words · 2 days ago</div></div>
         <div class="lesson__y"><b>3 topics</b></div>
       </div>
       <div class="lesson">
-        <span class="dots"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span>
+        <span class="dots"><i class="on"></i></span>
         <div class="lesson__m"><div class="lesson__n">Execution Context</div>
           <div class="lesson__s">13m 23s · transcript deleted · 2 days ago</div></div>
         <div class="lesson__y"><b>4 topics</b> · 1 quiz</div>
@@ -244,13 +244,13 @@ code{font-family:var(--font-mono);font-size:.86em}
     <div class="chapter">
       <div class="chapter__h"><span class="chapter__n">Callbacks &amp; Higher Order Functions</span><span class="chapter__s">2 lessons · 22m · 3 entries</span></div>
       <div class="lesson">
-        <span class="dots"><i class="on"></i><i class="on"></i><i></i><i></i><i></i></span>
+        <span class="dots"><i></i></span>
         <div class="lesson__m"><div class="lesson__n">Callbacks &amp; Higher Order Functions</div>
           <div class="lesson__s">6m 27s · 1,180 words · yesterday</div></div>
         <div class="lesson__y"><b>3 topics</b></div>
       </div>
       <div class="lesson">
-        <span class="dots"><i></i><i></i><i></i><i></i><i></i></span>
+        <span class="dots"><i></i></span>
         <div class="lesson__m"><div class="lesson__n">Pass a Function as an Argument</div>
           <div class="lesson__s">15m 36s · 3,200 words · yesterday</div></div>
         <div class="lesson__y lesson__y--none">Nothing distilled</div>
@@ -268,13 +268,13 @@ code{font-family:var(--font-mono);font-size:.86em}
     </div>
     <div class="chapter">
       <div class="lesson" style="padding-left:18px">
-        <span class="dots"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span>
+        <span class="dots"><i class="on"></i></span>
         <div class="lesson__m"><div class="lesson__n">Rendering patterns and hydration</div>
           <div class="lesson__s">1h 12m · transcript deleted · 6 days ago</div></div>
         <div class="lesson__y"><b>4 topics</b></div>
       </div>
       <div class="lesson" style="padding-left:18px">
-        <span class="dots"><i></i><i></i><i></i><i></i><i></i></span>
+        <span class="dots"><i></i></span>
         <div class="lesson__m"><div class="lesson__n">Database indexing internals</div>
           <div class="lesson__s">1h 56m · 9,800 words · 15 days ago</div></div>
         <div class="lesson__y lesson__y--stale">Nothing · 15 days</div>
@@ -303,6 +303,12 @@ code{font-family:var(--font-mono);font-size:.86em}
   </div>
 
   <p class="note">Lessons with no course group under "No course" rather than being hidden or forced into one. A one-off conference talk is a real source and should not need a course invented for it.</p>
+
+  <div class="callout">
+    <div class="callout__t">Corrected: one dot, not five</div>
+    <p style="color:var(--ink-2);font-size:13.5px">This screen drew arc 2's five extraction dots against every lesson. <strong>Arc 6 deleted that checklist</strong> — it was a proxy for "have I mined this video", and extraction made the real answer cheap enough to show directly. There is nothing left to count to five.
+    <br><br>One dot now, and it means <strong>finished</strong>: every entry this lesson produced is okay or better. Green because it is derived and binary, which is the whole of the <code>--ok</code> rule. <em>The build was already right about this; the drawing was stale.</em></p>
+  </div>
 </div>
 </section>
 

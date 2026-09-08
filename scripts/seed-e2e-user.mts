@@ -103,6 +103,41 @@ const extractUserId = await upsertUser(extractEmail!, extractPassword!)
 const strongUserId = await upsertUser(strongEmail!, strongPassword!)
 const largeUserId = await upsertUser(largeEmail!, largePassword!)
 
+/** Every fixture user, so a reset can never be written for only some of them. */
+const FIXTURE_USER_IDS = [
+  mainUserId,
+  emptyUserId,
+  fewUserId,
+  extractUserId,
+  strongUserId,
+  largeUserId,
+]
+
+/*
+  ── Sources, for EVERY fixture user, before anything is seeded ──────────────
+  Topics are reset per user further down, each beside the fixture it belongs to.
+  Sources were not, and for a while only the `extract` user's were cleared —
+  because that is where the accumulation was first noticed.
+
+  Fixing the instance and not the class meant `main` went on collecting sources
+  on every run: nine copies of "Closures, in depth" under one chapter, which is
+  invisible to every assertion in the suite and obvious the moment anyone looks
+  at the page. That is the same "fixed the instance, not the class" failure
+  recorded in ARCHITECTURE.md about the export's duplicate column list, made
+  twice in two arcs.
+
+  So it is one loop over one list, and adding a fixture cannot half-add it.
+  `on delete set null` means topics keep their rows and lose the link, which is
+  what the per-user topic resets below then clean up anyway.
+*/
+for (const userId of FIXTURE_USER_IDS) {
+  const { error } = await admin.from('sources').delete().eq('user_id', userId)
+  if (error) {
+    console.error(`Could not clear sources for a fixture user: ${error.message}`)
+    process.exit(1)
+  }
+}
+
 /*
   Test isolation.
 
@@ -225,15 +260,8 @@ console.log(`Nothing-needs-review user reset: ${strongEmail}`)
   One seeded topic, so duplicate detection has something to find. Reset from
   scratch each run, so what the spec saves never accumulates.
 */
-/*
-  Topics AND sources. `extraction.spec.ts` and `source-hierarchy.spec.ts` both
-  create sources, and sources are the one fixture object nothing else cleared —
-  so they accumulated across runs until "the first Practise link" meant a
-  different chapter every time. Fixture rot, caught by a test that passed once
-  and then never again.
-*/
+/* Sources for every fixture user are cleared above, in one loop. */
 await admin.from('topics').delete().eq('user_id', extractUserId)
-await admin.from('sources').delete().eq('user_id', extractUserId)
 
 const { error: extractError } = await admin.from('topics').insert([
   {
@@ -512,14 +540,7 @@ if (quizError) {
 }
 console.log(`Quizzes seeded: 2 (one two-option, one three-option)`)
 
-for (const userId of [
-  mainUserId,
-  emptyUserId,
-  fewUserId,
-  strongUserId,
-  largeUserId,
-  extractUserId,
-]) {
+for (const userId of FIXTURE_USER_IDS) {
   const { data: folders } = await admin.storage.from('mental-models').list(userId)
   const paths = (folders ?? []).flatMap((folder) => folder.name)
 

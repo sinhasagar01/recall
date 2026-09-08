@@ -169,13 +169,13 @@ test.describe('course, chapter and lesson', () => {
       .filter({ hasText: CHAPTER })
       .first()
     /*
-      `exact: true`. getByRole's `name` is a case-insensitive SUBSTRING match by
-      default, and a lesson row's accessible name contains "never practised" —
-      which contains "practise". Without this the locator resolves to the
-      Practise link AND every lesson row in the chapter. Arc 5 hit the same trap
-      with "Save" matching "Save blocker"; see ARCHITECTURE.md.
+      Anchored with `^`, not a bare "Practise". getByRole's `name` is a
+      case-insensitive SUBSTRING match by default, and a lesson row's accessible
+      name contains "never practised" — which contains "practise". Without the
+      anchor the locator resolves to the link AND every lesson row in the
+      chapter. Arc 5 hit the same trap with "Save" matching "Save blocker".
     */
-    await group.getByRole('link', { name: 'Practise', exact: true }).click()
+    await group.getByRole('link', { name: /^Practise this chapter/ }).click()
 
     await expect(page).toHaveURL(
       new RegExp(`scope=chapter.*chapter=${encodeURIComponent(CHAPTER).replace(/%20/g, '%20')}`),

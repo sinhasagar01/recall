@@ -1,5 +1,6 @@
 import { totalDuration } from '@/lib/domain/duration'
-import type { SourceWithEntriesView } from '@/lib/domain/sources'
+import { formatDuration } from '@/lib/domain/duration'
+import { minedCount, type SourceWithEntriesView } from '@/lib/domain/sources'
 
 /**
  * Course → chapter → lesson, from the two reads the list already does.
@@ -51,7 +52,11 @@ export interface CourseNode {
   lessons: number
   entries: number
   seconds: number | null
-  /** Lessons that produced at least one entry. Never a percentage — see below. */
+  /**
+   * Lessons that produced at least one entry — NOT lessons you have finished.
+   * `isMined` and `isFinished` are separate rules with separate words; see
+   * lib/domain/sources.ts. Never a percentage — see below.
+   */
   mined: number
 }
 
@@ -122,7 +127,7 @@ export function groupSources(views: SourceWithEntriesView[]): CourseNode[] {
         in this product. The mock drew one at 62% beside "3 of 5 mined", which is
         60% — its own rules tab forbids it.
       */
-      mined: courseViews.filter((view) => view.entries.length > 0).length,
+      mined: minedCount(courseViews),
       latest: latestOf(courseViews),
       key: course ?? '',
     })
@@ -139,17 +144,30 @@ export function groupSources(views: SourceWithEntriesView[]): CourseNode[] {
   return [...named, ...unnamed].map(({ latest: _l, key: _k, ...node }) => node)
 }
 
-/** What the page head says, and it does not claim "No course" is a course. */
+/**
+ * What the page head says.
+ *
+ * It does not claim "No course" is a course — that group is the ABSENCE of the
+ * grouping key, so it is counted separately and the clause is omitted when
+ * nothing is loose.
+ *
+ * It carries the duration total, which is the point of having added length at
+ * all: a count of lessons flatters and a total of hours does not. Omitted when
+ * no lesson has one, rather than shown as a zero.
+ */
 export function groupedHeadline(courses: CourseNode[]): string {
   const named = courses.filter((node) => node.course !== null)
   const loose = courses.find((node) => node.course === null)
   const lessons = courses.reduce((total, node) => total + node.lessons, 0)
   const entries = courses.reduce((total, node) => total + node.entries, 0)
+  const seconds = courses.reduce((total, node) => total + (node.seconds ?? 0), 0)
+  const length = formatDuration(seconds === 0 ? null : seconds)
 
   const parts: string[] = []
   if (named.length > 0) parts.push(`${named.length} ${named.length === 1 ? 'course' : 'courses'}`)
   if (loose) parts.push(`${loose.lessons} without one`)
   parts.push(`${lessons} ${lessons === 1 ? 'lesson' : 'lessons'}`)
+  if (length) parts.push(`${length} of lessons`)
   parts.push(`${entries} ${entries === 1 ? 'entry' : 'entries'} distilled`)
 
   return parts.join(' · ')

@@ -646,12 +646,52 @@ it reads *"1 course · 2 without one"*.
 
 *"3 of 5 mined"* is lessons that produced something. *"1h 04m"* is the length of the lessons
 you added. **The count flatters and the duration does not** — a course that is 8 of 42 lessons
-might be a third of the hours or a twentieth.
+might be a third of the hours or a twentieth. The head carries the duration total for that
+reason; it is the point of having added length at all, and it is omitted rather than shown as
+a zero when nothing has one.
 
 **There is no progress bar and no percentage over a course.** A bar needs a denominator, and
 the app knows how many lessons you have *added*, never how many the course has. The mock drew
 one at 62% beside "3 of 5 mined", which is 60% — its own rules tab forbids it, on the tab next
 to the one that drew it.
+
+### Mined and finished are different questions, and must not be near-misses
+
+Two counts shipped on this screen three characters apart: *"1 of 1 mined"* on a course and
+*"0 of 1 mined out"* at the foot of the page. They mean different things, and at that distance
+a reader takes the second for a typo of the first.
+
+| | Question | Rule |
+| --- | --- | --- |
+| **Mined** | did I get anything out of this video | the lesson produced at least one entry |
+| **Finished** | is this video done with me | every entry it produced is okay or better |
+
+A lesson is mined long before it is finished, and can never be finished without being mined.
+One is about **extraction**, the other about **confidence** — §7's *"when the list is all ticks
+and the confidences are okay or better, the video is finished with you rather than the other
+way round"*. The single dot on a lesson row means **finished**.
+
+**The general rule this is an instance of: two counts on one screen need words that cannot be
+mistaken for each other, and both must come from named functions rather than from two inline
+expressions that happen to look alike.** `isMined`, `isFinished`, `minedCopy` and
+`finishedCopy` live in `lib/domain/sources.ts`; the near-miss was possible because the two
+counts were computed in two components, and neither component could see the other's wording.
+
+### A course is a card, and a chapter is a tinted band
+
+The course panel takes the card treatment every other list in this app uses — border, radius,
+`--surface`, the standard shadow. Flat text with a hairline under each course head gives two
+courses nothing to separate them: the eye reads one long list with headings in it.
+
+The chapter band is **sentence case on `--surface-2`**, not uppercase mono. Uppercase mono is
+this project's *eyebrow* treatment and means "the name of a section of a page"; a chapter is
+not that, it is a level of the hierarchy the panel is already showing. The tint separates the
+band from its lessons without another rule, and the lessons indent beneath it.
+
+**Both practise actions follow the content they cover** — the chapter's at the foot of its
+lessons, the course's in the panel footer. Placed above, "Practise this course" sat between the
+course head and its first chapter, competing with the hierarchy it contains and reading as
+though it belonged to the chapter below it.
 
 ### Every level of the breadcrumb is a link
 

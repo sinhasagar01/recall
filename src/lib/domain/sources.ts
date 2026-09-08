@@ -174,6 +174,55 @@ export function sourceProgressCopy(progress: SourceProgress): string {
   return parts.join(' · ')
 }
 
+/*
+  ── Two counts that are three characters apart, and were not ────────────────
+  "1 of 1 mined" and "0 of 1 mined out" appeared on the same screen meaning
+  different things: one is *produced something*, the other is *every entry okay
+  or better*. Two phrases that close cannot carry two meanings — a reader takes
+  the second for a typo of the first.
+
+  So they are named apart, and both are derived HERE rather than by two
+  similar-looking inline expressions in two components. The words:
+
+    MINED     the lesson produced at least one entry. About extraction: did I
+              get anything out of this video.
+    FINISHED  every entry it produced is okay or better. About confidence: is
+              this video done with me. See §7 — "when the list is all ticks and
+              the confidences are okay or better, the video is finished with you
+              rather than the other way round".
+
+  A lesson is mined long before it is finished, and can never be finished
+  without being mined.
+*/
+
+/** Did this lesson produce anything at all? */
+export function isMined(entries: Topic[]): boolean {
+  return entries.length > 0
+}
+
+/** Is this lesson done with you — every entry okay or better? */
+export function isFinished(entries: Topic[]): boolean {
+  return sourceProgress(entries).done
+}
+
+export function minedCount(views: { entries: Topic[] }[]): number {
+  return views.filter((view) => isMined(view.entries)).length
+}
+
+export function finishedCount(views: { entries: Topic[] }[]): number {
+  return views.filter((view) => isFinished(view.entries)).length
+}
+
+/** "3 of 5 mined" — the extraction count. */
+export function minedCopy(mined: number, total: number): string {
+  return `${mined} of ${total} mined`
+}
+
+/** "2 of 7 finished" — the confidence count. Deliberately not "mined out". */
+export function finishedCopy(finished: number, total: number): string {
+  return `${finished} of ${total} finished`
+}
+
 /**
  * A source that has produced nothing, for long enough to say so.
  *
