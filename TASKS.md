@@ -1760,6 +1760,44 @@ in the other feature's spec. The existing entries cover a fixture's *shape*; thi
 
 ---
 
+### The requirement was a negative, so nothing could tell it was half-built
+
+Arc 7's plan said, of interview mode's entry point, exactly one thing:
+
+> **No entry point anywhere when there is no key.**
+
+What shipped: `/interview` answers `notFound()` without a key. That satisfies the sentence
+**completely**. The rail listed four Apprenticeship destinations and the More sheet listed the
+same four; neither listed a fifth, at any time, with or without a key. Interview mode was
+reachable only by typing the URL, for the whole of its first deployment.
+
+Nothing was false. That is the finding.
+
+**A requirement stated only as a negative does not say what exists in the positive case**, so
+no instrument built from it can notice that the positive case was never built. Three had a
+chance:
+
+| instrument | why it passed |
+| --- | --- |
+| the plan review | the sentence was met, exactly and verifiably |
+| the test suite | every interview spec begins `page.goto('/interview')` — 175 specs green |
+| the production walk | I navigated to the address, so I verified the page and not the path to it |
+
+The third is the one to carry forward, because it sharpens the discipline already recorded
+above. **A walk that navigates by URL verifies the page, never the way in.** The side-by-side
+catches anything whose correct value is only knowable by someone who knows what they just did;
+it cannot catch a screen you reached by a route no user has. Reaching the screen the way a user
+would is a separate act from looking at it.
+
+**The rule:** a negative requirement needs its positive twin written beside it — *"and when
+there is a key, it appears in the rail and the More sheet"* — or it is not a requirement, it is
+half of one. Where the positive twin exists, the assertion follows from it directly; where it
+does not, no amount of care downstream will produce it.
+
+The correction is in `lib/domain/navigation.ts` and its test, which asserts both directions, and
+in `wayfinding.spec.ts`, which asserted for five arcs that a route offers a way **back** and
+never once that anything offered a way **in**.
+
 ## A standing limitation of this verification method — nothing compares a page to its reference
 
 **Recorded once, here, because it explains a class of defect rather than one incident.**

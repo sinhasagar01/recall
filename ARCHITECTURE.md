@@ -2604,3 +2604,50 @@ one namespace and every feature seeded into it draws from the same pool of title
 **When seeding for a new feature onto a shared fixture, grep the other specs and stubs for the
 titles first.** They are as much a shared resource as the row count, and unlike the row count
 nothing declares them.
+
+### A derived invariant is only as complete as the list it walks
+
+`guarded-routes.test.ts` exists because a hand-written list of routes rots: `/sources` shipped
+missing from `GUARDED` and answered a 500 to signed-out requests. The fix was to derive the
+route list from the tree instead of remembering it — and that fix worked exactly as intended for
+two arcs.
+
+It derived the routes from a **hand-written list of route groups**:
+
+```ts
+const PRIVATE_GROUPS = ['(app)', '(practice)']
+```
+
+Arc 7 added `(interview)`. The invariant did not notice, `/interview` shipped unguarded, and
+signed out it answered the same 500 `/sources` had — the defect this file was written to make
+impossible, recurring underneath the mechanism that prevents it.
+
+**A hand-written list of *where to look* is the same defect as a hand-written list of *what to
+check*.** Deriving one level does not make a check derived; it moves the hand-written part
+somewhere less visible, where it reads as infrastructure rather than as a list someone has to
+maintain. This is the second instance — arc 5 recorded the first, that `APP_ROUTES` walks only
+one level inside `(app)`, so a nested static route like `/today/earlier` escapes it.
+
+Two things had to change, and only fixing one would have left the hole:
+
+**The default is inverted.** `PUBLIC_GROUPS = ['(auth)']` names the exceptions and everything
+else is derived. A new route group is now covered unless someone deliberately excludes it, so
+escaping the check is an act with a reason attached rather than the automatic consequence of
+`mkdir`. Fail-closed, where the old shape was fail-open.
+
+**The guard-the-guard clause could not survive.** It read `expect(routes.length).toBeGreaterThan(4)`,
+and `(app)` and `(practice)` cleared it alone — so it went on passing while a whole group was
+invisible. **A count cannot detect a missing group, because the group that is missing
+contributes nothing to the count.** A threshold measures that *something* was found; it never
+measures that *everything* was. It is replaced by a per-group assertion — every private group
+must contribute at least one route, naming the group when it does not — which fails as
+`(interview) contributed no routes`.
+
+Both were perturbed. Marking `(interview)` public, walking a directory that is not a route group,
+and blanking one group's routes each produce a distinct named failure; so does dropping
+`/interview` from `GUARDED`.
+
+**Still outstanding, named here so it is not rediscovered a third time:** `APP_ROUTES` in
+`wayfinding.spec.ts` still walks one level, so `/today/earlier` remains uncovered by the
+way-back invariant. The new way-in derivation in the same file crosses groups but has the same
+depth limit.
