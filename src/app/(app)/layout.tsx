@@ -4,6 +4,7 @@ import { GlobalKeys } from '@/components/topics/global-keys'
 import { RailNav } from '@/components/topics/rail-nav'
 import { Kbd } from '@/components/ui/kbd'
 import { Wordmark } from '@/components/ui/wordmark'
+import { hasKey } from '@/lib/ai/client'
 import { railCounts } from '@/lib/data/library'
 import { countLedger } from '@/lib/data/ledger'
 import { readRecentDayCounts } from '@/lib/data/today'
@@ -79,6 +80,7 @@ export default async function AppLayout({ children }: LayoutProps<'/'>) {
           <Wordmark />
         </div>
 
+        {/* `interview` is absent-not-disabled: no key, no entry, matching the route's own notFound(). */}
         <RailNav
           total={counts.total}
           queued={queued}
@@ -88,6 +90,7 @@ export default async function AppLayout({ children }: LayoutProps<'/'>) {
           demonstrated={phases.demonstrated}
           ledger={ledgerCount}
           today={dayCounts}
+          interview={hasKey()}
         />
 
         <div className="mt-auto flex flex-col gap-2.5 px-2">

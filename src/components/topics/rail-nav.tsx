@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { apprenticeshipNav } from '@/lib/domain/navigation'
 import { useLocalToday } from '@/lib/domain/use-local-today'
 
 /**
@@ -43,6 +44,7 @@ export function RailNav({
   demonstrated,
   ledger,
   today,
+  interview,
 }: {
   total: number
   queued: number
@@ -56,11 +58,19 @@ export function RailNav({
    * because only the browser knows which day that is.
    */
   today: { day: string; done: number; written: number }[]
+  /**
+   * Whether a model key is configured, resolved on the server by the layout.
+   *
+   * A boolean, never the key: `ai-boundary.test.ts` asserts the key is named in
+   * exactly one module and never inside a client component, and this file is a
+   * client component.
+   */
+  interview: boolean
 }) {
   const pathname = usePathname()
   const localToday = useLocalToday()
   const todayRow = localToday === null ? null : today.find((d) => d.day === localToday)
-  const todayCount = todayRow ? `${todayRow.done} / ${todayRow.written}` : ''
+  const todayCount = todayRow ? `${todayRow.done} / ${todayRow.written}` : null
 
   const destinations: Destination[] = [
     { href: '/library', label: 'Library', count: String(total) },
@@ -78,26 +88,18 @@ export function RailNav({
     raw material; putting it beside Library would let it compete with the library
     for the same attention, which is the same reason a source row is not a topic
     card.
-  */
-  /*
-    Phases above Sources: a phase is what you are trying to become able to do,
-    and a source is the raw material you do it with. The reference draws them in
-    that order for the same reason.
 
-    The count is `demonstrated / total capabilities` — the one number this
-    section exists to show. Not a percentage, and not a week counter.
+    The list itself lives in `lib/domain/navigation.ts`, because the More sheet
+    renders the same group on mobile and the two copies had already drifted once:
+    interview mode shipped with an entry in neither.
   */
-  const apprenticeship: Destination[] = [
-    /*
-      Today first: it is the only one you open every morning. Its count is absent
-      rather than "0 / 0" when nothing is written — a day you have not started is
-      not a day you are failing at.
-    */
-    { href: '/today', label: 'Today', count: todayCount },
-    { href: '/phases', label: 'Phases', count: `${demonstrated} / ${capabilities}` },
-    { href: '/ledger', label: 'Ledger', count: String(ledger) },
-    { href: '/sources', label: 'Sources', count: String(sources) },
-  ]
+  const apprenticeship = apprenticeshipNav({
+    today: todayCount,
+    phases: `${demonstrated} / ${capabilities}`,
+    ledger: String(ledger),
+    sources: String(sources),
+    interview,
+  })
 
   return (
     <nav className="flex flex-col gap-0.5">
@@ -143,7 +145,7 @@ export function RailNav({
           }`}
         >
           <span>{destination.label}</span>
-          <span className="font-mono text-mono-sm text-ink-3">{destination.count}</span>
+          <span className="font-mono text-mono-sm text-ink-3">{destination.count ?? ''}</span>
         </Link>
       ))}
     </nav>

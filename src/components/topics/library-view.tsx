@@ -110,6 +110,8 @@ export function LibraryView({
     phases: string
     ledger: string
     sources: string
+    /** Whether a model key is configured. Threaded through, never read here. */
+    interview: boolean
   }
 }) {
   const searchParams = useSearchParams()
