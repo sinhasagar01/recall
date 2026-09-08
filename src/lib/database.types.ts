@@ -117,6 +117,75 @@ export type Database = {
         }
         Relationships: []
       }
+      interview_rounds: {
+        Row: {
+          answered: number
+          asked: number
+          created_at: string
+          depth: number
+          elapsed_seconds: number
+          enquiry: number
+          follow_ups_held: number
+          follow_ups_offered: number
+          hints_used: number
+          id: string
+          level: string
+          minutes: number
+          over_by_seconds: number
+          overall: number
+          precision: number
+          questions_asked: number
+          recall: number
+          round_type: string
+          topic_ids: string[]
+          user_id: string
+        }
+        Insert: {
+          answered: number
+          asked: number
+          created_at?: string
+          depth: number
+          elapsed_seconds: number
+          enquiry: number
+          follow_ups_held: number
+          follow_ups_offered: number
+          hints_used: number
+          id?: string
+          level: string
+          minutes: number
+          over_by_seconds?: number
+          overall: number
+          precision: number
+          questions_asked: number
+          recall: number
+          round_type: string
+          topic_ids?: string[]
+          user_id?: string
+        }
+        Update: {
+          answered?: number
+          asked?: number
+          created_at?: string
+          depth?: number
+          elapsed_seconds?: number
+          enquiry?: number
+          follow_ups_held?: number
+          follow_ups_offered?: number
+          hints_used?: number
+          id?: string
+          level?: string
+          minutes?: number
+          over_by_seconds?: number
+          overall?: number
+          precision?: number
+          questions_asked?: number
+          recall?: number
+          round_type?: string
+          topic_ids?: string[]
+          user_id?: string
+        }
+        Relationships: []
+      }
       phases: {
         Row: {
           created_at: string

@@ -2232,7 +2232,7 @@ cannot express a rule about the longer one.** They are two rules — *who may ho
 *the key must never be public* — and they need two assertions, so that the failure says which
 one broke. Collapsing them into one check reads as thorough and is strictly weaker than either.
 
-This is one of **seven distinct ways a guard has passed for the wrong reason** in this project.
+This is one of **eight distinct ways a guard has passed for the wrong reason** in this project.
 They are worth holding together because they are not variations of one mistake — each has its
 own tell and its own defence:
 
@@ -2245,6 +2245,7 @@ own tell and its own defence:
 | **Empty set** | arc 4 | five specs asserting over a surface that had been deleted; `toHaveCount(0)` on a locator matching nothing passes forever |
 | **Unmeasurable** | arc 4 | a perturbation the harness could not install reported "0 failed", indistinguishable from a redundant clause |
 | **Coupled to location** | arc 2.1 | an assertion that sliced a literal out of a file kept passing after the value moved — see below |
+| **Asserts the location, not the consequence** | arc 7 | a guard proving the interview scale is not *named* outside its tree said nothing about what happens if it is — see below |
 
 The defences do not generalise, which is the point of the table. **Too broad** is caught by
 counting a token against prose before writing it. **Too narrow** by running the tests red
@@ -2281,6 +2282,42 @@ The check to carry forward: **when a table gains a representation, ask what comp
 others — and prefer deleting the representation to adding the comparison.** A guard is what you
 write when you cannot collapse the duplication; collapsing it is the first option, not the
 fallback.
+
+### A guard can prove where a thing is written and still say nothing about what it does
+
+`interview-boundary.test.ts` asserts the interview colour scale is named only inside the
+interview tree. That is a real guard and it bites — putting `bg-[var(--volt)]` on a lesson meter
+fails it by name.
+
+**It is also, on its own, an assertion about tidiness.** It says nobody has written the scale
+somewhere else *yet*. It says nothing at all about the thing the constraint actually cares
+about: what happens when somebody does. If the scale were defined in `@theme`, that stray class
+would paint a topic card violet, and the guard would report exactly the same failure it reports
+now — a name in the wrong file — while the real damage went undescribed.
+
+The two are independent, and only the second is the rule:
+
+| | |
+| --- | --- |
+| **Location** | the scale is not named outside `app/(interview)` — a source grep |
+| **Consequence** | if it *were*, the element gets **no colour** rather than the wrong one — a rendered measurement |
+
+Proving the second needed a different kind of perturbation from every other one in the table.
+The others break the **usage** — add the forbidden column, remove the constraint, delete the
+trigger — and watch a guard fail. This one required breaking the **mechanism**: hoisting `--volt`
+from `[data-mode='interview']` into `@theme`, rebuilding, and watching a browser report
+`rgb(79, 70, 229)` where it had reported `rgba(0, 0, 0, 0)`. Nothing in the source changed at the
+call site at all.
+
+**The general form: when a constraint is enforced by a mechanism rather than by a convention,
+perturb the mechanism, not the usage.** A guard on the usage tells you the rule is being
+followed; only breaking the mechanism tells you the rule is real. And prefer that order —
+mechanism first, guard second — because a mechanism makes the mistake impossible while a guard
+only makes it visible.
+
+The corollary for reading these tests: *"X is not named in Y"* is a weaker claim than it looks,
+and it is worth asking of every such guard what the failure would actually cost if the name got
+there.
 
 ### A guard that slices a literal out of a file is coupled to where the value lives
 
@@ -2470,3 +2507,100 @@ a queue or a shuffled list is involved, assert on the container, the count, or a
 you put there — not on whatever happens to be first. A test that reads position 1 of a
 deliberately shuffled list is a test that fails at the shuffle's rate, and that rate is low
 enough to look like infrastructure.
+
+### A single-mode reference cannot show you a leak, so the scale is scoped by the cascade
+
+Arc 7's interview mode brings a second palette — a 0–100 scale, emerald through violet to rose —
+which must appear nowhere else in the product. `interview-reference.html` defines it at `:root`
+and, at top level, writes:
+
+```css
+:focus-visible{outline:2px solid var(--volt);outline-offset:2px}
+```
+
+Inside that file this is unremarkable: **everything in it is interview mode**, so a global
+selector and a scoped one are indistinguishable. Copied into the app it puts interview violet on
+every focus ring in the product — on a topic card, in the library, on the sign-in form.
+
+**This is a general limit of a reference that draws one mode.** A leak is a thing that escapes a
+boundary, and a document with only one side of the boundary in it has nowhere for anything to
+escape *to*. No amount of reading such a file will surface the problem, and the reviewer who
+audited this one found forty remapped colours and every `var()` resolving — both true, and
+neither able to catch this.
+
+So the scale is **not** enforced by review, and not by a guard alone. It is enforced by the
+cascade:
+
+```css
+/* globals.css — deliberately NOT inside @theme */
+[data-mode='interview'] { --volt: #4f46e5; /* … */ }
+```
+
+`@theme` would emit these on `:root` and generate `bg-volt` utilities, which is precisely how a
+scale becomes available to a topic card. Defined on a scoped selector instead, interview
+components write `bg-[var(--volt)]`, and **outside the subtree `--volt` does not resolve, so the
+declaration is invalid and the element gets nothing** — no colour rather than the wrong colour.
+That property is asserted rather than assumed; see the boundary test.
+
+The guard on the token names is the second line, not the first. **When a constraint is "this must
+not appear over there", prefer a mechanism that makes it impossible to a test that makes it
+visible** — and keep the test anyway, because it names the rule for whoever reads it next.
+
+The cost, stated: `bg-[var(--volt)]` is noisier than `bg-volt`, across roughly thirty call sites
+in a self-contained tree. That is what the constraint costs when it is real.
+
+### A perturbation that does not bite is a diagnostic, not a null result
+
+`perturb.mjs` prints `DID NOT BITE` and says a clause that does not bite "is redundant, the test
+is missing, or it is unobservable given another rule". Arc 7 hit a fourth reading that was not
+on that list, twice in a row on the same perturbation, and it is the most valuable thing the
+harness has done.
+
+Injecting `await markTopicsWeak(topicIds)` into the interview's `finish` action — applying the
+scorecard's offer without waiting for the press — passed clean. Twice.
+
+| Attempt | Why it did not bite |
+| --- | --- |
+| 1 | **The test was vacuous.** The offered topic was seeded `weak`, so marking it weak changed nothing and the assertion compared `weak` to `weak` |
+| 2 | **The code did not do what the test assumed.** `topicIds` came only from turns, and the runner never tags a turn with a topic — so it was *always empty* and the injected write had nothing to write |
+
+The second is the one worth adding to the list. **The code under the assertion did not do the
+thing the assertion was written about**, so there was nothing for the perturbation to break.
+`interview_rounds.topic_ids` would have shipped permanently empty; the failure would have
+surfaced in session two, where save-a-follow-up-as-a-quiz depends on it, and it would have
+looked like a session-two bug in code session two did not write.
+
+**The four honest readings of `DID NOT BITE`:**
+
+1. the clause is **redundant** — something else already enforces it
+2. the test is **missing** — nothing asserts the behaviour at all
+3. the test is **vacuous** — it asserts, but its fixture cannot make it fail
+4. **the code does not do what the test assumes** — the perturbation had nothing to act on
+
+Only the first is a reason to delete the clause. The other three are defects, and the third and
+fourth are invisible to a green suite: **a passing test would never have found either of
+these.** The instrument reporting *no signal* is what surfaced them.
+
+So: never close a `DID NOT BITE` by reasoning. Change the perturbation until it bites, or find
+out which of the four it is. If it cannot be made to bite, that is the finding.
+
+### Two features seeded onto one fixture user share a title namespace
+
+`extraction.spec.ts` and `interview.spec.ts` both use the `extract` fixture, whose whole purpose
+is being written to. Arc 7 seeded five JavaScript topics for the interview pool, two of them
+titled *The temporal dead zone* and *The event loop* — which `e2e/openai-stub.mjs` also offers as
+extraction concepts.
+
+Extraction's duplicate detection is library-wide on a normalised title, so it correctly found
+**two** duplicates where the spec expected one. **The failure landed in extraction's spec, in an
+arc that never touched extraction**, and the cause was a title chosen for a different feature
+three files away.
+
+The existing fixture entries cover *shape* — `few` has exactly two topics, `strong` needs nothing
+weak, and a spec that writes needs its own user. This is a different axis: two features can
+share a user's shape perfectly and still collide on its **content**, because a fixture user is
+one namespace and every feature seeded into it draws from the same pool of titles.
+
+**When seeding for a new feature onto a shared fixture, grep the other specs and stubs for the
+titles first.** They are as much a shared resource as the row count, and unlike the row count
+nothing declares them.

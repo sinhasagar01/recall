@@ -8,6 +8,8 @@
  * Uses the SECRET key, so it never runs in the browser and the variable carries no
  * NEXT_PUBLIC_ prefix. Run with: npm run seed:e2e
  */
+import { writeFileSync, mkdirSync } from 'node:fs'
+import { join } from 'node:path'
 import { createClient } from '@supabase/supabase-js'
 import { LOCAL_MODE_MAX } from '../src/lib/domain/library-paging.ts'
 
@@ -279,6 +281,80 @@ if (extractError) {
   process.exit(1)
 }
 console.log(`Extraction user reset: ${extractEmail}`)
+
+/*
+  ── Enough JavaScript for a round to be enterable ──────────────────────────
+  A 20-minute round is four concepts and the largest single category anywhere
+  else in this seed is FOUR topics on the main user — so no fixture could enter
+  a round, and a spec written against one would have passed on the empty state.
+
+  Two of these are weak, so the pool line has something to say and the queue has
+  something to weight toward.
+
+  Titles chosen NOT to collide with `e2e/openai-stub.mjs`'s extraction concepts.
+  The first draft used "The temporal dead zone" and "The event loop", which the
+  extraction stub also offers — so extraction.spec's duplicate-detection
+  assertion found two matches instead of one and failed in a spec this arc never
+  touched. Two fixtures sharing one user share a namespace. Their ids go to the OpenAI stub through
+  STUB_TOPIC_IDS, so the scorecard offers real rows and the spec can assert the
+  exact confidences before and after pressing.
+*/
+const { data: interviewTopics, error: interviewError } = await admin
+  .from('topics')
+  .insert([
+    {
+      user_id: extractUserId,
+      title: 'Closures capture a reference',
+      definition: 'A returned function keeps a live reference to the scope it was defined in.',
+      category: 'JavaScript',
+      confidence: 'weak',
+    },
+    {
+      user_id: extractUserId,
+      title: 'Block scope and binding order',
+      definition: 'A let binding exists from the top of its block but cannot be read yet.',
+      category: 'JavaScript',
+      confidence: 'weak',
+    },
+    {
+      user_id: extractUserId,
+      title: 'Microtasks drain first',
+      definition: 'The microtask queue empties before the next macrotask runs.',
+      category: 'JavaScript',
+      confidence: 'okay',
+    },
+    {
+      user_id: extractUserId,
+      title: 'Hoisting and function declarations',
+      definition: 'Declarations are available before the line that defines them.',
+      category: 'JavaScript',
+      confidence: 'okay',
+    },
+    {
+      user_id: extractUserId,
+      title: 'Task ordering on the stack',
+      definition: 'Call stack, then microtasks, then one macrotask.',
+      category: 'JavaScript',
+      confidence: 'strong',
+    },
+  ])
+  .select('id')
+
+if (interviewError) {
+  console.error(`Could not seed the interview topics: ${interviewError.message}`)
+  process.exit(1)
+}
+/*
+  Handed to the OpenAI stub through a file rather than an env var, because these
+  ids are new on every seed and the stub starts before the seed runs. The stub
+  reads it per request, so it always sees the current run's rows.
+*/
+mkdirSync(join(process.cwd(), 'e2e', '.auth'), { recursive: true })
+writeFileSync(
+  join(process.cwd(), 'e2e', '.auth', 'stub-topics.json'),
+  JSON.stringify((interviewTopics ?? []).map((row) => row.id)),
+)
+console.log(`Interview topics seeded: ${interviewTopics?.length ?? 0} JavaScript`)
 
 /*
   Storage isolation.
