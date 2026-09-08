@@ -1304,7 +1304,8 @@ limitation as arc 3, and still unsolved. Verified structurally on production ins
 `More` button present with `md:hidden`, `aria-haspopup="dialog"`, the old wrapping cluster
 **absent** from the markup, and the tab bar at exactly three. The geometry above was measured
 at 390×844 against the production build of this commit — the identical bundle, but not a
-measurement on airlocklab.com.
+measurement on airlocklab.com. *(Third occurrence in arc 5, at which point it stopped being a
+per-arc note — see* A standing limitation of this verification method *below.)*
 
 ### One thing found and left
 
@@ -1385,7 +1386,69 @@ weak page's prose about practice gaps. The fix is a better token, never a file e
 recorded, along with the note that arc 6 should check its tokens against prose before writing
 them, since this was the first guard whose subject had an everyday name.
 
+### Verified on production, then cleaned up
+
+The whole walk by hand. Opening `/today` twice created **no row** — Earlier days still said
+nothing recorded, which is the hard constraint the arc exists to keep. Three lines typed and
+saved, the rail moving to `Today 0 / 3`; one ticked, reloaded, and both the mark and the
+count survived. A yesterday row with one ticked line and one unticked one offered back
+**only the unticked one**, with its Clear button and hint, and Clear emptied it. The blocker
+written on the earlier day showed as still open, and resolving it removed it from Today while
+**keeping the text** in the log. The earlier day's row carries no button, input, checkbox or
+link — no control at all, rather than a disabled one. Every number on the practice line
+resolves: queued to `/practice`, needs review to `/weak`, and *longest gap 43 days* to a real
+topic detail page returning 200. Anon denied 4 / 4, all `42501`, against
+`yzumtamtjhtzfoeszbtw.supabase.co` rather than local. Both rows created were deleted and the
+table read back empty.
+
+**The 390px numbers were again not verified on production**, for the third arc running. That
+is no longer an arc note — see *A standing limitation of this verification method* below.
+
+The migration was pushed **before** the code, per the order arc 3 corrected: pushing master
+auto-triggers the deploy, so *push then migrate* leaves exactly the window it was written to
+close.
+
+### Closing the apprenticeship
+
+Five arcs, five tables, five boundary guards, and a perturbation harness that now throws
+rather than reporting zero when it cannot measure. The one thing worth carrying into arc 6 is
+not any of those: it is that **each arc's most valuable finding came from perturbing a test
+rather than from writing one.** Five specs asserting over an empty set, two fixture couplings,
+a mention-guard matching ordinary prose, a grant whose absence local ACLs concealed — none of
+these were visible in a green run, and all of them were visible the moment something was
+deliberately broken.
+
 ---
+
+## A standing limitation of this verification method — no production 390px numbers
+
+**Recorded once, here, rather than restated per arc.** Arcs 3, 4 and 5 each ended with the
+same gap, each reported honestly, and three identical notes is a sign the thing belongs
+somewhere it can be fixed rather than re-described.
+
+**What fails.** The browser tab reports a resize as successful while `window.innerWidth`
+stays 1920 and `outerWidth` reads 0. There is no genuine mobile viewport available to the
+production hand-verification, so no mobile geometry can be measured on airlocklab.com.
+
+**What has been done instead, each time, and what it is worth.** The mobile structure *is*
+confirmed on production — the `More` button and its sheet, the item count and order, the tab
+bar at three, `scrollWidth - clientWidth` at zero — and the geometry is measured at exactly
+390×844 by Playwright against the production build of the same commit. That is the identical
+bundle, which is a real thing to have; it is **not** a measurement on the deployed host, and
+the reports have correctly declined to present it as one. Where a property is not
+breakpoint-scoped it can be measured on production directly at any width — arc 5's 44px tap
+targets were, and that is the exception rather than a way around the gap.
+
+**Why it is worth fixing rather than restating.** The claim being deferred is not cosmetic:
+every arc has added a destination to a sheet that only exists below `md`, and the one
+production surface nobody can measure is the one that grows every arc. The fix is a real
+mobile viewport in the verification path — a device-emulation-capable browser session, or an
+explicit decision that the Playwright-against-production-build run *is* the accepted evidence
+and that hand-verification stops claiming to want more.
+
+Until one of those happens, the rule stands: **report it as a gap, never blur a local number
+into a production one.** Three arcs have held that line; it is the reporting that is right
+here, not the coverage.
 
 ---
 
@@ -1395,6 +1458,7 @@ them, since this was the first guard whose subject had an everyday name.
 
 | | |
 | --- | --- |
+| [#23](https://github.com/sinhasagar01/recall/issues/23) | The e2e suite fails once in a few full runs, unreproduced and unnamed twice. Filed rather than chased, because a flake reported honestly is worth more than one silently retried |
 | [#21](https://github.com/sinhasagar01/recall/issues/21) | `journey.spec.ts` leaks a user per run and fails silently |
 | [#20](https://github.com/sinhasagar01/recall/issues/20) | Keep the recall attempt. **Stays open deliberately** — it was properly planned, it conflicts with nothing in arcs 2–6, and closing it because the queue moved on would discard the plan |
 | [#7](https://github.com/sinhasagar01/recall/issues/7) | Subscriptions, Stripe webhook, quota enforcement. Only when there is something to bill for |
@@ -1403,18 +1467,22 @@ them, since this was the first guard whose subject had an everyday name.
 overflow — fixed on `Button` rather than at the call site, since any consumer passing a
 display class hit the same silent loss. 106px to 0, measured before and after on the issue.
 
-**The apprenticeship arcs.** Arcs 1, 2 and 3 — evidence on a topic, sources, and phases and
-capabilities — are closed. Two remain, plus a sixth that is a different kind of decision:
+**The apprenticeship arcs are closed.** All five — evidence on a topic, sources, phases and
+capabilities, the ledger, and Today — are shipped, verified on production, and recorded
+above. One arc remains, and it is a different kind of decision:
 
 | Arc | |
 | --- | --- |
-| 4 · Ledger | The record of what was done, over time |
-| 5 · Today | One surface answering what to do now |
+| 1 · Evidence | Closed |
+| 2 · Sources | Closed |
+| 3 · Phases | Closed |
+| 4 · Ledger | Closed |
+| 5 · Today | Closed |
 | 6 · AI | **Decided, not open.** See below |
 
-Nothing in arcs 2–5 is being designed here, and each of the other exclusions the spec
-holds — **no scheduling, no dashboard, no analytics, no gamification** — survives until a
-decision explicitly overturns it. Arcs 2 to 5 inherit them.
+Each of the other exclusions the spec holds — **no scheduling, no dashboard, no analytics,
+no gamification** — survives until a decision explicitly overturns it, and arc 6 inherits
+them unchanged. Retiring the no-AI exclusion retires that one only.
 
 ### Arc 6 — AI is decided, and the no-AI exclusion is being retired
 
