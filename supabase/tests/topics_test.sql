@@ -87,6 +87,10 @@ select columns_are('public'::name, 'topics'::name, ARRAY[
   'rebuild_at', 'rebuild_note', 'rebuild_url',
   'challenge_at', 'challenge_note', 'challenge_url',
   'production_at', 'production_note', 'production_url',
+  -- Arc 6. Written by hand, or extracted from a transcript. UNLIKE source_id and
+  -- capability_id this one IS on the domain Topic, so every read must return it —
+  -- a filter over a column half the reads omit is a filter that lies.
+  'extracted',
   -- Arc 2. Nullable, ON DELETE SET NULL, and deliberately absent from the domain
   -- Topic — see supabase/tests/sources_test.sql and topic-mapping.ts.
   'source_id',

@@ -3,18 +3,19 @@
 import { useRouter } from 'next/navigation'
 import { useMemo, useState, useTransition } from 'react'
 import Link from 'next/link'
+import { CoverageList } from '@/components/sources/coverage-list'
 import { Button } from '@/components/ui/button'
 import { ConfidenceMeter } from '@/components/ui/confidence-meter'
 import { Modal } from '@/components/ui/modal'
 import { QuizBadge } from '@/components/ui/quiz-badge'
 import { SourceSheet } from '@/components/sources/source-sheet'
-import { removeSource, removeTranscript, toggleCaveat } from '@/app/(app)/sources/actions'
+import { removeSource, removeTranscript } from '@/app/(app)/sources/actions'
 import { topicPath } from '@/lib/domain/library'
 import {
   definitionFromSelection,
   deleteSourceCopy,
-  extractionCount,
-  extractionsFor,
+  sourceProgress,
+  sourceProgressCopy,
   transcriptState,
   type Source,
 } from '@/lib/domain/sources'
@@ -31,17 +32,21 @@ import type { Topic } from '@/lib/domain/types'
  * between this and a note-taking app — `definitionFromSelection` returns a shape
  * with no field to put a model in, so there is nothing to get wrong here.
  *
- * ── Where arc 6 attaches ────────────────────────────────────────────────────
- * Two AI actions will live in these panel heads later: "find what I missed"
- * beside the extraction checklist, and "draft retrieval questions" beside the
- * quiz mode of the distil panel. The heads leave room for a single action button
- * each. Nothing is drawn, nothing is stubbed, and there is no disabled control —
- * a ghost button is worse than no button.
+ * ── Where arc 6 attached ────────────────────────────────────────────────────
+ * Arc 2 left room here for AI and predicted the shape of it: *"the transcript
+ * stays reachable server-side… both actions will send it to a model from the
+ * server, so it must not exist only in browser state."* That held. `extract`
+ * takes a source id and reads the body server-side, so the browser never
+ * uploads a transcript and never sees a key.
  *
- * The transcript stays reachable server-side for the same reason: both actions
- * will send it to a model from the server, so it must not exist only in browser
- * state, and the delete stays a deliberate act rather than something distilling
- * does for you.
+ * What arc 2 did not predict is that one send box replaced the whole extraction
+ * checklist rather than sitting beside it — the checklist was a proxy for "have
+ * I mined this video", and extraction made the real answer cheap enough to show.
+ *
+ * The manual path below is untouched and is not a fallback in name only: with no
+ * key configured it is the ONLY path, and there is no Extract button to explain
+ * its absence — see the quiz rule in DESIGN.md, a disabled button still says
+ * button.
  */
 export function SourceWorkspace({ source, entries }: { source: Source; entries: Topic[] }) {
   // The confirmation's wording agrees with the count — see deleteSourceCopy.
@@ -54,8 +59,7 @@ export function SourceWorkspace({ source, entries }: { source: Source; entries: 
   const [showTranscript, setShowTranscript] = useState(false)
   const [isSaving, startSaving] = useTransition()
 
-  const extractions = extractionsFor(source, entries)
-  const done = extractionCount(source, entries)
+  const progress = sourceProgress(entries)
   const state = transcriptState(source)
 
   /*
@@ -88,7 +92,7 @@ export function SourceWorkspace({ source, entries }: { source: Source; entries: 
           <p className="mt-1.5 font-mono text-[11.5px] text-ink-3">
             {source.course ? `${source.course} · ` : ''}
             {state === 'present' ? `${source.transcript_words?.toLocaleString()} words · ` : ''}
-            {done} of 5 extracted
+            <span data-testid="source-progress">{sourceProgressCopy(progress)}</span>
             {source.url ? (
               <>
                 {' · '}
@@ -177,61 +181,30 @@ export function SourceWorkspace({ source, entries }: { source: Source; entries: 
           )}
         </section>
 
+        <CoverageList sourceId={source.id} coverage={source.coverage} />
+
         {/* ── Distil ──────────────────────────────────────────────────────── */}
         <section>
-          {/* Arc 6's "find what I missed" attaches to the right of this head. */}
-          <div className="mb-2.5 flex items-center justify-between gap-3">
-            <span className="font-mono text-mono font-medium tracking-[0.16em] text-ink-3 uppercase">
-              Extracted from this source
-            </span>
-            <span className="font-mono text-[11.5px] text-ink-3">{done} / 5</span>
-          </div>
-
-          <ol className="mb-7 list-none rounded-lg border border-rule bg-surface">
-            {extractions.map((extraction, index) => (
-              <li
-                key={extraction.kind}
-                className="flex items-center gap-3 border-b border-rule px-[14px] py-3 last:border-b-0"
-              >
-                <span className="font-mono text-[11px] text-ink-3">{index + 1}</span>
-                <span
-                  aria-hidden="true"
-                  className={`grid size-[15px] shrink-0 place-items-center rounded-full border text-[9px] text-white ${
-                    extraction.done ? 'border-ok bg-ok' : 'border-dashed border-rule-strong'
-                  }`}
-                >
-                  {extraction.done ? '✓' : ''}
-                </span>
-                <span className="min-w-0 flex-1 text-option">{extraction.label}</span>
-                <span className="shrink-0 font-mono text-[11px] text-ink-3">{extraction.detail}</span>
-
-                {/* The one manual item, labelled as the exception. Derived means
-                    it cannot be gamed; this one is a tick and says so. */}
-                {extraction.manual ? (
-                  <Button
-                    aria-label={extraction.done ? 'Untick when not to use it' : 'Tick when not to use it'}
-                    onClick={() =>
-                      startSaving(async () => {
-                        await toggleCaveat(source.id, !extraction.done)
-                        router.refresh()
-                      })
-                    }
-                    disabled={isSaving}
-                  >
-                    {extraction.done ? 'Untick' : 'Tick'}
-                  </Button>
-                ) : null}
-              </li>
-            ))}
-          </ol>
-
-          {/* Arc 6's "draft retrieval questions" attaches to the right of this head. */}
           <div className="mb-2.5 flex items-center justify-between gap-3">
             <span className="font-mono text-mono font-medium tracking-[0.16em] text-ink-3 uppercase">
               Distil
             </span>
           </div>
           <div className="mb-7 flex flex-wrap gap-2.5">
+            {/*
+              A session of everything from one video, so "done with this video"
+              is a state you reach rather than a feeling. `?scope=source` follows
+              `?scope=weak` and `?scope=quiz` — same cap, same ordering, same
+              waived floor because it is a set you chose.
+            */}
+            {entries.length > 0 ? (
+              <Link
+                href={`/practice?scope=source&id=${source.id}`}
+                className="inline-flex cursor-pointer items-center rounded-md border border-rule-strong bg-surface px-3.5 py-2.5 text-label font-medium text-ink hover:border-ink-3"
+              >
+                Practise all {entries.length}
+              </Link>
+            ) : null}
             <Link
               href={`/library?add=1&source=${source.id}${selection ? `&definition=${encodeURIComponent(selection)}` : ''}`}
               className="inline-flex cursor-pointer items-center rounded-md border border-accent bg-accent px-3.5 py-2.5 text-label font-medium text-white hover:border-accent-ink hover:bg-accent-ink"

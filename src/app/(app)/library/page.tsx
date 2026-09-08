@@ -28,6 +28,8 @@ const QUICK_FILTERS: QuickFilter[] = [
   'needs-review',
   'recently-added',
   'recently-practiced',
+  'extracted',
+  'written',
 ]
 
 /** The toolbar's sentinels are absences, and an unknown value is no filter at all. */

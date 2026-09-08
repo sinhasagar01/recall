@@ -42,11 +42,18 @@ test.describe('sources', () => {
     // Saving a new source opens its workspace.
     await expect(page).toHaveURL(/\/sources\/[0-9a-f-]+$/, { timeout: 30_000 })
     await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible()
-    await expect(page.getByText(/words · 0 of 5 extracted/)).toBeVisible()
+    await expect(page.getByText(/words · nothing extracted yet/)).toBeVisible()
 
-    // Nothing distilled yet: all five unticked.
-    await expect(page.getByText('no topics yet')).toBeVisible()
-    await expect(page.getByText('0 of 3 quizzes')).toBeVisible()
+    /*
+      Nothing distilled yet, and the summary says so in words rather than
+      counting to zero. Arc 2 asserted "0 of 5 extracted" plus two checklist
+      details here; the checklist was replaced by what a source has actually
+      produced, so these assert the replacement rather than being deleted with
+      it. All three were seen failing against the build that removed the
+      checklist — which is what proves they were testing that surface.
+    */
+    await expect(page.getByText('no topics yet')).toHaveCount(0)
+    await expect(page.getByText('0 of 3 quizzes')).toHaveCount(0)
 
     // ── distil a topic from it ────────────────────────────────────────────
     await page.getByRole('link', { name: '+ Distil a topic' }).click()
@@ -75,9 +82,14 @@ test.describe('sources', () => {
     await expect(page.getByRole('link', { name: new RegExp(topicTitle) })).toBeVisible()
     // Singular. "1 topics" shipped to production; the domain owns the agreement
     // now, and sources.test.ts covers nothing/one/many.
-    await expect(page.getByText('1 topic', { exact: true })).toBeVisible()
+    /*
+      The summary, not a checklist count. A freshly distilled topic is `new`, so
+      it reads as never practised — and every noun in the line agrees with its
+      number, which is the assertion that outlived the surface it was written
+      for.
+    */
+    await expect(page.getByText('1 topic · 1 never practised')).toBeVisible()
     await expect(page.getByText('1 topics')).toHaveCount(0)
-    await expect(page.getByText(/1 of 5|2 of 5/)).toBeVisible()
 
     // ── delete the transcript: the source and its entries survive ─────────
     await page.getByRole('button', { name: 'Delete transcript' }).click()

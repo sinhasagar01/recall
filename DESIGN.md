@@ -864,7 +864,124 @@ capability, ledger item or topic; linking them would make Today derive its conte
 
 ---
 
-## 11. Copy rules
+## 11. Extraction
+
+`ai-reference.html` is the visual source of truth for this section, read the way every
+reference is: the screens win on visual and interaction detail, and a shipped decision with
+recorded reasoning wins over the screens.
+
+Paste a transcript, press Extract, and every concept the video taught comes back as a title,
+a definition, the instructor's mental model, a "when not to use it", and two or three
+questions with distractors. Review the list, untick what you do not want, edit anything,
+save. Then practise that source until it is done and never rewatch the video.
+
+### The no-AI exclusion is retired, and this is the record of the reversal
+
+The exclusion was real and it was right. The spec excluded AI because **writing a mental
+model IS the learning**, and a generated one is a model you have never had — it looks
+identical to one you were taught and teaches nothing. The library's value was that every
+mental model in it was a hand-written correction of a wrong model.
+
+**What changed is not the argument. It is what the input turned out to be.** A recorded
+course *supplies* a mental model: the instructor gives one, out loud, and it is already
+someone else's words. Extracting it is the same act as extracting the definition —
+transcription, attributed to the source — and this app has always accepted someone else's
+words for the fact. **Extracting a mental model is not authoring one**, and the original
+exclusion did not distinguish between the two because it had no reason to.
+
+**What replaced it:** the model may transcribe teaching and may never invent it. The prompt
+says so, `mental_model` is nullable rather than required, and the instruction is explicit
+that a model the video did not give must come back null. Every field is editable in review,
+because if you have a better model than the instructor's, that is the moment to replace it.
+
+**Only this one line is retired.** No scheduling, dashboard, analytics, gamification,
+streaks, notifications, sharing or spaced repetition — five arcs of exclusions, inherited
+unchanged.
+
+**The honest risk, recorded rather than designed around:** a library of extracted topics is
+one you have *read* rather than written, and recognition reads as knowledge when quizzed.
+The `extracted` / `written by hand` filter chips exist so that is visible. Nothing else
+guards it, and nothing else should — the alternative is the app grading how you learned,
+which is the thing this product refuses everywhere else.
+
+### Nothing is saved until you press Save
+
+Extraction produces a review screen and nothing else. This is structural rather than
+careful: the result lives in the browser tab's own state and nowhere the server can read it
+back, the extract path holds no database client at all, and leaving the page loses the
+result — which is the guarantee working rather than a rough edge.
+
+Kept by default, because you are mining a video and unticking two beats ticking twelve. A
+concept matching something already in your library arrives **unticked**, with the reason
+shown.
+
+### The duplicate check misses a rephrased title, and that is the better failure
+
+The comparison is exact on a normalised title — lowercased, punctuation stripped. It is
+deliberately **not** fuzzy. *"How declarations get hoisted"* does not match *"Function
+declarations are hoisted"*, so it arrives ticked and creates a second topic.
+
+A similarity threshold would trade that miss for a worse one: silently unticking a genuinely
+new concept, which loses something you wanted without ever showing you that it happened. A
+missed duplicate is visible in your library; a wrongly-dropped concept is not. **This is
+another reason review is not optional** — the review screen is where a person catches what a
+string comparison cannot, and the app cannot know better.
+
+### The send box tells the truth about what leaves and what it costs
+
+The transcript, its size, the token estimate, **a cost range**, and how long it takes — all
+before you press. A transcript too long for one pass says so before you are billed, and the
+threshold leaves margin in the safe direction because the estimate runs low on code-heavy
+text.
+
+**A range, never a figure.** How much comes back depends on how many concepts the video
+contains, which is the thing being paid to discover. A confident number here is the same
+class of claim as the one below.
+
+**Cancel stops waiting, and says exactly that:** *"Cancelling stops waiting. The call may
+still finish, and you may still be billed for it."* The reference drew *"a cancelled call is
+not billed"*, which is false regardless of how this is built. There is no progress bar and
+no running count, because one round trip produces no progress to report.
+
+### No key means no button
+
+Not a disabled one, and not a prompt to add a key. The workspace is arc 2 exactly as it
+shipped, and the manual path is the only path rather than the lesser one — the same rule as
+§5's quiz options, which stop being buttons rather than becoming disabled buttons, *because a
+disabled button still says button*.
+
+### Coverage is stored; model prose is not
+
+What the video contained, what you kept, what you dropped and why — one jsonb column on
+`sources`, because it is the record of a **decision** rather than a model response. A second
+pass merges and never overwrites: it cannot un-drop what you dropped or re-attribute what you
+saved.
+
+A dropped concept keeps **only its title**. *Add by hand* opens the manual sheet with the
+title filled in and nothing else, and says so. The reference promised a dropped concept could
+be added back without re-extracting, which would have required storing every dropped
+concept's full text — the one thing this section refuses.
+
+The coverage tick is `--ok`, and that is the rule rather than an exception to it: kept is
+derived and binary, a topic exists for that concept or it does not, and it replaces a `bg-ok`
+dot on the same screen making the same kind of claim.
+
+### Saved concepts are ordinary topics and quizzes
+
+Same table, same confidence, same queue, linked through arc 2's `source_id`. Nothing about
+practice selection, the weak page, confidence or export changes. `extracted` is read in
+exactly one place — two library filter chips — and nowhere else.
+
+### The five-item checklist is gone
+
+Arc 2's extraction checklist was a **proxy** for "have I mined this video". Extraction makes
+the real answer cheap, so the source now shows what it produced and how well you know it —
+"12 topics · 4 never practised" — derived end to end, with nothing left to tick and therefore
+nothing left to game.
+
+---
+
+## 12. Copy rules
 
 Sentence case everywhere. Active voice. An action keeps its name through the
 whole flow — the button that says "Save topic" produces a toast that says
@@ -876,7 +993,7 @@ invitations, not apologies.
 
 ---
 
-## 12. Accessibility floor
+## 13. Accessibility floor
 
 Not optional, not polish-phase:
 
@@ -905,7 +1022,7 @@ technology. Where the two disagree, this is the rule.
 
 ---
 
-## 13. Out of scope
+## 14. Out of scope
 
 The mock shows a few things beyond the original spec. Ship them only if the core
 loop is done: search-term highlighting in card titles, "Review the 2 you missed"

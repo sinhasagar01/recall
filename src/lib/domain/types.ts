@@ -34,6 +34,21 @@ interface TopicShared {
   created_at: string
   updated_at: string
 
+  /**
+   * Written by hand, or extracted from a transcript by arc 6.
+   *
+   * Shown only as a library filter chip. It exists because of a risk that arc
+   * records rather than designs around: a library of extracted topics is one you
+   * have READ rather than written, and recognition reads as knowledge when
+   * quizzed. The flag makes that visible and does nothing else — deliberately
+   * not a factor in confidence, in the queue, or on the weak page.
+   *
+   * Unlike `source_id` and `capability_id` this one IS on the domain Topic, so
+   * every read is obliged to return it. That obligation is the point: a filter
+   * over a column half the reads omit is a filter that lies.
+   */
+  extracted: boolean
+
   /*
     ── Evidence ──────────────────────────────────────────────────────────────
     Three markers, each absent or present with a date, a required note and an

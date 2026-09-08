@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recall — extraction</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;450;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#E9EAF0; --surface:#FFFFFF; --surface-2:#F5F5FA; --surface-3:#EDEEF4;
+  --ink:#12131A; --ink-2:#53555F; --ink-3:#83858F;
+  --rule:#E1E1E9; --rule-strong:#C9C9D4;
+  --accent:#3F3AC7; --accent-soft:#EDECFB; --accent-ink:#2E2A9E;
+  --flag:#B4325C; --flag-soft:#FBEBF1;
+  --ok:#1B6B4F; --ok-soft:#E6F2EC;
+  --radius:6px; --radius-lg:10px;
+  --shadow:0 1px 2px rgba(18,19,26,.05), 0 1px 1px rgba(18,19,26,.03);
+  --font-display:"Newsreader",Georgia,serif;
+  --font-body:"IBM Plex Sans",system-ui,sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:14.5px;line-height:1.55;-webkit-font-smoothing:antialiased}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+code{font-family:var(--font-mono);font-size:.86em}
+.chrome{position:sticky;top:0;z-index:60;display:flex;gap:6px;align-items:center;padding:9px 16px;
+  background:var(--surface);border-bottom:1px solid var(--rule);flex-wrap:wrap}
+.chrome__label{font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin-right:6px}
+.tab{font-family:var(--font-mono);font-size:11.5px;padding:5px 9px;border:1px solid transparent;border-radius:var(--radius);
+  background:none;color:var(--ink-2);cursor:pointer}
+.tab:hover{background:var(--surface-2);color:var(--ink)}
+.tab[aria-selected="true"]{background:var(--accent-soft);color:var(--accent-ink);border-color:var(--accent)}
+
+.eyebrow{font-family:var(--font-mono);font-size:10.5px;font-weight:500;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3)}
+.meta{font-family:var(--font-mono);font-size:11.5px;color:var(--ink-3)}
+.btn{font-family:var(--font-body);font-size:13.5px;font-weight:500;display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  padding:10px 15px;border-radius:var(--radius);border:1px solid var(--rule-strong);background:var(--surface);color:var(--ink);cursor:pointer}
+.btn--primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn--ghost{background:none;border-color:transparent;color:var(--ink-2)}
+.btn--sm{padding:6px 11px;font-size:12.5px}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.chip{font-family:var(--font-mono);font-size:11px;padding:3px 8px;border-radius:100px;border:1px solid var(--rule);background:var(--surface-2);color:var(--ink-2)}
+.fchip{font-family:var(--font-mono);font-size:11px;padding:4px 10px;border-radius:100px;border:1px solid var(--rule);
+  background:none;color:var(--ink-3);cursor:pointer}
+.fchip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--surface)}
+.input,.textarea{width:100%;font-family:var(--font-body);font-size:14px;color:var(--ink);background:var(--surface);
+  border:1px solid var(--rule-strong);border-radius:var(--radius);padding:9px 11px;line-height:1.55}
+.textarea{min-height:56px;resize:vertical}
+
+.screen{display:none}.screen[data-active]{display:block}
+.wrap{max-width:1000px;margin:0 auto;padding:28px 26px 80px}
+.page-title{font-family:var(--font-display);font-size:29px;font-weight:500;letter-spacing:-.022em}
+.page-sub{margin-top:4px;font-family:var(--font-mono);font-size:11.5px;color:var(--ink-3)}
+.page-head{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:20px}
+.rule{display:flex;align-items:center;gap:12px;margin:30px 0 12px}
+.rule::after{content:"";flex:1;height:1px;background:var(--rule)}
+.note{max-width:70ch;color:var(--ink-2);font-size:13.5px;margin-top:26px;padding-top:18px;border-top:1px solid var(--rule)}
+.callout{background:var(--surface);border:1px solid var(--accent);border-left-width:3px;border-radius:var(--radius);padding:14px 18px;margin:20px 0;max-width:74ch}
+.callout__t{font-weight:500;color:var(--accent-ink);margin-bottom:4px}
+.panel{background:var(--surface);border:1px solid var(--rule);border-radius:var(--radius-lg);box-shadow:var(--shadow)}
+.panel__body{padding:17px}
+
+.sendbox{border:1px solid var(--rule);border-radius:var(--radius-lg);background:var(--surface);padding:17px 20px;box-shadow:var(--shadow)}
+.sendbox__t{font-size:14px;font-weight:500;margin-bottom:9px}
+.sendbox__l{font-family:var(--font-mono);font-size:11.5px;color:var(--ink-3);display:flex;flex-wrap:wrap;gap:4px 14px}
+.sendbox__f{display:flex;gap:12px;align-items:center;margin-top:16px;flex-wrap:wrap}
+.sendbox__f .meta{margin-left:auto}
+.spin{width:13px;height:13px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;
+  animation:spin .7s linear infinite;opacity:.8}
+@keyframes spin{to{transform:rotate(360deg)}}
+.bar{height:4px;border-radius:2px;background:var(--rule);overflow:hidden;margin-top:12px}
+.bar i{display:block;height:100%;width:64%;background:var(--accent)}
+
+.rev{border:1px solid var(--rule);border-radius:var(--radius-lg);overflow:hidden;background:var(--surface);box-shadow:var(--shadow)}
+.revrow{border-bottom:1px solid var(--rule)}
+.revrow:last-child{border-bottom:none}
+.revrow__h{display:flex;align-items:flex-start;gap:13px;padding:14px 17px;cursor:pointer}
+.revrow__h:hover{background:var(--surface-2)}
+.revrow--off{background:var(--surface-2)}
+.revrow--off .revrow__t,.revrow--off .revrow__d{color:var(--ink-3);text-decoration:line-through;text-decoration-color:var(--rule-strong)}
+.keep{width:18px;height:18px;flex:none;margin-top:2px;border:1px solid var(--rule-strong);border-radius:4px;display:grid;place-items:center;
+  font-size:10px;background:var(--surface)}
+.keep--on{border-color:var(--ink);background:var(--ink);color:var(--surface)}
+.revrow__m{flex:1;min-width:0}
+.revrow__t{font-family:var(--font-display);font-size:17px;font-weight:500;line-height:1.3}
+.revrow__d{color:var(--ink-2);font-size:13.5px;line-height:1.55;margin-top:4px;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.revrow__c{font-family:var(--font-mono);font-size:10.5px;color:var(--ink-3);flex:none;white-space:nowrap;padding-top:3px;
+  display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+.revrow__b{padding:2px 17px 18px 48px;border-top:1px solid var(--rule);background:var(--surface-2)}
+.fld{margin-top:14px}
+.fld__l{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);margin-bottom:5px;display:block}
+.mmbox{background:var(--accent-soft);border-left:2px solid var(--accent);border-radius:0 var(--radius) var(--radius) 0;
+  padding:11px 15px;font-family:var(--font-display);font-size:16px;line-height:1.6;color:var(--accent-ink)}
+.qz{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--rule);font-size:13.5px}
+.qz:last-child{border-bottom:none}
+.qz__n{font-family:var(--font-mono);font-size:10.5px;color:var(--ink-3);width:13px;flex:none;padding-top:2px}
+.qz__m{flex:1}
+.qz__o{font-size:12.5px;color:var(--ink-2);margin-top:5px}
+.qz__o span{display:block;padding:2px 0}
+.qz__o .right{color:var(--ok)}
+
+.sticky{position:sticky;bottom:0;background:var(--surface);border:1px solid var(--rule);border-radius:var(--radius-lg);
+  padding:13px 18px;margin-top:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;box-shadow:0 -2px 12px rgba(18,19,26,.06)}
+.sticky .meta{margin-left:auto}
+
+.cov{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--rule)}
+.cov:last-child{border-bottom:none}
+.cov__i{font-family:var(--font-mono);font-size:11px;width:16px;flex:none;padding-top:2px}
+.cov__i--kept{color:var(--ok)}
+.cov__i--dropped{color:var(--ink-3)}
+.cov__m{flex:1}
+.cov__t{font-size:14px}
+.cov__t--dropped{color:var(--ink-3)}
+.cov__s{font-family:var(--font-mono);font-size:10px;color:var(--ink-3);margin-top:3px}
+.cov__a{flex:none}
+
+.model{border:1px dashed var(--rule-strong);border-left:3px solid var(--ink-3);border-radius:0 var(--radius-lg) var(--radius-lg) 0;
+  background:var(--surface-2);padding:16px 19px}
+.model__h{display:flex;align-items:center;gap:9px;margin-bottom:11px;flex-wrap:wrap}
+.model__tag{font-family:var(--font-mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);
+  border:1px solid var(--rule-strong);border-radius:3px;padding:2px 7px;background:var(--surface)}
+.model__meta{font-family:var(--font-mono);font-size:10px;color:var(--ink-3)}
+.model__b{font-size:14.5px;line-height:1.7;color:var(--ink-2);max-width:64ch}
+
+.err{border:1px solid var(--flag);background:var(--flag-soft);border-radius:var(--radius);padding:13px 16px;color:var(--flag);font-size:13.5px;max-width:64ch}
+.err__t{font-weight:500;margin-bottom:3px}
+.err__b{color:var(--ink-2)}
+
+.ruleset{background:var(--surface);border:1px solid var(--rule);border-radius:var(--radius-lg);padding:4px 22px;margin-top:14px;box-shadow:var(--shadow)}
+.ruleset li{list-style:none;padding:13px 0;border-bottom:1px solid var(--rule);font-size:13.5px;color:var(--ink-2)}
+.ruleset li:last-child{border-bottom:none}
+.ruleset strong{color:var(--ink);font-weight:500;display:block;margin-bottom:2px}
+</style>
+</head>
+<body>
+
+<div class="chrome">
+  <span class="chrome__label">Screen</span>
+  <button class="tab" data-go="extract" aria-selected="true">Extract</button>
+  <button class="tab" data-go="review">Review</button>
+  <button class="tab" data-go="coverage">Coverage</button>
+  <button class="tab" data-go="practise">Practise the source</button>
+  <button class="tab" data-go="states">Every state</button>
+  <button class="tab" data-go="rules">The rules</button>
+</div>
+
+<!-- ============ EXTRACT ============ -->
+<section class="screen" data-screen="extract" data-active>
+<div class="wrap" style="max-width:860px">
+  <div class="page-head"><div>
+    <div class="meta" style="margin-bottom:8px"><a style="color:var(--accent-ink);text-decoration:underline;cursor:pointer">← Sources</a></div>
+    <h1 class="page-title">Closures</h1>
+    <p class="page-sub">JavaScript: The Hard Parts · 8,400 words · nothing extracted yet</p></div></div>
+
+  <div class="sendbox">
+    <div class="sendbox__t">Extract everything from this transcript</div>
+    <div class="sendbox__l">
+      <span>sends the transcript · 8,400 words</span><span>·</span>
+      <span>≈ 11,200 tokens in</span><span>·</span>
+      <span>about $0.06–$0.09</span><span>·</span>
+      <span>20–40 seconds</span>
+    </div>
+    <div class="sendbox__f">
+      <button class="btn btn--primary">Extract</button>
+      <button class="btn">Distil by hand instead</button>
+      <span class="meta">Nothing is saved until you review it</span>
+    </div>
+  </div>
+
+  <div class="rule"><span class="eyebrow">While it runs</span></div>
+  <div class="sendbox">
+    <div class="sendbox__t">Reading the transcript…</div>
+    <div class="sendbox__f">
+      <button class="btn btn--sm" disabled><span class="spin"></span>Extracting</button>
+      <button class="btn btn--sm btn--ghost">Cancel</button>
+      <span class="meta">18s elapsed · usually 20–40s</span>
+    </div>
+    <p class="meta" style="margin-top:10px">Cancelling stops waiting. The call may still finish, and you may still be billed for it.</p>
+  </div>
+
+  <div class="callout">
+    <div class="callout__t">Corrected: this screen drew three things that were not true</div>
+    <p style="color:var(--ink-2);font-size:13.5px">It showed <em>“found 11 concepts so far”</em> and a progress bar. One request produces no
+    progress to report, so both were drawings of information nobody has. It also said <em>“a cancelled call is not billed”</em>, which is
+    false <strong>regardless of architecture</strong> — tokens already generated are billed whether or not anyone is still waiting for them.
+    That sentence appeared on the one surface whose entire job is telling the truth about what leaves and what it costs.</p>
+  </div>
+
+  <div class="callout">
+    <div class="callout__t">What it extracts, per concept</div>
+    <p style="color:var(--ink-2);font-size:13.5px">A title, a definition, the <strong>mental model the instructor gave</strong>, a "when not to use it" where the video offers one, and two or three quiz questions with distractors. Everything the video taught, in the shape this app already stores — so a video becomes a set of things you can practise instead of a thing you have to rewatch.</p>
+  </div>
+
+  <p class="note">The manual path stays. With no key configured, or when you would rather do it yourself, "Distil by hand" is the arc 2 workspace unchanged. Extraction is the fast path, not the only one.</p>
+</div>
+</section>
+
+<!-- ============ REVIEW ============ -->
+<section class="screen" data-screen="review">
+<div class="wrap">
+  <div class="page-head"><div>
+    <h1 class="page-title">Review before saving</h1>
+    <p class="page-sub">14 concepts found · 12 kept · 33 questions · nothing saved yet</p></div>
+    <div style="display:flex;gap:6px;padding-top:6px"><button class="fchip" aria-pressed="true">All 14</button><button class="fchip">Kept 12</button><button class="fchip">Dropped 2</button></div>
+  </div>
+
+  <div class="rev">
+    <div class="revrow">
+      <div class="revrow__h">
+        <span class="keep keep--on">✓</span>
+        <div class="revrow__m">
+          <div class="revrow__t">Closures hold a reference, not a copy</div>
+          <div class="revrow__d">A returned function keeps a live reference to the variables in scope where it was defined, so later changes to those variables are visible to it.</div>
+        </div>
+        <div class="revrow__c"><span>3 questions</span><span>05:31</span></div>
+      </div>
+
+      <div class="revrow__b">
+        <div class="fld"><span class="fld__l">Title</span><input class="input" value="Closures hold a reference, not a copy"></div>
+        <div class="fld"><span class="fld__l">Definition</span>
+          <textarea class="textarea">A returned function keeps a live reference to the variables in scope where it was defined, so later changes to those variables are visible to it.</textarea></div>
+        <div class="fld"><span class="fld__l">Mental model · from the video, edit it if you have a better one</span>
+          <div class="mmbox">The returned function walks away carrying a backpack of everything it might still need — and it's the same backpack, not a photocopy.</div></div>
+        <div class="fld"><span class="fld__l">When not to use it</span>
+          <textarea class="textarea" style="min-height:44px">Avoid closing over large objects you only need one value from — the whole thing stays reachable.</textarea></div>
+        <div class="fld"><span class="fld__l">Questions</span>
+          <div class="qz"><span class="qz__n">1</span><div class="qz__m">What does a closure capture — the value at creation, or the variable itself?
+            <div class="qz__o"><span class="right">✓ The variable itself, a live reference</span><span>The value at the moment the function was created</span><span>A copy made when the outer function returns</span></div></div></div>
+          <div class="qz"><span class="qz__n">2</span><div class="qz__m">Why does a loop with <code>var</code> log the same number every time?
+            <div class="qz__o"><span class="right">✓ One binding is shared by every iteration</span><span>The loop body runs after the log statement</span><span>Numbers are boxed and reused</span></div></div></div>
+          <div class="qz"><span class="qz__n">3</span><div class="qz__m">What keeps a closed-over object from being garbage collected?
+            <div class="qz__o"><span class="right">✓ The closure holds the scope reachable</span><span>The garbage collector ignores functions</span><span>Nothing — it is collected on the next tick</span></div></div></div>
+        </div>
+        <div style="display:flex;gap:9px;margin-top:16px">
+          <button class="btn btn--sm btn--ghost">Drop this concept</button>
+          <button class="btn btn--sm btn--ghost">Drop question 3</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="revrow">
+      <div class="revrow__h">
+        <span class="keep keep--on">✓</span>
+        <div class="revrow__m">
+          <div class="revrow__t">The temporal dead zone</div>
+          <div class="revrow__d">A <code>let</code> binding exists from the top of its block but cannot be read until the declaration runs, which is why the loop behaves differently from <code>var</code>.</div>
+        </div>
+        <div class="revrow__c"><span>2 questions</span><span>12:40</span></div>
+      </div>
+    </div>
+
+    <div class="revrow">
+      <div class="revrow__h">
+        <span class="keep keep--on">✓</span>
+        <div class="revrow__m">
+          <div class="revrow__t">Closures keep the whole scope alive</div>
+          <div class="revrow__d">Not only the variables the function reads — the entire enclosing scope stays reachable, which is the memory cost of the pattern.</div>
+        </div>
+        <div class="revrow__c"><span>3 questions</span><span>18:05</span></div>
+      </div>
+    </div>
+
+    <div class="revrow revrow--off">
+      <div class="revrow__h">
+        <span class="keep"></span>
+        <div class="revrow__m">
+          <div class="revrow__t">Function declarations are hoisted</div>
+          <div class="revrow__d">Mentioned in passing as background. You already have a topic covering this.</div>
+        </div>
+        <div class="revrow__c"><span>already saved</span><span>02:15</span></div>
+      </div>
+    </div>
+
+    <div class="revrow revrow--off">
+      <div class="revrow__h">
+        <span class="keep"></span>
+        <div class="revrow__m">
+          <div class="revrow__t">The instructor's course roadmap</div>
+          <div class="revrow__d">Housekeeping, not a concept.</div>
+        </div>
+        <div class="revrow__c"><span>—</span><span>00:40</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sticky">
+    <button class="btn btn--primary">Save 12 topics and 33 questions</button>
+    <button class="btn btn--ghost">Discard everything</button>
+    <span class="meta">Each links to this source · nothing is saved until you press this</span>
+  </div>
+
+  <div class="callout">
+    <div class="callout__t">Kept by default, duplicates already unticked</div>
+    <p style="color:var(--ink-2);font-size:13.5px">You are mining the video, so unticking two is faster than ticking twelve. A concept whose title matches something already in your library — <strong>anywhere in it, not just from this source</strong> — arrives unticked with <em>already saved</em> against it, because two topics about hoisting are two topics about hoisting whichever video they came from.</p>
+    <p style="color:var(--ink-2);font-size:13.5px;margin-top:9px"><strong>The match is exact on a normalised title</strong> — lowercased, punctuation stripped — and deliberately not fuzzy. So <em>“How declarations get hoisted”</em> does <strong>not</strong> match <em>“Function declarations are hoisted”</em>: it arrives ticked and would create a second topic. A similarity threshold would trade that miss for a worse one, silently unticking a genuinely new concept. The review screen is where a person catches what a string comparison cannot, which is another reason review is not optional.</p>
+  </div>
+
+  <p class="note">Every field is editable here, including the mental model — it is the instructor's, and if you have a better one this is the moment to replace it. Editing after saving works too, from the topic's own page.</p>
+</div>
+</section>
+
+<!-- ============ COVERAGE ============ -->
+<section class="screen" data-screen="coverage">
+<div class="wrap" style="max-width:880px">
+  <div class="page-head"><div>
+    <h1 class="page-title">Closures</h1>
+    <p class="page-sub">JavaScript: The Hard Parts · 14 concepts found · 12 saved · 2 dropped</p></div>
+    <button class="btn">Practise all 12</button></div>
+
+  <div class="panel"><div class="panel__body" style="padding-top:6px;padding-bottom:8px">
+    <div class="cov"><span class="cov__i cov__i--kept">✓</span><div class="cov__m">
+      <div class="cov__t">Closures hold a reference, not a copy</div>
+      <div class="cov__s">05:31 · 3 questions · strong</div></div></div>
+    <div class="cov"><span class="cov__i cov__i--kept">✓</span><div class="cov__m">
+      <div class="cov__t">The temporal dead zone</div>
+      <div class="cov__s">12:40 · 2 questions · never practised</div></div></div>
+    <div class="cov"><span class="cov__i cov__i--kept">✓</span><div class="cov__m">
+      <div class="cov__t">Closures keep the whole scope alive</div>
+      <div class="cov__s">18:05 · 3 questions · weak</div></div></div>
+    <div class="cov"><span class="cov__i cov__i--kept">✓</span><div class="cov__m">
+      <div class="cov__t">The module pattern</div>
+      <div class="cov__s">24:10 · 2 questions · okay</div></div></div>
+    <div class="cov"><span class="cov__i cov__i--dropped">—</span><div class="cov__m">
+      <div class="cov__t cov__t--dropped">Function declarations are hoisted</div>
+      <div class="cov__s">02:15 · dropped — already in your library</div></div>
+      <span class="cov__a"><button class="btn btn--sm btn--ghost">Add by hand</button></span></div>
+    <div class="cov"><span class="cov__i cov__i--dropped">—</span><div class="cov__m">
+      <div class="cov__t cov__t--dropped">The instructor's course roadmap</div>
+      <div class="cov__s">00:40 · dropped — not a concept</div></div>
+      <span class="cov__a"><button class="btn btn--sm btn--ghost">Add by hand</button></span></div>
+  </div></div>
+
+  <div class="callout">
+    <div class="callout__t">This is the "never rewatch it" screen</div>
+    <p style="color:var(--ink-2);font-size:13.5px">Every concept the video covered, with a timestamp, and what happened to each. Nothing was silently skipped — the two you dropped say why. When the list is all ticks and the confidences are okay or better, the video is finished with you rather than the other way round.</p>
+    <p style="color:var(--ink-2);font-size:13.5px;margin-top:9px"><strong>Corrected: a dropped concept cannot be “added back without re-extracting”.</strong> This tab promised that while the rules tab says model prose is never persisted — and both cannot be true. Coverage stores a title, a timestamp, a status and a reason, so <em>Add by hand</em> opens the manual sheet with the title filled in and nothing else. The alternative was storing every dropped concept's full text, which is the rule this arc is built on.</p>
+  </div>
+
+  <p class="note">The coverage list is stored with the source, because it is the record of a decision rather than a model response — what the video contained and what you chose to keep. It is the one thing this arc persists beyond ordinary topics, and it costs one column on <code>sources</code>.</p>
+</div>
+</section>
+
+<!-- ============ PRACTISE ============ -->
+<section class="screen" data-screen="practise">
+<div class="wrap" style="max-width:860px">
+  <h1 class="page-title">Practise the source</h1>
+  <p style="color:var(--ink-2);max-width:64ch;margin-top:6px">A session of everything from one video, so "done with this video" is a state you reach rather than a feeling.</p>
+
+  <div class="panel" style="margin-top:20px"><div class="panel__body">
+    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+      <div style="flex:1;min-width:220px">
+        <div style="font-size:15px;font-weight:500">Closures · JavaScript: The Hard Parts</div>
+        <div class="meta" style="margin-top:4px">12 topics · 33 questions · 4 never practised · 2 weak</div>
+      </div>
+      <button class="btn btn--primary">Practise all 12</button>
+    </div>
+  </div></div>
+
+  <div class="rule"><span class="eyebrow">The queue</span></div>
+  <div class="panel"><div class="panel__body" style="color:var(--ink-2);font-size:13.5px;max-width:62ch">
+    <code>/practice?scope=source&amp;id=…</code> — the existing scope pattern, following <code>?scope=weak</code> and <code>?scope=quiz</code>. Same ordering rule, same session cap, same waived floor because it is a set you chose. Nothing new in practice selection.
+  </div></div>
+
+  <div class="callout">
+    <div class="callout__t">This is what finishing a course actually means here</div>
+    <p style="color:var(--ink-2);font-size:13.5px">Watch, extract, review, practise the set, and the video is done. Coverage tells you nothing was skipped; confidence tells you it stuck. A course becomes a sequence of sources you have mined out, and what you carry forward is a library rather than a memory of having watched something.</p>
+  </div>
+
+  <p class="note">A source shows its own confidence summary on the sources list — "12 topics · 4 never practised" — which replaces arc 2's five-item extraction checklist. That checklist was a proxy for whether you had mined the video; this is the thing itself.</p>
+</div>
+</section>
+
+<!-- ============ STATES ============ -->
+<section class="screen" data-screen="states">
+<div class="wrap">
+  <h1 class="page-title">Every state</h1>
+
+  <div class="rule"><span class="eyebrow">No key configured</span></div>
+  <div class="panel"><div class="panel__body" style="color:var(--ink-2);font-size:13.5px;max-width:60ch">
+    No Extract button. The source workspace is arc 2 exactly as it shipped — transcript pane, manual distil panel, five-item checklist. No greyed-out control, no prompt to add a key.
+  </div></div>
+
+  <div class="rule"><span class="eyebrow">The transcript is too long</span></div>
+  <div class="err">
+    <div class="err__t">This transcript is 61,000 words — too long for one pass</div>
+    <div class="err__b">Extract it in halves: paste the first part, extract, then edit the source and paste the rest. Coverage merges both passes.</div>
+  </div>
+  <p class="meta" style="margin-top:9px">Named before you press, not after — the estimate on the send box becomes this when it exceeds the window, so you never pay for a call that cannot succeed.</p>
+
+  <div class="rule"><span class="eyebrow">Extraction returned nothing usable</span></div>
+  <div class="err">
+    <div class="err__t">No concepts found</div>
+    <div class="err__b">The transcript may be a description rather than a lesson, or mostly timestamps. Nothing was saved. You can distil by hand instead.</div>
+  </div>
+
+  <div class="rule"><span class="eyebrow">The call failed part-way</span></div>
+  <div class="err">
+    <div class="err__t">The model stopped responding after 6 concepts</div>
+    <div class="err__b">Review and save those six, or discard and try again. Nothing has been saved either way.</div>
+  </div>
+  <p class="meta" style="margin-top:9px">A partial result is offered rather than thrown away. The review screen is the same screen with six rows, and coverage records that the pass was partial.</p>
+
+  <div class="rule"><span class="eyebrow">Extracting a second time</span></div>
+  <div class="model">
+    <div class="model__h"><span class="model__tag">Second pass</span><span class="model__meta">4 new concepts · 10 already saved</span></div>
+    <div class="model__b">Concepts matching what you already saved from this source arrive unticked. Only what is new is offered.</div>
+  </div>
+  <p class="meta" style="margin-top:9px">Re-extracting is safe and cheap to reason about — it never duplicates, and it is the recovery path for a partial pass or a transcript you extended.</p>
+
+  <div class="rule"><span class="eyebrow">Out of credit</span></div>
+  <div class="err">
+    <div class="err__t">Your OpenAI credit is exhausted</div>
+    <div class="err__b">Nothing in Recall is affected — every other feature works as before, and the manual path is still there. Top up at platform.openai.com, or ignore this; none of it is required.</div>
+  </div>
+</div>
+</section>
+
+<!-- ============ RULES ============ -->
+<section class="screen" data-screen="rules">
+<div class="wrap">
+  <h1 class="page-title">The rules</h1>
+  <p style="color:var(--ink-2);max-width:66ch;margin-top:6px">Every decision this reference encodes. Where this page and the screens disagree, the screens win.</p>
+
+  <div class="rule"><span class="eyebrow">What the model does</span></div>
+  <ul class="ruleset">
+    <li><strong>It extracts what the video taught</strong>Title, definition, the instructor's mental model, a "when not to use it", and two or three questions with distractors — per concept, for every concept in the transcript. This is transcription of teaching, not invention.</li>
+    <li><strong>The mental model is the instructor's, and editable</strong>These courses give one. Extracting it is the same act as extracting the definition — someone else's words, correctly attributed to the source. Replace it when you have a better one, in review or later on the topic page.</li>
+    <li><strong>It never grades you</strong>No score, no confidence written back, no judgement of your recall. Confidence stays the one number in this app that is yours.</li>
+  </ul>
+
+  <div class="rule"><span class="eyebrow">Review is not optional</span></div>
+  <ul class="ruleset">
+    <li><strong>Nothing is saved until you press Save</strong>Extraction produces a review screen and nothing else. No topic exists until you have looked at the list.</li>
+    <li><strong>Kept by default, duplicates unticked</strong>You are mining a video; unticking two beats ticking twelve. A concept matching something already in your library arrives unticked with the reason shown.</li>
+    <li><strong>Every field is editable in review</strong>Title, definition, mental model, when-not-to-use, and every question and distractor. Dropping a single question is one action.</li>
+  </ul>
+
+  <div class="rule"><span class="eyebrow">Data</span></div>
+  <ul class="ruleset">
+    <li><strong>Saved concepts are ordinary topics and quizzes</strong>Same table, same confidence, same practice queue, linked to the source through arc 2's <code>source_id</code>. Nothing about practice, weak topics or export changes.</li>
+    <li><strong>One flag: extracted or written</strong>A boolean on <code>topics</code>, shown only as a library filter chip. It answers "which of these did I actually think about" months from now, and costs one column and one chip.</li>
+    <li><strong>Coverage is stored; model prose is not</strong>The coverage list — what the video contained, what you kept, what you dropped and why — lives on <code>sources</code>, because it is the record of a decision. Nothing else from a model call is persisted.</li>
+    <li><strong>The key is server-side only</strong><code>OPENAI_API_KEY</code>, never <code>NEXT_PUBLIC_</code> prefixed, held by a source-level assertion modelled on <code>secret-key-boundary.test.ts</code>. The browser never sees it and never talks to OpenAI.</li>
+    <li><strong>Guard tokens must not be ordinary words</strong>Arc 5 shipped a guard matching <code>days</code> in prose about practice gaps. <code>ai</code> occurs inside <em>said</em> and <em>again</em>; <code>model</code> occurs in "mental model" on every page. <strong>Corrected: <code>openai.</code> is not a usable token either</strong> — it already occurs twice in <code>supabase/config.toml</code>, and it matches <code>platform.openai.com</code>, which this reference's own out-of-credit copy contains. The guard names <code>OPENAI_API_KEY</code> (scoped to <code>src/</code>, since config.toml holds it too), <code>api.openai.com</code>, and <code>NEXT_PUBLIC_OPENAI</code> as a separate rule.</li>
+  </ul>
+
+  <div class="rule"><span class="eyebrow">Cost and consent</span></div>
+  <ul class="ruleset">
+    <li><strong>Every call is opt-in, per action</strong>Nothing on page load, nothing on save, nothing in the background. No automatic extraction, no extract-on-paste.</li>
+    <li><strong>The send box names what leaves, before it leaves</strong>The transcript, its size, the token estimate, the cost, and how long it will take. A transcript too long for one pass says so before you press, not after you are billed.</li>
+    <li><strong>Cancel stops waiting, and says so</strong>A server action is one round trip with no client-reachable abort, so the call finishes on the server. And nothing would make the original claim true: tokens already generated are billed either way. The copy is <em>“Cancelling stops waiting. The call may still finish, and you may still be billed for it.”</em></li>
+    <li><strong>No key means no feature</strong>The manual path is arc 2 unchanged, and it stays the fallback rather than becoming vestigial.</li>
+  </ul>
+
+  <div class="rule"><span class="eyebrow">What retiring the exclusion does and does not do</span></div>
+  <ul class="ruleset">
+    <li><strong>Only the no-AI exclusion is retired</strong>No scheduling, no dashboard, no analytics, no gamification, no streaks, no notifications, no sharing, no spaced repetition. One line retired, the rest inherited.</li>
+    <li><strong>It is a recorded reversal</strong>DESIGN.md and ARCHITECTURE.md state that the exclusion existed, why, what changed — these courses supply mental models, so extracting one is not authoring one — and what replaced it.</li>
+    <li><strong>The honest risk, recorded rather than designed around</strong>A library of extracted topics is one you have read rather than written, and recognition can read as knowledge when quizzed. The extracted/written filter exists so that is visible. Nothing else guards it, and nothing else should.</li>
+  </ul>
+</div>
+</section>
+
+<script>
+  const screens=document.querySelectorAll('[data-screen]');
+  document.querySelector('.chrome').addEventListener('click',e=>{
+    const b=e.target.closest('[data-go]'); if(!b) return;
+    document.querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-selected',t===b));
+    screens.forEach(s=>s.toggleAttribute('data-active',s.dataset.screen===b.dataset.go));
+    window.scrollTo(0,0);
+  });
+</script>
+</body>
+</html>

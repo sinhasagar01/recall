@@ -7,7 +7,7 @@
 -- Written and run RED before the migration exists.
 
 begin;
-select plan(46);
+select plan(41);
 
 create function tests_create_user(uid uuid, email text) returns uuid
 language plpgsql as $fn$
@@ -62,14 +62,24 @@ select tests_create_user('00000000-0000-0000-0000-0000000000f2', 'other@recall.t
 -- The table and its shape
 -- ===========================================================================
 select has_table('public'::name, 'sources'::name, 'there is a sources table');
-select has_column('public'::name, 'sources'::name, 'title'::name, 'sources has a title');
-select has_column('public'::name, 'sources'::name, 'course'::name, 'sources has a course');
-select has_column('public'::name, 'sources'::name, 'url'::name, 'sources has a url');
-select has_column('public'::name, 'sources'::name, 'transcript'::name, 'sources has a transcript');
-select has_column('public'::name, 'sources'::name, 'transcript_words'::name,
-  'sources has a word count, so the list never reads the body to show one');
-select has_column('public'::name, 'sources'::name, 'transcript_deleted_at'::name,
-  'sources records that a transcript WAS deleted — the two empty states read differently');
+-- `columns_are` rather than a list of `has_column`, and the difference is not
+-- stylistic. `has_column` is a POSITIVE assertion: it proves a column is there
+-- and says nothing about a column that should not be. Arc 6 dropped
+-- `caveat_noted` and added `coverage` here and this file passed without
+-- comment, while topics_test.sql caught `extracted` on the same commit —
+-- because that file has this and this one did not. See ARCHITECTURE.md.
+select columns_are('public'::name, 'sources'::name, ARRAY[
+  'id', 'user_id', 'title', 'course', 'url',
+  -- The transcript is scratch: pasted, distilled from, deleted. The word count
+  -- is generated so the list never reads the body, and `transcript_deleted_at`
+  -- exists because "deleted" and "never had one" are different sentences.
+  'transcript', 'transcript_words', 'transcript_deleted_at',
+  -- Arc 6. What the video contained and what happened to each — the one thing
+  -- extraction persists beyond ordinary topics, because it is the record of a
+  -- decision rather than a model response.
+  'coverage',
+  'created_at', 'updated_at'
+], 'sources has exactly these columns — additions and removals both fail here');
 
 select col_not_null('public'::name, 'sources'::name, 'title'::name, 'a source must have a title');
 select col_is_null('public'::name, 'sources'::name, 'course'::name, 'course is optional');

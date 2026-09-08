@@ -150,15 +150,22 @@ export const weakPage = cache(async (cursor: WeakCursor | null = null): Promise<
  * is what the default session is meant to do — see DESIGN.md: a quiz that could
  * not appear in the default session would be a permanent leak wearing
  * separation's clothes.
+ *
+ * `ids` restricts the queue to a chosen SET. It is deliberately generic: arc 6's
+ * `?scope=source` resolves a source to topic ids elsewhere and hands them in, so
+ * this module never learns what a source is and `sources-boundary.test.ts` stays
+ * absolute rather than absolute-with-an-exception.
  */
 export async function practiceQueue({
   seed,
   weakOnly = false,
   kinds,
+  ids,
 }: {
   seed: string
   weakOnly?: boolean
   kinds?: Kind[]
+  ids?: string[]
 }): Promise<Topic[]> {
   const supabase = await createClient()
 
@@ -166,6 +173,7 @@ export async function practiceQueue({
     p_bucket_order: BUCKETS,
     p_confidences: weakOnly ? REVIEW : undefined,
     p_kinds: kinds,
+    p_ids: ids,
     p_seed: seed,
     p_limit: PRACTICE_SESSION_SIZE,
   })

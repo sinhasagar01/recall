@@ -43,7 +43,16 @@ export default async function globalSetup(config: FullConfig) {
   const browser = await chromium.launch()
 
   try {
-    for (const fixture of ['main', 'empty', 'few', 'strong', 'large'] as Fixture[]) {
+    /*
+      Derived from CREDENTIALS rather than listed again. It WAS listed again, and
+      arc 6's sixth fixture was added to the type and to CREDENTIALS and not to
+      this line — which fails as `ENOENT: e2e/.auth/extract.json` from inside
+      signInAs, a message that says nothing about the list it came from.
+
+      Two places to add a fixture and only one of them enforced is the same shape
+      as every other single-source-of-truth failure in this repo.
+    */
+    for (const fixture of Object.keys(CREDENTIALS) as Fixture[]) {
       const { email, password } = CREDENTIALS[fixture]
       const context = await browser.newContext({ baseURL })
       const page = await context.newPage()

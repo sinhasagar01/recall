@@ -1420,6 +1420,122 @@ deliberately broken.
 
 ---
 
+## Arc 6 — extraction
+
+Paste a transcript, press Extract, and every concept the video taught comes back as a title,
+a definition, the instructor's mental model, a "when not to use it", and two or three
+questions. Review, untick, edit, save. Then practise that source until it is done.
+
+**The no-AI exclusion is retired, and it is recorded as a reversal rather than quietly
+relaxed.** The original argument was right: writing a mental model IS the learning, and a
+generated one is a model you have never had. What changed is what the input turned out to be
+— a recorded course *supplies* a mental model, out loud, in the instructor's words.
+Extracting it is transcription, attributed to the source, and this app has always accepted
+someone else's words for the fact. **Extracting a mental model is not authoring one.** The
+prompt says so and `mental_model` is nullable, so a video that gave none returns none. Only
+that one line is retired; every other exclusion is inherited unchanged.
+
+### The arc 2 checklist, and an enumeration that was wrong twice
+
+The five-item extraction checklist was replaced by the source's own confidence summary. It
+was a **proxy** for "have I mined this video"; extraction made the real answer cheap.
+
+The enumeration of what touched it went **9 → 18 → 22**. The plan-review pass found the
+first nine were half of it. Execution found four more, and the last three were found by
+*running the tests*, not by grepping: `no topics yet` and `0 of 3 quizzes` are checklist
+detail strings containing none of the tokens `of 5`, `caveat` or `extraction*`.
+
+**The grep did not miss them; the vocabulary did.** That is the same lesson as arc 5's
+mention-guard from the other side — there a token was too broad and matched prose, here the
+tokens were too narrow and missed the surface. **A completeness grep is only as complete as
+the words you thought of, so the tests going red is the check and the grep is the support.**
+
+Every rewritten assertion was seen failing against the build with the checklist removed —
+including the two e2e assertions, which failed with `element(s) not found`. That is the
+opposite of arc 4's five specs that survived a deleted surface, and it is the only evidence
+that they were testing anything.
+
+### Three ways a guard can pass for the wrong reason
+
+Recorded in ARCHITECTURE.md, and worth naming together because they are not variations of one
+mistake: **too broad** (arc 5, `days` matched prose), **too narrow** (arc 6, the checklist
+tokens), and **superset** (arc 6, `NEXT_PUBLIC_OPENAI_API_KEY` satisfied an allowlist written
+about `OPENAI_API_KEY` while making the key public). The first is caught by counting a token
+against prose; the second by running tests red; **the third by neither** — only by asking of
+every allowlist whether a longer string would satisfy it and break the rule.
+
+### What the arc proved rather than argued
+
+**Nothing is saved until Save**, at two levels. An insert on the extract path fails
+`ai-boundary.test.ts`; the same insert makes the Playwright assertion fail with
+`Expected: "nothing extracted yet" / Received: "3 topics · 6 quizzes · 9 never practised"`.
+The measurement is per-source rather than library-wide, because several specs write as the
+same fixture user in parallel — arc 5's collision, avoided rather than rediscovered.
+
+**`?scope=source` without carving an exception.** The queue takes a generic `p_ids uuid[]`
+and never learns what a source is; `lib/data/sources.ts` resolves the ids. Five arcs of
+absolute boundary guards, and the first exception would have been carved on the one module
+the guard exists to protect. The guard bit once during the work — on **copy**, not code: an
+empty state saying "extract from its transcript" put a forbidden column name in
+`practice/page.tsx`. The fix was the sentence, because that screen has no business naming the
+concept in either register.
+
+**A latent defect found and left.** [#24](https://github.com/sinhasagar01/recall/issues/24):
+`practice_ordered_page` returns 17 columns while `OrderedRow` claims 26, hidden by a double
+cast. The defect is the cast, not the count.
+
+**The export was keeping a promise nothing checked.** `library.json` promises "every column,
+not a summary" from a hand-written SELECT string, and `topics.extracted` would have been
+silently absent from it. The new assertion was seen red on `extracted` before the column went
+into `COLUMNS` — a guard written green is a guard nobody has watched work.
+
+### The one place a mock is correct, and why it is not an exception
+
+`e2e/openai-stub.mjs`, reached through `OPENAI_BASE_URL` — the standard proxy override, so
+the shipping code path is the tested one rather than a branch that exists for tests. The rule
+against mocking Supabase holds for the reason it always did: a mocked database asserts that
+our code called a function. These assertions are about behaviour **around** the call —
+nothing written before Save, a truncated response offered rather than discarded — and none is
+a claim about the model. Calling a real one would be non-deterministic, cost money per run,
+and go red when somebody else changed their weights.
+
+---
+
+## A fourth check for whoever writes the seventh reference
+
+Three shapes were already named. This arc's reference produced **all three, plus a new one**,
+which is the strongest evidence yet that the precedence rule earns its cost.
+
+**The fourth: a reference can contradict itself.** The coverage tab put an *Add anyway* button
+on each dropped concept and promised it could be *"added later without re-extracting"*. The
+rules tab said *"coverage is stored; model prose is not… nothing else from a model call is
+persisted."* Both cannot hold — adding a dropped concept back requires its definition and
+questions, and those were never stored.
+
+**A check that compares the drawing against shipped rules will not catch this.** Neither
+clause contradicts anything the product had already decided; they contradict *each other*.
+The only thing that found it was reading both tabs and asking what the second would have to
+store for the first to be possible. So the fourth check is: **read the tabs against each
+other, not only against the codebase.**
+
+The four, in the order they were learned:
+
+| | The check |
+| --- | --- |
+| A colour used for the wrong kind of claim | Ask what kind of claim the thing makes, not how it should feel |
+| A drawn affordance implying data the design does not store | Ask what would have to be stored, or scanned, for this to be true |
+| **A drawing that asserts a fact about the world** | Ask whether the sentence is **true** — of billing, of vendors, of anything outside the design |
+| **A drawing that contradicts itself** | Read the tabs against **each other**, not only against shipped rules |
+
+The third and fourth are the ones no tooling helps with. A palette check and a schema check
+are mechanical; *"a cancelled call is not billed"* is caught only by knowing how billing
+works, and *"added later without re-extracting"* only by holding two tabs in mind at once.
+This reference put the false billing claim on the one surface whose entire job is telling the
+truth about what leaves and what it costs — which is where a wrong sentence does the most
+damage and where it is least expected.
+
+---
+
 ## A standing limitation of this verification method — no production 390px numbers
 
 **Recorded once, here, rather than restated per arc.** Arcs 3, 4 and 5 each ended with the
@@ -1467,9 +1583,9 @@ here, not the coverage.
 overflow — fixed on `Button` rather than at the call site, since any consumer passing a
 display class hit the same silent loss. 106px to 0, measured before and after on the issue.
 
-**The apprenticeship arcs are closed.** All five — evidence on a topic, sources, phases and
-capabilities, the ledger, and Today — are shipped, verified on production, and recorded
-above. One arc remains, and it is a different kind of decision:
+**Every arc is closed.** The five apprenticeship arcs — evidence on a topic, sources, phases
+and capabilities, the ledger, and Today — plus arc 6, extraction, which retired the no-AI
+exclusion after the product it serves existed:
 
 | Arc | |
 | --- | --- |
@@ -1478,17 +1594,22 @@ above. One arc remains, and it is a different kind of decision:
 | 3 · Phases | Closed |
 | 4 · Ledger | Closed |
 | 5 · Today | Closed |
-| 6 · AI | **Decided, not open.** See below |
+| 6 · AI | Closed — extraction. See above |
 
 Each of the other exclusions the spec holds — **no scheduling, no dashboard, no analytics,
-no gamification** — survives until a decision explicitly overturns it, and arc 6 inherits
-them unchanged. Retiring the no-AI exclusion retires that one only.
+no gamification, no streaks, no notifications, no sharing, no spaced repetition** — survives
+until a decision explicitly overturns it. Retiring the no-AI line retired that one only.
 
-### Arc 6 — AI is decided, and the no-AI exclusion is being retired
+### Arc 6 — what was decided in advance, and what was built
 
-Recorded here rather than argued later. **The exclusion is retired deliberately, after the
-five screens are built** — not relaxed quietly inside a feature, and not before the product
-it is meant to serve exists.
+Recorded before the arc and kept to. **The exclusion was retired deliberately, after the five
+screens were built** — not relaxed quietly inside a feature, and not before the product it is
+meant to serve existed.
+
+Of the five uses listed below, arc 6 built **exactly one**: extraction, which covers uses 2,
+3 and 4 in a single action rather than three buttons. Uses 1 and 5 — challenge my mental
+model, and interview mode — are **not built and not stubbed**. Both grade or argue with you,
+and the guardrail below that nothing is graded by a model is the reason they were left.
 
 **Five uses, and only these five:**
 

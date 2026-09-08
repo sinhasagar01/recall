@@ -2106,3 +2106,201 @@ right order.
 
 The cost, measured across two arcs: one word in one `Omit`, one prop per consumer, and one
 extra query on the topic detail page per link. Two boundaries with no exception in either.
+
+### `has_column` proves presence; only `columns_are` proves shape
+
+Arc 6 dropped `caveat_noted` from `sources` and added `coverage`, and `sources_test.sql`
+**passed without comment**. On the same commit `topics_test.sql` failed immediately on the
+new `extracted` column:
+
+```
+#     Extra columns:
+#         extracted
+```
+
+The difference was not the change — both tables gained and lost a column in the same
+migration. It was that `topics_test.sql` had a `columns_are` and `sources_test.sql` had six
+`has_column` calls instead.
+
+`has_column` is a **positive** assertion. It proves a column is there and says nothing about
+a column that should not be, so it cannot notice an addition and cannot notice a rename —
+the two shapes schema drift actually takes. `columns_are` is exact in both directions, and
+perturbation confirms it: renaming `coverage` fails with *Missing columns*, leaving
+`caveat_noted` in place fails with *Extra columns*.
+
+**A guard that one table's test file has and its neighbour's does not is a gap, not a
+preference.** It is worse than a uniformly missing guard, because the passing neighbour reads
+as evidence rather than as silence — the suite was green, and green was the wrong signal
+about `sources` while being the right one about `topics`. There is no argument for `sources`
+needing less shape-checking than `topics`; there was only the order the files were written in.
+
+So: **every table's test file gets a `columns_are`**, and a new table's pgTAP starts with one
+rather than with a list of `has_column`. The six positive assertions it replaces are strictly
+implied by it, so this is one line replacing six and catching strictly more.
+
+This is the same failure as the five specs that survived a deleted surface in arc 4, moved
+down a layer: an assertion that can only ever pass more is an assertion that stops being
+evidence. When choosing between "prove this thing is present" and "prove the set is exactly
+this", the second is almost always what was meant.
+
+### An allowlist on a short token cannot express a rule about a longer one
+
+`ai-boundary.test.ts` asserts that exactly one module names `OPENAI_API_KEY`:
+
+```ts
+expect(holders).toEqual(['lib/ai/extract.ts'])
+```
+
+Renaming that variable to `NEXT_PUBLIC_OPENAI_API_KEY` — which ships the key to every browser
+that loads the app — leaves that assertion **green**. The holder is still exactly one file,
+because `NEXT_PUBLIC_OPENAI_API_KEY` *contains* `OPENAI_API_KEY` as a substring. The guard was
+satisfied by the superset while the rule it exists to protect was broken.
+
+Only a second, separately named assertion catches it:
+
+```ts
+it('is never exposed under a NEXT_PUBLIC_ prefix, anywhere', …)
+```
+
+**The general form: when one token is a substring of another, an allowlist on the shorter token
+cannot express a rule about the longer one.** They are two rules — *who may hold the key* and
+*the key must never be public* — and they need two assertions, so that the failure says which
+one broke. Collapsing them into one check reads as thorough and is strictly weaker than either.
+
+This is the **third distinct way a guard has passed for the wrong reason** in this project, and
+the three are worth holding together because they are not variations of one mistake:
+
+| | | |
+| --- | --- | --- |
+| **Too broad** | arc 5 | `days` matched the weak page's prose about practice gaps. A match did not mean what the guard claimed |
+| **Too narrow** | arc 6 | the checklist grep missed `no topics yet` and `0 of 3 quizzes`, which are the same surface under different words |
+| **Superset** | arc 6 | `NEXT_PUBLIC_OPENAI_API_KEY` satisfied an allowlist written about `OPENAI_API_KEY` |
+
+Too broad is caught by counting a token against prose before writing it. Too narrow is caught
+by running the tests red rather than trusting the grep. **Superset is caught by neither** — the
+token is distinctive, the search is correct, and the assertion passes. The only defence is
+asking, of every allowlist: *is there a string containing this one that would satisfy this
+check and break the rule?*
+
+### A jsonb column accepts any key, so the mismatch has exactly one place it can be caught
+
+`CoverageEntry` carries `topicId`. `parseCoverage` reads `topic_id`. Writing the domain object
+straight into the `coverage` column would have stored the camelCase key and read back `null`
+**forever**, with no error at any layer: Postgres validates that jsonb is valid JSON and nothing
+else, PostgREST passes objects through, and the reader's `?? null` turns a missing key into a
+plausible value rather than a failure.
+
+There is no test that would have found this by accident. A round-trip through the real database
+returns the row it was given, so a write-then-read assertion passes while both halves are wrong
+in the same direction — the mismatch is only visible if the *reader* and the *writer* are
+compared to each other, which is exactly what nothing does when the writer is `{ ...entry }`.
+
+So: **an explicit serialiser at the jsonb boundary is not ceremony.** It is the only place the
+two shapes are named together, and therefore the only place the mismatch can be caught. Here it
+was caught by a *type error* — `CoverageEntry[]` is not assignable to `Json` — which is luck
+rather than design: had the domain type carried an index signature it would have gone straight
+in. The serialiser and its round-trip test replace the luck.
+
+The rule generalises to every jsonb column this project adds: **the stored shape is a separate,
+named type with a function mapping to it, and a test that parses what it serialises.** A column
+the database cannot see the inside of is one the application has to see the inside of twice.
+
+### A fixture's shape is its purpose, so a spec that writes needs its own
+
+`extraction.spec.ts` saves topics and quizzes as part of what it asserts. Every existing
+fixture broke under that, and each broke *because of the thing it exists to be*:
+
+| Fixture | What it is for | What a save did |
+| --- | --- | --- |
+| `main` | the general-purpose library | a saved quiz is `new`, so it sorts to the front of the default session and `practice.spec`'s first card stopped being a topic |
+| `few` | **exactly two topics** | a third lifted it over the practice minimum, so the override test had nothing to override |
+| `strong` | nothing needs review | a `new` topic falsifies that immediately |
+| `empty` | empty | — |
+| `large` | over `LOCAL_MODE_MAX`, read through SQL | — |
+
+Both wrong answers were tried, and both broke a spec arc 6 never touched, in a different file,
+with a message that pointed at the victim rather than the cause. That is the tell: **when a
+spec's writes break an unrelated file, the fixture is the bug, not the assertion.**
+
+So a spec that writes gets a fixture whose purpose is being written to. It is cheaper than a
+spec that cleans up after itself, and much cheaper than one that quietly depends on running
+first — arc 5 already paid for that lesson with two describes writing the same user's day.
+
+### The fixture list was in two places, and only one was enforced
+
+Adding `extract` to `Fixture` and to `CREDENTIALS` was not enough: `global-setup.ts` iterated a
+**hardcoded array** of the five older names, so no session was saved and every test in the file
+failed with `ENOENT: e2e/.auth/extract.json` — a message about a missing file, naming nothing
+about the list that should have created it.
+
+The type checked. The credentials existed. The seed created the user. The only thing missing
+was a name in a literal that no assertion covers. It now derives from `Object.keys(CREDENTIALS)`,
+so the type, the credentials and the sign-in loop cannot disagree.
+
+Worth stating as the general rule this repo keeps rediscovering: **when a value is needed in two
+places, one of them must be derived from the other.** `APP_ROUTES` was derived from the
+filesystem for this reason in arc 4, and `SOURCE_COLUMNS` is derived from the domain for the
+same reason in arc 2. A hand-maintained second copy is only ever correct until the next person
+adds one thing.
+
+### `finally` does not run on SIGKILL, and this script edits your tree on purpose
+
+`scripts/perturb.mjs` restores the file it edited in a `finally`, which covers a thrown error
+and a failed assertion. It does **not** cover SIGKILL — a command timeout, a killed CI step, a
+Ctrl-C that escalates. And unlike most scripts, this one's entire job is to leave a source file
+edited for as long as a verification takes, so the window is not incidental: it is the runtime.
+
+Arc 6 hit it. A two-minute timeout killed a run mid-case and left
+`and (p_ids is null or true)` in a migration. Nothing announced it. The only symptom came
+later, from the *next* run, as:
+
+```
+Error: [the p_ids restriction in the queue] anchor not found in …_extraction.sql.
+```
+
+which reads like a mistyped anchor. The tree had been dirty for several commands by then, and
+any verification run in between was measured against a perturbed database.
+
+**The guard, which was worth building.** The original is written to `.perturb-rescue.json`
+before the first edit and removed only after a successful restore. Finding one on startup means
+the last run died holding the pen, so the script restores from it, re-runs `prepare`, and says:
+
+```
+A previous perturbation run was killed before it could restore <file>.
+That file has been restored from the rescue copy.
+Re-run any verification that ran in between — its result was measured against a perturbed tree.
+```
+
+The last line is the point. Restoring the file is the easy half; the expensive half is knowing
+that a green run you already trusted may have been green about the wrong tree.
+
+The rescue file is gitignored, and the path was verified by simulating a kill rather than by
+reasoning about it — write the rescue copy, perturb the file, run again, confirm the warning
+fires and the file matches the pristine copy byte for byte.
+
+**Even with the guard, a killed run's tree is dirty until something restores it.** If you kill
+one and do not re-run the harness, check `git status` before anything else.
+
+### A boundary assertion between two representations says nothing about a third
+
+`TopicBoundaryIsSound` compares the **generated row** with the **hand-written domain type** and
+fails the build when they disagree. It is the strongest guard in this codebase, and it was
+blind to a third representation sitting between them for six arcs: the hand-written column
+string in `export.ts` that decides what `library.json` actually contains.
+
+Nothing compared that string to anything. `library.json` promised *"every column, not a
+summary"* while the promise was enforced by no one, and arc 6's `topics.extracted` would have
+been silently absent — the compiler satisfied, the pgTAP `columns_are` satisfied, and the export
+quietly no longer doing what it says.
+
+**A table accumulates representations, and each new one is invisible to the guards written for
+the old ones.** `topics` now has at least five: the migration, the generated row, the domain
+type, the export string, and the two SQL functions' `RETURNS TABLE`. Each pair needs something
+comparing it, and a guard between two of them is not evidence about the third.
+
+So, when a new representation appears — a SELECT string, a `RETURNS TABLE`, a serialiser, a
+fixture — ask **what compares this to the others**, and prefer to **derive it from something
+already enforced** rather than adding a list to keep in sync. `export-columns.test.ts` derives
+the truth from `makeTopic`/`makeQuiz`, whose completeness the compiler already guarantees,
+which is why it costs nothing to maintain. Adding a sixth hand-written list would have been the
+same mistake one layer up.

@@ -48,6 +48,8 @@ export type QuickFilter =
   | 'needs-review'
   | 'recently-added'
   | 'recently-practiced'
+  | 'extracted'
+  | 'written'
 
 export interface TopicFilters {
   query?: string
@@ -78,6 +80,17 @@ const QUICK_FILTERS: Record<QuickFilter, (topic: Topic, now: Date) => boolean> =
   'needs-review': (topic) => needsReview(topic),
   'recently-added': (topic, now) => isRecent(topic.created_at, now),
   'recently-practiced': (topic, now) => isRecent(topic.last_practiced_at, now),
+  /*
+    Arc 6, and the only place `extracted` is ever read.
+
+    It exists because of a risk that arc records rather than designs around: a
+    library of extracted topics is one you have READ rather than written, and
+    recognition reads as knowledge when quizzed. These two chips make that
+    visible and do nothing else — `extracted` is deliberately not a factor in
+    confidence, in the queue, or on the weak page.
+  */
+  extracted: (topic) => topic.extracted,
+  written: (topic) => !topic.extracted,
 }
 
 /**

@@ -33,6 +33,8 @@ const QUICK_FILTERS: QuickFilter[] = [
   'needs-review',
   'recently-added',
   'recently-practiced',
+  'extracted',
+  'written',
 ]
 
 /*

@@ -1,8 +1,9 @@
 import Link from 'next/link'
 import { formatRelativeTime } from '@/lib/domain/library'
 import {
-  extractionCount,
   isUndistilled,
+  sourceProgress,
+  sourceProgressCopy,
   transcriptState,
   UNDISTILLED_WINDOW_DAYS,
   type SourceWithEntriesView,
@@ -17,9 +18,7 @@ import {
  */
 export function SourceRow({ view, now }: { view: SourceWithEntriesView; now: Date }) {
   const { source, entries } = view
-  const topics = entries.filter((entry) => entry.kind === 'topic').length
-  const quizzes = entries.filter((entry) => entry.kind === 'quiz').length
-  const done = extractionCount(source, entries)
+  const progress = sourceProgress(entries)
   const state = transcriptState(source)
   const stale = isUndistilled(source, entries.length, now)
 
@@ -63,25 +62,28 @@ export function SourceRow({ view, now }: { view: SourceWithEntriesView; now: Dat
         </span>
       ) : (
         <span className="shrink-0 font-mono text-[11.5px] text-ink-3">
-          {topics > 0 ? `${topics} topic${topics === 1 ? '' : 's'}` : ''}
-          {topics > 0 && quizzes > 0 ? ' · ' : ''}
-          {quizzes > 0 ? `${quizzes} quiz${quizzes === 1 ? '' : 'zes'}` : ''}
+          {sourceProgressCopy(progress)}
         </span>
       )}
 
-      {/* The dots count extractions, never progress through a video — the app has
-          no idea how much of one you watched and must not pretend to. */}
+      {/*
+        One dot, and it means "mined out" — every entry okay or better.
+
+        Arc 2 drew five dots counting a five-item checklist. There is nothing to
+        count now: the question is binary, so the mark is. Green because it is
+        DERIVED and binary, which is the whole of the `--ok` rule — it replaces a
+        `bg-ok` dot with a `bg-ok` dot, for the same class of claim.
+      */}
       <span
-        className="hidden shrink-0 items-center gap-[3px] sm:inline-flex"
+        className="hidden shrink-0 items-center sm:inline-flex"
         role="img"
-        aria-label={`${done} of 5 extracted${stale ? `, nothing in ${UNDISTILLED_WINDOW_DAYS} days` : ''}`}
+        aria-label={`${progress.done ? 'mined out' : 'still has work'}${
+          stale ? `, nothing in ${UNDISTILLED_WINDOW_DAYS} days` : ''
+        }`}
       >
-        {[0, 1, 2, 3, 4].map((index) => (
-          <i
-            key={index}
-            className={`size-[7px] rounded-full ${index < done ? 'bg-ok' : 'bg-rule-strong'}`}
-          />
-        ))}
+        <i
+          className={`size-[7px] rounded-full ${progress.done ? 'bg-ok' : 'bg-rule-strong'}`}
+        />
       </span>
     </Link>
   )

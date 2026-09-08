@@ -18,7 +18,7 @@ import type { BrowserContext, Page } from '@playwright/test'
  * auth.spec.ts and journey.spec.ts still sign in through the form, because signing
  * in is the thing they are testing.
  */
-export type Fixture = 'main' | 'empty' | 'few' | 'strong' | 'large'
+export type Fixture = 'main' | 'empty' | 'few' | 'strong' | 'large' | 'extract'
 
 export const CREDENTIALS: Record<Fixture, { email: string; password: string }> = {
   main: { email: process.env.E2E_USER_EMAIL!, password: process.env.E2E_USER_PASSWORD! },
@@ -35,6 +35,15 @@ export const CREDENTIALS: Record<Fixture, { email: string; password: string }> =
   large: {
     email: process.env.E2E_LARGE_USER_EMAIL!,
     password: process.env.E2E_LARGE_USER_PASSWORD!,
+  },
+  /*
+    The one fixture whose purpose is being WRITTEN to. extraction.spec.ts saves
+    topics and quizzes as part of what it asserts, and every other fixture here
+    has a shape those saves would break — see the seed script for which and how.
+  */
+  extract: {
+    email: process.env.E2E_EXTRACT_USER_EMAIL!,
+    password: process.env.E2E_EXTRACT_USER_PASSWORD!,
   },
 }
 

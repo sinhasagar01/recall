@@ -49,3 +49,6 @@ next-env.d.ts
 
 # playwright saved sessions
 /e2e/.auth/
+
+# Written by scripts/perturb.mjs while a file is edited; removed on restore.
+.perturb-rescue.json

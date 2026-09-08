@@ -87,7 +87,7 @@ const MARKERS: readonly EvidenceMarker[] = ['rebuild', 'challenge', 'production'
  *
  * Takes the already-loaded linked rows rather than querying, so the rule is a
  * pure function and the data layer decides how to fetch them — the shape
- * `extractionsFor` established in arc 2.
+ * `extractionsFor` established in arc 2 (replaced by `sourceProgress` in arc 6).
  */
 export function demonstrationOf(linked: Topic[]): Demonstration {
   const topics = linked.filter((entry) => entry.kind === 'topic')

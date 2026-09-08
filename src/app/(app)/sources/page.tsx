@@ -3,7 +3,7 @@ import { AddSourceButton } from '@/components/sources/add-source-button'
 import { SourceRow } from '@/components/sources/source-row'
 import { StateBlock } from '@/components/ui/state-block'
 import { listSources } from '@/lib/data/sources'
-import { extractionCount } from '@/lib/domain/sources'
+import { sourceProgress } from '@/lib/domain/sources'
 
 /**
  * The one number this screen exists to show.
@@ -74,10 +74,10 @@ export default async function SourcesPage() {
         ))}
       </div>
 
-      {/* Extractions, not videos watched. */}
+      {/* Videos mined out, not videos watched. */}
       <p className="mt-6 font-mono text-[11.5px] text-ink-3">
-        {views.filter((view) => extractionCount(view.source, view.entries) === 5).length} of{' '}
-        {views.length} fully extracted
+        {views.filter((view) => sourceProgress(view.entries).done).length} of {views.length} mined
+        out
       </p>
 
       <p className="mt-9 border-t border-rule pt-5 text-meta text-ink-2">
