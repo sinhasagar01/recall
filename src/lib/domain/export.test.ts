@@ -285,7 +285,7 @@ describe('sources in library.md', () => {
     url: 'https://example.com/closures',
     transcript_words: 8400,
     transcript_deleted_at: null,
-    caveat_noted: false,
+    coverage: [],
     created_at: '2026-08-20T10:00:00.000Z',
     updated_at: '2026-08-20T10:00:00.000Z',
   }

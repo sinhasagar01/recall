@@ -196,8 +196,8 @@ export type Database = {
       }
       sources: {
         Row: {
-          caveat_noted: boolean
           course: string | null
+          coverage: Json
           created_at: string
           id: string
           title: string
@@ -209,8 +209,8 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          caveat_noted?: boolean
           course?: string | null
+          coverage?: Json
           created_at?: string
           id?: string
           title: string
@@ -222,8 +222,8 @@ export type Database = {
           user_id?: string
         }
         Update: {
-          caveat_noted?: boolean
           course?: string | null
+          coverage?: Json
           created_at?: string
           id?: string
           title?: string
@@ -248,6 +248,7 @@ export type Database = {
           created_at: string
           definition: string | null
           difficulty: string
+          extracted: boolean
           id: string
           kind: string
           last_practiced_at: string | null
@@ -279,6 +280,7 @@ export type Database = {
           created_at?: string
           definition?: string | null
           difficulty?: string
+          extracted?: boolean
           id?: string
           kind?: string
           last_practiced_at?: string | null
@@ -310,6 +312,7 @@ export type Database = {
           created_at?: string
           definition?: string | null
           difficulty?: string
+          extracted?: boolean
           id?: string
           kind?: string
           last_practiced_at?: string | null
@@ -389,6 +392,7 @@ export type Database = {
           created_at: string
           definition: string
           difficulty: string
+          extracted: boolean
           id: string
           kind: string
           last_practiced_at: string
@@ -416,6 +420,7 @@ export type Database = {
           p_cursor_created_at?: string
           p_cursor_id?: string
           p_cursor_staleness?: string
+          p_ids?: string[]
           p_kinds?: string[]
           p_limit?: number
           p_practised_before?: string
@@ -429,6 +434,7 @@ export type Database = {
           created_at: string
           definition: string
           difficulty: string
+          extracted: boolean
           id: string
           kind: string
           last_practiced_at: string

@@ -37,10 +37,36 @@ export default defineConfig({
     :3000 — a stale dev server, say — is exactly the ambiguity this change removes.
     If the port is busy, failing loudly is the correct outcome.
   */
-  webServer: {
-    command: 'npm run start',
-    url: baseURL,
-    reuseExistingServer: false,
-    timeout: 180_000,
-  },
+  webServer: [
+    /*
+      A stand-in for OpenAI, reached through OPENAI_BASE_URL — the standard
+      override for a proxy or a compatible host, not a test-only branch in the
+      app. Nothing in src/ knows it exists, and the server action, the parsing
+      and the save are the same code that ships.
+
+      This is the one mock in the suite. The rule against mocking Supabase holds
+      for the reason it always did: a mocked database asserts that our code
+      called a function. This asserts our behaviour AROUND a call — that nothing
+      is written before Save, that a truncated response is offered rather than
+      discarded — none of which is a claim about the model. Calling a real one
+      would be non-deterministic, cost money per run, and go red when somebody
+      else changed their weights.
+    */
+    {
+      command: 'node e2e/openai-stub.mjs',
+      url: 'http://127.0.0.1:4599/health',
+      reuseExistingServer: false,
+      timeout: 30_000,
+    },
+    {
+      command: 'npm run start',
+      url: baseURL,
+      reuseExistingServer: false,
+      timeout: 180_000,
+      env: {
+        OPENAI_API_KEY: 'sk-test-not-a-real-key',
+        OPENAI_BASE_URL: 'http://127.0.0.1:4599',
+      },
+    },
+  ],
 })

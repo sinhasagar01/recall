@@ -6,7 +6,6 @@ import {
   deleteSource,
   deleteTranscript,
   insertSource,
-  setCaveatNoted,
   setTopicSource,
   updateSource,
 } from '@/lib/data/sources'
@@ -69,16 +68,6 @@ export async function removeTranscript(id: string): Promise<SourceResult> {
   }
 }
 
-export async function toggleCaveat(id: string, noted: boolean): Promise<SourceResult> {
-  try {
-    await setCaveatNoted(id, noted)
-    revalidatePath(`/sources/${id}`)
-    revalidatePath('/sources')
-    return { error: null, id }
-  } catch (cause) {
-    return { error: cause instanceof Error ? cause.message : 'That could not be saved.' }
-  }
-}
 
 /** Attach or detach a topic's source, from the edit sheet. */
 export async function linkTopicSource(

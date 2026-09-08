@@ -4,6 +4,7 @@ import { cache } from 'react'
 
 import { toTopic, type TopicRow } from '@/lib/data/topic-mapping'
 import type { Source, SourceSummary } from '@/lib/domain/sources'
+import { parseCoverage } from '@/lib/domain/extraction'
 import type { Topic } from '@/lib/domain/types'
 import { createClient } from '@/lib/supabase/server'
 
@@ -23,15 +24,53 @@ import { createClient } from '@/lib/supabase/server'
   so that number is available without reading the body.
 */
 const SUMMARY_COLUMNS =
-  'id, user_id, title, course, url, transcript_words, transcript_deleted_at, caveat_noted, created_at, updated_at'
+  'id, user_id, title, course, url, transcript_words, transcript_deleted_at, coverage, created_at, updated_at'
 
 function fail(action: string, error: { code?: string; message: string }): never {
   throw new Error(`${action} failed: ${error.code ?? 'unknown'} · ${error.message}`)
 }
 
+/**
+ * A row into a `Source`, with `coverage` PARSED rather than cast.
+ *
+ * The row's `coverage` is `Json` — the database cannot see inside a jsonb column
+ * and neither can the generated types. Casting the row to `Source` would claim
+ * `CoverageEntry[]` over whatever is actually stored, and every read of
+ * `entry.pass` would be `undefined` with nothing raising anywhere.
+ *
+ * That is the shape of issue #24, which is a double cast asserting nine columns
+ * a query does not return. The lesson applied rather than repeated: where a type
+ * says more than the row can promise, the gap gets a function, not a cast.
+ */
+function toSource(row: {
+  id: string
+  user_id: string
+  title: string
+  course: string | null
+  url: string | null
+  transcript_words: number | null
+  transcript_deleted_at: string | null
+  coverage: unknown
+  created_at: string
+  updated_at: string
+}): SourceSummary {
+  return {
+    id: row.id,
+    user_id: row.user_id,
+    title: row.title,
+    course: row.course,
+    url: row.url,
+    transcript_words: row.transcript_words,
+    transcript_deleted_at: row.transcript_deleted_at,
+    coverage: parseCoverage(row.coverage),
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  }
+}
+
 export interface SourceWithEntries {
   source: SourceSummary
-  /** Its topics and quizzes, for the extraction checklist and the derived list. */
+  /** Its topics and quizzes, for the progress summary and the derived list. */
   entries: Topic[]
 }
 
@@ -61,9 +100,9 @@ export const listSources = cache(async (): Promise<SourceWithEntries[]> => {
     bySource.set(row.source_id, list)
   }
 
-  return (sources.data as unknown as SourceSummary[]).map((source) => ({
-    source,
-    entries: bySource.get(source.id) ?? [],
+  return sources.data.map((row) => ({
+    source: toSource(row),
+    entries: bySource.get(row.id) ?? [],
   }))
 })
 
@@ -91,7 +130,7 @@ export const readSource = cache(
     if (source.data === null) return null
 
     return {
-      source: source.data as unknown as Source,
+      source: { ...toSource(source.data), transcript: source.data.transcript },
       entries: (entries.data as TopicRow[]).map(toTopic),
     }
   },
@@ -209,15 +248,6 @@ export async function deleteTranscript(id: string): Promise<void> {
     .eq('id', id)
 
   if (error) fail('Deleting the transcript', error)
-}
-
-/** The one manual extraction. */
-export async function setCaveatNoted(id: string, noted: boolean): Promise<void> {
-  const supabase = await createClient()
-
-  const { error } = await supabase.from('sources').update({ caveat_noted: noted }).eq('id', id)
-
-  if (error) fail('Saving that', error)
 }
 
 /**

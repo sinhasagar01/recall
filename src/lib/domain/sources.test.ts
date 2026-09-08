@@ -2,101 +2,88 @@ import { describe, expect, it } from 'vitest'
 import {
   definitionFromSelection,
   deleteSourceCopy,
-  extractionCount,
-  extractionsFor,
   isUndistilled,
+  sourceProgress,
+  sourceProgressCopy,
   transcriptState,
   UNDISTILLED_WINDOW_DAYS,
 } from '@/lib/domain/sources'
 import { parseSourceForm } from '@/lib/domain/source-form'
 import { makeQuiz, makeTopic } from '@/lib/domain/topic-fixture'
 
-const source = (overrides: Partial<{ caveat_noted: boolean; created_at: string }> = {}) => ({
-  caveat_noted: false,
+const source = (overrides: Partial<{ created_at: string }> = {}) => ({
   created_at: '2026-09-01T00:00:00.000Z',
   ...overrides,
 })
 
-const detailOf = (kind: string, entries: Parameters<typeof extractionsFor>[1]) =>
-  extractionsFor(source(), entries).find((e) => e.kind === kind)
-
-describe('the five extractions', () => {
-  it('a source with nothing has none of them', () => {
-    const five = extractionsFor(source(), [])
-
-    expect(five).toHaveLength(5)
-    expect(five.every((extraction) => !extraction.done)).toBe(true)
-    expect(extractionCount(source(), [])).toBe(0)
-
-    // The empty states carry their own words rather than a bare zero.
-    expect(detailOf('definition', [])?.detail).toBe('no topics yet')
-    expect(detailOf('mental-model', [])?.detail).toBe('—')
-    expect(detailOf('challenge', [])?.detail).toBe('no evidence yet')
-    expect(detailOf('retrieval', [])?.detail).toBe('0 of 3 quizzes')
-    expect(detailOf('caveat', [])?.detail).toBe('tick when written')
+/**
+ * What replaced the five-item extraction checklist.
+ *
+ * The checklist was a PROXY for whether you had mined a video — four items
+ * derived from linked entries and one ticked by hand. Arc 6 replaced it with the
+ * thing itself: what the source produced, and how well you know it. Nothing is
+ * ticked, so there is nothing left that can be gamed.
+ */
+describe('what a source has produced', () => {
+  it('a source with nothing says so, rather than counting to zero', () => {
+    expect(sourceProgressCopy(sourceProgress([]))).toBe('nothing extracted yet')
   })
 
-  it('a source with all five has all of them', () => {
-    const entries = [
-      makeTopic({ id: 't1', mental_model: 'The backpack.', challenge_at: '2026-09-02', challenge_note: 'built it' }),
-      makeTopic({ id: 't2', mental_model: 'A live reference.' }),
-      makeQuiz({ id: 'q1' }),
-      makeQuiz({ id: 'q2' }),
-      makeQuiz({ id: 'q3' }),
+  it('counts topics and quizzes separately, and agrees at one', () => {
+    // "1 topics" shipped to production once. The agreement lives here.
+    expect(sourceProgressCopy(sourceProgress([makeTopic({ id: 't1', confidence: 'okay' })]))).toBe(
+      '1 topic',
+    )
+    expect(
+      sourceProgressCopy(
+        sourceProgress([
+          makeTopic({ id: 't1', confidence: 'okay' }),
+          makeTopic({ id: 't2', confidence: 'okay' }),
+          makeQuiz({ id: 'q1', confidence: 'okay' }),
+        ]),
+      ),
+    ).toBe('2 topics · 1 quiz')
+  })
+
+  it('names what still needs work, and stays silent when nothing does', () => {
+    const settled = [makeTopic({ id: 't1', confidence: 'strong' })]
+    expect(sourceProgressCopy(sourceProgress(settled))).toBe('1 topic')
+
+    const mixed = [
+      makeTopic({ id: 't1', confidence: 'strong' }),
+      makeTopic({ id: 't2', confidence: 'new' }),
+      makeTopic({ id: 't3', confidence: 'weak' }),
     ]
-    const withCaveat = source({ caveat_noted: true })
-
-    expect(extractionCount(withCaveat, entries)).toBe(5)
-    expect(extractionsFor(withCaveat, entries).every((e) => e.done)).toBe(true)
+    expect(sourceProgressCopy(sourceProgress(mixed))).toBe('3 topics · 1 never practised · 1 weak')
   })
 
-  it('counts topics and quizzes separately', () => {
-    // Three quizzes and no topics is NOT a definition.
-    const quizzesOnly = [makeQuiz({ id: 'q1' }), makeQuiz({ id: 'q2' }), makeQuiz({ id: 'q3' })]
+  it('is done when every entry is okay or better', () => {
+    expect(sourceProgress([]).done).toBe(false)
+    expect(sourceProgress([makeTopic({ id: 't1', confidence: 'new' })]).done).toBe(false)
+    expect(sourceProgress([makeTopic({ id: 't1', confidence: 'weak' })]).done).toBe(false)
 
-    expect(detailOf('definition', quizzesOnly)?.done).toBe(false)
-    expect(detailOf('retrieval', quizzesOnly)?.done).toBe(true)
-  })
-
-  it('needs three quizzes for the retrieval questions, not one', () => {
-    const two = [makeQuiz({ id: 'q1' }), makeQuiz({ id: 'q2' })]
-
-    expect(detailOf('retrieval', two)?.done).toBe(false)
-    expect(detailOf('retrieval', two)?.detail).toBe('2 of 3 quizzes')
-  })
-
-  it('reads a mental model only from topics that have one', () => {
-    const entries = [makeTopic({ id: 't1', mental_model: 'Yes.' }), makeTopic({ id: 't2', mental_model: null })]
-
-    expect(detailOf('mental-model', entries)?.detail).toBe('1 of 2')
-    expect(detailOf('mental-model', entries)?.done).toBe(true)
-    expect(detailOf('mental-model', [makeTopic({ id: 't', mental_model: '   ' })])?.done).toBe(false)
-  })
-
-  it("reads arc 1's challenge evidence on any linked topic", () => {
     /*
-      The third extraction is derived from the evidence arc, not from a second
-      store. A challenge recorded on ANY linked topic satisfies it.
+      "The video is finished with you rather than the other way round." Done is
+      derived from confidence alone — there is no tick, and no way to claim it.
     */
-    const none = [makeTopic({ id: 't1' })]
-    const one = [
-      makeTopic({ id: 't1' }),
-      makeTopic({ id: 't2', challenge_at: '2026-09-02', challenge_note: 'a constrained variant' }),
-    ]
-
-    expect(detailOf('challenge', none)?.done).toBe(false)
-    expect(detailOf('challenge', one)?.done).toBe(true)
-    expect(detailOf('challenge', one)?.detail).toBe('1 recorded')
+    expect(
+      sourceProgress([
+        makeTopic({ id: 't1', confidence: 'okay' }),
+        makeQuiz({ id: 'q1', confidence: 'strong' }),
+      ]).done,
+    ).toBe(true)
   })
 
-  it('marks exactly one as manual — the exception, labelled', () => {
-    const five = extractionsFor(source(), [])
+  it('reuses the confidence rules rather than restating them', () => {
+    // never practised is `new`, weak is `weak` — and a topic is never both.
+    const progress = sourceProgress([
+      makeTopic({ id: 't1', confidence: 'new' }),
+      makeTopic({ id: 't2', confidence: 'weak' }),
+    ])
 
-    expect(five.filter((extraction) => extraction.manual).map((e) => e.kind)).toEqual(['caveat'])
-  })
-
-  it('cannot be gamed: the tick does not satisfy the four derived ones', () => {
-    expect(extractionCount(source({ caveat_noted: true }), [])).toBe(1)
+    expect(progress.neverPractised).toBe(1)
+    expect(progress.weak).toBe(1)
+    expect(progress.topics).toBe(2)
   })
 })
 
@@ -175,10 +162,26 @@ describe('the counts read as English', () => {
     this screen, so a number that disagrees with its noun undermines the one
     thing the screen is for.
   */
-  it('singularises the definition detail at one topic', () => {
-    expect(detailOf('definition', [])?.detail).toBe('no topics yet')
-    expect(detailOf('definition', [makeTopic({})])?.detail).toBe('1 topic')
-    expect(detailOf('definition', [makeTopic({}), makeTopic({})])?.detail).toBe('2 topics')
+  it('singularises every noun in the summary, at one', () => {
+    /*
+      Carried across from the five-item checklist, which is what shipped the
+      defect. The surface changed; the lesson did not, so the assertion moved to
+      the function that replaced it rather than being deleted with it.
+    */
+    const one = sourceProgressCopy(
+      sourceProgress([makeTopic({ id: 't', confidence: 'new' }), makeQuiz({ id: 'q', confidence: 'new' })]),
+    )
+
+    expect(one).toBe('1 topic · 1 quiz · 2 never practised')
+    for (const wrong of ['1 topics', '1 quizzes', '1 never practiseds']) {
+      expect(one).not.toContain(wrong)
+    }
+
+    expect(
+      sourceProgressCopy(
+        sourceProgress([makeQuiz({ id: 'q1', confidence: 'okay' }), makeQuiz({ id: 'q2', confidence: 'okay' })]),
+      ),
+    ).toBe('2 quizzes')
   })
 })
 

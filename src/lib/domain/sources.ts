@@ -1,3 +1,5 @@
+import { isNeverPracticed, needsReview } from '@/lib/domain/confidence'
+import type { CoverageEntry } from '@/lib/domain/extraction'
 import { plural } from '@/lib/domain/plural'
 import type { Topic } from '@/lib/domain/types'
 
@@ -30,7 +32,8 @@ export interface Source {
   transcript: string | null
   transcript_words: number | null
   transcript_deleted_at: string | null
-  caveat_noted: boolean
+  /** What the video contained and what happened to each — see lib/domain/extraction.ts. */
+  coverage: CoverageEntry[]
   created_at: string
   updated_at: string
 }
@@ -59,19 +62,6 @@ export function transcriptState(source: Pick<Source, 'transcript_words' | 'trans
   return source.transcript_deleted_at === null ? 'none' : 'deleted'
 }
 
-/** The five extractions, in the order the checklist shows them. */
-export const EXTRACTION_KINDS = [
-  'definition',
-  'mental-model',
-  'challenge',
-  'retrieval',
-  'caveat',
-] as const
-export type ExtractionKind = (typeof EXTRACTION_KINDS)[number]
-
-/** Three quizzes is what "retrieval questions" means. */
-export const RETRIEVAL_TARGET = 3
-
 /**
  * A source that has taught you nothing after a fortnight.
  *
@@ -82,82 +72,71 @@ export const RETRIEVAL_TARGET = 3
  */
 export const UNDISTILLED_WINDOW_DAYS = 14
 
-export interface Extraction {
-  kind: ExtractionKind
-  label: string
-  /** What the checklist shows on the right: a count, a hint, or a prompt. */
-  detail: string
+/**
+ * What a source has produced, and how well you know it.
+ *
+ * ── What this replaced, and why ─────────────────────────────────────────────
+ * Arc 2 shipped a five-item extraction checklist: a definition, a mental model,
+ * a challenge attempted, three retrieval questions, and a ticked "when not to
+ * use it". Four were derived and one was stored, and the whole thing was a
+ * **proxy** for the question you actually have — *have I mined this video?*
+ *
+ * Arc 6 answers that question directly, because extraction makes it answerable:
+ * the entries exist, so their confidence is the measure. Nothing here is ticked,
+ * which means there is nothing left to game — the property arc 2 valued about
+ * the four derived items now holds for all of it.
+ *
+ * `isNeverPracticed` and `needsReview` are reused rather than restated. A second
+ * definition of "weak" is how two screens come to disagree about the same topic.
+ */
+export interface SourceProgress {
+  topics: number
+  quizzes: number
+  neverPractised: number
+  weak: number
+  /** Every entry okay or better, and at least one entry. */
   done: boolean
-  /** True for the one item that is a tick rather than a derivation. */
-  manual: boolean
+}
+
+export function sourceProgress(linked: Topic[]): SourceProgress {
+  const neverPractised = linked.filter(isNeverPracticed)
+  const weak = linked.filter((entry) => needsReview(entry) && !isNeverPracticed(entry))
+
+  return {
+    topics: linked.filter((entry) => entry.kind === 'topic').length,
+    quizzes: linked.filter((entry) => entry.kind === 'quiz').length,
+    neverPractised: neverPractised.length,
+    weak: weak.length,
+    /*
+      "When the list is all ticks and the confidences are okay or better, the
+      video is finished with you rather than the other way round." Zero entries
+      is not done — it is not started.
+    */
+    done: linked.length > 0 && linked.every((entry) => !needsReview(entry)),
+  }
 }
 
 /**
- * The five extractions for one source.
+ * The summary line, in one place.
  *
- * **Four are derived and one is ticked.** Derived means it cannot be gamed: you
- * cannot claim three retrieval questions with two quizzes written, in the same
- * way you cannot claim a capability by finishing a video. Only "when not to use
- * it" is stored, because nothing in the data distinguishes that topic from any
- * other — and the UI labels it as the exception.
+ * Every noun agrees with its number here rather than at the call site, which is
+ * the lesson from "1 topics" reaching production: pluralising the first noun
+ * inline is exactly what makes the second and third easy to miss.
  *
- * Takes the linked entries rather than querying, so the rule is a pure function
- * and the data layer decides how to fetch them.
+ * A clause is **omitted** rather than shown at zero. "0 weak" is a claim about
+ * nothing, and a summary that lists what is fine alongside what is not stops
+ * being a summary.
  */
-export function extractionsFor(
-  source: Pick<Source, 'caveat_noted'>,
-  linked: Topic[],
-): Extraction[] {
-  const topics = linked.filter((entry) => entry.kind === 'topic')
-  const quizzes = linked.filter((entry) => entry.kind === 'quiz')
-  const withModel = topics.filter(
-    (entry) => entry.mental_model !== null && entry.mental_model.trim() !== '',
-  )
-  // Arc 1's challenge evidence, on any linked topic.
-  const challenged = topics.filter((entry) => entry.challenge_at !== null)
+export function sourceProgressCopy(progress: SourceProgress): string {
+  if (progress.topics === 0 && progress.quizzes === 0) return 'nothing extracted yet'
 
-  return [
-    {
-      kind: 'definition',
-      label: 'A definition',
-      detail: topics.length === 0 ? 'no topics yet' : plural(topics.length, 'topic'),
-      done: topics.length > 0,
-      manual: false,
-    },
-    {
-      kind: 'mental-model',
-      label: 'A mental model',
-      detail: topics.length === 0 ? '—' : `${withModel.length} of ${topics.length}`,
-      done: withModel.length > 0,
-      manual: false,
-    },
-    {
-      kind: 'challenge',
-      label: 'A challenge, attempted',
-      detail: challenged.length === 0 ? 'no evidence yet' : `${challenged.length} recorded`,
-      done: challenged.length > 0,
-      manual: false,
-    },
-    {
-      kind: 'retrieval',
-      label: `${RETRIEVAL_TARGET} retrieval questions`,
-      detail: `${quizzes.length} of ${RETRIEVAL_TARGET} quizzes`,
-      done: quizzes.length >= RETRIEVAL_TARGET,
-      manual: false,
-    },
-    {
-      kind: 'caveat',
-      label: 'When not to use it',
-      detail: source.caveat_noted ? 'noted' : 'tick when written',
-      done: source.caveat_noted,
-      manual: true,
-    },
-  ]
-}
+  const parts: string[] = []
+  if (progress.topics > 0) parts.push(plural(progress.topics, 'topic'))
+  if (progress.quizzes > 0) parts.push(plural(progress.quizzes, 'quiz', 'quizzes'))
+  if (progress.neverPractised > 0) parts.push(`${progress.neverPractised} never practised`)
+  if (progress.weak > 0) parts.push(`${progress.weak} weak`)
 
-/** How many of the five a source has, for the dots and the "3 of 5" line. */
-export function extractionCount(source: Pick<Source, 'caveat_noted'>, linked: Topic[]): number {
-  return extractionsFor(source, linked).filter((extraction) => extraction.done).length
+  return parts.join(' · ')
 }
 
 /**

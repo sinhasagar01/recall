@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { PracticeSession } from '@/components/practice/practice-session'
 import { StateBlock } from '@/components/ui/state-block'
+import { topicIdsForSource } from '@/lib/data/extraction'
 import { railCounts } from '@/lib/data/library'
 import { practiceQueue } from '@/lib/data/practice'
 import { getTopic, signedImageUrl } from '@/lib/data/topics'
@@ -24,6 +25,20 @@ import {
                            the user chose, so the floor is waived for the same
                            reason as ?topic= — this case did NOT follow from the
                            earlier scheme and was added in phase 9.
+    /practice?scope=source&id=<id>
+                           everything one video produced, from its workspace.
+                           Same chosen-set shape again. Note this page names NO
+                           source column: the ids are resolved by a module that
+                           knows what a source is, and the queue is handed a list
+                           it cannot trace back. That is what lets
+                           sources-boundary.test.ts stay absolute — see
+                           ARCHITECTURE.md.
+
+                           The guard bit here once already, on COPY rather than
+                           code: an empty state named one of the forbidden
+                           columns in an English sentence. The fix was the
+                           sentence, not an exception — this screen has no
+                           business naming that concept in either register.
     /practice?scope=quiz   quizzes only. Same shape as ?scope=weak: a chosen set,
                            the same PRACTICE_SESSION_SIZE cap, the same waived
                            floor. Note this is the SEPARATION, not the rule — the
@@ -32,7 +47,7 @@ import {
                            weak at waiting for you to come looking.
 */
 export default async function PracticePage({ searchParams }: PageProps<'/practice'>) {
-  const { topic: topicId, all, scope } = await searchParams
+  const { topic: topicId, all, scope, id } = await searchParams
 
   /*
     The queue is built by the query now, not by reading the library and ordering it
@@ -68,6 +83,24 @@ export default async function PracticePage({ searchParams }: PageProps<'/practic
     const weak = await practiceQueue({ seed: readAt, weakOnly: true })
     if (weak.length > 0)
       return <PracticeSession queue={weak} imageUrls={await imageUrls(weak)} seed={readAt} />
+  }
+
+  if (scope === 'source' && typeof id === 'string') {
+    const ids = await topicIdsForSource(id)
+
+    if (ids.length === 0) {
+      return (
+        <StateBlock
+          eyebrow="Practice"
+          title="Nothing from this source yet"
+          body="Extract from it, or distil a topic by hand, and this becomes a session of everything the video taught."
+          action={<BackToLibrary />}
+        />
+      )
+    }
+
+    const set = await practiceQueue({ seed: readAt, ids })
+    return <PracticeSession queue={set} imageUrls={await imageUrls(set)} seed={readAt} />
   }
 
   if (scope === 'quiz') {

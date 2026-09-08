@@ -158,6 +158,14 @@ export function LibraryToolbar({
             ['never-practiced', 'Never practiced'],
             ['recently-added', 'Recently added'],
             ['recently-practiced', 'Recently practiced'],
+            /*
+              Arc 6. "Which of these did I actually think about" — the one
+              surface where `extracted` is visible, and the whole reason the
+              column exists. Desktop only, like the two above it: the mobile chip
+              row is already at its width.
+            */
+            ['extracted', 'Extracted'],
+            ['written', 'Written by hand'],
           ] as const
         ).map(([value, label]) => (
           <span key={value} className={value === 'never-practiced' ? '' : 'hidden md:inline'}>

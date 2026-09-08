@@ -45,7 +45,7 @@
  */
 
 import { execSync } from 'node:child_process'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 
 const specPath = process.argv[2]
 if (!specPath) {
@@ -54,7 +54,39 @@ if (!specPath) {
 }
 
 const spec = JSON.parse(readFileSync(specPath, 'utf8'))
+
+/**
+ * The pristine copy, on disk, so a killed run can be undone by the next one.
+ *
+ * `finally` restores the file on a thrown error. It does NOT run on SIGKILL —
+ * a timeout, a Ctrl-C that escalates, a killed CI step — and this script's whole
+ * job is to leave the tree edited for a while. So a killed run leaves the
+ * PERTURBATION installed, and the only symptom is the next run failing an anchor
+ * lookup for a reason that reads like a typo.
+ *
+ * That happened in arc 6: a two-minute timeout killed the run mid-case, leaving
+ * `and (p_ids is null or true)` in a migration.
+ *
+ * So the original is written here first and removed only after a successful
+ * restore. Finding one on startup means the last run died holding the pen.
+ */
+const RESCUE = '.perturb-rescue.json'
+
+if (existsSync(RESCUE)) {
+  const rescue = JSON.parse(readFileSync(RESCUE, 'utf8'))
+  writeFileSync(rescue.file, rescue.original)
+  rmSync(RESCUE)
+  console.error(
+    `A previous perturbation run was killed before it could restore ${rescue.file}.\n` +
+      `That file has been restored from the rescue copy.\n` +
+      `Re-run any verification that ran in between — its result was measured against ` +
+      `a perturbed tree.\n`,
+  )
+  if (spec.prepare) execSync(spec.prepare, { stdio: 'ignore' })
+}
+
 const original = readFileSync(spec.file, 'utf8')
+writeFileSync(RESCUE, JSON.stringify({ file: spec.file, original }))
 
 const run = (cmd) => {
   try {
@@ -133,9 +165,10 @@ try {
     results.push({ label, installed, bit, named })
   }
 } finally {
-  // Always restore, including on a thrown error.
+  // Always restore, including on a thrown error. Not on SIGKILL — see RESCUE.
   writeFileSync(spec.file, original)
   if (spec.prepare) run(spec.prepare)
+  rmSync(RESCUE, { force: true })
 }
 
 for (const result of results) {
