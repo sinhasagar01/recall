@@ -1547,6 +1547,44 @@ found four beyond that, and the misses cluster:
 The compiler found most of them, which is the real lesson: `Source.lesson` being a *required*
 field made `tsc` walk the tree for me. The grep was the plan; the type was the enumeration.
 
+### Shipped in three steps, because contract has the same hazard as expand
+
+2.1a was expand; 2.1b was **not one step but two**, and the extra one is the finding. The
+stated plan was migration-then-code, as always — but the build live at that moment still
+SELECTed `title` and still wrote it, because `title` was `not null`. Dropping the column first
+would have 42703'd every source page for the length of a deploy: the outage 2.1a spent a whole
+extra deploy avoiding, in the other direction.
+
+| | | |
+| --- | --- | --- |
+| b1 | `title` becomes nullable | safe: 2.1a is live and still writes it |
+| — | deploy the code reading only `lesson` | safe: the NOT NULL that would have blocked it is gone |
+| b2 | drop trigger, re-backfill, drop `title`, `lesson` NOT NULL, add its CHECK | safe: nothing reads it |
+
+**A column must stop being used by the running build before it is removed. Expand adds then
+migrates; contract migrates then removes.** Both halves are ordered by what is live.
+
+The re-backfill found **0 rows** — measured before the migration rather than inferred after.
+That is the mirror trigger having done its job across two deploys, not the window having been
+imaginary.
+
+And `columns_are` did exactly what arc 6 added it for: dropping `title` while the test array
+still listed it failed with `Missing columns: title`, in the direction a list of `has_column`
+can never fail.
+
+### The seventh way a guard passes for the wrong reason
+
+Recorded in ARCHITECTURE.md with the other six. Collapsing the export's duplicate column list
+into one constant **disabled a shipped guard** — the assertion proving the export never selects
+a transcript body worked by slicing that literal out of `export.ts`, so once the value moved
+it was asserting over an empty slice. An assertion coupled to where a value LIVES is silently
+switched off by any refactor that moves it.
+
+That duplicate list is itself arc 6's third-shape rule biting a second table: `topics` then,
+`sources` now. Arc 6 fixed the instance and prescribed the fix for the class — one exported
+constant — and 2.1 is where the prescription finally got applied. **Prefer deleting a
+representation to adding a comparison.**
+
 ### Six ways a reference can be wrong
 
 The sixth, from this mock: **its data contradicting its own stated principle.** The list drew
@@ -1647,12 +1685,17 @@ here, not the coverage.
 
 | | |
 | --- | --- |
-| [#23](https://github.com/sinhasagar01/recall/issues/23) | The e2e suite fails once in a few full runs, unreproduced and unnamed twice. Filed rather than chased, because a flake reported honestly is worth more than one silently retried |
+| [#24](https://github.com/sinhasagar01/recall/issues/24) | A double cast hides `practice_ordered_page` returning nine fewer columns than `OrderedRow` claims. **The cast is the defect, not the column count** — and it will hide the next one too |
 | [#21](https://github.com/sinhasagar01/recall/issues/21) | `journey.spec.ts` leaks a user per run and fails silently |
 | [#20](https://github.com/sinhasagar01/recall/issues/20) | Keep the recall attempt. **Stays open deliberately** — it was properly planned, it conflicts with nothing in arcs 2–6, and closing it because the queue moved on would discard the plan |
 | [#7](https://github.com/sinhasagar01/recall/issues/7) | Subscriptions, Stripe webhook, quota enforcement. Only when there is something to bill for |
 
-**Closed since:** [#22](https://github.com/sinhasagar01/recall/issues/22), the 390px
+**Closed since:** [#23](https://github.com/sinhasagar01/recall/issues/23) — the e2e flake, found
+in arc 2.1 and not a flake at all. `practice_ordered_page` shuffles ties by `md5(p_seed || id)`
+with the read timestamp as seed, so **which card is first in a default session is random**, and
+`practice.spec.ts` waited for *Reveal answer*, which only a topic renders. One run in five.
+The rule it produced: never assert on the content of a randomised position.
+And [#22](https://github.com/sinhasagar01/recall/issues/22), the 390px
 overflow — fixed on `Button` rather than at the call site, since any consumer passing a
 display class hit the same silent loss. 106px to 0, measured before and after on the issue.
 

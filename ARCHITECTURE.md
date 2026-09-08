@@ -2232,20 +2232,83 @@ cannot express a rule about the longer one.** They are two rules — *who may ho
 *the key must never be public* — and they need two assertions, so that the failure says which
 one broke. Collapsing them into one check reads as thorough and is strictly weaker than either.
 
-This is the **third distinct way a guard has passed for the wrong reason** in this project, and
-the three are worth holding together because they are not variations of one mistake:
+This is one of **seven distinct ways a guard has passed for the wrong reason** in this project.
+They are worth holding together because they are not variations of one mistake — each has its
+own tell and its own defence:
 
 | | | |
 | --- | --- | --- |
 | **Too broad** | arc 5 | `days` matched the weak page's prose about practice gaps. A match did not mean what the guard claimed |
-| **Too narrow** | arc 6 | the checklist grep missed `no topics yet` and `0 of 3 quizzes`, which are the same surface under different words |
-| **Superset** | arc 6 | `NEXT_PUBLIC_OPENAI_API_KEY` satisfied an allowlist written about `OPENAI_API_KEY` |
+| **Too narrow** | arc 6 | the checklist grep missed `no topics yet` and `0 of 3 quizzes` — the same surface under words the tokens did not contain |
+| **Superset** | arc 6 | `NEXT_PUBLIC_OPENAI_API_KEY` satisfied an allowlist written about `OPENAI_API_KEY`, while making the key public |
+| **Vacuous fixture** | arc 3 | an ordering assertion whose two topics could not have moved, so it held whatever the ordering did |
+| **Empty set** | arc 4 | five specs asserting over a surface that had been deleted; `toHaveCount(0)` on a locator matching nothing passes forever |
+| **Unmeasurable** | arc 4 | a perturbation the harness could not install reported "0 failed", indistinguishable from a redundant clause |
+| **Coupled to location** | arc 2.1 | an assertion that sliced a literal out of a file kept passing after the value moved — see below |
 
-Too broad is caught by counting a token against prose before writing it. Too narrow is caught
-by running the tests red rather than trusting the grep. **Superset is caught by neither** — the
-token is distinctive, the search is correct, and the assertion passes. The only defence is
-asking, of every allowlist: *is there a string containing this one that would satisfy this
-check and break the rule?*
+The defences do not generalise, which is the point of the table. **Too broad** is caught by
+counting a token against prose before writing it. **Too narrow** by running the tests red
+rather than trusting the grep. **Vacuous fixture** and **empty set** by perturbing the thing
+the assertion is about and watching it fail. **Unmeasurable** by a harness that throws instead
+of reporting zero. **Superset** by none of those — the token is distinctive, the search is
+correct, and the assertion passes; the only defence is asking of every allowlist *is there a
+string containing this one that would satisfy the check and break the rule?*
+
+### The third-shape rule again, on `sources` — and the prescribed fix was already written
+
+Arc 6 recorded that **a boundary assertion between two representations says nothing about a
+third**, after `export.ts`'s hand-written topic column string turned out to be invisible to
+`TopicBoundaryIsSound` for six arcs. The entry prescribed the fix: *derive it from something
+already enforced rather than adding a list to keep in sync.*
+
+Arc 2.1 hit the identical thing on the neighbouring table. `data/export.ts` kept its **own**
+copy of the source column list, separate from `SUMMARY_COLUMNS` in `data/sources.ts`. Arc 2.1a
+renamed `title` to `lesson` in one of them and not the other, **and nothing noticed for a whole
+deploy** — both lists worked, because the old column still existed. It surfaced only when 2.1b
+dropped it, as `42703 · column sources.title does not exist` in three export specs.
+
+This is **not a new lesson**. It is the arc 6 rule biting a second table, which is the useful
+part: the failure is not specific to `topics`, and the reason it recurred is that arc 6 fixed
+the *instance* (an assertion comparing the topic list to the domain) rather than the *class*
+(two hand-written lists for one shape).
+
+**So the fix here is the one arc 6 prescribed and did not apply broadly: one exported
+constant.** `SUMMARY_COLUMNS` is exported from `data/sources.ts` and imported by the export.
+There is no second list to drift, so there is nothing to write a guard about — which is
+strictly better than a guard, and cheaper.
+
+The check to carry forward: **when a table gains a representation, ask what compares it to the
+others — and prefer deleting the representation to adding the comparison.** A guard is what you
+write when you cannot collapse the duplication; collapsing it is the first option, not the
+fallback.
+
+### A guard that slices a literal out of a file is coupled to where the value lives
+
+`export.test.ts` proved the export never reads a transcript **body** by opening
+`data/export.ts`, slicing from `from('sources')` to `order('created_at')`, and asserting the
+text between them named `transcript_words` and not `transcript`.
+
+Arc 2.1b replaced that inline column list with an imported constant. The slice then contained
+`SOURCE_COLUMNS,` — no `transcript` and no `transcript_words` — so **the "must not select the
+body" half passed while reading nothing at all.** Only the positive half failed, and only by
+luck: had the assertion been the negative one alone, a refactor would have silently disabled
+the guard protecting `library.json` from shipping megabytes of third-party text.
+
+**The general form: an assertion coupled to a value's LOCATION is disabled by any refactor that
+moves it, and disabled silently, because "the text is not there" and "the text says the right
+thing" look identical to a `not.toMatch`.** A guard should be coupled to what the value *is*.
+
+Three defences, all cheap, and this one now uses all three:
+
+- **Assert the anchor still resolves.** `expect(select).toContain('id, user_id')` fails loudly
+  if the slice ever comes back empty, which converts a silent pass into a named failure.
+- **Follow the value, not the file.** It reads `data/sources.ts`, where the constant lives now.
+- **Assert the consumer still uses it** — `export.ts` must contain `SOURCE_COLUMNS,`, or the
+  check above guards a list nothing reads.
+
+The same rule applies to every `readFileSync`-based guard here: the six boundary tests search
+whole files for tokens rather than slicing regions, which is why none of them had this problem.
+**Slicing is the risky form; searching is not.**
 
 ### A jsonb column accepts any key, so the mismatch has exactly one place it can be caught
 
