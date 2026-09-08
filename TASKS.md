@@ -1604,11 +1604,29 @@ that mean different things"*.
 | A drawing that asserts a fact about the world | Is the sentence **true** |
 | A drawing that contradicts itself | Read the tabs against **each other** |
 | A drawing showing two states at once | Can both of these be on screen at the same moment |
-| **A drawing whose data contradicts its own principle** | **Does the example obey the rule stated beside it** |
+| A drawing whose data contradicts its own principle | Does the example obey the rule stated beside it |
+| **A drawing whose numbers are internally impossible** | **Do the figures reconcile with each other, not just with reality** |
 
-The last one is the cheapest to check and the easiest to miss, because both halves look
-right on their own. **Add up the numbers and re-read the ordering against the sentence that
-explains it.**
+### The seventh, and why it is not the same as a wrong count
+
+`interview-reference.html`'s scorecard hero claims **11 of 14 follow-ups held**. The five
+questions listed directly beneath it already account for **11 offered and 6 held**. Even if
+every unlisted question offered one more and held all of them, the ceiling is 14 offered and
+**9** held. Eleven is not merely wrong — it is unreachable from the rest of the same screen.
+
+That is a different failure from the sources mock's chapter saying 11 entries over rows summing
+to 8. **A wrong count is caught by recomputing it. An impossible one is caught only by checking
+the figures against each other** — you cannot recompute your way to it, because there is no
+input that produces it, and each number looks fine alone.
+
+What makes it worth its own row rather than a footnote is where it sat: directly beside the
+decision that **follow-ups-held is counted in code, never judged by a model**. A figure the
+design promises to count, drawn at a value counting cannot produce, one copy-paste from a
+fixture that would then have encoded it.
+
+**The check: for any screen carrying more than one figure over the same events, reconcile them
+against each other before reading anything else.** Totals against their parts, and parts
+against their own ceilings.
 
 ---
 
@@ -1644,6 +1662,101 @@ works, and *"added later without re-extracting"* only by holding two tabs in min
 This reference put the false billing claim on the one surface whose entire job is telling the
 truth about what leaves and what it costs — which is where a wrong sentence does the most
 damage and where it is least expected.
+
+---
+
+## Arc 7, session one — interview mode
+
+A timed mock interview built from your own library. Pick a round type, a length and an
+interviewer level; it asks one thing at a time with escalating follow-ups; a scorecard says
+where you went thin and **offers** to mark topics weak.
+
+Arc 6 recorded interview mode as *"not built and not stubbed"*. This retires that deferral the
+way arc 6 retired the no-AI line: deliberately, with the reasoning written down, and only that
+one line.
+
+**Session one is the mechanics** — the runner, the scorecard, interviewer level, clarifying
+questions and hints. Save-a-follow-up-as-a-quiz, rewind and voice are session two, drawn in the
+reference and neither built nor stubbed.
+
+### Five types, because two pool sources prove the abstraction
+
+JavaScript, React, TypeScript, Behavioural and Mixed. Behavioural is thin on its own and the
+card says so — it is in session one because it draws from the **ledger** while concepts draw
+from the **library**. Build concepts only and session two discovers the queue was quietly
+topic-shaped. DSA and System design are **absent from the setup screen**, not disabled.
+
+### What the reference got wrong, and what the audit could not have caught
+
+It arrived audited: every `var()` resolving, tabs matching sections, one `h1` each, forty
+colours remapped. **Three of those four held** — 56 properties defined, 44 used, 0 unresolved;
+7 tabs, 7 screens, 7 `h1`s. Four things it missed:
+
+1. **The rules tab asserted something about another tab that was false** — *"Leaving loses it,
+   and the setup screen says so"*, where the setup screen contained zero occurrences of
+   *resume*, *lose*, *leave* or *abandon*. Shape 4 in its sharpest form: a claim *about* the
+   other tab.
+2. **`:focus-visible{outline:2px solid var(--volt)}` at top level** — invisible in a file where
+   everything is interview mode, and app-wide violet on every focus ring if copied.
+3. **Five raw hex values** surviving the remap, all in the scale.
+4. **The hero's follow-up tally was unreachable** — 11 of 14 held over a list whose ceiling was
+   9. Recorded as the seventh reference shape, distinct from a merely wrong count.
+
+Number two is the one worth generalising, and it is in ARCHITECTURE.md: **a single-mode
+reference cannot show you a leak, because everything in it is inside the mode.** No amount of
+reading finds it. That is why the scale is scoped by the cascade rather than by review.
+
+### The strongest evidence yet for perturbation
+
+A perturbation that applied the scorecard's offer without waiting for the press **passed clean,
+twice** — and both reasons were defects a green suite would never have surfaced:
+
+1. the test was **vacuous**, because the offered topic was already weak;
+2. the code **did not do what the test assumed** — `topic_ids` was always empty, so the injected
+   write had nothing to write.
+
+The second would have shipped a permanently empty column, and the failure would have appeared
+in session two, in code session two did not write. **`DID NOT BITE` is a diagnostic, not a null
+result**, and this arc added a fourth reading to the three the harness prints.
+
+### The side-by-side found two more, both invisible to tests
+
+Per the discipline, the built screens were looked at beside the reference before the arc closed.
+It found two defects with 591 unit tests and 175 Playwright tests green:
+
+- the scorecard's `h1` read **"javascript · 20 minutes"** — the stored enum rendered raw, where
+  the reference says "JavaScript · 45 minutes";
+- **"2 hints used"** after one click. A hint request and the hint answering it both carry kind
+  `hint`, so counting by kind alone double-counted.
+
+The second corrects what the discipline was recorded as being for.
+
+It was written up after arc 2.1 as catching **positional** defects — child order, where a number
+sits — on the grounds that those are what the eye sees and a suite cannot. The hint counter is
+not positional. It is a **logic** defect: `countRound` counted by kind, the interviewer's reply
+to a hint request carries kind `hint`, and one click reported **two hints used**.
+
+Nothing could have caught it. Both numbers were plausible — 1 and 2 are equally believable hint
+counts — nothing asserted the difference, no model was consulted, and **175 Playwright specs and
+591 unit tests were green**. It took seeing "2" next to a single click, by the person who had
+just clicked once.
+
+**So the corrected statement of what the side-by-side is for: anything whose correct value is
+only knowable by someone who knows what they just did.** A count, a label, a state — not just a
+position. A test can assert that a counter renders; only a person who clicked once knows it
+should say one. That is a much larger class than "child order and where a number sits", and it
+explains why the discipline keeps paying: it is the only check in this project with access to
+intent.
+
+`countRound` now counts only your own turns, with a unit test naming the regression.
+
+### One fixture lesson the existing entries did not cover
+
+Seeding interview topics onto the `extract` user broke **extraction's** spec: two of the titles
+were also concepts the extraction stub offers, so duplicate detection found two matches instead
+of one. Two features sharing a fixture user share a **title namespace**, and the failure lands
+in the other feature's spec. The existing entries cover a fixture's *shape*; this is its
+*content*.
 
 ---
 
@@ -1689,6 +1802,11 @@ not described a screen, and the reference is the specification for what that scr
 The cheap discipline: **when a plan names a component that a reference draws, the plan says
 which drawing, and the build is looked at beside it before the arc closes.** That is a human
 step, and writing it down is the only way it survives being skipped once.
+
+**What it is for, corrected in arc 7:** not only positional defects. **Anything whose correct
+value is only knowable by someone who knows what they just did** — a count, a label, a state.
+See the arc 7 entry, where it caught a hint counter reading 2 after one click with the whole
+suite green.
 
 ### It earned its place on first use
 

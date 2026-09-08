@@ -58,6 +58,7 @@ describe('every table created by a migration is granted to authenticated', () =>
     expect(created.length, 'no created tables found — the pattern has rotted').toBeGreaterThan(0)
     expect(created).toContain('topics')
     expect(created).toContain('sources')
+    expect(created).toContain('interview_rounds')
 
     const missing = created.flatMap((table) => {
       const has = granted.get(table) ?? []

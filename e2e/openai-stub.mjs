@@ -24,6 +24,7 @@
  *   otherwise               → three concepts, one of which duplicates a seeded topic
  */
 import { createServer } from 'node:http'
+import { readFileSync } from 'node:fs'
 
 const PORT = Number(process.env.STUB_PORT ?? 4599)
 
@@ -64,6 +65,80 @@ const FULL = [
   concept('The event loop', 'Tasks, microtasks, and the order they run in.', '18:05', QUESTIONS),
 ]
 
+/*
+  Arc 7. Interview mode makes two shapes of call through the same endpoint: a
+  plain-text turn, and a strict-schema scorecard. They are told apart by the
+  system prompt, because that is what actually differs — sniffing the schema name
+  would couple this to a field the app could rename.
+*/
+const interviewBody = (system, messages) => {
+  const STUB_TOPIC_IDS = topicIds()
+  if (system.includes('Score this interview transcript')) {
+    /*
+      A scorecard whose per-question scores straddle OFFER_BELOW, so the offer
+      step has something ticked AND something unticked — the case the checkbox
+      exists for.
+    */
+    return {
+      content: JSON.stringify({
+        recall: { score: 86, note: 'You knew what things were.' },
+        depth: { score: 41, note: 'Thin the moment a follow-up asked for a consequence.' },
+        precision: { score: 79, note: 'Mostly exact.' },
+        enquiry: { score: 80, note: 'Both clarifying questions were load-bearing.' },
+        overall: 74,
+        summary: 'Strong on mechanism, thin under follow-up.',
+        /*
+          Index 2 and 4 deliberately — the seed makes those `okay` and `strong`,
+          NOT weak.
+
+          The first draft offered index 0, which the seed makes weak. Marking a
+          weak topic weak changes nothing, so the spec's "rendering a scorecard
+          must not change a confidence" compared weak to weak and could not fail:
+          the perturbation that put the write on the render path passed clean.
+          The assertion was vacuous because of the FIXTURE, which is the failure
+          recorded in ARCHITECTURE.md as "vacuous fixture".
+        */
+        questions: [
+          { topic_id: STUB_TOPIC_IDS[2] ?? null, title: 'Microtasks drain first', score: 41, note: 'Could not say why.' },
+          { topic_id: STUB_TOPIC_IDS[4] ?? null, title: 'Task ordering on the stack', score: 88, note: 'Landed it.' },
+        ],
+      }),
+      finish_reason: 'stop',
+    }
+  }
+
+  const last = messages.at(-1)?.content ?? ''
+  if (system.includes('They asked for a hint')) {
+    return { content: 'Think about what the scope is a reference to.', finish_reason: 'stop' }
+  }
+  if (system.includes('They asked a clarifying question')) {
+    return { content: 'Same invocation. Good question.', finish_reason: 'stop' }
+  }
+  if (system.includes('Ask the next question')) {
+    return { content: 'Walk me through what a closure actually captures.', finish_reason: 'stop' }
+  }
+  return {
+    content: `So if two closures share one scope — what does the other see? (you said: ${last.slice(0, 30)})`,
+    finish_reason: 'stop',
+  }
+}
+
+/*
+  The ids the scorecard offers to mark weak, written by the seed so the spec can
+  assert the exact rows before and after pressing.
+
+  Read PER REQUEST, not at startup: this server is launched by Playwright before
+  globalSetup runs the seed, so anything captured at boot would be the previous
+  run's ids — or nothing at all on a fresh checkout.
+*/
+const topicIds = () => {
+  try {
+    return JSON.parse(readFileSync(new URL('./.auth/stub-topics.json', import.meta.url), 'utf8'))
+  } catch {
+    return []
+  }
+}
+
 const body = (transcript) => {
   if (transcript.includes('NOTHING-RUN')) {
     return { content: JSON.stringify({ concepts: [] }), finish_reason: 'stop' }
@@ -102,7 +177,18 @@ createServer((req, res) => {
       // the default scenario will surface as an ordinary result.
     }
 
-    const { content, finish_reason } = body(transcript)
+    let parsed = {}
+    try {
+      parsed = JSON.parse(raw)
+    } catch {
+      // handled below by the default scenario
+    }
+    const system = parsed.messages?.find((m) => m.role === 'system')?.content ?? ''
+
+    const { content, finish_reason } = system.includes('interview transcript') ||
+      system.includes('ONE thing at a time')
+      ? interviewBody(system, parsed.messages ?? [])
+      : body(transcript)
     res.writeHead(200, { 'content-type': 'application/json' })
     res.end(JSON.stringify({ choices: [{ message: { content }, finish_reason }] }))
   })

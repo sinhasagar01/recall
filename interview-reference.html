@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recall — interview mode</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;450;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#E9EAF0; --surface:#FFFFFF; --surface-2:#F5F5FA; --surface-3:#EDEEF4;
+  --ink:#12131A; --ink-2:#53555F; --ink-3:#83858F;
+  --rule:#E1E1E9; --rule-strong:#C9C9D4;
+  --accent:#3F3AC7; --accent-soft:#EDECFB; --accent-ink:#2E2A9E;
+  --flag:#B4325C; --flag-soft:#FBEBF1;
+  --ok:#1B6B4F; --ok-soft:#E6F2EC;
+  /* interview-only — the scorecard scale, used everywhere in this mode */
+  --volt:#4F46E5; --volt-2:#6D63EF; --volt-ink:#3730A3; --volt-soft:#EEF0FE;
+  --gold:#B45309; --gold-ink:#92400E; --gold-soft:#FEF3E2;
+  --mint:#047857; --mint-ink:#065F46; --mint-soft:#E7F6F0;
+  --rose:#BE185D; --rose-ink:#9D174D; --rose-soft:#FDF0F5;
+  --teal:#0F766E; --teal-soft:#E6F4F2;
+  --band:#FCD34D; --band-soft:rgba(252,211,77,.13);
+  --mesh:
+    radial-gradient(120% 130% at 8% 0%, #4B3FD6 0%, rgba(75,63,214,0) 55%),
+    radial-gradient(90% 120% at 100% 20%, #7B3FA8 0%, rgba(123,63,168,0) 60%),
+    radial-gradient(100% 140% at 60% 110%, #1E7F87 0%, rgba(30,127,135,0) 55%),
+    #15161F;
+  --deep:#15161F; --deep-2:#1D1F2B; --deep-3:#262939; --deep-rule:#2E3145;
+  --deep-ink:#EEEFF5; --deep-ink-2:#A8ABBE; --deep-ink-3:#71748A;
+  --deep-volt:#7C6BFF; --deep-volt-2:#A79BFF; --deep-gold:#E0A93B; --deep-gold-soft:#3A2E12;
+  --radius:6px; --radius-lg:10px; --radius-xl:16px;
+  --shadow:0 1px 2px rgba(18,19,26,.05), 0 1px 1px rgba(18,19,26,.03);
+  --font-display:"Newsreader",Georgia,serif;
+  --font-body:"IBM Plex Sans",system-ui,sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:14.5px;line-height:1.55;-webkit-font-smoothing:antialiased}
+:focus-visible{outline:2px solid var(--volt);outline-offset:2px}
+code{font-family:var(--font-mono);font-size:.86em}
+.chrome{position:sticky;top:0;z-index:80;display:flex;gap:6px;align-items:center;padding:9px 16px;
+  background:var(--surface);border-bottom:1px solid var(--rule);flex-wrap:wrap}
+.chrome__label{font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin-right:6px}
+.tab{font-family:var(--font-mono);font-size:11.5px;padding:5px 9px;border:1px solid transparent;border-radius:var(--radius);
+  background:none;color:var(--ink-2);cursor:pointer}
+.tab:hover{background:var(--surface-2);color:var(--ink)}
+.tab[aria-selected="true"]{background:var(--accent-soft);color:var(--volt-ink);border-color:var(--accent)}
+
+.eyebrow{font-family:var(--font-mono);font-size:10.5px;font-weight:500;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3)}
+.meta{font-family:var(--font-mono);font-size:11.5px;color:var(--ink-3)}
+.btn{font-family:var(--font-body);font-size:13.5px;font-weight:500;display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  padding:10px 15px;border-radius:var(--radius);border:1px solid var(--rule-strong);background:var(--surface);color:var(--ink);cursor:pointer}
+.btn:hover{border-color:var(--ink-3)}
+.btn--primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn--volt{background:linear-gradient(135deg,var(--volt),var(--volt-2));border-color:var(--volt);color:#fff;font-weight:600;
+  box-shadow:0 2px 10px rgba(79,70,229,.26)}
+.btn--volt:hover{background:linear-gradient(135deg,var(--volt-2),#818CF8);border-color:var(--volt-2)}
+.btn--ghost{background:none;border-color:transparent;color:var(--ink-2)}
+.btn--sm{padding:6px 11px;font-size:12.5px}
+.btn--lg{padding:13px 22px;font-size:15px}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.screen{display:none}.screen[data-active]{display:block}
+.wrap{max-width:1020px;margin:0 auto;padding:28px 26px 80px}
+.page-title{font-family:var(--font-display);font-size:29px;font-weight:500;letter-spacing:-.022em}
+.rule{display:flex;align-items:center;gap:12px;margin:28px 0 12px}
+.rule::after{content:"";flex:1;height:1px;background:var(--rule)}
+.note{max-width:70ch;color:var(--ink-2);font-size:13.5px;margin-top:24px;padding-top:16px;border-top:1px solid var(--rule)}
+.callout{background:linear-gradient(135deg,#F6F7FE,#FFFFFF);border:1px solid rgba(79,70,229,.3);border-left:3px solid var(--volt);
+  border-radius:14px;padding:15px 19px;margin:20px 0;max-width:74ch}
+.callout__t{font-weight:600;color:var(--volt-ink);margin-bottom:4px}
+.panel{background:var(--surface);border:1px solid var(--rule);border-radius:var(--radius-lg);box-shadow:var(--shadow)}
+.panel__body{padding:18px}
+
+/* setup */
+.types{display:grid;grid-template-columns:repeat(auto-fill,minmax(224px,1fr));gap:12px;margin-top:16px}
+.type{position:relative;display:flex;flex-direction:column;gap:0;text-align:left;cursor:pointer;
+  border:1px solid var(--rule);border-radius:10px;background:var(--surface);padding:17px 18px 15px;
+  box-shadow:0 1px 2px rgba(18,19,26,.04);transition:border-color .14s ease, box-shadow .14s ease}
+.type:hover{border-color:var(--tone);box-shadow:0 2px 4px rgba(18,19,26,.05)}
+.type__dot{width:9px;height:9px;border-radius:3px;background:var(--tone);margin-bottom:12px}
+.type__n{font-family:var(--font-display);font-size:19px;font-weight:500;letter-spacing:-.015em;line-height:1.2;color:var(--ink)}
+.type__s{font-size:12.5px;margin-top:5px;line-height:1.5;color:var(--ink-2)}
+.type__pool{display:block;font-family:var(--font-mono);font-size:10.5px;color:var(--ink-3);
+  margin-top:14px;padding-top:12px;border-top:1px solid var(--rule)}
+.type__pool b{font-weight:600;color:var(--tone)}
+.type--thin .type__pool{color:var(--rose)}
+.type[aria-pressed="true"]{border-color:var(--tone);box-shadow:inset 0 0 0 1px var(--tone)}
+.type[aria-pressed="true"] .type__dot{width:26px}
+.t-js{--tone:#0F766E}
+.t-react{--tone:#1D4ED8}
+.t-ts{--tone:#4F46E5}
+.t-dsa{--tone:#7E22CE}
+.t-design{--tone:#047857}
+.t-behav{--tone:#BE185D}
+.t-mixed{--tone:#334155}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.pill{border:1px solid var(--rule-strong);border-radius:var(--radius);background:var(--surface);padding:11px 16px;cursor:pointer;text-align:left}
+.pill[aria-pressed="true"]{background:linear-gradient(135deg,var(--volt),var(--volt-2));border-color:var(--volt);color:#fff;
+  box-shadow:0 2px 10px rgba(79,70,229,.26)}
+.pill__t{font-size:14px;font-weight:500}
+.pill__s{font-family:var(--font-mono);font-size:10px;opacity:.72;margin-top:3px}
+
+.startcard{position:relative;margin-top:20px;border-radius:22px;overflow:hidden;padding:28px 30px 26px;color:#F2F1FB;
+  background:var(--mesh);box-shadow:0 16px 44px rgba(21,22,31,.30)}
+.startcard__k{font-family:var(--font-mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#A5B4FC}
+.startcard__t{font-family:var(--font-display);font-size:28px;font-weight:500;margin:8px 0 5px;letter-spacing:-.02em;color:#fff}
+.startcard__s{color:#CFD1E4;font-size:13.5px;max-width:56ch;line-height:1.65}
+.shape{display:flex;margin:22px 0 6px;border-radius:12px;overflow:hidden;
+  background:rgba(12,13,20,.72);border:1px solid rgba(255,255,255,.16);
+  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.shape__b{flex:var(--w,1);padding:13px 16px;border-right:1px solid rgba(255,255,255,.13)}
+.shape__b:last-child{border-right:none}
+.shape__b b{display:block;font-family:var(--font-mono);font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:#A5B4FC}
+.shape__b span{display:block;font-size:12.5px;color:#CFD1E4;margin-top:5px;line-height:1.45}
+.startfoot{display:flex;align-items:center;gap:14px;margin-top:20px;flex-wrap:wrap}
+.startcard .btn--volt{background:#6366F1;border-color:#6366F1;color:#fff;font-weight:600}
+.startcard .btn--volt:hover{background:#818CF8;border-color:#818CF8}
+.cost{font-family:var(--font-mono);font-size:11px;color:#A9ABC4;margin-left:auto}
+
+/* the room */
+.room{background:var(--bg);padding:24px 24px 70px}
+.room__in{position:relative;max-width:790px;margin:0 auto;background:var(--surface);border:1px solid var(--rule);
+  border-radius:20px;padding:27px 30px 30px;box-shadow:0 4px 22px rgba(18,19,26,.07);overflow:hidden}
+.room__in::before{content:"";position:absolute;inset:0 0 auto 0;height:4px;
+  background:linear-gradient(90deg,#4F46E5,#7E22CE 55%,#0F766E)}
+.rbar{display:flex;align-items:center;justify-content:space-between;gap:14px;padding-bottom:15px;border-bottom:1px solid var(--rule);flex-wrap:wrap}
+.pips{display:flex;gap:4px}
+.pip{width:20px;height:5px;border-radius:3px;background:var(--rule)}
+.pip--ok{background:linear-gradient(90deg,#34D399,#047857)}
+.pip--mid{background:linear-gradient(90deg,#F59E0B,#B45309)}
+.pip--bad{background:linear-gradient(90deg,#F472B6,#BE185D)}
+.pip--now{background:linear-gradient(90deg,#818CF8,#4F46E5);width:28px;box-shadow:0 0 8px rgba(79,70,229,.35)}
+.clock{font-family:var(--font-mono);font-size:13.5px;color:var(--ink-2);display:flex;align-items:center;gap:8px}
+.clock i{width:7px;height:7px;border-radius:50%;background:var(--mint)}
+.clock--low i{background:var(--rose)}
+.clock--low{color:var(--rose)}.clock--low i{background:var(--rose);animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.35}}
+.tag{font-family:var(--font-mono);font-size:10.5px;padding:3px 9px;border-radius:100px;border:1px solid var(--rule);background:var(--surface-2);color:var(--ink-2)}
+.tag--gold{border-color:var(--gold);color:var(--gold-ink);background:var(--gold-soft)}
+.tag--rose{border-color:var(--rose);color:var(--rose-ink);background:var(--rose-soft)}
+.tag--volt{border-color:var(--volt);color:var(--volt-ink);background:var(--volt-soft)}
+.tag--who{border-color:var(--ink-3);color:var(--ink-2);background:var(--surface)}
+
+.qtag{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:22px}
+.q{font-family:var(--font-display);font-size:28px;font-weight:500;letter-spacing:-.022em;line-height:1.28;margin:13px 0 6px}
+.yours{border-left:2px solid var(--rule-strong);padding:4px 0 4px 17px;margin:16px 0;color:var(--ink-2);font-size:14.5px;line-height:1.72}
+.follow{border-radius:14px;background:linear-gradient(135deg,#EEF0FE 0%,#E7E9FD 55%,#E6F4F2 100%);
+  border:1px solid rgba(79,70,229,.34);border-left:3px solid var(--volt);
+  padding:16px 19px;margin:16px 0;color:var(--volt-ink);font-size:15.5px;line-height:1.66}
+.follow__l{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;
+  margin-bottom:6px;display:flex;align-items:center;gap:8px;opacity:.85}
+.follow__n{background:linear-gradient(135deg,var(--volt),var(--volt-2));color:#fff;border-radius:100px;padding:2px 8px;font-size:9px}
+.hint{border-radius:14px;background:linear-gradient(135deg,#FEF3E2,#FDE8C8);
+  border:1px solid rgba(176,119,20,.34);border-left:3px solid var(--gold);
+  padding:15px 18px;margin:16px 0;color:var(--gold-ink);font-size:14.5px;line-height:1.62}
+.hint__l{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;margin-bottom:5px;display:block;opacity:.9}
+.clar{border-radius:14px;background:var(--teal-soft);border:1px dashed rgba(30,127,151,.45);
+  border-left:3px solid var(--teal);padding:15px 18px;margin:16px 0;color:#115E59;font-size:14.5px;line-height:1.62}
+.clar__l{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;margin-bottom:5px;display:block;color:var(--teal)}
+.ta{width:100%;font-family:var(--font-body);font-size:15px;color:var(--ink);background:var(--surface);
+  border:1px solid var(--rule-strong);border-radius:var(--radius-lg);padding:13px 15px;line-height:1.7;min-height:120px;resize:vertical}
+.ta:focus{outline:2px solid var(--volt);outline-offset:-1px;border-color:var(--volt)}
+.rfoot{display:flex;gap:10px;align-items:center;margin-top:15px;flex-wrap:wrap}
+.rfoot .meta{margin-left:auto}
+.saveq{display:flex;align-items:center;gap:12px;padding:13px 17px;margin-top:14px;
+  border:1px solid rgba(16,137,106,.34);border-left:3px solid var(--mint);
+  background:linear-gradient(135deg,#E7F6F0,#DCF2EA);border-radius:14px;color:var(--mint-ink);font-size:13.5px}
+.saveq .btn{margin-left:auto}
+
+/* editor */
+.ed{border:1px solid var(--rule-strong);border-radius:14px;overflow:hidden;background:var(--surface);margin-top:14px;
+  box-shadow:0 2px 12px rgba(18,19,26,.06)}
+.ed__bar{display:flex;align-items:center;gap:10px;padding:9px 14px;background:var(--surface-2);border-bottom:1px solid var(--rule);
+  font-family:var(--font-mono);font-size:11px;color:var(--ink-3)}
+.ed__bar .meta{margin-left:auto}
+.ed__b{display:flex;font-family:var(--font-mono);font-size:12.5px;line-height:1.8}
+.ed__ln{padding:14px 0 14px 14px;text-align:right;min-width:38px;user-select:none;color:var(--rule-strong)}
+.ed__code{padding:14px 16px 14px 12px;flex:1;overflow-x:auto;white-space:pre;color:var(--ink)}
+.tk{color:var(--volt-ink)}.ts{color:var(--mint-ink)}.tc{color:var(--ink-3);font-style:italic}.tf{color:var(--gold-ink)}
+
+/* phases */
+.phases{display:flex;gap:8px;margin:18px 0 6px;flex-wrap:wrap}
+.phz{flex:1;min-width:148px;border:1px solid var(--rule);border-radius:var(--radius-lg);background:var(--surface-2);padding:12px 14px}
+.phz--done{border-color:rgba(16,137,106,.4);background:linear-gradient(135deg,#E7F6F0,#DCF2EA)}
+.phz--now{border-color:var(--volt);box-shadow:0 0 0 1px var(--volt),0 4px 14px rgba(79,70,229,.16);
+  background:linear-gradient(135deg,#EEF0FE,#FFFFFF)}
+.phz__k{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+.phz--done .phz__k{color:var(--mint-ink)}.phz--now .phz__k{color:var(--volt-ink)}
+.phz__t{font-size:13.5px;margin-top:6px}
+.phz__m{font-family:var(--font-mono);font-size:10px;color:var(--ink-3);margin-top:5px}
+
+/* voice */
+.mic{width:74px;height:74px;border-radius:50%;border:2px solid var(--volt);background:var(--volt-soft);display:grid;place-items:center;
+  color:var(--volt-ink);font-size:26px;flex:none}
+.mic--live{background:linear-gradient(135deg,var(--volt),#7E22CE);border-color:transparent;color:#fff;
+  box-shadow:0 0 0 8px rgba(79,70,229,.12), 0 6px 20px rgba(79,70,229,.32)}
+.wave{display:flex;gap:3px;align-items:flex-end;height:26px}
+.wave i{width:3px;background:linear-gradient(180deg,#818CF8,#4F46E5);border-radius:2px;animation:w 1s ease-in-out infinite}
+.wave i:nth-child(1){height:40%;animation-delay:0s}.wave i:nth-child(2){height:75%;animation-delay:.1s}
+.wave i:nth-child(3){height:100%;animation-delay:.2s}.wave i:nth-child(4){height:60%;animation-delay:.3s}
+.wave i:nth-child(5){height:85%;animation-delay:.4s}.wave i:nth-child(6){height:45%;animation-delay:.5s}
+@keyframes w{50%{transform:scaleY(.4)}}
+.live{font-size:16px;line-height:1.7;color:var(--ink-2);border-left:3px solid var(--volt);padding-left:18px;margin-top:16px}
+.live em{font-style:normal;color:var(--ink-3)}
+
+/* scorecard */
+.hero{border-radius:var(--radius-xl);background:linear-gradient(135deg,var(--deep) 0%,#232645 60%,#2C2350 100%);
+  color:var(--deep-ink);padding:30px;display:flex;gap:32px;align-items:center;flex-wrap:wrap;box-shadow:0 12px 40px rgba(21,22,31,.28)}
+.ring{width:148px;height:148px;flex:none;border-radius:50%;display:grid;place-items:center;position:relative;
+  background:conic-gradient(var(--volt) 0turn .74turn, var(--deep-3) .74turn 1turn)}
+.ring::after{content:"";position:absolute;inset:11px;border-radius:50%;background:var(--deep)}
+.ring__in{position:relative;text-align:center;z-index:1}
+.ring__v{font-family:var(--font-display);font-size:43px;font-weight:600;line-height:1;color:#fff}
+.ring__k{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--deep-ink-3);margin-top:5px}
+.hero__m{flex:1;min-width:250px}
+.band{display:inline-flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--band);background:var(--band-soft);border:1px solid var(--band);border-radius:100px;padding:4px 12px}
+.hero__t{font-family:var(--font-display);font-size:28px;font-weight:500;letter-spacing:-.02em;margin:12px 0 6px;color:#fff}
+.hero__s{color:var(--deep-ink-2);font-size:14px;max-width:46ch}
+.delta{display:flex;gap:22px;margin-top:18px;flex-wrap:wrap}
+.delta__i b{display:block;font-family:var(--font-display);font-size:21px;color:#fff}
+.delta__i span{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--deep-ink-3)}
+.up{color:#34D399!important}.down{color:#FB7185!important}
+.dims{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:16px}
+.dim{border:1px solid var(--rule);border-radius:var(--radius-lg);background:var(--surface);padding:15px 17px;box-shadow:var(--shadow)}
+.dim__k{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+.dim__v{font-family:var(--font-display);font-size:26px;font-weight:500;margin:7px 0 9px}
+.track{height:7px;border-radius:4px;background:var(--surface-2);overflow:hidden;border:1px solid var(--rule)}
+.track i{display:block;height:100%;border-radius:4px}
+.dim__s{font-size:12px;color:var(--ink-2);margin-top:9px;line-height:1.5}
+.topics{border:1px solid var(--rule);border-radius:var(--radius-lg);background:var(--surface);overflow:hidden;box-shadow:var(--shadow)}
+.trow{display:flex;align-items:center;gap:14px;padding:13px 17px;border-bottom:1px solid var(--rule)}
+.trow:last-child{border-bottom:none}
+.trow__t{flex:1;min-width:0;font-size:14px}
+.trow__t small{display:block;font-family:var(--font-mono);font-size:10px;color:var(--ink-3);margin-top:3px}
+.mini{width:110px;flex:none;height:7px;border-radius:4px;background:var(--surface-2);border:1px solid var(--rule);overflow:hidden}
+.mini i{display:block;height:100%}
+.trow__p{font-family:var(--font-mono);font-size:12px;width:38px;text-align:right;flex:none}
+.off{display:flex;align-items:flex-start;gap:13px;padding:15px 0;border-bottom:1px solid var(--rule)}
+.off:last-child{border-bottom:none}
+.box{width:19px;height:19px;flex:none;margin-top:2px;border:1px solid var(--rule-strong);border-radius:5px;display:grid;place-items:center;
+  font-size:11px;background:var(--surface);cursor:pointer}
+.box--on{border-color:var(--accent);background:var(--accent);color:#fff}
+.off__m{flex:1;min-width:0}
+.off__t{font-size:14.5px;font-weight:500}
+.off__s{color:var(--ink-2);font-size:13px;margin-top:4px;max-width:58ch}
+.off__c{font-family:var(--font-mono);font-size:10.5px;color:var(--rose);flex:none;white-space:nowrap;padding-top:3px}
+
+
+/* ---------- scorecard v2 ---------- */
+.sc-hero{position:relative;border-radius:22px;overflow:hidden;padding:34px 34px 30px;color:#F2F1FB;
+  background:var(--mesh);box-shadow:0 18px 50px rgba(21,22,31,.32)}
+.sc-hero__grid{display:flex;gap:38px;align-items:center;flex-wrap:wrap;position:relative;z-index:1}
+.sc-ring{width:164px;height:164px;flex:none;border-radius:50%;position:relative;display:grid;place-items:center;
+  background:conic-gradient(from -90deg, #34D399 0turn, #6366F1 .38turn, #A855F7 .60turn, rgba(255,255,255,.10) .74turn, rgba(255,255,255,.10) 1turn);
+  filter:drop-shadow(0 0 18px rgba(124,107,255,.35))}
+.sc-ring::after{content:"";position:absolute;inset:13px;border-radius:50%;background:#191A26}
+.sc-ring__in{position:relative;z-index:1;text-align:center}
+.sc-ring__v{font-family:var(--font-display);font-size:52px;font-weight:600;line-height:1;color:#fff;letter-spacing:-.02em}
+.sc-ring__k{font-family:var(--font-mono);font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:#B9BBD0;margin-top:7px}
+.sc-hero__m{flex:1;min-width:270px}
+.sc-band{display:inline-flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;
+  text-transform:uppercase;color:#FCD34D;background:rgba(252,211,77,.13);border:1px solid rgba(252,211,77,.45);
+  border-radius:100px;padding:5px 13px}
+.sc-hero__t{font-family:var(--font-display);font-weight:500;font-size:31px;font-weight:500;letter-spacing:-.022em;margin:13px 0 7px;color:#fff}
+.sc-hero__s{color:#CFD1E4;font-size:14.5px;max-width:46ch;line-height:1.65}
+.sc-stats{display:flex;gap:0;margin-top:22px;border-radius:12px;overflow:hidden;
+  background:rgba(12,13,20,.72);border:1px solid rgba(255,255,255,.16);
+  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.sc-stat{flex:1;padding:13px 16px;border-right:1px solid rgba(255,255,255,.13)}
+.sc-stat:last-child{border-right:none}
+.sc-stat b{display:block;font-family:var(--font-display);font-size:23px;color:#fff;line-height:1.1}
+.sc-stat span{display:block;font-family:var(--font-mono);font-size:9px;letter-spacing:.13em;text-transform:uppercase;
+  color:#C6C8DC;margin-top:6px}
+.sc-up{color:#6EE7B7!important}.sc-down{color:#FB7185!important}
+
+.sc-dims{display:grid;grid-template-columns:repeat(auto-fit,minmax(206px,1fr));gap:13px;margin-top:15px}
+.sc-dim{position:relative;border-radius:14px;padding:17px 19px;overflow:hidden;
+  background:var(--surface);border:1px solid var(--rule);box-shadow:0 1px 2px rgba(18,19,26,.05)}
+.sc-dim::before{content:"";position:absolute;inset:0 0 auto 0;height:3px;background:var(--h)}
+.sc-dim__k{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-3)}
+.sc-dim__v{font-family:var(--font-display);font-size:34px;font-weight:600;line-height:1;margin:9px 0 12px;color:var(--h)}
+.sc-dim__t{height:8px;border-radius:5px;background:var(--surface-2);border:1px solid var(--rule);overflow:hidden}
+.sc-dim__t i{display:block;height:100%;border-radius:5px;background:linear-gradient(90deg,var(--h2),var(--h))}
+.sc-dim__s{font-size:12.5px;color:var(--ink-2);margin-top:11px;line-height:1.5}
+.h-recall{--h:#047857;--h2:#34D399}
+.h-depth{--h:#BE185D;--h2:#F472B6}
+.h-prec{--h:#4F46E5;--h2:#818CF8}
+.h-enq{--h:#0F766E;--h2:#5EEAD4}
+
+.sc-qs{border:1px solid var(--rule);border-radius:14px;background:var(--surface);overflow:hidden;box-shadow:var(--shadow)}
+.sc-q{display:flex;align-items:center;gap:16px;padding:15px 19px;border-bottom:1px solid var(--rule)}
+.sc-q:last-child{border-bottom:none}
+.sc-q:hover{background:var(--surface-2)}
+.sc-q__m{flex:1;min-width:0}
+.sc-q__t{font-size:14.5px;font-weight:500}
+.sc-q__s{font-family:var(--font-mono);font-size:10.5px;color:var(--ink-3);margin-top:4px}
+.sc-q__bar{width:150px;flex:none;height:9px;border-radius:5px;background:var(--surface-2);border:1px solid var(--rule);overflow:hidden}
+.sc-q__bar i{display:block;height:100%;border-radius:5px}
+.sc-q__n{font-family:var(--font-mono);font-size:13px;font-weight:600;width:34px;text-align:right;flex:none}
+.g-hi{background:linear-gradient(90deg,#34D399,#047857)}
+.g-mid{background:linear-gradient(90deg,#818CF8,#4F46E5)}
+.g-lo{background:linear-gradient(90deg,#F472B6,#BE185D)}
+
+.spark{display:flex;align-items:flex-end;gap:7px;height:64px;padding:0 2px}
+.spark__b{flex:1;border-radius:5px 5px 2px 2px;background:var(--surface-3);position:relative}
+.spark__b i{position:absolute;inset:auto 0 0 0;border-radius:5px 5px 2px 2px;background:linear-gradient(180deg,#818CF8,#4F46E5)}
+.spark__b--now i{background:linear-gradient(180deg,#34D399,#047857)}
+.spark__l{display:flex;gap:7px;margin-top:8px}
+.spark__l span{flex:1;text-align:center;font-family:var(--font-mono);font-size:9.5px;color:var(--ink-3)}
+
+.ruleset{background:var(--surface);border:1px solid var(--rule);border-radius:var(--radius-lg);padding:4px 22px;margin-top:14px;box-shadow:var(--shadow)}
+.ruleset li{list-style:none;padding:13px 0;border-bottom:1px solid var(--rule);font-size:13.5px;color:var(--ink-2)}
+.ruleset li:last-child{border-bottom:none}
+.ruleset strong{color:var(--ink);font-weight:500;display:block;margin-bottom:2px}
+</style>
+</head>
+<body>
+
+<div class="chrome">
+  <span class="chrome__label">Screen</span>
+  <button class="tab" data-go="setup" aria-selected="true">Set up</button>
+  <button class="tab" data-go="room">In the room</button>
+  <button class="tab" data-go="dsa">DSA · editor</button>
+  <button class="tab" data-go="design">System design</button>
+  <button class="tab" data-go="voice">Voice</button>
+  <button class="tab" data-go="score">Scorecard</button>
+  <button class="tab" data-go="rules">The rules</button>
+</div>
+
+<!-- ============ SETUP ============ -->
+<section class="screen" data-screen="setup" data-active>
+<div class="wrap">
+  <h1 class="page-title">Set up a round</h1>
+  <p style="color:var(--ink-2);max-width:62ch;margin-top:6px">Every question comes from your own library. Nothing is asked that you have not saved.</p>
+
+  <div class="rule"><span class="eyebrow">Round</span></div>
+  <div class="types">
+    <button class="type t-js" aria-pressed="true">
+      <span class="type__dot"></span>
+      <span class="type__n">JavaScript</span>
+      <span class="type__s">Concepts, escalating follow-ups</span>
+      <span class="type__pool"><b>21 topics</b> · 9 weak · 14 quizzes</span>
+    </button>
+    <button class="type t-react">
+      <span class="type__dot"></span>
+      <span class="type__n">React</span>
+      <span class="type__s">Concepts, escalating follow-ups</span>
+      <span class="type__pool"><b>8 topics</b> · 4 weak</span>
+    </button>
+    <button class="type t-ts">
+      <span class="type__dot"></span>
+      <span class="type__n">TypeScript</span>
+      <span class="type__s">Concepts, escalating follow-ups</span>
+      <span class="type__pool"><b>8 topics</b> · 1 weak</span>
+    </button>
+    <button class="type t-dsa">
+      <span class="type__dot"></span>
+      <span class="type__n">DSA</span>
+      <span class="type__s">Code it, then complexity and edges</span>
+      <span class="type__pool"><b>3 problems</b> · your code is kept</span>
+    </button>
+    <button class="type t-design">
+      <span class="type__dot"></span>
+      <span class="type__n">System design</span>
+      <span class="type__s">One problem, four phases</span>
+      <span class="type__pool"><b>3 ADRs</b> · 1 diagram · 6 topics</span>
+    </button>
+    <button class="type t-behav type--thin">
+      <span class="type__dot"></span>
+      <span class="type__n">Behavioural</span>
+      <span class="type__s">Drawn from your ledger</span>
+      <span class="type__pool">2 decisions, 1 incident — thin for 45 min</span>
+    </button>
+    <button class="type t-mixed">
+      <span class="type__dot"></span>
+      <span class="type__n">Mixed</span>
+      <span class="type__s">A real loop, all three shapes</span>
+      <span class="type__pool"><b>everything</b> above</span>
+    </button>
+  </div>
+
+  <div class="rule"><span class="eyebrow">Length</span></div>
+  <div class="row">
+    <button class="pill"><div class="pill__t">20 min</div><div class="pill__s">4 concepts</div></button>
+    <button class="pill" aria-pressed="true"><div class="pill__t">45 min</div><div class="pill__s">8 concepts</div></button>
+    <button class="pill"><div class="pill__t">60 min</div><div class="pill__s">11 concepts</div></button>
+    <button class="pill"><div class="pill__t">90 min</div><div class="pill__s">16 concepts</div></button>
+  </div>
+
+  <div class="rule"><span class="eyebrow">Who is interviewing you</span></div>
+  <div class="row">
+    <button class="pill"><div class="pill__t">Friendly senior</div><div class="pill__s">nudges, accepts a good direction</div></button>
+    <button class="pill" aria-pressed="true"><div class="pill__t">Staff, terse</div><div class="pill__s">two follow-ups, no encouragement</div></button>
+    <button class="pill"><div class="pill__t">Skeptical principal</div><div class="pill__s">pushes until you concede or hold</div></button>
+  </div>
+
+  <div class="rule"><span class="eyebrow">How you answer</span></div>
+  <div class="row">
+    <button class="pill" aria-pressed="true"><div class="pill__t">Typing</div><div class="pill__s">works everywhere</div></button>
+    <button class="pill"><div class="pill__t">Voice</div><div class="pill__s">it speaks, you speak · Chrome</div></button>
+  </div>
+
+  <div class="startcard">
+    <div class="startcard__k">JavaScript · 45 minutes · staff, terse · typing</div>
+    <div class="startcard__t">Eight concepts, weighted toward weak</div>
+    <div class="startcard__s">Nine of your JavaScript topics read weak; the queue draws from those first. Three hints available, each visible on the scorecard.</div>
+    <div class="shape">
+      <div class="shape__b" style="--w:6"><b>0–30 min</b><span>6 questions, warm to hard</span></div>
+      <div class="shape__b" style="--w:3"><b>30–45</b><span>2 deep, two follow-ups each</span></div>
+      <div class="shape__b" style="--w:2"><b>then</b><span>scorecard</span></div>
+    </div>
+    <div class="startfoot">
+      <button class="btn btn--volt btn--lg">Enter the room</button>
+      <span class="cost">≈ 26k–40k tokens · $0.06–$0.11 · resent each turn · capped at 40 exchanges</span>
+    </div>
+  </div>
+
+  <div class="callout">
+    <div class="callout__t">Type and length set the shape — there is no minutes-per-question slider</div>
+    <p style="color:var(--ink-2);font-size:13.5px">Real rounds are not uniform. Forty-five minutes of JavaScript is eight concepts with follow-ups; sixty of design is one problem in four phases; ninety of DSA is three problems. The pool line under each type is read from your data and says honestly when a round would be thin.</p>
+  </div>
+
+  <p class="note">Interviewer level changes only how hard the follow-ups push — it is a prompt, not a scoring multiplier. A skeptical principal is harder to satisfy and does not make your score lower; the dimensions measure what you said, not who asked.</p>
+</div>
+</section>
+
+<!-- ============ THE ROOM ============ -->
+<section class="screen" data-screen="room">
+<div class="room"><div class="room__in">
+  <div class="rbar">
+    <div class="pips"><i class="pip pip--ok"></i><i class="pip pip--ok"></i><i class="pip pip--mid"></i><i class="pip pip--now"></i>
+      <i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></div>
+    <span class="tag tag--who">Staff, terse</span>
+    <span class="tag tag--gold">2 hints left</span>
+    <span class="clock"><i></i>31:04</span>
+  </div>
+
+  <div class="qtag">
+    <span class="tag">JavaScript · closures</span>
+    <span class="tag tag--rose">you grade this weak</span>
+    <span class="tag tag--volt">follow-up 2 of 3</span>
+  </div>
+  <h1 class="q">Walk me through what a closure actually captures.</h1>
+
+  <div class="yours">It keeps a reference to the variables that were in scope where the function was defined, so it can still read them after the outer function has returned.</div>
+
+  <div class="follow">
+    <span class="follow__l"><span class="follow__n">follow-up</span> going deeper</span>
+    So if two closures are made inside the same outer function and one changes a captured variable — what does the other see?
+  </div>
+
+  <div class="clar">
+    <span class="clar__l">You asked</span>
+    Are we talking about the same invocation of the outer function, or two separate calls?
+  </div>
+
+  <div class="follow" style="margin-top:0">
+    <span class="follow__l">Answered</span>
+    Same invocation. Good question — that is the distinction the whole thing turns on.
+  </div>
+
+  <div class="hint">
+    <span class="hint__l">Hint · 1 of 3 used</span>
+    Think about what "the scope" is a reference <em>to</em>. There is one of them per call, not one per closure.
+  </div>
+
+  <textarea class="ta" placeholder="Keep going…"></textarea>
+
+  <div class="rfoot">
+    <button class="btn btn--volt">Answer</button>
+    <button class="btn">Ask a question</button>
+    <button class="btn btn--ghost">Hint · 2 left</button>
+    <button class="btn btn--ghost">Move on</button>
+    <span class="meta">⌘↵ to send</span>
+  </div>
+
+  <div class="saveq">
+    <span>You did not get this one. Keep the follow-up as a quiz?</span>
+    <button class="btn btn--sm">Save as a quiz</button>
+  </div>
+
+  <p class="meta" style="margin-top:24px;padding-top:16px;border-top:1px solid var(--rule);max-width:64ch;line-height:1.7">
+    The room is a single focused card — no rail, no library, nothing to click away to. Colour and focus do the work rather than a dark theme. The pips fill green, amber or rose behind you, so the bar is the round so far.
+  </p>
+</div></div>
+</section>
+
+<!-- ============ DSA ============ -->
+<section class="screen" data-screen="dsa">
+<div class="room"><div class="room__in" style="max-width:880px">
+  <div class="rbar">
+    <div class="pips"><i class="pip pip--ok"></i><i class="pip pip--now"></i><i class="pip"></i></div>
+    <span class="tag tag--who">Staff, terse</span>
+    <span class="tag tag--gold">3 hints left</span>
+    <span class="clock"><i></i>22:47 · problem 2 of 3</span>
+  </div>
+
+  <div class="qtag"><span class="tag">DSA · arrays</span><span class="tag tag--volt">medium</span></div>
+  <h1 class="q" style="font-size:24px">Merge all overlapping intervals and return the result.</h1>
+  <p class="meta">Write it, then I will ask about complexity and what breaks.</p>
+
+  <div class="ed">
+    <div class="ed__bar"><span>solution.ts</span><span class="meta">CodeMirror 6 · TypeScript · no autocomplete, no type checking</span></div>
+    <div class="ed__b">
+      <div class="ed__ln">1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10<br>11<br>12</div>
+      <div class="ed__code"><span class="tk">function</span> <span class="tf">merge</span>(intervals: number[][]) {
+  <span class="tc">// sort by start</span>
+  <span class="tk">const</span> sorted = [...intervals].<span class="tf">sort</span>((a, b) =&gt; a[<span class="ts">0</span>] - b[<span class="ts">0</span>]);
+  <span class="tk">const</span> out: number[][] = [];
+
+  <span class="tk">for</span> (<span class="tk">const</span> [start, end] <span class="tk">of</span> sorted) {
+    <span class="tk">const</span> last = out[out.length - <span class="ts">1</span>];
+    <span class="tk">if</span> (last &amp;&amp; start &lt;= last[<span class="ts">1</span>]) last[<span class="ts">1</span>] = Math.<span class="tf">max</span>(last[<span class="ts">1</span>], end);
+    <span class="tk">else</span> out.<span class="tf">push</span>([start, end]);
+  }
+  <span class="tk">return</span> out;
+}</div>
+    </div>
+  </div>
+
+  <div class="follow">
+    <span class="follow__l"><span class="follow__n">follow-up</span> after the code</span>
+    That works. What is the complexity, and where does it come from? Then: if the input arrives already sorted, can you do better — and what would you need guaranteed?
+  </div>
+
+  <textarea class="ta" style="min-height:88px" placeholder="Complexity, and why…"></textarea>
+
+  <div class="rfoot">
+    <button class="btn btn--volt">Answer</button>
+    <button class="btn">Ask a question</button>
+    <button class="btn btn--ghost">Hint · 3 left</button>
+    <button class="btn btn--ghost">Next problem</button>
+    <span class="meta">your code is kept · the conversation is not</span>
+  </div>
+
+  <p class="meta" style="margin-top:22px;padding-top:16px;border-top:1px solid var(--rule);max-width:64ch;line-height:1.7">
+    No autocomplete and no type checking — an interview editor should not be smarter than a whiteboard. Nothing is executed: there is no runner, no test harness, and the model reads the code as text. Your code is the one thing from a round that persists, because you wrote it.
+  </p>
+</div></div>
+</section>
+
+<!-- ============ DESIGN ============ -->
+<section class="screen" data-screen="design">
+<div class="room"><div class="room__in">
+  <div class="rbar">
+    <span class="meta">System design · 60 minutes</span>
+    <span class="tag tag--who">Skeptical principal</span>
+    <span class="clock clock--low"><i></i>08:12</span>
+  </div>
+
+  <div class="phases">
+    <div class="phz phz--done"><div class="phz__k">✓ Phase 1</div><div class="phz__t">Requirements</div><div class="phz__m">0–10 min</div></div>
+    <div class="phz phz--done"><div class="phz__k">✓ Phase 2</div><div class="phz__t">High-level shape</div><div class="phz__m">10–25</div></div>
+    <div class="phz phz--now"><div class="phz__k">Phase 3 · now</div><div class="phz__t">Permissions &amp; audit</div><div class="phz__m">25–45</div></div>
+    <div class="phz"><div class="phz__k">Phase 4</div><div class="phz__t">Scale it 100×</div><div class="phz__m">45–60</div></div>
+  </div>
+
+  <div class="qtag" style="margin-top:20px"><span class="tag">System design</span><span class="tag tag--volt">drawn from ADR-001</span></div>
+  <h1 class="q" style="font-size:24px">Design a collaborative task app for 50 teams.</h1>
+
+  <div class="follow">
+    <span class="follow__l"><span class="follow__n">follow-up</span> defending your own decision</span>
+    You chose a modular monolith, and ADR-001 argues exactly that. Defend it against a team that wants to ship independently — what breaks first, and at what size?
+  </div>
+
+  <textarea class="ta" placeholder="…"></textarea>
+
+  <div class="rfoot">
+    <button class="btn btn--volt">Answer</button>
+    <button class="btn">Ask a question</button>
+    <button class="btn btn--ghost">Move to scale</button>
+    <span class="meta">⌘↵ to send</span>
+  </div>
+
+  <p class="meta" style="margin-top:22px;padding-top:16px;border-top:1px solid var(--rule);max-width:64ch;line-height:1.7">
+    The round your library is uniquely good at — it has read ADR-001 and is asking you to defend the decision you actually made, in the words you wrote. Phased rather than counted: sixty minutes of design is four movements, not eleven questions. The clock turns rose under ten minutes, the one alarm in the room.
+  </p>
+</div></div>
+</section>
+
+<!-- ============ VOICE ============ -->
+<section class="screen" data-screen="voice">
+<div class="room"><div class="room__in">
+  <div class="rbar">
+    <div class="pips"><i class="pip pip--ok"></i><i class="pip pip--now"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></div>
+    <span class="tag tag--who">Friendly senior</span>
+    <span class="tag tag--volt">Voice</span>
+    <span class="clock"><i></i>38:20</span>
+  </div>
+
+  <div class="qtag"><span class="tag">JavaScript · the event loop</span></div>
+  <h1 class="q">Why does a promise chain of any length still finish before a zero-delay timer?</h1>
+  <p class="meta">Spoken aloud. Read it again any time.</p>
+
+  <div style="display:flex;align-items:center;gap:20px;margin:26px 0 6px">
+    <div class="mic mic--live">●</div>
+    <div style="flex:1">
+      <div class="wave"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="meta" style="margin-top:9px">Listening · pause for two seconds to send</div>
+    </div>
+    <button class="btn">Type instead</button>
+  </div>
+
+  <div class="live">
+    Because microtasks drain completely before the event loop takes the next macrotask, so every <em>then</em> in the chain runs in the same…
+  </div>
+
+  <div class="rfoot">
+    <button class="btn btn--volt">Send</button>
+    <button class="btn btn--ghost">Start over</button>
+    <span class="meta">edit the text before sending — it is a transcript, not a recording</span>
+  </div>
+
+  <div class="callout" style="margin-top:26px">
+    <div class="callout__t">Why voice is worth the trouble</div>
+    <p style="color:var(--ink-2);font-size:13.5px">Typing an explanation and saying one are different motor tasks, and the one you will be assessed on is the second. You edit before sending, so a transcription error costs a correction rather than a wrong answer — and <strong>Type instead</strong> is always there, because speech recognition is the only thing in this app that can simply fail on your accent or your room.</p>
+  </div>
+
+  <p class="note">Chrome only, and the setup screen says so before you pick it. No audio is stored or sent — recognition runs in the browser and only the text goes to the model. The question is spoken by the browser's own speech synthesis, not by a generated voice.</p>
+</div></div>
+</section>
+
+<!-- ============ SCORECARD ============ -->
+<section class="screen" data-screen="score">
+<div class="wrap">
+
+  <div class="sc-hero">
+    <div class="sc-hero__grid">
+      <div class="sc-ring"><div class="sc-ring__in">
+        <div class="sc-ring__v">74</div><div class="sc-ring__k">round score</div></div></div>
+      <div class="sc-hero__m">
+        <span class="sc-band">◆ Solid — would pass a screen</span>
+        <h1 class="sc-hero__t">JavaScript · 45 minutes</h1>
+        <div class="sc-hero__s">Strong on mechanism, thin the moment a follow-up asked for a consequence. Staff-level interviewer, three topics went shallow under pressure.</div>
+        <div class="sc-stats">
+          <div class="sc-stat"><b>8/8</b><span>answered</span></div>
+          <div class="sc-stat"><b>11/14</b><span>follow-ups held</span></div>
+          <div class="sc-stat"><b>2</b><span>questions asked</span></div>
+          <div class="sc-stat"><b>1</b><span>hint used</span></div>
+          <div class="sc-stat"><b class="sc-up">+9</b><span>vs last JS</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="rule"><span class="eyebrow">Where the score came from</span></div>
+  <div class="sc-dims">
+    <div class="sc-dim h-recall"><div class="sc-dim__k">Recall</div><div class="sc-dim__v">86</div>
+      <div class="sc-dim__t"><i style="width:86%"></i></div>
+      <div class="sc-dim__s">You knew what things were. Definitions were fast and accurate.</div></div>
+    <div class="sc-dim h-depth"><div class="sc-dim__k">Depth</div><div class="sc-dim__v">58</div>
+      <div class="sc-dim__t"><i style="width:58%"></i></div>
+      <div class="sc-dim__s">Three follow-ups unanswered. The gap between knowing and using.</div></div>
+    <div class="sc-dim h-prec"><div class="sc-dim__k">Precision</div><div class="sc-dim__v">79</div>
+      <div class="sc-dim__t"><i style="width:79%"></i></div>
+      <div class="sc-dim__s">Mostly exact. Two answers true but vague enough to be unfalsifiable.</div></div>
+    <div class="sc-dim h-enq"><div class="sc-dim__k">Enquiry</div><div class="sc-dim__v">80</div>
+      <div class="sc-dim__t"><i style="width:80%"></i></div>
+      <div class="sc-dim__s">Two clarifying questions, both load-bearing. Asking counts for you.</div></div>
+  </div>
+
+  <div class="rule"><span class="eyebrow">Question by question</span></div>
+  <div class="sc-qs">
+    <div class="sc-q"><div class="sc-q__m"><div class="sc-q__t">The event loop &amp; microtasks</div>
+      <div class="sc-q__s">2 follow-ups · both held</div></div>
+      <div class="sc-q__bar"><i class="g-hi" style="width:92%"></i></div>
+      <div class="sc-q__n" style="color:#047857">92</div></div>
+    <div class="sc-q"><div class="sc-q__m"><div class="sc-q__t">Discriminated unions</div>
+      <div class="sc-q__s">2 follow-ups · both held · slow start</div></div>
+      <div class="sc-q__bar"><i class="g-hi" style="width:81%"></i></div>
+      <div class="sc-q__n" style="color:#047857">81</div></div>
+    <div class="sc-q"><div class="sc-q__m"><div class="sc-q__t">Hydration mismatch</div>
+      <div class="sc-q__s">2 follow-ups · one held · 1 hint</div></div>
+      <div class="sc-q__bar"><i class="g-mid" style="width:64%"></i></div>
+      <div class="sc-q__n" style="color:#4F46E5">64</div></div>
+    <div class="sc-q"><div class="sc-q__m"><div class="sc-q__t">Closures hold a reference, not a copy</div>
+      <div class="sc-q__s">3 follow-ups · one held · quiz saved</div></div>
+      <div class="sc-q__bar"><i class="g-lo" style="width:41%"></i></div>
+      <div class="sc-q__n" style="color:#BE185D">41</div>
+      <button class="btn btn--sm">Rewind</button></div>
+    <div class="sc-q"><div class="sc-q__m"><div class="sc-q__t">Why <code>var</code> in a loop surprises everyone once</div>
+      <div class="sc-q__s">2 follow-ups · none held</div></div>
+      <div class="sc-q__bar"><i class="g-lo" style="width:33%"></i></div>
+      <div class="sc-q__n" style="color:#BE185D">33</div>
+      <button class="btn btn--sm">Rewind</button></div>
+  </div>
+  <p class="meta" style="margin-top:9px">Rewind re-asks that one question now, while it is fresh. It produces its own small result and <strong>never changes the 74</strong> — a score you can retry until it improves is not a score.</p>
+
+  <div class="rule"><span class="eyebrow">Your JavaScript rounds</span></div>
+  <div class="panel"><div class="panel__body">
+    <div class="spark">
+      <div class="spark__b"><i style="height:52%"></i></div>
+      <div class="spark__b"><i style="height:48%"></i></div>
+      <div class="spark__b"><i style="height:61%"></i></div>
+      <div class="spark__b"><i style="height:65%"></i></div>
+      <div class="spark__b spark__b--now"><i style="height:74%"></i></div>
+    </div>
+    <div class="spark__l"><span>52</span><span>48</span><span>61</span><span>65</span><span>74</span></div>
+    <p class="meta" style="margin-top:12px">Five rounds, your own scores only. No benchmark, no percentile, nobody else.</p>
+  </div></div>
+
+  <div class="rule"><span class="eyebrow">What it wants to change — you decide</span></div>
+  <div class="panel"><div class="panel__body" style="padding-top:4px;padding-bottom:6px">
+    <div class="off"><span class="box box--on">✓</span>
+      <div class="off__m"><div class="off__t">Closures hold a reference, not a copy</div>
+        <div class="off__s">You had the mechanism but not the shared-scope consequence — two closures over one scope, and a change through one visible to the other.</div></div>
+      <span class="off__c">→ mark weak</span></div>
+    <div class="off"><span class="box box--on">✓</span>
+      <div class="off__m"><div class="off__t">Why <code>var</code> in a loop surprises everyone once</div>
+        <div class="off__s">Correct on the symptom, could not say why <code>let</code> fixes it.</div></div>
+      <span class="off__c">→ mark weak</span></div>
+    <div class="off"><span class="box"></span>
+      <div class="off__m"><div class="off__t">Discriminated unions</div>
+        <div class="off__s">Slow to start but landed it, exhaustiveness included. Flagged because you paused — which may be nothing.</div></div>
+      <span class="off__c">→ mark weak</span></div>
+  </div></div>
+
+  <div style="display:flex;gap:12px;align-items:center;margin-top:14px;flex-wrap:wrap">
+    <button class="btn btn--primary btn--lg">Mark the 2 selected weak</button>
+    <button class="btn btn--ghost">Change nothing</button>
+    <span class="meta" style="margin-left:auto">Nothing is written until you press this</span>
+  </div>
+
+  <div class="rule"><span class="eyebrow">Saved from the round</span></div>
+  <div class="panel"><div class="panel__body" style="color:var(--ink-2);font-size:13.5px;max-width:62ch">
+    <strong style="color:var(--ink)">1 quiz</strong> — <em>"What does the other closure see when one changes a captured variable?"</em>, saved during the round from a follow-up you could not answer. It is in your library, linked to the same topic, and already in the practice queue.
+  </div></div>
+
+  <div class="rule"><span class="eyebrow">What it did not ask</span></div>
+  <div class="panel"><div class="panel__body" style="color:var(--ink-2);font-size:13.5px;max-width:62ch">
+    13 JavaScript topics were not reached in 45 minutes — <span style="color:var(--volt-ink);text-decoration:underline">see them</span>. A round is a sample, and 74 is a score for this round rather than for what you know.
+  </div></div>
+
+  <div class="callout">
+    <div class="callout__t">The score is about the round. Confidence is still yours.</div>
+    <p style="color:var(--ink-2);font-size:13.5px">74 says how you performed for forty-five minutes on eight questions — a real thing, worth improving, worth comparing against your last round. It is <strong>not</strong> a claim about what you know and it never writes to confidence. That still takes one tap, and the third row is unticked because you disagreed, which is what the checkbox is for.</p>
+  </div>
+
+  <p class="note">Colour here is a scale, not a palette meaning — emerald through violet to rose maps to a number between 0 and 100, and it appears nowhere else in the app. The four dimension hues are fixed per dimension so Depth is always rose and Recall always emerald across every round you run; that is what makes the sparkline and the "+9" readable at a glance.</p>
+</div>
+</section>
+
+<!-- ============ RULES ============ -->
+<section class="screen" data-screen="rules">
+<div class="wrap">
+  <h1 class="page-title">The rules</h1>
+
+  <div class="rule"><span class="eyebrow">Shape</span></div>
+  <ul class="ruleset">
+    <li><strong>Type plus duration sets the structure</strong>Never a minutes-per-question slider. Concepts are N questions with follow-ups; design is four phases; DSA is 1–3 problems.</li>
+    <li><strong>Seven types</strong>JavaScript, React, TypeScript, DSA, System design, Behavioural, Mixed. Machine coding is out — it needs a mini-IDE, and a build you did elsewhere is a ledger item with a repo link and a deployed URL.</li>
+    <li><strong>Every question comes from your library, weighted toward weak</strong>The pool line under each type is read from your data and says honestly when a round would be thin.</li>
+    <li><strong>Follow-ups arrive when an answer leaves an opening</strong>Not on a fixed count. They are the point of the round.</li>
+  </ul>
+
+  <div class="rule"><span class="eyebrow">The six additions</span></div>
+  <ul class="ruleset">
+    <li><strong>Interviewer level is a prompt, not a multiplier</strong>Friendly senior, staff, skeptical principal. It changes how hard follow-ups push. A harder interviewer does not lower your score — the dimensions measure what you said, not who asked.</li>
+    <li><strong>Asking a clarifying question counts for you</strong>Real rounds open with questions. <em>Ask a question</em> is its own action so a question is never scored as a wrong answer, and Enquiry is a scored dimension.</li>
+    <li><strong>Three hints, each visible on the scorecard</strong>A hint is a real interview move; asking for the answer is not. The cost is transparency, never a hidden penalty — the row shows "1 hint" beside the score it earned.</li>
+    <li><strong>A follow-up you could not answer can become a quiz, during the round</strong>One tap. Distractors drafted, question saved to your library linked to the same topic. The only thing in a round that feeds the library rather than the scorecard.</li>
+    <li><strong>Rewind re-asks one question and never changes the score</strong>Immediately, while it is fresh. It produces its own small result. A score you can retry until it improves is not a score.</li>
+    <li><strong>Voice is Chrome-only and always has a typed fallback</strong>Recognition runs in the browser; no audio is stored or sent, only text. You edit the transcript before sending, so a mis-hearing costs a correction rather than a wrong answer.</li>
+  </ul>
+
+  <div class="rule"><span class="eyebrow">Scoring</span></div>
+  <ul class="ruleset">
+    <li><strong>A score for the round, never for what you know</strong>Confidence stays yours; the scorecard offers and you confirm.</li>
+    <li><strong>Four dimensions, because one number hides the finding</strong>Recall 86 and Depth 58 is the whole story — you know what things are and go thin when asked for a consequence. A single score averages that away.</li>
+    <li><strong>Comparison is to your own past rounds only</strong>No benchmark, no percentile, no other people.</li>
+    <li><strong>It says what it did not ask</strong>Without that line, 74 reads as a verdict on your JavaScript rather than on eight questions.</li>
+  </ul>
+
+  <div class="rule"><span class="eyebrow">What persists</span></div>
+  <ul class="ruleset">
+    <li><strong>The scorecard, your DSA code, and any quiz you saved</strong>Three things, all yours or derived from what you did.</li>
+    <li><strong>The conversation is discarded</strong>Mostly model prose, never reread, and storing it builds the second library this product has refused for seven arcs.</li>
+  </ul>
+
+  <div class="rule"><span class="eyebrow">Not built</span></div>
+  <ul class="ruleset">
+    <li><strong>Nothing is executed</strong>No code runner, no test harness. The model reads your code as text, the way an interviewer reads a whiteboard.</li>
+    <li><strong>No benchmarks, percentiles, leaderboards or streaks</strong>Seven arcs of exclusions, inherited. Only the no-AI line was ever retired.</li>
+    <li><strong>No round is ever resumed</strong>A round is 45 minutes of continuous attention or it is not a round. Leaving loses it, and the setup screen says so.</li>
+  </ul>
+</div>
+</section>
+
+<script>
+  const screens=document.querySelectorAll('[data-screen]');
+  document.querySelector('.chrome').addEventListener('click',e=>{
+    const b=e.target.closest('[data-go]'); if(!b) return;
+    document.querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-selected',t===b));
+    screens.forEach(s=>s.toggleAttribute('data-active',s.dataset.screen===b.dataset.go));
+    window.scrollTo(0,0);
+  });
+</script>
+</body>
+</html>

@@ -156,3 +156,52 @@
     }
   }
 }
+
+/*
+  ── The interview scale ─────────────────────────────────────────────────────
+  Arc 7 brings a second palette: a 0–100 scale, emerald through violet to rose.
+  It is a SCALE, not palette meaning, and it must appear nowhere else in the app
+  — not on a topic, a card, a meter or the library.
+
+  Deliberately NOT inside `@theme`. `@theme` emits its properties on `:root` and
+  generates utilities, which is exactly how a scale becomes available to a topic
+  card. Defined here on a scoped selector instead, interview components write
+  `bg-[var(--volt)]` and outside this subtree `--volt` does not resolve, so the
+  declaration is invalid and the element gets NOTHING rather than the wrong
+  colour.
+
+  Physical enforcement, not convention. `interview-boundary.test.ts` is the
+  second line and names the rule; the cascade is the first and makes it true.
+
+  This is the answer to a leak the reference could not have shown us:
+  `interview-reference.html` puts `:focus-visible{outline:2px solid var(--volt)}`
+  at top level, which is invisible in a file where everything IS interview mode
+  and would have violeted every focus ring in the product. See ARCHITECTURE.md.
+*/
+[data-mode='interview'] {
+  /* The scale itself. Emerald → violet → rose maps 100 → 0. */
+  --volt: #4f46e5;
+  --volt-2: #6d63ef;
+  --volt-ink: #3730a3;
+  --volt-soft: #eef0fe;
+  --gold: #b45309;
+  --gold-ink: #92400e;
+  --gold-soft: #fef3e2;
+  --mint: #047857;
+  --mint-ink: #065f46;
+  --mint-soft: #e7f6f0;
+  --rose: #be185d;
+  --rose-ink: #9d174d;
+  --rose-soft: #fdf0f5;
+  --teal: #0f766e;
+  --teal-soft: #e6f4f2;
+
+  /*
+    The room's own focus ring. Scoped, unlike the reference's — inside the room
+    it is the scale, outside it never resolves and the app's accent ring stands.
+  */
+  :focus-visible {
+    outline: 2px solid var(--volt);
+    outline-offset: 2px;
+  }
+}

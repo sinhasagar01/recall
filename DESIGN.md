@@ -1173,7 +1173,111 @@ nothing left to game.
 
 ---
 
-## 12. Copy rules
+## 12. Interview mode
+
+`interview-reference.html` is the visual source of truth, read the way every reference is: the
+screens win on visual and interaction detail, and a shipped decision with recorded reasoning
+wins over the screens.
+
+A timed mock interview built from your own library. Pick a round type, a length and an
+interviewer level; it asks one thing at a time with escalating follow-ups; at the end a
+scorecard says where you went thin and **offers** to mark topics weak.
+
+**This is session one.** Save-a-follow-up-as-a-quiz, rewind and voice are session two, drawn in
+the reference and deliberately not built or stubbed.
+
+### The colour here is a SCALE, not palette meaning
+
+Emerald through violet to rose maps a number between 0 and 100, and it appears **nowhere else
+in the app** — not on a topic, a card, a meter or the library. The four dimension hues are fixed
+per dimension so Depth is always the same colour across every round, which is what makes the
+sparkline readable at a glance.
+
+It is enforced by the cascade rather than by review: the scale is defined on
+`[data-mode='interview']` and **not** in `@theme`, so outside that subtree a stray
+`bg-[var(--volt)]` resolves to nothing and paints **no colour rather than the wrong one**. That
+is measured in `e2e/interview-scale.spec.ts`, not assumed. See ARCHITECTURE.md for why a
+single-mode reference could not have shown us the leak it contained.
+
+### Type plus duration sets the shape
+
+Never a minutes-per-question slider. Forty-five minutes of concepts is eight questions with
+follow-ups; the number falls out of the pair. **Session one ships five types** — JavaScript,
+React, TypeScript, Behavioural and Mixed. DSA and System design need their own runners and are
+**absent from the setup screen**, not disabled.
+
+Behavioural is thin on purpose and the card says so. It is built in session one because it
+draws from the **ledger** while concepts draw from the **library** — two pool sources from the
+start, so the abstraction is real rather than quietly topic-shaped.
+
+**The pool line is read from your data**, and says honestly when a round would be thin rather
+than starting one that cannot fill.
+
+### The clock is advisory; its teeth are in the record
+
+The question count ends the round. The clock counts past zero and turns rose under ten minutes,
+but it never cuts you off — a hard stop can destroy an answer mid-sentence in a round that is
+**never resumed**. Instead elapsed time and any over-run are stored and shown against past
+rounds, so going twenty minutes long is visible where it matters.
+
+**A round is never resumed, and the setup screen says so before you enter.** The reference's
+rules tab claimed the setup screen said this and the setup screen did not.
+
+### Counted in code, judged by a model, never mixed
+
+| Counted | Judged |
+| --- | --- |
+| answered, asked, follow-ups offered and held, questions asked, hints used, elapsed, over-run | Recall, Depth, Precision, Enquiry, and the roll-up |
+
+Anything countable is counted. The model is asked for judgement about what was said and for
+nothing else — the scoring prompt explicitly tells it not to count, because its count would only
+disagree with the one that is right. The two are rendered **beside** each other rather than
+combined, so a disagreement is visible rather than silent.
+
+**Interviewer level is a prompt, never a multiplier.** A skeptical principal is harder to satisfy
+and does not lower your score. This is enforced by the scoring prompt being a flat constant that
+takes no level — there is nothing to thread one through.
+
+**Asking a clarifying question is never scored as a wrong answer.** It is its own action for
+that reason, and Enquiry counts asking *for* you.
+
+**Three hints, each visible on the scorecard.** A hint is a real interview move; the cost is
+transparency, never a hidden penalty.
+
+### The scorecard offers; you confirm
+
+The score is about the round, never about what you know. **Nothing touches confidence until you
+press** — the render path holds no database client at all, so it is unable rather than careful.
+Offers below 60 arrive ticked; unticking is one click, because disagreeing has to work.
+
+**It says what it did not ask.** Without that line a score reads as a verdict on your JavaScript
+rather than on the questions actually asked.
+
+**Comparison is to your own past rounds only.** No benchmark, no percentile, nobody else.
+
+### What persists: numbers, and nothing a model wrote
+
+One row per completed round, every column a number. The summary, the per-dimension notes and
+the per-question notes are model prose, rendered once and **never stored** — there is no column
+to put them in, which `interview_test.sql` asserts by name.
+
+The cost, stated: revisiting a past round gives you its numbers, not its narrative. That is the
+right side of not building the second library this product has refused for seven arcs.
+
+**The conversation lives in the browser** and is posted to a server action each turn. A round
+you abandoned leaves nothing **by construction** — the only insert happens at the end, with the
+scorecard, so there is no in-flight row to orphan.
+
+### Not built
+
+No DSA round, no System design round, no code editor, and **nothing is executed** — no runner,
+no test harness. No benchmarks, percentiles, leaderboards or streaks. Every exclusion from seven
+arcs stands; only the no-AI line was ever retired, and this arc retires only the interview-mode
+deferral inside it.
+
+---
+
+## 13. Copy rules
 
 Sentence case everywhere. Active voice. An action keeps its name through the
 whole flow — the button that says "Save topic" produces a toast that says
@@ -1185,7 +1289,7 @@ invitations, not apologies.
 
 ---
 
-## 13. Accessibility floor
+## 14. Accessibility floor
 
 Not optional, not polish-phase:
 
@@ -1214,7 +1318,7 @@ technology. Where the two disagree, this is the rule.
 
 ---
 
-## 14. Out of scope
+## 15. Out of scope
 
 The mock shows a few things beyond the original spec. Ship them only if the core
 loop is done: search-term highlighting in card titles, "Review the 2 you missed"

@@ -52,12 +52,22 @@ function sourceFiles(dir: string): string[] {
 const relative = (file: string) => file.slice(SRC.length + 1)
 
 describe('the OpenAI key', () => {
+  /*
+    Still ONE module, and arc 7 is why that is worth saying.
+
+    Interview mode needed a second feature to call a model. Widening this list to
+    two files was the obvious move and the wrong one: an allowlist that grows once
+    grows again, and its whole strength is its length. The transport moved to
+    `client.ts` instead, so `extract.ts` and `interview.ts` are prompt-and-parse
+    modules that name neither the key nor the host — one entry covering two
+    features, which is stronger than two entries covering two.
+  */
   it('is referenced by exactly one module', () => {
     const holders = sourceFiles(SRC)
       .filter((file) => readFileSync(file, 'utf8').includes('OPENAI_API_KEY'))
       .map(relative)
 
-    expect(holders).toEqual(['lib/ai/extract.ts'])
+    expect(holders).toEqual(['lib/ai/client.ts'])
   })
 
   it('reaches the vendor from exactly that one module too', () => {
@@ -70,7 +80,7 @@ describe('the OpenAI key', () => {
       .filter((file) => readFileSync(file, 'utf8').includes('api.openai.com'))
       .map(relative)
 
-    expect(callers).toEqual(['lib/ai/extract.ts'])
+    expect(callers).toEqual(['lib/ai/client.ts'])
   })
 
   it('is never named in a client component', () => {
