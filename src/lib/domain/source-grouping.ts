@@ -42,6 +42,8 @@ export interface ChapterNode {
   chapter: string | null
   lessons: LessonNode[]
   entries: number
+  /** The topic ids this chapter produced — what a chapter session would be. */
+  entryIds: string[]
   seconds: number | null
 }
 
@@ -58,6 +60,8 @@ export interface CourseNode {
    * lib/domain/sources.ts. Never a percentage — see below.
    */
   mined: number
+  /** The topic ids this course produced — what a course session would be. */
+  entryIds: string[]
 }
 
 /**
@@ -108,6 +112,7 @@ export function groupSources(views: SourceWithEntriesView[]): CourseNode[] {
         chapter,
         lessons: lessons.map((view) => ({ view })),
         entries: chapterViews.reduce((total, view) => total + view.entries.length, 0),
+        entryIds: chapterViews.flatMap((view) => view.entries.map((entry) => entry.id)),
         seconds: totalDuration(chapterViews.map((view) => view.source.duration_seconds)),
         latest: latestOf(chapterViews),
         key: chapter ?? '',
@@ -128,6 +133,7 @@ export function groupSources(views: SourceWithEntriesView[]): CourseNode[] {
         60% — its own rules tab forbids it.
       */
       mined: minedCount(courseViews),
+      entryIds: courseViews.flatMap((view) => view.entries.map((entry) => entry.id)),
       latest: latestOf(courseViews),
       key: course ?? '',
     })
@@ -171,4 +177,53 @@ export function groupedHeadline(courses: CourseNode[]): string {
   parts.push(`${entries} ${entries === 1 ? 'entry' : 'entries'} distilled`)
 
   return parts.join(' · ')
+}
+
+/*
+  ── Never two actions that produce the same session ─────────────────────────
+  A course with one chapter has a "practise this chapter" and a "practise this
+  course" that run over the same entries. Two buttons producing an identical
+  session is not a layout problem, it is a missing rule — and the same holds one
+  level down, for a chapter with a single lesson.
+
+  Written once, generally, rather than as two special cases: **if two scopes
+  resolve to the same set of topic ids, show the widest.** "One chapter" and "one
+  lesson" are then consequences rather than conditions, and a third level would
+  need no new rule.
+*/
+export type ScopeLevel = 'course' | 'chapter' | 'lesson'
+
+export interface PractiseScope {
+  /** The caller's own handle for this action. */
+  key: string
+  level: ScopeLevel
+  ids: string[]
+}
+
+/** Wider is a bigger number. */
+const WIDTH: Record<ScopeLevel, number> = { course: 3, chapter: 2, lesson: 1 }
+
+/**
+ * The keys worth rendering.
+ *
+ * A scope with no entries is dropped entirely: **absent, not disabled** — a
+ * session of zero entries is not a session, and a disabled button still says
+ * button (DESIGN.md, the quiz options).
+ */
+export function practisableScopes(scopes: PractiseScope[]): Set<string> {
+  /* Identity of a session, independent of the order ids arrived in. */
+  const signature = (ids: string[]) => [...ids].sort().join(',')
+
+  const widestBySet = new Map<string, PractiseScope>()
+  for (const scope of scopes) {
+    if (scope.ids.length === 0) continue
+
+    const key = signature(scope.ids)
+    const held = widestBySet.get(key)
+    if (held === undefined || WIDTH[scope.level] > WIDTH[held.level]) {
+      widestBySet.set(key, scope)
+    }
+  }
+
+  return new Set([...widestBySet.values()].map((scope) => scope.key))
 }

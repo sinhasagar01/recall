@@ -677,6 +677,60 @@ expressions that happen to look alike.** `isMined`, `isFinished`, `minedCopy` an
 `finishedCopy` live in `lib/domain/sources.ts`; the near-miss was possible because the two
 counts were computed in two components, and neither component could see the other's wording.
 
+### Two mocks cover this screen, and which wins where
+
+`sources-hierarchy-mock.html` specifies the grouping, the course head, the chapter band, the
+ordering and the page header. `sources-actions-mock.html` specifies **the practise actions and
+the lesson meter, and only those**. Where they disagree outside those two areas, the older one
+is the specification.
+
+That already settled one case: the newer file drew the course sub-line ending *"0 of 1
+finished"*, which contradicted the older file twice — the count belongs in its own element on
+the far right, and the count that belongs there is **mined**, not finished. The older file
+won; the newer one is corrected.
+
+### The practise actions
+
+**They read as buttons**, because they start a session rather than navigating to a page. They
+stay `Link`s underneath: a `<Button>` wrapping a `<Link>` is invalid markup and hands a screen
+reader two nested controls, which the practice line already established.
+
+**Each sits at the end of what it covers** — the chapter's in the chapter band, which is the
+only row belonging to that chapter and nothing else; the course's in the card footer, after
+every chapter. **The count sits beside the button, not inside the label**, so the button says
+what it does at a constant length and the meta says how much.
+
+**Never two actions producing the same session.** A course with one chapter would otherwise
+offer "practise this chapter" and "practise this course" over identical entries. This is one
+general rule rather than two special cases: *if two scopes resolve to the same set of topic
+ids, show the widest.* "One chapter" and "one lesson" are consequences of it, and a third
+level would need no new rule. **A scope with nothing to practise is absent, not disabled** —
+the quiz-options rule again.
+
+### The lesson meter
+
+Five squares, filled by **entries at okay or better over entries from that lesson**. Dashed and
+empty means nothing distilled; five filled means finished.
+
+It has replaced two things. Arc 2 drew five dots counting the extraction checklist; arc 6
+deleted that checklist and left a single grey dot meaning "finished", which was binary and, on
+a row already carrying four numbers, too quiet to read. Five marks again, now measuring
+something real.
+
+| | |
+| --- | --- |
+| Any progress at all | at least one square, so 3 of 21 does not read as untouched |
+| All five | **only** when every entry is settled, so "full" and "finished" are one statement |
+| Nothing distilled | dashed and empty — the confidence meter's idiom for no data yet |
+
+`--ok` is right here for the same reason it is right on the evidence cells: this is derived
+from confidence, not a self-report. **But colour is never the only signal** — the exact numbers
+are in both `title` and `aria-label`, so the squares are the glance and the text is the truth.
+
+**Not a bar and not a percentage.** A bar reads as a percentage, and this app has refused those
+since the first spec; five discrete marks say "some of it" without implying a precision the
+number does not have.
+
 ### A course is a card, and a chapter is a tinted band
 
 The course panel takes the card treatment every other list in this app uses — border, radius,
@@ -688,10 +742,9 @@ this project's *eyebrow* treatment and means "the name of a section of a page"; 
 not that, it is a level of the hierarchy the panel is already showing. The tint separates the
 band from its lessons without another rule, and the lessons indent beneath it.
 
-**Both practise actions follow the content they cover** — the chapter's at the foot of its
-lessons, the course's in the panel footer. Placed above, "Practise this course" sat between the
-course head and its first chapter, competing with the hierarchy it contains and reading as
-though it belonged to the chapter below it.
+The course head stacks its name and sub-line on the left with **the mined count alone on the
+far right**: it is the course's summary judgement and does not read as one at the tail of a
+list of four numbers. The **meter leads a lesson row**, before the name and the yield.
 
 ### Every level of the breadcrumb is a link
 

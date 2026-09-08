@@ -7,8 +7,12 @@ import {
   isFinished,
   isMined,
   isUndistilled,
+  lessonMeter,
+  METER_SQUARES,
+  meterLabel,
   minedCopy,
   minedCount,
+  practiseMeta,
   sourceProgress,
   sourceProgressCopy,
   transcriptState,
@@ -144,6 +148,78 @@ describe('mined and finished are different questions', () => {
     // The regression: neither phrase may be a near-miss of the other.
     expect(finishedCopy(1, 3)).not.toContain('mined')
     expect(minedCopy(2, 3)).not.toContain('finished')
+  })
+})
+
+describe('the lesson meter', () => {
+  const entries = (...confidences: Topic['confidence'][]) =>
+    confidences.map((confidence, index) => makeTopic({ id: `t${index}`, confidence }))
+
+  it('is dashed and empty when nothing has been distilled', () => {
+    const meter = lessonMeter([])
+
+    expect(meter.none).toBe(true)
+    expect(meter.filled).toBe(0)
+    expect(meterLabel(meter)).toBe('nothing distilled')
+  })
+
+  it('is empty but NOT "none" when entries exist and none is settled', () => {
+    // A different state, and it reads differently: you distilled something and
+    // cannot recall any of it yet.
+    const meter = lessonMeter(entries('new', 'weak'))
+
+    expect(meter.none).toBe(false)
+    expect(meter.filled).toBe(0)
+    expect(meterLabel(meter)).toBe('0 of 2 at okay or better')
+  })
+
+  it('fills at least one square for any progress at all', () => {
+    /*
+      3 of 21 is 0.71 of a square. Flooring alone would draw nothing, so a
+      lesson you have made real progress on would read as untouched.
+    */
+    const meter = lessonMeter(entries(...Array(18).fill('weak'), 'okay', 'okay', 'strong'))
+
+    expect(meter.settled).toBe(3)
+    expect(meter.total).toBe(21)
+    expect(meter.filled).toBe(1)
+  })
+
+  it('fills proportionally in between', () => {
+    // 11 of 21 → 2.6 squares → 2. The mock's own worked example.
+    const meter = lessonMeter(entries(...Array(10).fill('weak'), ...Array(11).fill('okay')))
+
+    expect(meter.filled).toBe(2)
+  })
+
+  it('fills all five only when every entry is settled', () => {
+    expect(lessonMeter(entries('okay', 'strong', 'okay')).filled).toBe(METER_SQUARES)
+
+    /*
+      "Full" and "finished" have to be the same statement, not two that nearly
+      agree — one entry short must not round up to five.
+    */
+    const nearly = entries(...Array(19).fill('okay'), 'weak')
+    expect(lessonMeter(nearly).filled).toBeLessThan(METER_SQUARES)
+    expect(isFinished(nearly)).toBe(false)
+
+    const done = entries('okay', 'okay')
+    expect(lessonMeter(done).filled).toBe(METER_SQUARES)
+    expect(isFinished(done)).toBe(true)
+  })
+
+  it('carries the exact numbers in words, because colour is never the only signal', () => {
+    expect(meterLabel(lessonMeter(entries('okay', 'weak')))).toBe('1 of 2 at okay or better')
+    expect(meterLabel(lessonMeter(entries('okay')))).toBe('finished — all 1 at okay or better')
+  })
+})
+
+describe('what sits beside a practise button', () => {
+  it('says how much, and stays quiet about a zero', () => {
+    expect(practiseMeta([makeTopic({ id: 'a', confidence: 'new' })])).toBe(
+      '1 entry · 1 never practised',
+    )
+    expect(practiseMeta([makeTopic({ id: 'a', confidence: 'okay' })])).toBe('1 entry')
   })
 })
 

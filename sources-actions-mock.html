@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recall — practise actions &amp; the lesson meter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;450;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#E9EAF0; --surface:#FFFFFF; --surface-2:#F5F5FA; --surface-3:#EDEEF4;
+  --ink:#12131A; --ink-2:#53555F; --ink-3:#83858F;
+  --rule:#E1E1E9; --rule-strong:#C9C9D4;
+  --accent:#3F3AC7; --accent-soft:#EDECFB; --accent-ink:#2E2A9E;
+  --flag:#B4325C; --flag-soft:#FBEBF1;
+  --ok:#1B6B4F; --ok-soft:#E6F2EC;
+  --radius:6px; --radius-lg:10px;
+  --shadow:0 1px 2px rgba(18,19,26,.05), 0 1px 1px rgba(18,19,26,.03);
+  --font-display:"Newsreader",Georgia,serif;
+  --font-body:"IBM Plex Sans",system-ui,sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:14.5px;line-height:1.55;-webkit-font-smoothing:antialiased}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+code{font-family:var(--font-mono);font-size:.86em}
+.chrome{position:sticky;top:0;z-index:60;display:flex;gap:6px;align-items:center;padding:9px 16px;
+  background:var(--surface);border-bottom:1px solid var(--rule);flex-wrap:wrap}
+.chrome__label{font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin-right:6px}
+.tab{font-family:var(--font-mono);font-size:11.5px;padding:5px 9px;border:1px solid transparent;border-radius:var(--radius);
+  background:none;color:var(--ink-2);cursor:pointer}
+.tab:hover{background:var(--surface-2);color:var(--ink)}
+.tab[aria-selected="true"]{background:var(--accent-soft);color:var(--accent-ink);border-color:var(--accent)}
+
+.eyebrow{font-family:var(--font-mono);font-size:10.5px;font-weight:500;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3)}
+.meta{font-family:var(--font-mono);font-size:11.5px;color:var(--ink-3)}
+.btn{font-family:var(--font-body);font-size:13.5px;font-weight:500;display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  padding:9px 14px;border-radius:var(--radius);border:1px solid var(--rule-strong);background:var(--surface);color:var(--ink);cursor:pointer}
+.btn:hover{border-color:var(--ink-3)}
+.btn--primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn--sm{padding:6px 11px;font-size:12.5px}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.screen{display:none}.screen[data-active]{display:block}
+.wrap{max-width:960px;margin:0 auto;padding:28px 26px 80px}
+.page-title{font-family:var(--font-display);font-size:29px;font-weight:500;letter-spacing:-.022em}
+.page-sub{margin-top:4px;font-family:var(--font-mono);font-size:11.5px;color:var(--ink-3)}
+.rule{display:flex;align-items:center;gap:12px;margin:30px 0 12px}
+.rule::after{content:"";flex:1;height:1px;background:var(--rule)}
+.note{max-width:70ch;color:var(--ink-2);font-size:13.5px;margin-top:24px;padding-top:16px;border-top:1px solid var(--rule)}
+.callout{background:var(--surface);border:1px solid var(--accent);border-left-width:3px;border-radius:var(--radius);padding:14px 18px;margin:20px 0;max-width:74ch}
+.callout__t{font-weight:500;color:var(--accent-ink);margin-bottom:4px}
+
+/* course card */
+.course{border:1px solid var(--rule);border-radius:var(--radius-lg);background:var(--surface);overflow:hidden;box-shadow:var(--shadow);margin-bottom:14px}
+.course__h{display:flex;align-items:flex-start;gap:16px;padding:16px 20px}
+.course__m{flex:1;min-width:0}
+.course__n{font-family:var(--font-display);font-size:20px;font-weight:500;line-height:1.25}
+.course__s{font-family:var(--font-mono);font-size:11px;color:var(--ink-3);margin-top:4px}
+.course__p{font-family:var(--font-mono);font-size:11.5px;color:var(--ink-2);flex:none;white-space:nowrap}
+.course__f{display:flex;align-items:center;gap:12px;padding:13px 20px;border-top:1px solid var(--rule);background:var(--surface-2)}
+.course__f .meta{margin-left:auto}
+
+.chapband{display:flex;align-items:center;gap:14px;padding:11px 20px;background:var(--surface-2);border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+.chapband__n{font-size:13.5px;font-weight:500;flex:1}
+.chapband__s{font-family:var(--font-mono);font-size:10.5px;color:var(--ink-3)}
+
+.lesson{display:flex;align-items:center;gap:16px;padding:14px 20px 14px 34px;border-top:1px solid var(--rule)}
+.lesson:first-of-type{border-top:none}
+.lesson:hover{background:var(--surface-2)}
+.lesson__m{flex:1;min-width:0}
+.lesson__n{font-size:14.5px;font-weight:500}
+.lesson__s{font-family:var(--font-mono);font-size:10.5px;color:var(--ink-3);margin-top:3px}
+.lesson__y{font-family:var(--font-mono);font-size:11px;color:var(--ink-3);white-space:nowrap;flex:none;text-align:right}
+.lesson__y b{color:var(--ink-2);font-weight:500}
+.lesson__y--stale{color:var(--flag)}
+
+/* the meter */
+.mtr{display:inline-flex;gap:3px;align-items:center;flex:none}
+.mtr i{width:7px;height:7px;border-radius:2px;border:1px solid var(--rule-strong);background:none}
+.mtr i.on{background:var(--ok);border-color:var(--ok)}
+.mtr i.part{background:var(--rule-strong);border-color:var(--rule-strong)}
+.mtr--none i{border-style:dashed}
+.old{display:inline-flex;gap:3px}
+.old i{width:6px;height:6px;border-radius:50%;background:var(--rule-strong)}
+.old i.on{background:var(--accent)}
+
+.opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px;margin-top:14px}
+.opt{border:1px solid var(--rule);border-radius:var(--radius-lg);background:var(--surface);padding:16px 18px;box-shadow:var(--shadow)}
+.opt--pick{border-color:var(--accent);border-width:2px;padding:15px 17px}
+.opt__t{font-family:var(--font-display);font-size:17px;font-weight:500;margin-bottom:3px}
+.opt__v{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);margin-bottom:11px}
+.opt--pick .opt__v{color:var(--accent-ink)}
+.opt__d{margin:12px 0;padding:12px 0;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);display:flex;align-items:center;gap:12px}
+.opt p{font-size:13px;color:var(--ink-2)}
+
+.ruleset{background:var(--surface);border:1px solid var(--rule);border-radius:var(--radius-lg);padding:4px 22px;margin-top:14px;box-shadow:var(--shadow)}
+.ruleset li{list-style:none;padding:13px 0;border-bottom:1px solid var(--rule);font-size:13.5px;color:var(--ink-2)}
+.ruleset li:last-child{border-bottom:none}
+.ruleset strong{color:var(--ink);font-weight:500;display:block;margin-bottom:2px}
+</style>
+</head>
+<body>
+
+<div class="chrome">
+  <span class="chrome__label">Screen</span>
+  <button class="tab" data-go="one" aria-selected="true">One chapter · today</button>
+  <button class="tab" data-go="many">Several chapters</button>
+  <button class="tab" data-go="meter">The lesson meter</button>
+  <button class="tab" data-go="rules">The rules</button>
+</div>
+
+<!-- ============ ONE CHAPTER ============ -->
+<section class="screen" data-screen="one" data-active>
+<div class="wrap">
+  <h1 class="page-title">Sources</h1>
+  <p class="page-sub">1 course · 1 lesson · 13m 24s of lessons · 21 entries distilled</p>
+
+  <div style="margin-top:18px"></div>
+  <div class="course">
+    <div class="course__h">
+      <div class="course__m">
+        <div class="course__n">JavaScript: The Hard Parts, v3</div>
+        <div class="course__s">1 chapter · 1 lesson · 13m 24s · 21 entries</div>
+      </div>
+      <div class="course__p">0 of 1 mined</div>
+    </div>
+
+    <div class="chapband">
+      <span class="chapband__n">Principles of JavaScript</span>
+      <span class="chapband__s">1 lesson · 13m 24s · 21 entries</span>
+    </div>
+
+    <div class="lesson">
+      <span class="mtr" title="3 of 21 entries at okay or better"><i class="on"></i><i></i><i></i><i></i><i></i></span>
+      <div class="lesson__m">
+        <div class="lesson__n">Execution Context</div>
+        <div class="lesson__s">13m 24s · 1,851 words · 3h ago</div>
+      </div>
+      <div class="lesson__y"><b>7 topics · 14 quizzes</b><br>18 never practised · 1 weak</div>
+    </div>
+
+    <div class="course__f">
+      <button class="btn btn--primary btn--sm">Practise this course</button>
+      <span class="meta">21 entries · 18 never practised</span>
+    </div>
+  </div>
+
+  <div class="callout">
+    <div class="callout__t">One chapter means one button</div>
+    <p style="color:var(--ink-2);font-size:13.5px">Your course has a single chapter, so "practise this chapter" and "practise this course" resolve to the same 21 entries. Two buttons producing an identical session is not a layout problem — it is a missing rule. <strong>The chapter action only appears when the course has more than one chapter</strong>, and the same holds one level down: a chapter with a single lesson does not need both a lesson and a chapter action.</p>
+  </div>
+
+  <p class="note">Both are buttons now, not links. They start a session — an action, not navigation — and the shipped Button is what every other action in this app uses. The count moves out of the label and beside it, so the button says what it does and the meta says how much.</p>
+
+  <div class="callout">
+    <div class="callout__t">Corrected: the course count belongs on the right, and it counts MINED</div>
+    <p style="color:var(--ink-2);font-size:13.5px">This screen first drew the course sub-line ending <em>“· 0 of 1 finished”</em>, which contradicted <code>sources-hierarchy-mock.html</code> twice over. That file puts the count in its own element on the far right — it is the course's summary judgement, not the tail of a list of four numbers — and the count it puts there is <strong>mined</strong>, not finished.
+    <br><br>Mined is “this lesson produced something”; finished is “every entry is okay or better”. The older mock specifies the course head, so it wins: the sub-line carries the plain counts and the right-hand element carries <em>N of M mined</em>. The lesson meter is where <em>finished</em> is shown, one row down.</p>
+  </div>
+</div>
+</section>
+
+<!-- ============ SEVERAL ============ -->
+<section class="screen" data-screen="many">
+<div class="wrap">
+  <h1 class="page-title">Sources</h1>
+  <p class="page-sub">1 course · 2 chapters · 5 lessons · 1h 04m of lessons · 31 entries distilled</p>
+
+  <div style="margin-top:18px"></div>
+  <div class="course">
+    <div class="course__h">
+      <div class="course__m">
+        <div class="course__n">JavaScript: The Hard Parts, v3</div>
+        <div class="course__s">2 chapters · 5 lessons · 1h 04m · 31 entries</div>
+      </div>
+      <div class="course__p">4 of 5 mined</div>
+    </div>
+
+    <div class="chapband">
+      <span class="chapband__n">Principles of JavaScript</span>
+      <span class="chapband__s">3 lessons · 42m · 24 entries</span>
+      <button class="btn btn--sm">Practise this chapter</button>
+    </div>
+
+    <div class="lesson">
+      <span class="mtr"><i></i><i></i><i></i><i></i><i></i></span>
+      <div class="lesson__m"><div class="lesson__n">Thread of Execution</div>
+        <div class="lesson__s">21m 40s · 4,900 words · 16 days ago</div></div>
+      <div class="lesson__y lesson__y--stale">Nothing · 16 days</div>
+    </div>
+    <div class="lesson">
+      <span class="mtr"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></span>
+      <div class="lesson__m"><div class="lesson__n">Call Stack</div>
+        <div class="lesson__s">6m 55s · 1,340 words · 2 days ago</div></div>
+      <div class="lesson__y"><b>3 topics</b><br>2 at okay or better</div>
+    </div>
+    <div class="lesson">
+      <span class="mtr"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span>
+      <div class="lesson__m"><div class="lesson__n">Execution Context</div>
+        <div class="lesson__s">13m 23s · transcript deleted · 2 days ago</div></div>
+      <div class="lesson__y"><b>21 entries</b><br>finished</div>
+    </div>
+
+    <div class="chapband">
+      <span class="chapband__n">Callbacks &amp; Higher Order Functions</span>
+      <span class="chapband__s">2 lessons · 22m · 7 entries</span>
+      <button class="btn btn--sm">Practise this chapter</button>
+    </div>
+
+    <div class="lesson">
+      <span class="mtr"><i class="on"></i><i class="on"></i><i></i><i></i><i></i></span>
+      <div class="lesson__m"><div class="lesson__n">Callbacks &amp; Higher Order Functions</div>
+        <div class="lesson__s">6m 27s · 1,180 words · yesterday</div></div>
+      <div class="lesson__y"><b>7 entries</b><br>3 at okay or better</div>
+    </div>
+    <div class="lesson">
+      <span class="mtr mtr--none"><i></i><i></i><i></i><i></i><i></i></span>
+      <div class="lesson__m"><div class="lesson__n">Pass a Function as an Argument</div>
+        <div class="lesson__s">15m 36s · 3,200 words · yesterday</div></div>
+      <div class="lesson__y">Nothing distilled</div>
+    </div>
+
+    <div class="course__f">
+      <button class="btn btn--primary btn--sm">Practise this course</button>
+      <span class="meta">31 entries · 19 never practised</span>
+    </div>
+  </div>
+
+  <div class="callout">
+    <div class="callout__t">Each action sits at the end of what it covers</div>
+    <p style="color:var(--ink-2);font-size:13.5px">The chapter button lives in the chapter band, which is the only row that belongs to the chapter and nothing else. The course button is in the card footer, after every chapter. Nothing sits above the content it acts on — the old layout put "practise this course" above the chapter, so it read as belonging to the chapter beneath it.</p>
+  </div>
+
+  <p class="note">A chapter with nothing distilled shows no button rather than a disabled one — the shipped rule from the quiz options and the empty intention box. A session of zero entries is not a session.</p>
+</div>
+</section>
+
+<!-- ============ METER ============ -->
+<section class="screen" data-screen="meter">
+<div class="wrap">
+  <h1 class="page-title">What replaces the five dots</h1>
+  <p style="color:var(--ink-2);max-width:64ch;margin-top:6px">The old dots counted the five-item extraction checklist, which arc 6 deleted. What shipped in its place is one grey dot meaning "finished", and it is too quiet to read — you had to ask what it was.</p>
+
+  <div class="opts">
+    <div class="opt">
+      <div class="opt__t">What shipped</div>
+      <div class="opt__v">one dot</div>
+      <div class="opt__d"><span class="old"><i class="on"></i></span><span class="meta">finished</span></div>
+      <p>Binary and almost invisible. On a row already carrying four numbers, a single 6px dot is decoration rather than information.</p>
+    </div>
+
+    <div class="opt opt--pick">
+      <div class="opt__t">Five squares, filled by progress</div>
+      <div class="opt__v">recommended</div>
+      <div class="opt__d">
+        <span class="mtr mtr--none"><i></i><i></i><i></i><i></i><i></i></span><span class="meta">nothing distilled</span>
+      </div>
+      <div class="opt__d" style="margin-top:-10px">
+        <span class="mtr"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></span><span class="meta">14 of 24 at okay or better</span>
+      </div>
+      <div class="opt__d" style="margin-top:-10px">
+        <span class="mtr"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span><span class="meta">finished</span>
+      </div>
+      <p>Same five marks you were used to, now measuring something real: how much of this lesson you can actually recall. Dashed and empty means nothing distilled; all five filled means finished.</p>
+    </div>
+
+    <div class="opt">
+      <div class="opt__t">A bar</div>
+      <div class="opt__v">rejected</div>
+      <div class="opt__d">
+        <span style="width:70px;height:6px;border-radius:4px;background:var(--surface-2);border:1px solid var(--rule);overflow:hidden;display:inline-block">
+          <i style="display:block;height:100%;width:58%;background:var(--ok)"></i></span>
+        <span class="meta">58%</span>
+      </div>
+      <p>Reads as a percentage, and this app has refused percentages since the first spec. Five discrete marks say "some of it" without implying a precision the number does not have.</p>
+    </div>
+  </div>
+
+  <div class="callout">
+    <div class="callout__t">It uses the palette's existing meaning</div>
+    <p style="color:var(--ink-2);font-size:13.5px"><code>--ok</code> marks what the app derives from facts, and this is derived — entries at okay or better, over entries from this lesson. Nothing here is a self-report, so the green is the same claim it makes everywhere else. Empty squares are the confidence meter's own idiom, one level up.</p>
+  </div>
+
+  <p class="note">Five squares, not three, because five was the shape you were reading before and the granularity is free. A lesson with 21 entries and 3 at okay or better fills one square; with 11 it fills two. The tooltip and <code>aria-label</code> carry the exact numbers, so the marks are a glance and the text is the truth.</p>
+</div>
+</section>
+
+<!-- ============ RULES ============ -->
+<section class="screen" data-screen="rules">
+<div class="wrap">
+  <h1 class="page-title">The rules</h1>
+
+  <div class="rule"><span class="eyebrow">Practise actions</span></div>
+  <ul class="ruleset">
+    <li><strong>Buttons, not links</strong>They start a session. Every other action in this app is a Button; these were the exception and should not have been.</li>
+    <li><strong>Each sits at the end of what it covers</strong>The chapter's in the chapter band, the course's in the card footer. Nothing above the content it acts on.</li>
+    <li><strong>Never two actions producing the same session</strong>A course with one chapter shows only the course button. A chapter with one lesson shows only the chapter button. The rule is general: if two scopes resolve to the same set, show the widest one.</li>
+    <li><strong>No button when there is nothing to practise</strong>Absent, not disabled — the shipped rule from the quiz options and the empty intention slot.</li>
+    <li><strong>The count sits beside the button, not inside the label</strong>The button says what it does; the meta says how much.</li>
+  </ul>
+
+  <div class="rule"><span class="eyebrow">The lesson meter</span></div>
+  <ul class="ruleset">
+    <li><strong>Five squares, filled by entries at okay or better</strong>Replaces the single dot. Derived from confidence, so <code>--ok</code> means what it means everywhere else.</li>
+    <li><strong>Dashed and empty means nothing distilled</strong>The confidence meter's own idiom for "no data yet", one level up.</li>
+    <li><strong>All five filled means finished</strong>Every entry at okay or better — the same rule the word already carries in the course header.</li>
+    <li><strong>The exact numbers live in the tooltip and the aria-label</strong>The marks are a glance; the text is the truth. Colour is never the only signal.</li>
+    <li><strong>Not a bar and not a percentage</strong>A bar reads as a percentage, and this app has refused those since the first spec. Five discrete marks say "some of it" without implying precision that is not there.</li>
+  </ul>
+</div>
+</section>
+
+<script>
+  const screens=document.querySelectorAll('[data-screen]');
+  document.querySelector('.chrome').addEventListener('click',e=>{
+    const b=e.target.closest('[data-go]'); if(!b) return;
+    document.querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-selected',t===b));
+    screens.forEach(s=>s.toggleAttribute('data-active',s.dataset.screen===b.dataset.go));
+    window.scrollTo(0,0);
+  });
+</script>
+</body>
+</html>
