@@ -223,6 +223,80 @@ export function finishedCopy(finished: number, total: number): string {
   return `${finished} of ${total} finished`
 }
 
+/*
+  ── The lesson meter ────────────────────────────────────────────────────────
+  Five squares, filled by entries at okay or better over entries from this
+  lesson. It replaces the single dot that replaced arc 2's five extraction dots:
+  the dot was binary and, on a row already carrying four numbers, too quiet to
+  read at all.
+
+  Five and not three because five is the shape that was already there and the
+  granularity is free. NOT a bar: a bar reads as a percentage, and this app has
+  refused percentages since the first spec — five discrete marks say "some of
+  it" without implying a precision the number does not have.
+*/
+export const METER_SQUARES = 5
+
+export interface LessonMeter {
+  /** Squares filled, 0…METER_SQUARES. */
+  filled: number
+  /** Entries at okay or better. */
+  settled: number
+  total: number
+  /** Nothing distilled yet — drawn dashed and empty, not as a zero. */
+  none: boolean
+}
+
+/** Entries you can actually recall: okay or better, which is `!needsReview`. */
+export function settledCount(entries: Topic[]): number {
+  return entries.filter((entry) => !needsReview(entry)).length
+}
+
+export function lessonMeter(entries: Topic[]): LessonMeter {
+  const total = entries.length
+  const settled = settledCount(entries)
+
+  /*
+    Floor, with a floor of its own: any progress at all shows one square, so a
+    lesson with 3 of 21 settled does not read as untouched. And five squares
+    means ALL of them — `floor(ratio * 5)` reaches 5 only at a ratio of exactly
+    1, so "full" and "finished" are the same statement rather than two that
+    nearly agree.
+  */
+  const filled =
+    total === 0 || settled === 0
+      ? 0
+      : Math.max(1, Math.floor((settled / total) * METER_SQUARES))
+
+  return { filled, settled, total, none: total === 0 }
+}
+
+/**
+ * The exact numbers, for the tooltip and the aria-label.
+ *
+ * Colour is never the only signal — the marks are a glance and this is the
+ * truth. DESIGN.md's accessibility floor, applied to a control that is
+ * otherwise five coloured squares.
+ */
+export function meterLabel(meter: LessonMeter): string {
+  if (meter.none) return 'nothing distilled'
+  if (meter.settled === meter.total) return `finished — all ${meter.total} at okay or better`
+  return `${meter.settled} of ${meter.total} at okay or better`
+}
+
+/**
+ * What sits beside a practise button: how much, not what it does.
+ *
+ * The button carries the verb and the meta carries the size, so the label stays
+ * the same length whatever the count is.
+ */
+export function practiseMeta(entries: Topic[]): string {
+  const never = entries.filter(isNeverPracticed).length
+  const parts = [plural(entries.length, 'entry', 'entries')]
+  if (never > 0) parts.push(`${never} never practised`)
+  return parts.join(' · ')
+}
+
 /**
  * A source that has produced nothing, for long enough to say so.
  *

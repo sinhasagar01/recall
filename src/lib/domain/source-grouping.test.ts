@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { groupSources, groupedHeadline } from '@/lib/domain/source-grouping'
+import {
+  groupSources,
+  groupedHeadline,
+  practisableScopes,
+} from '@/lib/domain/source-grouping'
 import type { SourceSummary, SourceWithEntriesView } from '@/lib/domain/sources'
 import { makeTopic } from '@/lib/domain/topic-fixture'
 
@@ -189,5 +193,67 @@ describe('the counts, which are counted rather than estimated', () => {
     expect(groupedHeadline(groupSources([view({ course: 'C' })]))).toBe(
       '1 course · 1 lesson · 0 entries distilled',
     )
+  })
+})
+
+describe('never two actions producing the same session', () => {
+  /*
+    One general rule — if two scopes resolve to the same set of topic ids, show
+    the widest — so "one chapter" and "one lesson" are consequences rather than
+    two special cases someone has to remember.
+  */
+  const course = (ids: string[]) => ({ key: 'course', level: 'course' as const, ids })
+  const chapter = (name: string, ids: string[]) => ({
+    key: `chapter:${name}`,
+    level: 'chapter' as const,
+    ids,
+  })
+  const lesson = (name: string, ids: string[]) => ({
+    key: `lesson:${name}`,
+    level: 'lesson' as const,
+    ids,
+  })
+
+  it('a course with ONE chapter shows only the course', () => {
+    const visible = practisableScopes([course(['a', 'b']), chapter('Principles', ['a', 'b'])])
+
+    expect([...visible]).toEqual(['course'])
+  })
+
+  it('a course with TWO chapters shows all three', () => {
+    const visible = practisableScopes([
+      course(['a', 'b', 'c']),
+      chapter('Principles', ['a', 'b']),
+      chapter('Callbacks', ['c']),
+    ])
+
+    expect(visible.has('course')).toBe(true)
+    expect(visible.has('chapter:Principles')).toBe(true)
+    expect(visible.has('chapter:Callbacks')).toBe(true)
+  })
+
+  it('a chapter with ONE lesson shows only the chapter — the same rule, one level down', () => {
+    const visible = practisableScopes([
+      course(['a', 'b', 'c']),
+      chapter('Principles', ['a']),
+      lesson('Execution Context', ['a']),
+      chapter('Callbacks', ['b', 'c']),
+    ])
+
+    expect(visible.has('chapter:Principles')).toBe(true)
+    expect(visible.has('lesson:Execution Context')).toBe(false)
+  })
+
+  it('shows nothing at all when there is nothing to practise', () => {
+    // Absent, not disabled. A session of zero entries is not a session.
+    expect([...practisableScopes([course([]), chapter('Empty', [])])]).toEqual([])
+  })
+
+  it('does not care what order the ids arrived in', () => {
+    // The identity of a session is its SET, so a different order is the same
+    // session and must still collapse.
+    const visible = practisableScopes([course(['b', 'a']), chapter('One', ['a', 'b'])])
+
+    expect([...visible]).toEqual(['course'])
   })
 })

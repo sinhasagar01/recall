@@ -12,6 +12,7 @@ import { signInAs } from './auth-state'
 
 const COURSE = 'JavaScript: The Hard Parts'
 const CHAPTER = 'Principles of JavaScript'
+const SECOND_CHAPTER = 'Callbacks & Higher Order Functions'
 
 const unique = (prefix: string) =>
   `${prefix} ${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
@@ -155,42 +156,75 @@ test.describe('course, chapter and lesson', () => {
     await expect(page.getByTestId('course-mined').first()).toContainText(/\d+ of \d+ mined/)
   })
 
-  test('practise this chapter runs only that chapter', async ({ page }) => {
+  test('one chapter means one button, and the course session is its entries', async ({ page }) => {
+    await signInAs(page, 'extract')
+    await page.goto('/sources')
+
+    const group = page.getByTestId('course-group').filter({ hasText: COURSE }).first()
+
+    /*
+      The collapse rule. This course has one chapter, so "practise this chapter"
+      and "practise this course" would run over the same entries — two buttons
+      producing an identical session. The chapter one is ABSENT, not disabled.
+    */
+    await expect(group.getByRole('link', { name: /^Practise this chapter/ })).toHaveCount(0)
+
+    const courseAction = group.getByRole('link', { name: /^Practise this course/ })
+    await expect(courseAction).toBeVisible()
+    // The count sits beside the button, not inside its label.
+    await expect(courseAction).toHaveText('Practise this course')
+    await expect(group).toContainText(/\d+ entr(y|ies)/)
+
+    await courseAction.click()
+    await expect(page).toHaveURL(/scope=course/)
+    await expect(page.getByRole('img', { name: 'Card 1 of 1' })).toBeVisible({ timeout: 30_000 })
+  })
+
+  test('a second chapter brings its own button back', async ({ page }) => {
+    await signInAs(page, 'extract')
+
+    // A lesson in a DIFFERENT chapter of the same course, with something distilled
+    // from it — so the two scopes stop resolving to the same set.
+    const lesson = unique('Callbacks')
+    const sheet = await openAddSheet(page)
+    await sheet.getByLabel(/^Course/).fill(COURSE)
+    await sheet.getByLabel(/^Chapter/).fill(SECOND_CHAPTER)
+    await sheet.getByLabel('Lesson').fill(lesson)
+    await sheet.getByRole('button', { name: 'Save source', exact: true }).click()
+    await expect(page).toHaveURL(/\/sources\/[0-9a-f-]+$/, { timeout: 30_000 })
+
+    await page.getByRole('link', { name: '+ Distil a topic' }).click()
+    const add = page.getByRole('dialog')
+    await add.getByRole('textbox', { name: 'Topic', exact: true }).fill(unique('Higher order'))
+    await add.getByLabel('Definition').fill('A function taking or returning a function.')
+    await add.getByRole('button', { name: 'Save topic' }).click()
+    await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 30_000 })
+
+    await page.goto('/sources')
+    const group = page.getByTestId('course-group').filter({ hasText: COURSE }).first()
+
+    // Both scopes now run different sessions, so both buttons are there.
+    await expect(group.getByRole('link', { name: /^Practise this course/ })).toBeVisible()
+
+    const band = group.getByTestId('chapter-group').filter({ hasText: SECOND_CHAPTER }).first()
+    await band.getByRole('link', { name: /^Practise this chapter/ }).click()
+
+    await expect(page).toHaveURL(/scope=chapter/)
+    await expect(page).toHaveURL(new RegExp(encodeURIComponent(SECOND_CHAPTER)))
+    // Only that chapter's one entry — not the course's two.
+    await expect(page.getByRole('img', { name: 'Card 1 of 1' })).toBeVisible({ timeout: 30_000 })
+  })
+
+  test('the lesson meter says its numbers in words', async ({ page }) => {
     await signInAs(page, 'extract')
     await page.goto('/sources')
 
     /*
-      Scoped to THIS chapter's group rather than "the first Practise link" — the
-      page holds several by now, and which one is first depends on what the
-      earlier tests in this file created.
+      Colour is never the only signal — the squares are the glance and the label
+      is the truth. A lesson with one entry that has never been practised is
+      distilled but not settled, so: not "nothing distilled", not "finished".
     */
-    const group = page
-      .getByTestId('chapter-group')
-      .filter({ hasText: CHAPTER })
-      .first()
-    /*
-      Anchored with `^`, not a bare "Practise". getByRole's `name` is a
-      case-insensitive SUBSTRING match by default, and a lesson row's accessible
-      name contains "never practised" — which contains "practise". Without the
-      anchor the locator resolves to the link AND every lesson row in the
-      chapter. Arc 5 hit the same trap with "Save" matching "Save blocker".
-    */
-    await group.getByRole('link', { name: /^Practise this chapter/ }).click()
-
-    await expect(page).toHaveURL(
-      new RegExp(`scope=chapter.*chapter=${encodeURIComponent(CHAPTER).replace(/%20/g, '%20')}`),
-    )
-
-    /*
-      The chapter produced exactly one topic, in the first test of this file. A
-      session over the whole course would carry more, and one over the library
-      would carry the fixture's own seeded topic too — so the count is what
-      proves the scope did something.
-    */
-    await expect(page.getByRole('button', { name: 'Reveal answer' })).toBeVisible({
-      timeout: 30_000,
-    })
-    // The session counter reads "1 / 1", and its accessible label "Card 1 of 1".
-    await expect(page.getByRole('img', { name: 'Card 1 of 1' })).toBeVisible()
+    const meters = page.getByTestId('lesson-meter')
+    await expect(meters.first()).toHaveAttribute('aria-label', /at okay or better|nothing distilled/)
   })
 })

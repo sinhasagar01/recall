@@ -1690,6 +1690,31 @@ The cheap discipline: **when a plan names a component that a reference draws, th
 which drawing, and the build is looked at beside it before the arc closes.** That is a human
 step, and writing it down is the only way it survives being skipped once.
 
+### It earned its place on first use
+
+The first application of that discipline — the built page screenshotted beside the mock, after
+four differences had already been fixed by reading — found **three more**, and the two real
+ones were:
+
+1. the course's mined count as the tail of a four-number line, where the drawing puts it alone
+   on the far right;
+2. the lesson meter trailing the row, where both drawings lead with it — a placement inherited
+   from arc 2's dot row and never questioned.
+
+**Both are positional: child order, and where a number sits.** Neither is a logic error, so no
+assertion in this project could have failed on either — the counts were right, the copy was
+right, the data was right, and 166 Playwright tests were green. What was wrong was where things
+were, which is exactly the class the eye catches instantly and a test suite cannot see at all.
+
+The third was a genuine judgement call in the build's favour (a page-level "practise this
+chapter" cannot work with more than one chapter), which is also worth having: looking is how
+you find out the drawing was illustrating rather than specifying.
+
+So the discipline is not a formality and does not need a harness to pay for itself. **It costs
+one screenshot and it caught two defects of a kind nothing else here can.** The same pass also
+turned up nine copies of every seeded source on the main fixture — invisible to every test,
+obvious to anyone looking at the page.
+
 The copy defect found in the same review is a different animal and worth separating: *"1 of 1
 mined"* and *"0 of 1 mined out"* on one screen, three characters apart, meaning
 produced-something and fully-exhausted. That one **was** reachable by a test and had none,

@@ -1,13 +1,12 @@
 import Link from 'next/link'
 import { formatDuration } from '@/lib/domain/duration'
 import { formatRelativeTime } from '@/lib/domain/library'
+import { LessonMeter } from '@/components/sources/lesson-meter'
 import {
-  isFinished,
   isUndistilled,
   sourceProgress,
   sourceProgressCopy,
   transcriptState,
-  UNDISTILLED_WINDOW_DAYS,
   type SourceWithEntriesView,
 } from '@/lib/domain/sources'
 
@@ -37,6 +36,14 @@ export function SourceRow({ view, now }: { view: SourceWithEntriesView; now: Dat
       href={`/sources/${source.id}`}
       className="flex items-center gap-4 border-t border-rule py-[13px] pr-[18px] pl-[34px] first:border-t-0 hover:bg-surface-2"
     >
+      {/*
+        The meter LEADS the row — both mocks put it first, and the trailing
+        placement was inherited from arc 2's dot row without ever being checked
+        against the drawing. Found by looking at the built page beside the mock;
+        see TASKS.md.
+      */}
+      <LessonMeter entries={entries} />
+
       <div className="min-w-0 flex-1">
         <div className="text-body font-medium text-ink">{source.lesson}</div>
         {/*
@@ -74,30 +81,6 @@ export function SourceRow({ view, now }: { view: SourceWithEntriesView; now: Dat
         </span>
       )}
 
-      {/*
-        One dot, and it means FINISHED — every entry okay or better.
-
-        Deliberately not "mined": mined is "produced something", which this
-        lesson can be while the dot is still empty. The two words are separated
-        in lib/domain/sources.ts because they used to be "mined" and "mined out"
-        on one screen. See DESIGN.md.
-
-        Arc 2 drew five dots counting a five-item checklist. There is nothing to
-        count now: the question is binary, so the mark is. Green because it is
-        DERIVED and binary, which is the whole of the `--ok` rule — it replaces a
-        `bg-ok` dot with a `bg-ok` dot, for the same class of claim.
-      */}
-      <span
-        className="hidden shrink-0 items-center sm:inline-flex"
-        role="img"
-        aria-label={`${isFinished(entries) ? 'finished' : 'still has work'}${
-          stale ? `, nothing in ${UNDISTILLED_WINDOW_DAYS} days` : ''
-        }`}
-      >
-        <i
-          className={`size-[7px] rounded-full ${isFinished(entries) ? 'bg-ok' : 'bg-rule-strong'}`}
-        />
-      </span>
     </Link>
   )
 }
