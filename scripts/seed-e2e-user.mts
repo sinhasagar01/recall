@@ -434,7 +434,6 @@ const { data: seededSources, error: sourceError } = await admin
     {
       user_id: mainUserId,
       lesson: 'Closures, in depth',
-      title: 'Closures, in depth',
       course: 'JavaScript: The Hard Parts',
       chapter: 'Principles of JavaScript',
       duration_seconds: 803,
@@ -450,7 +449,6 @@ const { data: seededSources, error: sourceError } = await admin
     {
       user_id: mainUserId,
       lesson: 'Database indexing internals',
-      title: 'Database indexing internals',
       duration_seconds: 6960,
       transcript: 'A B-tree keeps its leaves at the same depth, which is what bounds the lookup.',
       created_at: daysAgo(21),
