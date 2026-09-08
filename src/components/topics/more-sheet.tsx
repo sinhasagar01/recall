@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useState } from 'react'
 import { DeleteAccount } from '@/components/topics/delete-account'
 import { Sheet } from '@/components/ui/sheet'
+import { useLocalToday } from '@/lib/domain/use-local-today'
 import { signOut } from '@/app/(auth)/actions'
 
 /**
@@ -28,12 +29,20 @@ export function MoreSheet({
   counts,
   account,
 }: {
-  counts: { phases: string; ledger: string; sources: string }
+  counts: {
+    today: { day: string; done: number; written: number }[]
+    phases: string
+    ledger: string
+    sources: string
+  }
   account: { topics: number; images: number }
 }) {
   const [open, setOpen] = useState(false)
+  const localToday = useLocalToday()
+  const todayRow = localToday === null ? null : counts.today.find((d) => d.day === localToday)
 
   const destinations = [
+    { href: '/today', label: 'Today', count: todayRow ? `${todayRow.done} / ${todayRow.written}` : null },
     { href: '/phases', label: 'Phases', count: counts.phases },
     { href: '/ledger', label: 'Ledger', count: counts.ledger },
     { href: '/sources', label: 'Sources', count: counts.sources },

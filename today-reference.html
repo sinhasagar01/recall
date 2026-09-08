@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recall — today</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;450;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#E9EAF0; --surface:#FFFFFF; --surface-2:#F5F5FA; --surface-3:#EDEEF4;
+  --ink:#12131A; --ink-2:#53555F; --ink-3:#83858F;
+  --rule:#E1E1E9; --rule-strong:#C9C9D4;
+  --accent:#3F3AC7; --accent-soft:#EDECFB; --accent-ink:#2E2A9E;
+  --flag:#B4325C; --flag-soft:#FBEBF1;
+  --ok:#1B6B4F; --ok-soft:#E6F2EC;
+  --radius:6px; --radius-lg:10px;
+  --shadow:0 1px 2px rgba(18,19,26,.05), 0 1px 1px rgba(18,19,26,.03);
+  --font-display:"Newsreader",Georgia,serif;
+  --font-body:"IBM Plex Sans",system-ui,sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:14.5px;line-height:1.55;-webkit-font-smoothing:antialiased}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+code{font-family:var(--font-mono);font-size:.86em}
+.chrome{position:sticky;top:0;z-index:60;display:flex;gap:6px;align-items:center;padding:9px 16px;
+  background:var(--surface);border-bottom:1px solid var(--rule);flex-wrap:wrap}
+.chrome__label{font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin-right:6px}
+.tab{font-family:var(--font-mono);font-size:11.5px;padding:5px 9px;border:1px solid transparent;border-radius:var(--radius);
+  background:none;color:var(--ink-2);cursor:pointer}
+.tab:hover{background:var(--surface-2);color:var(--ink)}
+.tab[aria-selected="true"]{background:var(--accent-soft);color:var(--accent-ink);border-color:var(--accent)}
+
+.eyebrow{font-family:var(--font-mono);font-size:10.5px;font-weight:500;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3)}
+.meta{font-family:var(--font-mono);font-size:11.5px;color:var(--ink-3)}
+.btn{font-family:var(--font-body);font-size:13.5px;font-weight:500;display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  padding:10px 15px;border-radius:var(--radius);border:1px solid var(--rule-strong);background:var(--surface);color:var(--ink);cursor:pointer}
+.btn--primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn--ghost{background:none;border-color:transparent;color:var(--ink-2)}
+.btn--sm{padding:6px 11px;font-size:12.5px}
+.btn--block{width:100%}
+.chip{font-family:var(--font-mono);font-size:11px;padding:3px 8px;border-radius:100px;border:1px solid var(--rule);background:var(--surface-2);color:var(--ink-2)}
+.input,.textarea{width:100%;font-family:var(--font-body);font-size:14.5px;color:var(--ink);background:var(--surface);
+  border:1px solid var(--rule-strong);border-radius:var(--radius);padding:10px 12px;line-height:1.5}
+.textarea{min-height:80px;resize:vertical}
+
+.screen{display:none}.screen[data-active]{display:block}
+.app{display:grid;grid-template-columns:212px 1fr;min-height:calc(100vh - 44px)}
+.rail{border-right:1px solid var(--rule);padding:22px 14px;display:flex;flex-direction:column;gap:22px;background:var(--surface-2)}
+.wordmark{display:flex;align-items:baseline;gap:7px;padding:0 8px}
+.wordmark__name{font-family:var(--font-display);font-size:20px;font-weight:600;letter-spacing:-.02em}
+.wordmark__dot{width:5px;height:5px;border-radius:50%;background:var(--accent)}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav__group{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);padding:0 10px 6px}
+.nav__item{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border-radius:var(--radius);
+  color:var(--ink-2);font-size:13.5px;cursor:pointer}
+.nav__item:hover{background:var(--surface);color:var(--ink)}
+.nav__item[aria-current]{background:var(--surface);color:var(--ink);font-weight:500;box-shadow:var(--shadow)}
+.nav__count{font-family:var(--font-mono);font-size:11px;color:var(--ink-3)}
+.nav__count--flag{color:var(--flag)}
+.main{padding:28px 32px 70px;max-width:1000px}
+.page-title{font-family:var(--font-display);font-size:29px;font-weight:500;letter-spacing:-.022em}
+.page-sub{margin-top:4px;font-family:var(--font-mono);font-size:11.5px;color:var(--ink-3)}
+.page-head{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:22px}
+.rule{display:flex;align-items:center;gap:12px;margin:30px 0 12px}
+.rule::after{content:"";flex:1;height:1px;background:var(--rule)}
+.note{max-width:70ch;color:var(--ink-2);font-size:13.5px;margin-top:26px;padding-top:18px;border-top:1px solid var(--rule)}
+.callout{background:var(--surface);border:1px solid var(--accent);border-left-width:3px;border-radius:var(--radius);padding:14px 18px;margin:20px 0;max-width:74ch}
+.callout__t{font-weight:500;color:var(--accent-ink);margin-bottom:4px}
+.panel{background:var(--surface);border:1px solid var(--rule);border-radius:var(--radius-lg);box-shadow:var(--shadow)}
+.panel__head{padding:13px 17px;border-bottom:1px solid var(--rule);display:flex;align-items:center;justify-content:space-between;gap:12px}
+.panel__body{padding:17px}
+
+/* the three */
+.intent{display:flex;align-items:flex-start;gap:13px;padding:14px 0;border-bottom:1px solid var(--rule)}
+.intent:last-child{border-bottom:none}
+.box{width:18px;height:18px;flex:none;margin-top:1px;border:1px solid var(--rule-strong);border-radius:4px;display:grid;place-items:center;
+  font-size:10px;cursor:pointer;background:var(--surface)}
+.box--done{border-color:var(--ink);background:var(--ink);color:var(--surface)}
+.intent__m{flex:1;min-width:0}
+.intent__k{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);margin-bottom:4px}
+.intent__t{font-size:14.5px;line-height:1.5}
+.intent__t--done{color:var(--ink-3);text-decoration:line-through;text-decoration-color:var(--rule-strong)}
+.intent__t--empty{color:var(--ink-3)}
+.intent input.bare{width:100%;border:none;outline:none;background:none;font-family:var(--font-body);font-size:14.5px;color:var(--ink);padding:0}
+.intent input.bare::placeholder{color:var(--ink-3)}
+/* CORRECTED: the `carried · 2 days` badge is dropped, and this class with it.
+   The practice line is the ONLY derived thing on this page, and "2 days" is a
+   number whose only job is to say you are behind — which the free-text "When"
+   rule (phases) and the no-streak rule both exist to refuse. The prefill already
+   announces itself: the line arrives filled, with a Clear button and a hint.
+   A `carried` flag with no number was considered and declined too: cheap and
+   honest, and still a second derived thing for information the Clear button
+   already carries. */
+
+.blocker__body{margin-top:10px}
+.blocker__saved{background:var(--surface-2);border-left:2px solid var(--rule-strong);border-radius:0 var(--radius) var(--radius) 0;
+  padding:13px 16px;font-size:14.5px;line-height:1.7;color:var(--ink-2);max-width:64ch}
+.blocker__date{font-family:var(--font-mono);font-size:10.5px;color:var(--ink-3);margin-top:8px}
+
+/* practice line */
+.practice{display:flex;align-items:center;gap:14px;padding:15px 18px;border:1px solid var(--rule);border-radius:var(--radius-lg);
+  background:var(--surface);box-shadow:var(--shadow)}
+.practice__m{flex:1}
+.practice__t{font-size:14px;font-weight:500}
+.practice__s{font-family:var(--font-mono);font-size:11px;color:var(--ink-3);margin-top:3px}
+
+/* day log */
+.log{border:1px solid var(--rule);border-radius:var(--radius-lg);overflow:hidden;background:var(--surface)}
+.logrow{display:flex;align-items:flex-start;gap:16px;padding:15px 18px;border-bottom:1px solid var(--rule)}
+.logrow:last-child{border-bottom:none}
+.logrow:hover{background:var(--surface-2)}
+.logrow__d{font-family:var(--font-mono);font-size:11px;color:var(--ink-3);width:74px;flex:none;padding-top:2px}
+.logrow__m{flex:1;min-width:0}
+.logrow__l{font-size:13.5px;line-height:1.5;color:var(--ink-2);display:flex;gap:9px;align-items:baseline}
+.logrow__l + .logrow__l{margin-top:5px}
+.tick{font-family:var(--font-mono);font-size:11px;flex:none;width:11px}
+.tick--done{color:var(--ink)}
+.tick--not{color:var(--ink-3)}
+.logrow__b{font-size:13px;color:var(--ink-2);background:var(--surface-2);border-left:2px solid var(--rule-strong);
+  border-radius:0 var(--radius) var(--radius) 0;padding:9px 13px;margin-top:9px;max-width:60ch}
+.logrow__c{font-family:var(--font-mono);font-size:11px;color:var(--ink-3);flex:none;white-space:nowrap}
+
+.state{border:1px dashed var(--rule-strong);border-radius:var(--radius-lg);padding:46px 32px;text-align:center;background:var(--surface-2);
+  display:flex;flex-direction:column;align-items:center;gap:8px}
+.state__title{font-family:var(--font-display);font-size:21px;font-weight:500}
+.state__body{color:var(--ink-2);max-width:46ch;font-size:14px}
+
+.frames{display:flex;gap:24px;flex-wrap:wrap;margin-top:20px}
+.frame{width:372px;max-width:100%}
+.frame__cap{font-family:var(--font-mono);font-size:11px;color:var(--ink-3);text-align:center;margin-bottom:10px}
+.phone{border:1px solid var(--rule-strong);border-radius:24px;overflow:hidden;background:var(--bg);height:600px;display:flex;flex-direction:column;box-shadow:var(--shadow)}
+.phone__body{flex:1;overflow:auto;padding:19px 17px}
+
+.ruleset{background:var(--surface);border:1px solid var(--rule);border-radius:var(--radius-lg);padding:4px 22px;margin-top:14px;box-shadow:var(--shadow)}
+.ruleset li{list-style:none;padding:13px 0;border-bottom:1px solid var(--rule);font-size:13.5px;color:var(--ink-2)}
+.ruleset li:last-child{border-bottom:none}
+.ruleset strong{color:var(--ink);font-weight:500;display:block;margin-bottom:2px}
+</style>
+</head>
+<body>
+
+<div class="chrome">
+  <span class="chrome__label">Screen</span>
+  <button class="tab" data-go="today" aria-selected="true">Today</button>
+  <button class="tab" data-go="empty">Today · empty</button>
+  <button class="tab" data-go="log">Earlier days</button>
+  <button class="tab" data-go="states">Every state</button>
+  <button class="tab" data-go="mobile">Mobile</button>
+  <button class="tab" data-go="rules">The rules</button>
+</div>
+
+<!-- ============ TODAY ============ -->
+<section class="screen" data-screen="today" data-active>
+<div class="app">
+  <aside class="rail">
+    <div class="wordmark"><span class="wordmark__name">Recall</span><span class="wordmark__dot"></span></div>
+    <nav class="nav">
+      <a class="nav__item"><span>Library</span><span class="nav__count">29</span></a>
+      <a class="nav__item"><span>Practice</span><span class="nav__count">10 queued</span></a>
+      <a class="nav__item"><span>Weak topics</span><span class="nav__count nav__count--flag">8</span></a>
+    </nav>
+    <div><div class="nav__group">Apprenticeship</div>
+      <nav class="nav">
+        <a class="nav__item" aria-current="page"><span>Today</span><span class="nav__count">1 / 3</span></a>
+        <a class="nav__item"><span>Phases</span><span class="nav__count">2 / 8</span></a>
+        <a class="nav__item"><span>Ledger</span><span class="nav__count">9</span></a>
+        <a class="nav__item"><span>Sources</span><span class="nav__count">6</span></a>
+      </nav></div>
+    <button class="btn btn--primary btn--block" style="margin-top:auto">+ Add topic</button>
+  </aside>
+
+  <main class="main" style="max-width:780px">
+    <div class="page-head">
+      <div><h1 class="page-title">Today</h1>
+        <p class="page-sub">Monday 8 September</p></div>
+      <a class="meta" style="color:var(--accent-ink);text-decoration:underline;cursor:pointer;padding-top:12px">Earlier days</a>
+    </div>
+
+    <div class="panel"><div class="panel__body" style="padding-top:4px;padding-bottom:6px">
+      <div class="intent">
+        <span class="box box--done">✓</span>
+        <div class="intent__m">
+          <div class="intent__k">Explain</div>
+          <div class="intent__t intent__t--done">Finish closures and write three retrieval questions</div>
+        </div>
+      </div>
+      <div class="intent">
+        <span class="box"></span>
+        <div class="intent__m">
+          <div class="intent__k">Rebuild</div>
+          <div class="intent__t">Write <code>once()</code> from memory, no notes</div>
+        </div>
+      </div>
+      <div class="intent">
+        <span class="box"></span>
+        <div class="intent__m">
+          <div class="intent__k">Apply</div>
+          <div class="intent__t">Decide where search state lives and write ADR-002</div>
+        </div>
+      </div>
+    </div></div>
+
+    <div class="practice" style="margin-top:14px">
+      <div class="practice__m">
+        <div class="practice__t">10 queued for practice</div>
+        <div class="practice__s">8 need review · longest gap 26 days</div>
+      </div>
+      <button class="btn">Practice</button>
+    </div>
+
+    <div class="rule"><span class="eyebrow">Blocker</span></div>
+    <div class="blocker__saved">Couldn't work out why the debounced search still fired after unmount. Cleanup runs, but the in-flight request resolves anyway — I think the fix is cancellation rather than a guard, and I don't yet know where the signal should live.</div>
+    <div class="blocker__date">Saved 14:20 · <a style="color:var(--accent-ink);text-decoration:underline;cursor:pointer">Edit</a></div>
+
+    <div class="callout">
+      <div class="callout__t">Three lines, because three is what a day is</div>
+      <p style="color:var(--ink-2);font-size:13.5px">One explanation, one rebuild, one applied decision — your own definition of a day, typed by hand each morning. Not derived from a phase, not suggested, not scheduled. The app does not know what you should do today and will not pretend to; it holds what you decided, so you stop holding it.</p>
+    </div>
+
+    <p class="note">The only derived thing on this page is the practice line, and every number on it links through to the thing it counts. No hours, no percentage, no streak, no calendar, no heatmap. "1 / 3" in the rail is a count of boxes you ticked yourself.</p>
+  </main>
+</div>
+</section>
+
+<!-- ============ EMPTY ============ -->
+<section class="screen" data-screen="empty">
+<div class="app">
+  <aside class="rail">
+    <div class="wordmark"><span class="wordmark__name">Recall</span><span class="wordmark__dot"></span></div>
+    <nav class="nav">
+      <a class="nav__item"><span>Library</span><span class="nav__count">29</span></a>
+      <a class="nav__item"><span>Practice</span><span class="nav__count">10 queued</span></a>
+      <a class="nav__item"><span>Weak topics</span><span class="nav__count nav__count--flag">8</span></a>
+    </nav>
+    <div><div class="nav__group">Apprenticeship</div>
+      <nav class="nav">
+        <a class="nav__item" aria-current="page"><span>Today</span></a>
+        <a class="nav__item"><span>Phases</span><span class="nav__count">2 / 8</span></a>
+        <a class="nav__item"><span>Ledger</span><span class="nav__count">9</span></a>
+        <a class="nav__item"><span>Sources</span><span class="nav__count">6</span></a>
+      </nav></div>
+  </aside>
+
+  <main class="main" style="max-width:780px">
+    <div class="page-head"><div>
+      <h1 class="page-title">Today</h1>
+      <p class="page-sub">Tuesday 9 September</p></div></div>
+
+    <div class="panel"><div class="panel__body" style="padding-top:4px;padding-bottom:6px">
+      <div class="intent">
+        <span class="box"></span>
+        <div class="intent__m">
+          <div class="intent__k">Explain</div>
+          <input class="bare" placeholder="What will you be able to explain by tonight?">
+        </div>
+      </div>
+      <div class="intent">
+        <span class="box"></span>
+        <div class="intent__m">
+          <div class="intent__k">Rebuild</div>
+          <input class="bare" value="Write once() from memory, no notes">
+        </div>
+        <button class="btn btn--sm btn--ghost">Clear</button>
+      </div>
+      <div class="intent">
+        <span class="box"></span>
+        <div class="intent__m">
+          <div class="intent__k">Apply</div>
+          <input class="bare" placeholder="What decision will your capstone need?">
+        </div>
+      </div>
+    </div></div>
+
+    <div style="display:flex;gap:10px;align-items:center;margin-top:12px;flex-wrap:wrap">
+      <button class="btn btn--primary">Save</button>
+      <span class="meta">Yesterday's unfinished rebuild is already filled in — clear it if today is different</span>
+    </div>
+
+    <div class="rule"><span class="eyebrow">Blocker</span></div>
+    <textarea class="textarea" placeholder="Where the reasoning broke — the lesson, your explanation, and the exact point it stopped making sense…"></textarea>
+
+    <p class="note">Yesterday's unticked lines are prefilled, not carried automatically — they appear as editable text you can clear in one action. Carrying forward without asking is how a to-do list accumulates a backlog you stop reading; prefilling makes you look at it once a day.</p>
+  </main>
+</div>
+</section>
+
+<!-- ============ LOG ============ -->
+<section class="screen" data-screen="log">
+<div class="app">
+  <aside class="rail">
+    <div class="wordmark"><span class="wordmark__name">Recall</span><span class="wordmark__dot"></span></div>
+    <nav class="nav">
+      <a class="nav__item"><span>Library</span><span class="nav__count">29</span></a>
+      <a class="nav__item"><span>Practice</span></a><a class="nav__item"><span>Weak topics</span></a>
+    </nav>
+    <div><div class="nav__group">Apprenticeship</div>
+      <nav class="nav"><a class="nav__item" aria-current="page"><span>Today</span></a>
+        <a class="nav__item"><span>Phases</span></a><a class="nav__item"><span>Ledger</span></a><a class="nav__item"><span>Sources</span></a></nav></div>
+  </aside>
+
+  <main class="main" style="max-width:860px">
+    <div class="page-head"><div>
+      <div class="meta" style="margin-bottom:8px"><a style="color:var(--accent-ink);text-decoration:underline;cursor:pointer">← Today</a></div>
+      <h1 class="page-title">Earlier days</h1>
+      <p class="page-sub">14 days recorded · newest first</p></div></div>
+
+    <div class="log">
+      <div class="logrow">
+        <div class="logrow__d">Sun 7 Sep</div>
+        <div class="logrow__m">
+          <div class="logrow__l"><span class="tick tick--done">✓</span><span>Review the week and plan the next one</span></div>
+          <div class="logrow__l"><span class="tick tick--not">·</span><span>Rebuild the rate limiter</span></div>
+          <div class="logrow__l"><span class="tick tick--done">✓</span><span>Write ADR-001: modular monolith</span></div>
+        </div>
+        <div class="logrow__c">2 / 3</div>
+      </div>
+
+      <div class="logrow">
+        <div class="logrow__d">Sat 6 Sep</div>
+        <div class="logrow__m">
+          <div class="logrow__l"><span class="tick tick--done">✓</span><span>Boss fight: design a multi-tenant permission model</span></div>
+          <div class="logrow__l"><span class="tick tick--done">✓</span><span>Rebuild <code>memoize</code> with a WeakMap cache</span></div>
+          <div class="logrow__l"><span class="tick tick--not">·</span><span>Decide the audit log's write path</span></div>
+          <div class="logrow__b">Couldn't decide whether audit writes belong in the same transaction. Went in circles on whether a lost audit row is worse than a failed user action.</div>
+        </div>
+        <div class="logrow__c">2 / 3</div>
+      </div>
+
+      <div class="logrow">
+        <div class="logrow__d">Fri 5 Sep</div>
+        <div class="logrow__m">
+          <div class="logrow__l"><span class="tick tick--done">✓</span><span>Finish the event loop lesson</span></div>
+          <div class="logrow__l"><span class="tick tick--done">✓</span><span>Rebuild <code>debounce</code> from memory</span></div>
+          <div class="logrow__l"><span class="tick tick--done">✓</span><span>Ship search cancellation</span></div>
+        </div>
+        <div class="logrow__c">3 / 3</div>
+      </div>
+
+      <div class="logrow">
+        <div class="logrow__d">Thu 4 Sep</div>
+        <div class="logrow__m">
+          <div class="logrow__l"><span class="tick tick--not">·</span><span>Start the rendering patterns course</span></div>
+          <div class="logrow__l"><span class="tick tick--not">·</span><span>—</span></div>
+          <div class="logrow__l"><span class="tick tick--not">·</span><span>—</span></div>
+        </div>
+        <div class="logrow__c">0 / 1</div>
+      </div>
+    </div>
+
+    <div class="callout">
+      <div class="callout__t">A log, and deliberately not a chart</div>
+      <p style="color:var(--ink-2);font-size:13.5px">No calendar grid, no heatmap, no streak, no completion rate over time. The one thing worth looking back for is a blocker — "what was I stuck on last Tuesday, and did I ever resolve it?" — and the way to answer that is to read the words. A grid of green squares answers a different question, one this product has refused since the first spec.</p>
+    </div>
+
+    <p class="note">Days with nothing typed do not appear at all. Thursday shows because one line was written and none ticked, which is a real day; a day you never opened the app is not a record of anything and gets no row.</p>
+  </main>
+</div>
+</section>
+
+<!-- ============ STATES ============ -->
+<section class="screen" data-screen="states">
+<div style="max-width:1000px;margin:0 auto;padding:28px 26px 80px">
+  <h1 class="page-title">Every state</h1>
+
+  <div class="rule"><span class="eyebrow">First ever visit</span></div>
+  <div class="state">
+    <span class="eyebrow">Today</span>
+    <h2 class="state__title">Nothing written yet</h2>
+    <p class="state__body">One thing to explain, one to rebuild, one to decide. Write them once in the morning and stop holding them in your head.</p>
+  </div>
+  <p class="meta" style="margin-top:9px">The three empty inputs render straight away underneath — there is no button to press before you can type. An empty state that makes you click to reach a text field is a door in front of a door.</p>
+
+  <div class="rule"><span class="eyebrow">Partly filled — two of three</span></div>
+  <div class="panel"><div class="panel__body" style="padding-top:4px;padding-bottom:6px">
+    <div class="intent"><span class="box box--done">✓</span><div class="intent__m">
+      <div class="intent__k">Explain</div><div class="intent__t intent__t--done">Finish closures</div></div></div>
+    <div class="intent"><span class="box"></span><div class="intent__m">
+      <div class="intent__k">Rebuild</div><div class="intent__t">Write <code>once()</code> from memory</div></div></div>
+    <div class="intent"><span class="box" style="opacity:.4"></span><div class="intent__m">
+      <div class="intent__k">Apply</div><div class="intent__t intent__t--empty">Nothing set</div></div></div>
+  </div></div>
+  <p class="meta" style="margin-top:9px">An empty line keeps its slot and its label, with a dimmed box that cannot be ticked. Three lines is the shape of a day whether or not you filled all three — collapsing to two would make a missing decision invisible.</p>
+
+  <div class="rule"><span class="eyebrow">All three done</span></div>
+  <div class="panel"><div class="panel__body" style="padding-top:4px;padding-bottom:6px">
+    <div class="intent"><span class="box box--done">✓</span><div class="intent__m">
+      <div class="intent__k">Explain</div><div class="intent__t intent__t--done">Finish closures</div></div></div>
+    <div class="intent"><span class="box box--done">✓</span><div class="intent__m">
+      <div class="intent__k">Rebuild</div><div class="intent__t intent__t--done">Write <code>once()</code> from memory</div></div></div>
+    <div class="intent"><span class="box box--done">✓</span><div class="intent__m">
+      <div class="intent__k">Apply</div><div class="intent__t intent__t--done">Write ADR-002</div></div></div>
+  </div></div>
+  <p class="meta" style="margin-top:9px">Nothing happens. No confetti, no badge, no "3 days in a row". The line goes quiet and that is the whole reward.</p>
+
+  <div class="rule"><span class="eyebrow">A blocker carried from an earlier day</span></div>
+  <div class="blocker__saved">Couldn't work out why the debounced search still fired after unmount.</div>
+  <div class="blocker__date">Written Fri 5 Sep · still open · <a style="color:var(--accent-ink);text-decoration:underline;cursor:pointer">Mark resolved</a></div>
+  <p class="meta" style="margin-top:9px">A blocker is the one thing on this page that outlives its day. It shows on Today until you mark it resolved, because a problem you wrote down on Friday and forgot by Monday is the exact failure the field exists to prevent. Resolving keeps the text and stamps the date.</p>
+
+  <div class="rule"><span class="eyebrow">Editing an earlier day</span></div>
+  <div class="panel"><div class="panel__body">
+    <p style="color:var(--ink-2);font-size:13.5px;max-width:56ch">Earlier days are read-only. Ticking a box on Thursday from Sunday's chair is writing history rather than recording it, and the log is only worth reading if it says what actually happened.</p>
+  </div></div>
+</div>
+</section>
+
+<!-- ============ MOBILE ============ -->
+<section class="screen" data-screen="mobile">
+<div style="max-width:1000px;margin:0 auto;padding:28px 26px 70px">
+  <h1 class="page-title">Mobile</h1>
+  <p style="color:var(--ink-2);max-width:64ch;margin-top:6px">Today joins the More sheet as its seventh item, at the top. The sheet is why a seventh costs nothing — arc 4 built it precisely so this arc would not have to argue about a nav slot.</p>
+
+  <div class="frames">
+    <div class="frame"><div class="frame__cap">Today — 390pt</div>
+      <div class="phone"><div class="phone__body">
+        <h2 style="font-family:var(--font-display);font-size:24px;font-weight:500">Today</h2>
+        <p class="meta" style="margin:4px 0 16px">Monday 8 September</p>
+        <div class="panel"><div class="panel__body" style="padding:13px">
+          <div class="intent" style="padding:11px 0"><span class="box box--done">✓</span><div class="intent__m">
+            <div class="intent__k">Explain</div><div class="intent__t" style="font-size:13.5px;color:var(--ink-3);text-decoration:line-through">Finish closures and write three retrieval questions</div></div></div>
+          <div class="intent" style="padding:11px 0"><span class="box"></span><div class="intent__m">
+            <div class="intent__k">Rebuild</div><div class="intent__t" style="font-size:13.5px">Write <code>once()</code> from memory</div></div></div>
+          <div class="intent" style="padding:11px 0"><span class="box"></span><div class="intent__m">
+            <div class="intent__k">Apply</div><div class="intent__t" style="font-size:13.5px">Decide where search state lives</div></div></div>
+        </div></div>
+        <div class="practice" style="margin-top:12px;padding:12px 14px">
+          <div class="practice__m"><div class="practice__t" style="font-size:13px">10 queued</div></div>
+          <button class="btn btn--sm">Practice</button></div>
+        <p class="eyebrow" style="margin-top:18px">Blocker</p>
+        <div class="blocker__saved" style="font-size:13px;margin-top:8px">Debounced search still fires after unmount.</div>
+      </div></div>
+    </div>
+
+    <div class="frame"><div class="frame__cap">More — seven items</div>
+      <div class="phone"><div class="phone__body" style="padding:0">
+        <div style="padding:19px 17px 8px"><h2 style="font-family:var(--font-display);font-size:24px;font-weight:500">My knowledge</h2>
+          <p class="meta" style="margin-top:4px">29 topics · 8 need review</p></div>
+        <div style="margin-top:auto"></div>
+        <div style="border-top:1px solid var(--rule);background:var(--surface);border-radius:10px 10px 0 0;padding:8px 0;margin-top:220px">
+          <div style="width:34px;height:4px;border-radius:2px;background:var(--rule-strong);margin:0 auto 10px"></div>
+          <div style="display:flex;justify-content:space-between;padding:12px 20px;border-bottom:1px solid var(--rule)"><span>Today</span><span class="meta">1 / 3</span></div>
+          <div style="display:flex;justify-content:space-between;padding:12px 20px;border-bottom:1px solid var(--rule)"><span>Phases</span><span class="meta">2 / 8</span></div>
+          <div style="display:flex;justify-content:space-between;padding:12px 20px;border-bottom:1px solid var(--rule)"><span>Ledger</span><span class="meta">9</span></div>
+          <div style="display:flex;justify-content:space-between;padding:12px 20px;border-bottom:1px solid var(--rule)"><span>Sources</span><span class="meta">6</span></div>
+          <div style="padding:12px 20px;border-bottom:1px solid var(--rule)">Settings</div>
+          <div style="padding:12px 20px;border-bottom:1px solid var(--rule)">Sign out</div>
+          <div style="padding:12px 20px;color:var(--flag)">Delete account</div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+
+  <p class="note">Ticking a box on a phone is the most likely thing you will do here, so the boxes keep their 18px visual size inside a 44px tap target. Typing three intentions at 390pt is possible and not pleasant, which is fine — you write them at a desk in the morning and tick them from anywhere.</p>
+</div>
+</section>
+
+<!-- ============ RULES ============ -->
+<section class="screen" data-screen="rules">
+<div style="max-width:1000px;margin:0 auto;padding:28px 26px 80px">
+  <h1 class="page-title">The rules</h1>
+  <p style="color:var(--ink-2);max-width:66ch;margin-top:6px">Every decision this reference encodes. Where this page and the screens disagree, the screens win.</p>
+
+  <div class="rule"><span class="eyebrow">Data</span></div>
+  <ul class="ruleset">
+    <li><strong>One new table, <code>days</code></strong>One row per date per user, unique on (user_id, day). Three intention texts and three done flags, plus the blocker text and its resolved timestamp. Fifth table in five arcs, and the last one.</li>
+    <li><strong>A day is keyed by a date, not a timestamp</strong>The user's local date, computed the way <code>localDateString</code> already computes it for evidence — never <code>toISOString</code>, which gives yesterday or tomorrow depending on the hour.</li>
+    <li><strong>Nothing links to anything</strong>The three lines are free text. No source, no capability, no ledger item, no topic. Linking them would make Today derive its content, which is the decision already taken against.</li>
+    <li><strong>A day with nothing typed has no row</strong>Opening the app does not create a record. A day you never wrote on is not a day you failed.</li>
+  </ul>
+
+  <div class="rule"><span class="eyebrow">Behaviour</span></div>
+  <ul class="ruleset">
+    <li><strong>You type the three, every morning</strong>Not derived from a phase, not suggested, not scheduled. The app does not know what you should do today and will not pretend to.</li>
+    <li><strong>Ticking your own intention is not ticking your own competence</strong>Arc 3 refuses a manual tick because a capability is a claim about ability. A daily intention is a claim about what you did, and only you can make it. Different kinds of claim, different rules — state this in DESIGN.md, because the two boxes look identical and the distinction is the whole reason one is clickable.</li>
+    <li><strong>Yesterday's unticked lines are prefilled, not carried</strong>They arrive as editable text with a clear button. Automatic carry-forward is how a to-do list grows a backlog you stop reading.</li>
+    <li><strong>A blocker outlives its day</strong>It shows on Today until you mark it resolved. Resolving keeps the text and stamps the date. A problem written on Friday and forgotten by Monday is what the field exists to prevent.</li>
+    <li><strong>Earlier days are read-only</strong>Ticking Thursday's box from Sunday's chair is writing history rather than recording it.</li>
+    <li><strong>Days with no row do not appear in the log</strong>No gaps to explain, no empty rows implying failure.</li>
+  </ul>
+
+  <div class="rule"><span class="eyebrow">The one derived thing</span></div>
+  <ul class="ruleset">
+    <li><strong>No carry badge — corrected</strong>An earlier draft of this page drew <code>carried · 2 days</code> on an unticked line. It is dropped. Producing that count means walking back through days comparing text, which is a second derived thing and the multi-day scan the blocker rule avoids — and there is no lineage stored to count, because lines are <em>prefilled, not carried</em>. The Clear button and its hint already say where the text came from. Five references running have now contradicted a shipped rule or their own brief; see TASKS.md for the two shapes it keeps taking.</li>
+    <li><strong>The practice line, and nothing else</strong>Queue count, review count, longest gap — each links through to the thing it counts. The product review's rule holds: if a number here cannot be clicked through to what it counts, it does not belong here.</li>
+    <li><strong>No weak topic list on Today</strong>That is the weak page's job and duplicating it here is how this page becomes a dashboard.</li>
+  </ul>
+
+  <div class="rule"><span class="eyebrow">Not built</span></div>
+  <ul class="ruleset">
+    <li><strong>No calendar, heatmap, streak or completion rate</strong>A log you read, not a chart you look at. The one reason to look back is a blocker, and reading the words is how you answer that.</li>
+    <li><strong>No reminders, no notifications, no scheduling</strong>1–3–7–21 runs manually outside the app by decision.</li>
+    <li><strong>Today is not the landing page</strong>The library stays the front door. This is a learning library, and opening it on a to-do list would change what the product is on the first screen you see every day.</li>
+    <li><strong>No AI</strong>Arc 6 attaches elsewhere. Nothing stubbed here.</li>
+  </ul>
+</div>
+</section>
+
+<script>
+  const screens=document.querySelectorAll('[data-screen]');
+  document.querySelector('.chrome').addEventListener('click',e=>{
+    const b=e.target.closest('[data-go]'); if(!b) return;
+    document.querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-selected',t===b));
+    screens.forEach(s=>s.toggleAttribute('data-active',s.dataset.screen===b.dataset.go));
+    window.scrollTo(0,0);
+  });
+</script>
+</body>
+</html>

@@ -69,6 +69,54 @@ export type Database = {
           },
         ]
       }
+      days: {
+        Row: {
+          apply_done: boolean
+          apply_text: string | null
+          blocker_resolved_at: string | null
+          blocker_text: string | null
+          created_at: string
+          day: string
+          explain_done: boolean
+          explain_text: string | null
+          id: string
+          rebuild_done: boolean
+          rebuild_text: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          apply_done?: boolean
+          apply_text?: string | null
+          blocker_resolved_at?: string | null
+          blocker_text?: string | null
+          created_at?: string
+          day: string
+          explain_done?: boolean
+          explain_text?: string | null
+          id?: string
+          rebuild_done?: boolean
+          rebuild_text?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          apply_done?: boolean
+          apply_text?: string | null
+          blocker_resolved_at?: string | null
+          blocker_text?: string | null
+          created_at?: string
+          day?: string
+          explain_done?: boolean
+          explain_text?: string | null
+          id?: string
+          rebuild_done?: boolean
+          rebuild_text?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       phases: {
         Row: {
           created_at: string

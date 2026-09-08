@@ -773,7 +773,98 @@ scrim-press behaviour are inherited rather than reimplemented.
 
 ---
 
-## 10. Copy rules
+## 10. Today
+
+`today-reference.html` is the visual source of truth. Three things you type each morning —
+one to **explain**, one to **rebuild**, one to **apply** — plus a blocker. Free text, by
+hand. Nothing derived, nothing suggested, nothing scheduled.
+
+### Ticking your own intention is not ticking your own competence
+
+The two boxes look identical, and the distinction is the whole reason one is clickable:
+
+> A **capability** is a claim about **ability**. The app derives it, because you cannot
+> grade your own competence — so its box has no handler and there is no column to write to.
+>
+> A daily **intention** is a claim about **what you did**. Only you can make it, and the app
+> has no way to know — so ticking it is the only mechanism there could be.
+
+Different kinds of claim, different rules. §8's assertions are untouched: they are about
+`capabilities`, and the check that `/phases` has no checkbox anywhere is now *sharper* —
+the app has checkboxes, and that screen deliberately has none.
+
+**An empty line's box is not a control at all** — a `span`, not a disabled button, following
+§5's rule that a quiz's options stop being buttons rather than becoming disabled ones. An
+empty slot keeps its place and its label, because collapsing to two would make a missing
+decision invisible.
+
+### The day key is the user's local date
+
+Computed in the browser by `localDateString`, never on the server: on a UTC host the
+calendar date is wrong for a third of every day. Every surface that needs to know which day
+it is resolves it after mount and renders nothing for it until it does — a count for the
+wrong day is worse than no count.
+
+### Prefill, not carry
+
+Yesterday's unticked lines arrive as editable text with a Clear button, and **nothing is
+written until you press Save**. Automatic carry-forward is how a to-do list grows a backlog
+you stop reading; prefilling makes you look at it once a day and decide again.
+
+A ticked line is never offered back — it is finished. There is **no carry count**: no
+lineage is stored, and "2 days" is a number whose only job is to say you are behind, which
+the free-text "When" rule in §8 and the no-streak rule both refuse.
+
+### A day with nothing typed has no row
+
+Opening the app does not create a record. A day you never wrote on is not a day you failed,
+and it does not appear in the log.
+
+**Earlier days are read-only.** Ticking Thursday's box from Sunday's chair is writing
+history rather than recording it.
+
+### The blocker outlives its day
+
+It shows on Today until you mark it resolved, because a problem written on Friday and
+forgotten by Monday is what the field exists to prevent. The **oldest** open one is shown —
+it is the one most at risk — with a count of any others rather than a list, since listing
+them would rebuild the backlog prefill already refuses. Resolving keeps the text and stamps
+the date.
+
+### The practice line is the only derived thing, and every number links through
+
+Queued → the session. Needs review → the weak page. Longest gap → the topic that has it.
+
+Two rules this screen settled, both new and both reachable for again:
+
+**A gap is between two practices.** A never-practised topic has an *absence*, not a gap, and
+an absence belongs on the weak page. So the longest gap is computed only over topics with a
+`last_practiced_at`.
+
+**A number with nothing to link to is omitted, not rendered dead.** If nothing has ever been
+practised there is no gap to report, so the phrase disappears — the same rule as "a topic
+with no source omits the section", applied to a figure rather than a section. A number you
+cannot click through to is a number that does not belong here.
+
+No weak-topic list on Today. That is the weak page's job, and duplicating it is how this
+page becomes a dashboard.
+
+### On a phone
+
+Today joins the More sheet as its **seventh** item, at the top — the sheet §9 built is why a
+seventh costs nothing. Boxes keep their 18px visual size inside a **44px tap target**,
+because ticking is the most likely thing anyone does here.
+
+### Not built
+
+No calendar, heatmap, streak or completion rate — a log you read, not a chart you look at.
+No reminders, notifications or scheduling. No links from an intention to a source,
+capability, ledger item or topic; linking them would make Today derive its content.
+**Today is not the landing page** — the library stays the front door.
+
+---
+
+## 11. Copy rules
 
 Sentence case everywhere. Active voice. An action keeps its name through the
 whole flow — the button that says "Save topic" produces a toast that says
@@ -785,7 +876,7 @@ invitations, not apologies.
 
 ---
 
-## 11. Accessibility floor
+## 12. Accessibility floor
 
 Not optional, not polish-phase:
 
@@ -814,7 +905,7 @@ technology. Where the two disagree, this is the rule.
 
 ---
 
-## 12. Out of scope
+## 13. Out of scope
 
 The mock shows a few things beyond the original spec. Ship them only if the core
 loop is done: search-term highlighting in card titles, "Review the 2 you missed"
