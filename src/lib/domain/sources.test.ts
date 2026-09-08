@@ -128,30 +128,64 @@ describe('selecting transcript text', () => {
 })
 
 describe('parseSourceForm', () => {
-  const form = (overrides = {}) => ({ title: 'Closures', course: '', url: '', transcript: '', ...overrides })
+  const form = (overrides = {}) => ({
+    lesson: 'Closures',
+    course: '',
+    chapter: '',
+    length: '',
+    url: '',
+    transcript: '',
+    ...overrides,
+  })
 
-  it('needs a title and nothing else', () => {
+  it('needs a lesson and nothing else', () => {
     expect(parseSourceForm(form()).value).toEqual({
-      title: 'Closures',
+      lesson: 'Closures',
       course: null,
+      chapter: null,
+      duration_seconds: null,
       url: null,
       transcript: null,
     })
   })
 
-  it('rejects a blank title', () => {
-    expect(parseSourceForm(form({ title: '   ' })).error).toContain('Give the source a title')
+  it('rejects a blank lesson', () => {
+    expect(parseSourceForm(form({ lesson: '   ' })).error).toContain('Name the lesson')
   })
 
   it('turns blank optionals into null rather than empty strings', () => {
     // The CHECK constraints reject '' — absence is null.
-    const parsed = parseSourceForm(form({ course: '  ', url: '', transcript: '   ' }))
-    expect(parsed.value).toMatchObject({ course: null, url: null, transcript: null })
+    const parsed = parseSourceForm(
+      form({ course: '  ', chapter: '  ', url: '', transcript: '   ' }),
+    )
+    expect(parsed.value).toMatchObject({ course: null, chapter: null, url: null, transcript: null })
   })
 
   it('refuses a link that is not http or https', () => {
     expect(parseSourceForm(form({ url: 'javascript:alert(1)' })).error).toContain('http or https')
     expect(parseSourceForm(form({ url: 'frontendmasters.com' })).error).toContain('not a URL')
+  })
+
+  it('stores the length as seconds, and refuses one it cannot read', () => {
+    expect(parseSourceForm(form({ length: '13m 23s' })).value?.duration_seconds).toBe(803)
+    expect(parseSourceForm(form({ length: '90' })).value?.duration_seconds).toBe(5400)
+
+    // Never zero. The parse fails loudly rather than storing a lesson that took
+    // no time — see duration.ts.
+    expect(parseSourceForm(form({ length: 'banana' })).error).toContain('Not a length')
+    expect(parseSourceForm(form({ length: '0' })).error).toContain('Not a length')
+  })
+
+  it('refuses a chapter with no course', () => {
+    /*
+      A chapter of nothing would group under "No course" and read as though the
+      course had been lost rather than never given. Refused where the mistake was
+      made, not silently dropped.
+    */
+    expect(parseSourceForm(form({ chapter: 'Principles' })).error).toContain('belongs to a course')
+    expect(
+      parseSourceForm(form({ chapter: 'Principles', course: 'JS: The Hard Parts' })).error,
+    ).toBeUndefined()
   })
 })
 

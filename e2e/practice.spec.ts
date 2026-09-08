@@ -153,7 +153,22 @@ test('Escape leaves a practice session, and the exit says so', async ({ page }) 
   await signInAs(page, 'main')
   await page.goto('/practice')
 
-  await expect(page.getByRole('button', { name: 'Reveal answer' })).toBeVisible()
+  /*
+    Wait for the session, NOT for a topic card.
+
+    This asserted `Reveal answer`, which only a TOPIC renders — a quiz shows its
+    options instead. The default session ties every never-practised entry at
+    `staleness = -infinity` and breaks the tie with `md5(p_seed || id)`, where the
+    seed is the read timestamp: the first card is genuinely randomised among the
+    ties on every request. The fixture holds eight never-practised topics and two
+    quizzes, so this failed about one run in five.
+
+    That is issue #23 — "one unreproduced failure per few full runs" — and it was
+    unreproducible because re-running it usually passed. The card's shape was
+    never what this test is about: it is about Escape leaving a session and the
+    exit naming its shortcut.
+  */
+  await expect(page.getByRole('img', { name: /^Card 1 of/ })).toBeVisible()
 
   // The control names its own shortcut.
   await expect(page.getByRole('link', { name: /End session/ })).toBeVisible()

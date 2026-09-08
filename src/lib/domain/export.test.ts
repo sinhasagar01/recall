@@ -280,8 +280,10 @@ describe('sources in library.md', () => {
   const closures: SourceSummary = {
     id: 'src-1',
     user_id: 'u1',
-    title: 'JavaScript closures, in depth',
+    lesson: 'JavaScript closures, in depth',
     course: 'JS: The Hard Parts',
+    chapter: null,
+    duration_seconds: null,
     url: 'https://example.com/closures',
     transcript_words: 8400,
     transcript_deleted_at: null,
@@ -304,7 +306,7 @@ describe('sources in library.md', () => {
     const out = withSources([closures], { t1: 'src-1' })
 
     expect(out).toContain('## Where this came from')
-    expect(out).toContain('JavaScript closures, in depth · JS: The Hard Parts — https://example.com/closures')
+    expect(out).toContain('JS: The Hard Parts › JavaScript closures, in depth — https://example.com/closures')
   })
 
   it('omits the section for a topic with no source', () => {
@@ -363,14 +365,18 @@ describe('sources in library.md', () => {
     const deleted: SourceSummary = {
       ...closures,
       id: 'src-2',
-      title: 'Deleted one',
+      lesson: 'Deleted one',
+      chapter: null,
+      duration_seconds: null,
       transcript_words: null,
       transcript_deleted_at: '2026-09-01T10:00:00.000Z',
     }
     const never: SourceSummary = {
       ...closures,
       id: 'src-3',
-      title: 'Never had one',
+      lesson: 'Never had one',
+      chapter: null,
+      duration_seconds: null,
       transcript_words: null,
       transcript_deleted_at: null,
     }

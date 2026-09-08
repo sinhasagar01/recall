@@ -7,7 +7,7 @@
 -- Written and run RED before the migration exists.
 
 begin;
-select plan(41);
+select plan(53);
 
 create function tests_create_user(uid uuid, email text) returns uuid
 language plpgsql as $fn$
@@ -69,7 +69,17 @@ select has_table('public'::name, 'sources'::name, 'there is a sources table');
 -- comment, while topics_test.sql caught `extracted` on the same commit —
 -- because that file has this and this one did not. See ARCHITECTURE.md.
 select columns_are('public'::name, 'sources'::name, ARRAY[
-  'id', 'user_id', 'title', 'course', 'url',
+  'id', 'user_id',
+  -- Arc 2.1, PHASE A. `title` and `lesson` are both here on purpose and only
+  -- for one deploy: the running build still selects `title` while the migration
+  -- is landing, because pushing is deploying. 2.1b drops `title`, and this array
+  -- is edited again there — it is exact in both directions, so a one-sided edit
+  -- fails, which is the point of it being columns_are.
+  'title', 'lesson',
+  -- A source is a lesson inside a chapter inside a course. Chapter is new.
+  'course', 'chapter', 'url',
+  -- Free text in, seconds out, so lengths can be summed across a course.
+  'duration_seconds',
   -- The transcript is scratch: pasted, distilled from, deleted. The word count
   -- is generated so the list never reads the body, and `transcript_deleted_at`
   -- exists because "deleted" and "never had one" are different sentences.
@@ -80,6 +90,23 @@ select columns_are('public'::name, 'sources'::name, ARRAY[
   'coverage',
   'created_at', 'updated_at'
 ], 'sources has exactly these columns — additions and removals both fail here');
+
+/*
+  ── Phase A's whole safety, asserted ────────────────────────────────────────
+  `lesson` is NULLABLE for exactly one deploy. It has to be: the rows already in
+  production have no value for it until the backfill runs, and the still-live
+  build writes `title` and knows nothing about `lesson`.
+
+  Which is what the mirror trigger is for, and the assertion below is the only
+  thing in the suite that would notice its absence. Seen failing by dropping the
+  trigger from the migration: the insert succeeds and `lesson` comes back null.
+*/
+select col_is_null('public'::name, 'sources'::name, 'lesson'::name,
+  'lesson is nullable for exactly one deploy — 2.1b makes it NOT NULL');
+select col_is_null('public'::name, 'sources'::name, 'chapter'::name, 'chapter is optional');
+select col_is_null('public'::name, 'sources'::name, 'duration_seconds'::name, 'length is optional');
+select col_type_is('public'::name, 'sources'::name, 'duration_seconds'::name, 'integer',
+  'a length is whole seconds — the parse rounds, the column does not store fractions');
 
 select col_not_null('public'::name, 'sources'::name, 'title'::name, 'a source must have a title');
 select col_is_null('public'::name, 'sources'::name, 'course'::name, 'course is optional');
@@ -384,6 +411,83 @@ select ok(has_table_privilege('authenticated', 'public.sources', 'UPDATE'),
   'authenticated may UPDATE sources');
 select ok(has_table_privilege('authenticated', 'public.sources', 'DELETE'),
   'authenticated may DELETE sources');
+
+-- ===========================================================================
+-- Arc 2.1a — the mirror trigger, and the two new constraints
+-- ===========================================================================
+
+/*
+  THE assertion of phase A, and the only one that would notice the trigger going
+  missing.
+
+  Between the migration landing and the new build going live, the running app
+  inserts a source naming `title` and nothing else — it has never heard of
+  `lesson`. Without the trigger that row is written with `lesson` null, and 2.1b
+  then makes the column NOT NULL over a row that has no value: the contract
+  migration fails, or worse, the backfill quietly writes an empty string.
+
+  A trigger that has never been seen to be necessary is a trigger someone
+  removes, so this was run with the trigger dropped from the migration and the
+  insert leaves `lesson` null.
+*/
+select lives_ok(
+  $$insert into public.sources (title) values ('Written by the old build')$$,
+  'the still-live build can insert naming only title'
+);
+
+select is(
+  (select lesson from public.sources where title = 'Written by the old build'),
+  'Written by the old build',
+  'and the trigger mirrors it into lesson, so 2.1b has nothing left behind to backfill'
+);
+
+/*
+  The BACKFILL itself is deliberately not asserted here, and the reason is worth
+  writing down rather than leaving as a gap.
+
+  pgTAP runs inside a transaction that begins after every migration has already
+  been applied, so there is no way to create a row that predates the migration —
+  every row this file inserts goes through the trigger, not the backfill. An
+  assertion here would be testing the trigger a second time while claiming to
+  test the backfill, which is the "passes for the wrong reason" failure this
+  project keeps finding.
+
+  It is verified where it can be: on production, immediately after the push,
+  `select count(*) from sources where lesson is null` must be 0.
+*/
+
+-- The new build writes `lesson`, and the trigger must not fight it.
+select lives_ok(
+  $$insert into public.sources (title, lesson) values ('ignored', 'Execution Context')$$,
+  'the new build writes lesson explicitly'
+);
+
+select is(
+  (select lesson from public.sources where lesson = 'Execution Context'),
+  'Execution Context',
+  'and an explicit lesson wins — the trigger only fills a gap, it does not overwrite'
+);
+
+select throws_ok(
+  $$insert into public.sources (title, chapter) values ('Fine', '   ')$$,
+  '23514', null, 'a whitespace-only chapter is rejected — absent is null, not blank'
+);
+
+select throws_ok(
+  $$insert into public.sources (title, duration_seconds) values ('Fine', 0)$$,
+  '23514', null,
+  'a zero length is rejected — a lesson that took no time is a parse failure, not a fact'
+);
+
+select throws_ok(
+  $$insert into public.sources (title, duration_seconds) values ('Fine', -5)$$,
+  '23514', null, 'and a negative one'
+);
+
+select lives_ok(
+  $$insert into public.sources (title, duration_seconds) values ('Has a length', 803)$$,
+  '13m 23s in seconds is a length'
+);
 
 select * from finish();
 rollback;

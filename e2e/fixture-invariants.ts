@@ -148,7 +148,7 @@ export async function checkFixtureInvariants(): Promise<void> {
 
     const { data: sources, error: sourceError } = await admin
       .from('sources')
-      .select('title')
+      .select('lesson')
       .eq('user_id', id)
 
     if (sourceError) {
@@ -158,7 +158,7 @@ export async function checkFixtureInvariants(): Promise<void> {
     libraries.set(fixture, {
       titles: (data ?? []).map((row) => row.title),
       count: count ?? 0,
-      sourceTitles: (sources ?? []).map((row) => row.title),
+      sourceTitles: (sources ?? []).map((row) => row.lesson),
     })
   }
 

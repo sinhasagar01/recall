@@ -1,8 +1,9 @@
 import Link from 'next/link'
 import { AddSourceButton } from '@/components/sources/add-source-button'
-import { SourceRow } from '@/components/sources/source-row'
+import { CourseGroup } from '@/components/sources/course-group'
 import { StateBlock } from '@/components/ui/state-block'
 import { listSources } from '@/lib/data/sources'
+import { groupSources, groupedHeadline } from '@/lib/domain/source-grouping'
 import { sourceProgress } from '@/lib/domain/sources'
 
 /**
@@ -14,7 +15,11 @@ export default async function SourcesPage() {
   const views = await listSources()
   const now = new Date()
 
-  const distilled = views.reduce((total, view) => total + view.entries.length, 0)
+  /*
+    Grouped in the domain, from the two reads listSources already does. There is
+    no N+1 to avoid: `groupSources` is pure and cannot reach a client.
+  */
+  const courses = groupSources(views)
   const empty = views.filter((view) => view.entries.length === 0).length
 
   /*
@@ -34,14 +39,18 @@ export default async function SourcesPage() {
             'Nothing saved yet'
           ) : (
             <>
-              {views.length} {views.length === 1 ? 'source' : 'sources'} · {distilled}{' '}
-              {distilled === 1 ? 'entry' : 'entries'} distilled
+              {/*
+                `groupedHeadline` counts courses WITHOUT counting the absence of
+                one as a course — the mock's header read "2 courses" when one of
+                the two was "No course".
+              */}
+              {groupedHeadline(courses)}
               {empty > 0 ? ` · ${empty} with nothing` : ''}
             </>
           )}
         </p>
       </div>
-      <AddSourceButton label="+ Add a source" />
+      <AddSourceButton label="+ Add a source" siblings={views.map((view) => view.source)} />
     </div>
   )
 
@@ -53,7 +62,7 @@ export default async function SourcesPage() {
           eyebrow="Sources"
           title="Nothing here yet"
           body="Add the video you are watching. Its transcript is scratch you work from — what you distil out of it is the library."
-          action={<AddSourceButton label="+ Add a source" />}
+          action={<AddSourceButton label="+ Add a source" siblings={views.map((view) => view.source)} />}
         />
         <p className="mt-9 border-t border-rule pt-5 text-meta text-ink-2">
           <Link href="/library" className="underline hover:text-ink">
@@ -68,13 +77,11 @@ export default async function SourcesPage() {
     <>
       {header}
 
-      <div className="border-t border-rule">
-        {views.map((view) => (
-          <SourceRow key={view.source.id} view={view} now={now} />
-        ))}
-      </div>
+      {courses.map((node) => (
+        <CourseGroup key={node.course ?? '—'} node={node} now={now} />
+      ))}
 
-      {/* Videos mined out, not videos watched. */}
+      {/* Lessons mined out, not videos watched. */}
       <p className="mt-6 font-mono text-[11.5px] text-ink-3">
         {views.filter((view) => sourceProgress(view.entries).done).length} of {views.length} mined
         out

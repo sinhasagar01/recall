@@ -28,7 +28,7 @@ async function sourceWithTranscript(page: Page, transcript: string): Promise<str
   await page.getByRole('button', { name: '+ Add a source' }).first().click()
 
   const sheet = page.getByRole('dialog')
-  await sheet.getByLabel('Title').fill(title)
+  await sheet.getByLabel('Lesson').fill(title)
   await sheet.getByLabel(/^Transcript/).fill(transcript)
   await sheet.getByRole('button', { name: 'Save source' }).click()
 
@@ -115,7 +115,7 @@ test.describe('extraction', () => {
     await page.goto('/sources')
     await page.getByRole('button', { name: '+ Add a source' }).first().click()
     const sheet = page.getByRole('dialog')
-    await sheet.getByLabel('Title').fill(unique('No transcript'))
+    await sheet.getByLabel('Lesson').fill(unique('No transcript'))
     await sheet.getByRole('button', { name: 'Save source' }).click()
     await expect(page).toHaveURL(/\/sources\/[0-9a-f-]+$/, { timeout: 30_000 })
 

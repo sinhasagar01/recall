@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { formatDuration } from '@/lib/domain/duration'
 import { formatRelativeTime } from '@/lib/domain/library'
 import {
   isUndistilled,
@@ -20,6 +21,7 @@ export function SourceRow({ view, now }: { view: SourceWithEntriesView; now: Dat
   const { source, entries } = view
   const progress = sourceProgress(entries)
   const state = transcriptState(source)
+  const length = formatDuration(source.duration_seconds)
   const stale = isUndistilled(source, entries.length, now)
 
   const transcriptLabel =
@@ -35,10 +37,15 @@ export function SourceRow({ view, now }: { view: SourceWithEntriesView; now: Dat
       className="flex items-center gap-4 border-b border-rule px-1 py-[15px] hover:bg-surface-2"
     >
       <div className="min-w-0 flex-1">
-        <div className="text-body font-medium text-ink">{source.title}</div>
+        <div className="text-body font-medium text-ink">{source.lesson}</div>
+        {/*
+          No course here any more: the group heading above already says it, and
+          repeating it on every row is how a grouped list reads as a flat one
+          that happens to be indented.
+        */}
         <div className="mt-[3px] font-mono text-[11.5px] text-ink-3">
-          {source.course ? `${source.course} · ` : ''}
-          {formatRelativeTime(source.created_at, now)} · {transcriptLabel}
+          {length ? `${length} · ` : ''}
+          {transcriptLabel} · {formatRelativeTime(source.created_at, now)}
         </div>
       </div>
 

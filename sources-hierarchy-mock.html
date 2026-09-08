@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recall — course · chapter · lesson</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;450;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#E9EAF0; --surface:#FFFFFF; --surface-2:#F5F5FA; --surface-3:#EDEEF4;
+  --ink:#12131A; --ink-2:#53555F; --ink-3:#83858F;
+  --rule:#E1E1E9; --rule-strong:#C9C9D4;
+  --accent:#3F3AC7; --accent-soft:#EDECFB; --accent-ink:#2E2A9E;
+  --flag:#B4325C; --flag-soft:#FBEBF1;
+  --ok:#1B6B4F; --ok-soft:#E6F2EC;
+  --radius:6px; --radius-lg:10px;
+  --shadow:0 1px 2px rgba(18,19,26,.05), 0 1px 1px rgba(18,19,26,.03);
+  --shadow-pop:0 4px 8px rgba(18,19,26,.06), 0 12px 32px rgba(18,19,26,.10);
+  --font-display:"Newsreader",Georgia,serif;
+  --font-body:"IBM Plex Sans",system-ui,sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:14.5px;line-height:1.55;-webkit-font-smoothing:antialiased}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+code{font-family:var(--font-mono);font-size:.86em}
+.chrome{position:sticky;top:0;z-index:60;display:flex;gap:6px;align-items:center;padding:9px 16px;
+  background:var(--surface);border-bottom:1px solid var(--rule);flex-wrap:wrap}
+.chrome__label{font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin-right:6px}
+.tab{font-family:var(--font-mono);font-size:11.5px;padding:5px 9px;border:1px solid transparent;border-radius:var(--radius);
+  background:none;color:var(--ink-2);cursor:pointer}
+.tab:hover{background:var(--surface-2);color:var(--ink)}
+.tab[aria-selected="true"]{background:var(--accent-soft);color:var(--accent-ink);border-color:var(--accent)}
+
+.eyebrow{font-family:var(--font-mono);font-size:10.5px;font-weight:500;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3)}
+.meta{font-family:var(--font-mono);font-size:11.5px;color:var(--ink-3)}
+.btn{font-family:var(--font-body);font-size:13.5px;font-weight:500;display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  padding:10px 15px;border-radius:var(--radius);border:1px solid var(--rule-strong);background:var(--surface);color:var(--ink);cursor:pointer}
+.btn--primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn--ghost{background:none;border-color:transparent;color:var(--ink-2)}
+.btn--sm{padding:6px 11px;font-size:12.5px}
+.chip{font-family:var(--font-mono);font-size:11px;padding:3px 8px;border-radius:100px;border:1px solid var(--rule);background:var(--surface-2);color:var(--ink-2)}
+.field{display:block;margin-bottom:15px}
+.field__label{display:block;margin-bottom:6px;font-size:13px;font-weight:500}
+.field__hint{font-family:var(--font-mono);font-size:10.5px;color:var(--ink-3);font-weight:400;margin-left:6px}
+.input,.textarea{width:100%;font-family:var(--font-body);font-size:14.5px;color:var(--ink);background:var(--surface);
+  border:1px solid var(--rule-strong);border-radius:var(--radius);padding:10px 12px;line-height:1.5}
+.textarea{min-height:120px;resize:vertical;font-family:var(--font-mono);font-size:12.5px}
+
+.screen{display:none}.screen[data-active]{display:block}
+.wrap{max-width:1000px;margin:0 auto;padding:28px 26px 80px}
+.page-title{font-family:var(--font-display);font-size:29px;font-weight:500;letter-spacing:-.022em}
+.page-sub{margin-top:4px;font-family:var(--font-mono);font-size:11.5px;color:var(--ink-3)}
+.page-head{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:20px}
+.rule{display:flex;align-items:center;gap:12px;margin:28px 0 12px}
+.rule::after{content:"";flex:1;height:1px;background:var(--rule)}
+.note{max-width:70ch;color:var(--ink-2);font-size:13.5px;margin-top:24px;padding-top:16px;border-top:1px solid var(--rule)}
+.callout{background:var(--surface);border:1px solid var(--accent);border-left-width:3px;border-radius:var(--radius);padding:14px 18px;margin:20px 0;max-width:74ch}
+.callout__t{font-weight:500;color:var(--accent-ink);margin-bottom:4px}
+.panel{background:var(--surface);border:1px solid var(--rule);border-radius:var(--radius-lg);box-shadow:var(--shadow)}
+.panel__body{padding:18px}
+
+/* combobox */
+.cb{position:relative}
+.cb__pop{position:absolute;top:calc(100% + 5px);left:0;right:0;z-index:30;background:var(--surface);
+  border:1px solid var(--rule-strong);border-radius:var(--radius-lg);box-shadow:var(--shadow-pop);padding:5px}
+.cb__opt{display:flex;align-items:center;gap:9px;width:100%;text-align:left;border:none;background:none;
+  font-family:var(--font-body);font-size:13.5px;color:var(--ink);padding:8px 10px;border-radius:var(--radius);cursor:pointer}
+.cb__opt:hover{background:var(--surface-2)}
+.cb__opt--on{background:var(--accent-soft);color:var(--accent-ink)}
+.cb__c{margin-left:auto;font-family:var(--font-mono);font-size:10.5px;color:var(--ink-3)}
+.cb__new{border-top:1px solid var(--rule);margin-top:5px;padding-top:6px;color:var(--ink-2);font-style:italic}
+
+.crumbbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:11px 15px;background:var(--surface-2);
+  border:1px solid var(--rule);border-radius:var(--radius);font-family:var(--font-mono);font-size:11.5px;color:var(--ink-3)}
+.crumbbar b{color:var(--ink);font-weight:500}
+.crumbbar span.sep{color:var(--rule-strong)}
+.crumbbar em{font-style:normal;color:var(--ink-3);opacity:.7}
+
+/* grouped sources list */
+.course{border:1px solid var(--rule);border-radius:var(--radius-lg);background:var(--surface);overflow:hidden;
+  box-shadow:var(--shadow);margin-bottom:12px}
+.course__h{display:flex;align-items:center;gap:14px;padding:15px 18px;border-bottom:1px solid var(--rule);cursor:pointer}
+.course__h:hover{background:var(--surface-2)}
+.course__m{flex:1;min-width:0}
+.course__n{font-family:var(--font-display);font-size:19px;font-weight:500;line-height:1.25}
+.course__s{font-family:var(--font-mono);font-size:11px;color:var(--ink-3);margin-top:3px}
+.bar{width:130px;height:6px;border-radius:4px;background:var(--surface-2);border:1px solid var(--rule);overflow:hidden;flex:none}
+.bar i{display:block;height:100%;background:var(--ok)}
+.course__p{font-family:var(--font-mono);font-size:11.5px;color:var(--ink-2);flex:none;white-space:nowrap}
+
+.chapter{border-bottom:1px solid var(--rule)}
+.chapter:last-child{border-bottom:none}
+.chapter__h{display:flex;align-items:center;gap:12px;padding:11px 18px;background:var(--surface-2);cursor:pointer}
+.chapter__n{font-size:13.5px;font-weight:500;flex:1}
+.chapter__s{font-family:var(--font-mono);font-size:10.5px;color:var(--ink-3)}
+.lesson{display:flex;align-items:center;gap:14px;padding:13px 18px 13px 34px;border-top:1px solid var(--rule);cursor:pointer}
+.lesson:hover{background:var(--surface-2)}
+.lesson__m{flex:1;min-width:0}
+.lesson__n{font-size:14px}
+.lesson__s{font-family:var(--font-mono);font-size:10.5px;color:var(--ink-3);margin-top:3px}
+.lesson__y{font-family:var(--font-mono);font-size:11px;color:var(--ink-2);white-space:nowrap;flex:none}
+.lesson__y b{color:var(--accent-ink);font-weight:500}
+.lesson__y--none{color:var(--ink-3)}
+.lesson__y--stale{color:var(--flag)}
+.dots{display:inline-flex;gap:3px;flex:none}
+.dots i{width:6px;height:6px;border-radius:50%;background:var(--rule-strong)}
+.dots i.on{background:var(--accent)}
+
+.reg{margin-bottom:24px}
+.srcline{display:flex;align-items:center;gap:11px;padding:12px 15px;border:1px solid var(--rule);border-radius:var(--radius);
+  background:var(--surface-2);font-size:13.5px;color:var(--ink-2);flex-wrap:wrap}
+.srcline a{color:var(--accent-ink);text-decoration:underline;cursor:pointer}
+.badge{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;padding:2px 7px;border-radius:3px;
+  border:1px solid var(--rule-strong);color:var(--ink-3);background:var(--surface)}
+
+.ruleset{background:var(--surface);border:1px solid var(--rule);border-radius:var(--radius-lg);padding:4px 22px;margin-top:14px;box-shadow:var(--shadow)}
+.ruleset li{list-style:none;padding:13px 0;border-bottom:1px solid var(--rule);font-size:13.5px;color:var(--ink-2)}
+.ruleset li:last-child{border-bottom:none}
+.ruleset strong{color:var(--ink);font-weight:500;display:block;margin-bottom:2px}
+</style>
+</head>
+<body>
+
+<div class="chrome">
+  <span class="chrome__label">Screen</span>
+  <button class="tab" data-go="add" aria-selected="true">Add a source</button>
+  <button class="tab" data-go="list">Sources, grouped</button>
+  <button class="tab" data-go="topic">On a topic</button>
+  <button class="tab" data-go="rules">The rules</button>
+</div>
+
+<!-- ============ ADD ============ -->
+<section class="screen" data-screen="add" data-active>
+<div class="wrap" style="max-width:700px">
+  <div class="page-head"><div>
+    <h1 class="page-title">Add a source</h1>
+    <p class="page-sub">The lesson you just watched</p></div></div>
+
+  <div class="rule" style="margin-top:0"><span class="eyebrow">While you type the course</span></div>
+  <div class="panel"><div class="panel__body" style="padding-bottom:150px">
+    <div class="field" style="margin-bottom:0"><span class="field__label">Course <span class="field__hint">optional · reused from what you have added</span></span>
+      <div class="cb">
+        <input class="input" value="JavaScript: The Hard" placeholder="e.g. JavaScript: The Hard Parts, v3">
+        <div class="cb__pop">
+          <button class="cb__opt cb__opt--on">JavaScript: The Hard Parts, v3<span class="cb__c">4 lessons</span></button>
+          <button class="cb__opt">JavaScript Testing Practices<span class="cb__c">1 lesson</span></button>
+          <button class="cb__opt cb__new">Use “JavaScript: The Hard” as a new course</button>
+        </div>
+      </div>
+    </div>
+  </div></div>
+  <p class="meta" style="margin-top:9px">The list opens over the fields below it and closes on pick, so only one of these two states is ever on screen. Chapter then offers only the chapters already in the course you chose.</p>
+
+  <div class="rule"><span class="eyebrow">The form, filled in</span></div>
+  <div class="panel"><div class="panel__body">
+
+    <label class="field"><span class="field__label">Course <span class="field__hint">optional</span></span>
+      <input class="input" value="JavaScript: The Hard Parts, v3"></label>
+
+    <label class="field"><span class="field__label">Chapter <span class="field__hint">optional · picked from this course</span></span>
+      <input class="input" value="Principles of JavaScript">
+      <span class="field__hint" style="display:block;margin-top:5px">Corrected: this is a combobox, exactly like course — scoped to the chapters already in the selected course, and ordered by recency rather than alphabetically. Opening the form fresh prefills it from your last save in that course. Drawn here closed, because only one of the two states is ever on screen.</span></label>
+
+    <label class="field"><span class="field__label">Lesson</span>
+      <input class="input" value="Execution Context"></label>
+
+    <div style="display:grid;grid-template-columns:1fr 150px;gap:14px">
+      <label class="field"><span class="field__label">URL <span class="field__hint">optional</span></span>
+        <input class="input" value="https://frontendmasters.com/…/execution-context/"></label>
+      <label class="field"><span class="field__label">Length <span class="field__hint">optional</span></span>
+        <input class="input" value="13m 23s"></label>
+    </div>
+
+    <label class="field"><span class="field__label">Transcript <span class="field__hint">optional · scratch, deletable</span></span>
+      <textarea class="textarea">Well, maybe it isn't. And that is how code actually runs. Flipping it, what actually happens when we start running code? … all we do in programming are two things. One, we go through code line by line. Fancy phrase for that is the thread of execution…</textarea></label>
+
+    <div class="rule" style="margin:6px 0 10px"><span class="eyebrow">This will be saved as</span></div>
+    <div class="crumbbar">
+      <b>JavaScript: The Hard Parts, v3</b><span class="sep">›</span>
+      <b>Principles of JavaScript</b><span class="sep">›</span>
+      <b>Execution Context</b>
+      <span style="margin-left:auto">13m 23s · 2,140 words</span>
+    </div>
+
+    <div style="display:flex;gap:12px;align-items:center;margin-top:18px;flex-wrap:wrap">
+      <button class="btn btn--primary">Save source</button>
+      <button class="btn">Save and add the next lesson</button>
+      <span class="meta">Only the lesson is required</span>
+    </div>
+  </div></div>
+
+  <div class="callout">
+    <div class="callout__t">Course → chapter → lesson, in that order, top to bottom</div>
+    <p style="color:var(--ink-2);font-size:13.5px">The form reads the way the course sidebar reads — broadest first. The old form put "Title" at the top and an unexplained "Course" beneath it, which is why it was unclear what either meant. A source <strong>is</strong> a lesson, so the field says lesson.</p>
+  </div>
+
+  <p class="note"><strong>Save and add the next lesson</strong> keeps the course and chapter, clears the lesson, URL, length and transcript, and puts the cursor in the lesson field. You will add ten of these in a sitting from the same chapter; retyping the course ten times is the friction that kills the habit.</p>
+</div>
+</section>
+
+<!-- ============ LIST ============ -->
+<section class="screen" data-screen="list">
+<div class="wrap">
+  <div class="page-head">
+    <div><h1 class="page-title">Sources</h1>
+      <p class="page-sub">1 course · 2 without one · 7 lessons · 4h 12m of lessons · 15 entries distilled</p></div>
+    <button class="btn btn--primary">+ Add a source</button>
+  </div>
+
+  <div class="course">
+    <div class="course__h">
+      <div class="course__m">
+        <div class="course__n">JavaScript: The Hard Parts, v3</div>
+        <div class="course__s">2 chapters · 5 lessons · 1h 04m · 11 entries</div>
+      </div>
+      <div class="course__p">3 of 5 mined</div>
+    </div>
+
+    <div class="chapter">
+      <div class="chapter__h"><span class="chapter__n">Principles of JavaScript</span><span class="chapter__s">3 lessons · 42m · 8 entries</span></div>
+      <div class="lesson">
+        <span class="dots"><i></i><i></i><i></i><i></i><i></i></span>
+        <div class="lesson__m"><div class="lesson__n">Thread of Execution</div>
+          <div class="lesson__s">21m 40s · 4,900 words · 16 days ago</div></div>
+        <div class="lesson__y lesson__y--stale">Nothing · 16 days</div>
+      </div>
+      <div class="lesson">
+        <span class="dots"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></span>
+        <div class="lesson__m"><div class="lesson__n">Call Stack</div>
+          <div class="lesson__s">6m 55s · 1,340 words · 2 days ago</div></div>
+        <div class="lesson__y"><b>3 topics</b></div>
+      </div>
+      <div class="lesson">
+        <span class="dots"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span>
+        <div class="lesson__m"><div class="lesson__n">Execution Context</div>
+          <div class="lesson__s">13m 23s · transcript deleted · 2 days ago</div></div>
+        <div class="lesson__y"><b>4 topics</b> · 1 quiz</div>
+      </div>
+    </div>
+
+    <div class="chapter">
+      <div class="chapter__h"><span class="chapter__n">Callbacks &amp; Higher Order Functions</span><span class="chapter__s">2 lessons · 22m · 3 entries</span></div>
+      <div class="lesson">
+        <span class="dots"><i class="on"></i><i class="on"></i><i></i><i></i><i></i></span>
+        <div class="lesson__m"><div class="lesson__n">Callbacks &amp; Higher Order Functions</div>
+          <div class="lesson__s">6m 27s · 1,180 words · yesterday</div></div>
+        <div class="lesson__y"><b>3 topics</b></div>
+      </div>
+      <div class="lesson">
+        <span class="dots"><i></i><i></i><i></i><i></i><i></i></span>
+        <div class="lesson__m"><div class="lesson__n">Pass a Function as an Argument</div>
+          <div class="lesson__s">15m 36s · 3,200 words · yesterday</div></div>
+        <div class="lesson__y lesson__y--none">Nothing distilled</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="course">
+    <div class="course__h">
+      <div class="course__m">
+        <div class="course__n">No course</div>
+        <div class="course__s">2 lessons · 3h 08m · 4 entries</div>
+      </div>
+      <div class="course__p">1 of 2 mined</div>
+    </div>
+    <div class="chapter">
+      <div class="lesson" style="padding-left:18px">
+        <span class="dots"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span>
+        <div class="lesson__m"><div class="lesson__n">Rendering patterns and hydration</div>
+          <div class="lesson__s">1h 12m · transcript deleted · 6 days ago</div></div>
+        <div class="lesson__y"><b>4 topics</b></div>
+      </div>
+      <div class="lesson" style="padding-left:18px">
+        <span class="dots"><i></i><i></i><i></i><i></i><i></i></span>
+        <div class="lesson__m"><div class="lesson__n">Database indexing internals</div>
+          <div class="lesson__s">1h 56m · 9,800 words · 15 days ago</div></div>
+        <div class="lesson__y lesson__y--stale">Nothing · 15 days</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
+    <button class="btn">Practise this chapter · 8 entries</button>
+    <button class="btn">Practise this course · 11 entries</button>
+  </div>
+
+  <div class="callout">
+    <div class="callout__t">Two counts that mean different things</div>
+    <p style="color:var(--ink-2);font-size:13.5px"><strong>3 of 5 mined</strong> is lessons that produced something. <strong>1h 04m</strong> is the length of the lessons you added. A course that is 8 of 42 lessons might be a third of the hours or a twentieth — the count flatters and the duration does not.</p>
+  </div>
+
+  <div class="callout">
+    <div class="callout__t">Corrected: four things this screen drew that it should not have</div>
+    <p style="color:var(--ink-2);font-size:13.5px">
+      <strong>The progress bars are gone.</strong> They were drawn at 62% and 50% beside “3 of 5 mined” and “1 of 2 mined” — 62% is not 3 of 5, and more importantly a bar needs a denominator. The app knows how many lessons you have <em>added</em>, never how many the course has. The rules tab of this very file says so: <em>“pretending to would be the first fake number in this app.”</em><br><br>
+      <strong>“2 courses” counted the absence of a course as a course.</strong> One of the two groups is “No course”. The head now reads “1 course · 2 without one”.<br><br>
+      <strong>“4h 12m watched” claimed something the app cannot know.</strong> It knows the lengths you typed, not what you watched. Now “4h 12m of lessons”.<br><br>
+      <strong>Lessons now read oldest-first.</strong> They were drawn newest-first, while this file's own principle is that the list reads “the way the course sidebar reads” — and a sidebar is syllabus order. You add lessons as you watch them, so ascending IS course order, and the next one to watch is at the bottom. Courses and chapters stay newest-first: those are navigation, this is a syllabus.
+    </p>
+  </div>
+
+  <p class="note">Lessons with no course group under "No course" rather than being hidden or forced into one. A one-off conference talk is a real source and should not need a course invented for it.</p>
+</div>
+</section>
+
+<!-- ============ ON A TOPIC ============ -->
+<section class="screen" data-screen="topic">
+<div class="wrap" style="max-width:760px">
+  <div class="meta" style="margin-bottom:14px"><a style="color:var(--accent-ink);text-decoration:underline;cursor:pointer">← Library</a></div>
+  <h1 style="font-family:var(--font-display);font-size:31px;font-weight:500;letter-spacing:-.025em;line-height:1.2">The thread of execution</h1>
+  <div style="display:flex;gap:8px;align-items:center;padding:14px 0 18px;border-bottom:1px solid var(--rule);margin-bottom:24px">
+    <span class="chip">JavaScript</span><span class="chip">execution</span></div>
+
+  <div class="reg"><span class="eyebrow">Definition</span>
+    <p style="margin-top:9px;font-size:15.5px;line-height:1.72;max-width:66ch">The interpreter goes through code line by line, executing each one and saving any data or functions it meets into memory as it goes.</p></div>
+
+  <div class="reg"><span class="eyebrow">Mental model</span>
+    <p style="margin-top:9px;background:var(--accent-soft);border-left:2px solid var(--accent);border-radius:0 var(--radius) var(--radius) 0;
+      padding:15px 19px;font-family:var(--font-display);font-size:17.5px;line-height:1.68;color:var(--accent-ink);max-width:64ch">Map it down the blackboard — a thread going down the page, doing each line as it reaches it.</p></div>
+
+  <div class="reg"><span class="eyebrow">Where this came from</span>
+    <div class="srcline" style="margin-top:9px">
+      <span class="badge">Source</span>
+      <span><a>JavaScript: The Hard Parts, v3</a> <span style="color:var(--rule-strong)">›</span> <a>Principles of JavaScript</a> <span style="color:var(--rule-strong)">›</span> <a>Execution Context</a></span>
+      <span class="meta" style="margin-left:auto">13m 23s · 3 other entries</span>
+    </div></div>
+
+  <p class="note">Every level is a link. The course opens the course group, the chapter opens the chapter, the lesson opens its workspace. That is what "I know exactly where it came from" means in practice — not a note, a route back.</p>
+</div>
+</section>
+
+<!-- ============ RULES ============ -->
+<section class="screen" data-screen="rules">
+<div class="wrap">
+  <h1 class="page-title">The rules</h1>
+  <p style="color:var(--ink-2);max-width:66ch;margin-top:6px">A change to arc 2's sources, not a new arc. One migration, one form, one grouped list.</p>
+
+  <div class="rule"><span class="eyebrow">Fields</span></div>
+  <ul class="ruleset">
+    <li><strong>Title becomes Lesson</strong>A source is a lesson. The old form said "Title" with an unexplained "Course" beneath it, which is why neither was clear. Rename in the schema too — <code>sources.title</code> → <code>sources.lesson</code>.</li>
+    <li><strong>Chapter is new, and optional</strong>Between course and lesson, matching how a course is actually laid out.</li>
+    <li><strong>Order is course → chapter → lesson, top to bottom</strong>Broadest first, the way the sidebar of any course reads.</li>
+    <li><strong>Length is new, and optional</strong>Free text. Stored as seconds so it can be summed, entered however you like.</li>
+    <li><strong>Only the lesson is required</strong>Unchanged.</li>
+  </ul>
+
+  <div class="rule"><span class="eyebrow">Entry</span></div>
+  <ul class="ruleset">
+    <li><strong>Course and chapter autocomplete from your own data</strong>Course offers every course you have used, with a lesson count. Chapter offers only chapters already in the selected course. Both accept a new value — the list is a convenience, not a constraint.</li>
+    <li><strong>Save and add the next lesson</strong>Keeps course and chapter, clears lesson, URL, length and transcript, focuses the lesson field. Ten lessons from one chapter in a sitting is the real workflow.</li>
+    <li><strong>A live breadcrumb above Save</strong>Shows exactly what will be stored, so an empty chapter or a mistyped course is visible before you press.</li>
+  </ul>
+
+  <div class="rule"><span class="eyebrow">The list</span></div>
+  <ul class="ruleset">
+    <li><strong>Grouped course → chapter → lesson, collapsible</strong>A flat list is unreadable after two courses.</li>
+    <li><strong>Lessons with no course group under "No course"</strong>A conference talk is a real source and should not need a course invented for it. Same for a lesson with no chapter inside a course.</li>
+    <li><strong>Two counts, because they say different things</strong>"3 of 5 mined" is lessons that produced something; "1h 04m" is time actually spent. A count flatters, a duration does not.</li>
+    <li><strong>Practise this chapter and Practise this course</strong>The <code>?scope=source</code> pattern one and two levels up, resolved to topic ids outside the queue exactly as arc 6 does — the queue still cannot see a source.</li>
+  </ul>
+
+  <div class="rule"><span class="eyebrow">Decided against</span></div>
+  <ul class="ruleset">
+    <li><strong>No courses or chapters table</strong>Two text columns with autocomplete, not two entities. A chapter has no properties of its own, nothing links to it, and a table would need its own RLS, policies, cascades and pgTAP for a string.</li>
+    <li><strong>No starts_at offset</strong>The rule is one lesson per source, so extraction timestamps are already relative to the right thing. If you ever paste a whole chapter, that is when this gets revisited.</li>
+    <li><strong>No progress percentage over a course</strong>"3 of 5 mined" counts what you have; it does not know the course has 42 lessons, and pretending to would be the first fake number in this app. <em>The list tab drew a bar at 62% anyway — this rule and that drawing could not both stand, and the drawing lost.</em></li>
+  </ul>
+</div>
+</section>
+
+<script>
+  const screens=document.querySelectorAll('[data-screen]');
+  document.querySelector('.chrome').addEventListener('click',e=>{
+    const b=e.target.closest('[data-go]'); if(!b) return;
+    document.querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-selected',t===b));
+    screens.forEach(s=>s.toggleAttribute('data-active',s.dataset.screen===b.dataset.go));
+    window.scrollTo(0,0);
+  });
+</script>
+</body>
+</html>

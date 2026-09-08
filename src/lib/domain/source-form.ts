@@ -1,3 +1,5 @@
+import { parseDuration } from '@/lib/domain/duration'
+
 /**
  * Reading the add/edit source form.
  *
@@ -7,8 +9,12 @@
  */
 
 export interface SourceFormInput {
-  title: string
+  /** A source is a lesson. Arc 2 called this `title`. */
+  lesson: string
   course: string
+  chapter: string
+  /** Free text — "13m 23s", "1:12:04", "90". Parsed to seconds here. */
+  length: string
   url: string
   transcript: string
 }
@@ -17,17 +23,43 @@ export type ParsedSource =
   | { error: string; value?: undefined }
   | {
       error?: undefined
-      value: { title: string; course: string | null; url: string | null; transcript: string | null }
+      value: {
+        lesson: string
+        course: string | null
+        chapter: string | null
+        duration_seconds: number | null
+        url: string | null
+        transcript: string | null
+      }
     }
 
 export function parseSourceForm(input: SourceFormInput): ParsedSource {
-  const title = input.title.trim()
+  const lesson = input.lesson.trim()
   const course = input.course.trim()
+  const chapter = input.chapter.trim()
   const url = input.url.trim()
   // NOT trimmed to a single line: a transcript's shape is part of reading it.
   const transcript = input.transcript.trim()
 
-  if (title === '') return { error: 'Give the source a title so you can find it again.' }
+  if (lesson === '') return { error: 'Name the lesson so you can find it again.' }
+
+  /*
+    A chapter without a course is a chapter of nothing. It would group under "No
+    course" and read as though the course had been lost rather than never given,
+    so it is refused where the mistake was made.
+  */
+  if (chapter !== '' && course === '') {
+    return { error: 'A chapter belongs to a course. Name the course, or leave the chapter empty.' }
+  }
+
+  /*
+    The length is parsed HERE rather than at the input, so the server refuses
+    what the browser would have — `required` on an input is a courtesy to the
+    person, not a guarantee to an action. A failed parse is an error the form
+    shows; it is never stored as zero.
+  */
+  const length = parseDuration(input.length)
+  if (length?.error !== undefined) return { error: length.error }
 
   /*
     A URL or nothing, parsed rather than pattern-matched, and restricted to
@@ -50,8 +82,10 @@ export function parseSourceForm(input: SourceFormInput): ParsedSource {
   // absence of a course is null.
   return {
     value: {
-      title,
+      lesson,
       course: course === '' ? null : course,
+      chapter: chapter === '' ? null : chapter,
+      duration_seconds: length?.seconds ?? null,
       url: url === '' ? null : url,
       transcript: transcript === '' ? null : transcript,
     },

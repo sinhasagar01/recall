@@ -565,6 +565,105 @@ can write, and a prefilled one would be a quotation pretending to be understandi
 domain function returns a definition and has no field to put a model in, so there is no
 path from a selection to that input.
 
+### A source is a lesson, inside a chapter, inside a course
+
+Arc 2 gave a source a **title** and a **course**, and nothing said which was which — the form
+put "Title" at the top with an unexplained "Course" beneath it. Arc 2.1 renamed
+`sources.title` to `sources.lesson` and added `chapter` and `duration_seconds`.
+
+**Course → chapter → lesson, top to bottom**, broadest first, the way the sidebar of any
+course reads. Only the lesson is required. Course and chapter are comboboxes over your own
+data — course offers what you have used with a lesson count, chapter offers only the chapters
+already inside the course you picked, and both accept a value that is not in the list.
+
+**Picking a course prefills the chapter you last used in it**, and the chapter list is ordered
+by recency rather than alphabetically, because you work through one chapter over several
+sittings. **Save and add the next lesson** keeps course and chapter, clears the rest and puts
+the cursor back in the lesson field: ten lessons from one chapter in a sitting is the real
+workflow, and retyping the course ten times is the friction that kills the habit.
+
+A **live breadcrumb** above Save shows exactly what will be stored, so an empty chapter or a
+mistyped course is visible before you press.
+
+### Course and chapter are text, not tables
+
+A chapter has no properties of its own, nothing links to it, and it is never read except as a
+string to group by. A table would need its own RLS, four policies, a cascade, `columns_are`
+and a pgTAP file — for a label.
+
+This resolves the opposite way to §8's *"why a capability is a table and not a `text[]`"*, and
+the distinction is **whether the thing has state of its own**: a capability is demonstrated or
+not and topics link to it; a chapter is a name. The cost, stated rather than discovered:
+renaming a course means updating every row carrying the string, and nothing stops two
+spellings of one course.
+
+### The length: free text in, seconds out
+
+Stored as seconds so lengths sum across a chapter and a course. Entered however you read it
+off a player, and **echoed back in the breadcrumb before you save** — which is what makes a
+permissive parse safe rather than a guess you cannot see.
+
+| You type | Stored | |
+| --- | --- | --- |
+| `13m 23s` | 803 | unit-suffixed |
+| `1h 30m` | 5400 | |
+| `1:12:04` | 4324 | h:mm:ss |
+| `7:30` | 450 | mm:ss — the short colon form is minutes and seconds |
+| `90` | 5400 | **a bare number is MINUTES** |
+| *(empty)* | null | the field is optional; nothing typed is not a mistake |
+| `0`, `-5` | **refused** | |
+| `13m of nonsense` | **refused** | everything is accounted for, or nothing is |
+| `banana` | **refused** | |
+
+A bare number is minutes because that is the number printed on a player. **Zero is refused
+rather than stored:** a length that silently becomes zero is worse than one left empty —
+empty reads as absent, whereas zero is a lesson that took no time, summed into a course total
+as though it were a fact.
+
+### Grouped: navigation outside, syllabus inside
+
+The list groups course → chapter → lesson, and **the orderings are deliberately different**:
+
+| Level | Order | Because |
+| --- | --- | --- |
+| Courses | most recent lesson first | navigation — what you are working on now |
+| Chapters | most recent lesson first | navigation, and it matches the chapter combobox |
+| Lessons | **oldest first** | syllabus — you add them as you watch, so this is course order |
+
+The outer levels are navigation and the innermost is a syllabus. A chapter reads like its own
+contents list and the next lesson to watch is at the bottom. `sources-hierarchy-mock.html`
+drew lessons newest-first while its own stated principle was that the list reads *"the way the
+course sidebar reads"* — and a sidebar is syllabus order; corrected in the file.
+
+Ties break by name at the outer levels and by id at the innermost, so nothing reorders between
+renders.
+
+**Lessons with no course group under "No course", last** — a conference talk is a real source
+and should not need a course invented for it. The head does not count that group as a course:
+it reads *"1 course · 2 without one"*.
+
+### Two counts, and no bar
+
+*"3 of 5 mined"* is lessons that produced something. *"1h 04m"* is the length of the lessons
+you added. **The count flatters and the duration does not** — a course that is 8 of 42 lessons
+might be a third of the hours or a twentieth.
+
+**There is no progress bar and no percentage over a course.** A bar needs a denominator, and
+the app knows how many lessons you have *added*, never how many the course has. The mock drew
+one at 62% beside "3 of 5 mined", which is 60% — its own rules tab forbids it, on the tab next
+to the one that drew it.
+
+### Every level of the breadcrumb is a link
+
+On a topic, *"Where this came from"* is course › chapter › lesson, and each is a route back:
+the course opens its group, the chapter its own, the lesson its workspace. Arc 2 rendered this
+as flat text, which made *where did I learn this* a fact you read rather than a place you
+could go. Absent levels are dropped rather than rendered as a gap between separators.
+
+**Practise this chapter** and **Practise this course** follow `?scope=source` one and two
+levels up — resolved to topic ids outside the queue, so the practice modules still name no
+source column at all.
+
 ### Four of the five extractions are derived
 
 A definition, a mental model, a challenge attempted, and three retrieval questions all come

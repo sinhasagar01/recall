@@ -15,8 +15,10 @@ export type SourceResult = { error: string | null; id?: string }
 
 function read(formData: FormData) {
   return {
-    title: String(formData.get('title') ?? ''),
     course: String(formData.get('course') ?? ''),
+    lesson: String(formData.get('lesson') ?? ''),
+    chapter: String(formData.get('chapter') ?? ''),
+    length: String(formData.get('length') ?? ''),
     url: String(formData.get('url') ?? ''),
     transcript: String(formData.get('transcript') ?? ''),
   }

@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { PracticeSession } from '@/components/practice/practice-session'
 import { StateBlock } from '@/components/ui/state-block'
 import { topicIdsForSource } from '@/lib/data/extraction'
+import { topicIdsForChapter, topicIdsForCourse } from '@/lib/data/sources'
 import { railCounts } from '@/lib/data/library'
 import { practiceQueue } from '@/lib/data/practice'
 import { getTopic, signedImageUrl } from '@/lib/data/topics'
@@ -47,7 +48,7 @@ import {
                            weak at waiting for you to come looking.
 */
 export default async function PracticePage({ searchParams }: PageProps<'/practice'>) {
-  const { topic: topicId, all, scope, id } = await searchParams
+  const { topic: topicId, all, scope, id, course, chapter } = await searchParams
 
   /*
     The queue is built by the query now, not by reading the library and ordering it
@@ -94,6 +95,32 @@ export default async function PracticePage({ searchParams }: PageProps<'/practic
           eyebrow="Practice"
           title="Nothing from this source yet"
           body="Extract from it, or distil a topic by hand, and this becomes a session of everything the video taught."
+          action={<BackToLibrary />}
+        />
+      )
+    }
+
+    const set = await practiceQueue({ seed: readAt, ids })
+    return <PracticeSession queue={set} imageUrls={await imageUrls(set)} seed={readAt} />
+  }
+
+  /*
+    Arc 2.1: the same chosen-set shape, one and two levels up. Note this page
+    still names no source column — `lib/data/sources.ts` resolves the ids and
+    hands over a plain list, so the queue cannot trace them back.
+  */
+  if ((scope === 'course' || scope === 'chapter') && typeof course === 'string') {
+    const ids =
+      scope === 'chapter' && typeof chapter === 'string'
+        ? await topicIdsForChapter(course, chapter)
+        : await topicIdsForCourse(course)
+
+    if (ids.length === 0) {
+      return (
+        <StateBlock
+          eyebrow="Practice"
+          title="Nothing from this yet"
+          body="Distil a topic from one of these lessons, or extract from one, and this becomes a session of everything they taught."
           action={<BackToLibrary />}
         />
       )

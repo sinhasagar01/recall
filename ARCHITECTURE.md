@@ -1805,6 +1805,71 @@ The general shape, which is the part worth keeping: **an instruction about order
 as good as its model of what triggers what.** "First" has to mean first in wall-clock
 terms, not first in the list you wrote.
 
+### Migrate first covers ADDITIVE migrations. A rename needs expand → contract.
+
+The rule above is *migrate first, then push, because pushing is deploying*. It holds for
+adding a column: the old build ignores what it does not know about, so there is no window.
+
+**It does not reach a rename.** `alter table sources rename column title to lesson` breaks the
+running build the instant it lands, because that build still selects `title` — and pushing is
+deploying, so the migration is applied while the previous deployment is serving. Worse than it
+sounds: `countSources()` runs in the shared `(app)` layout, so **every page in the group 500s**,
+not just `/sources`. That is precisely the arc 2 outage, and choosing it deliberately is not
+better than causing it accidentally.
+
+So arc 2.1 renamed in two migrations and two deploys:
+
+| | |
+| --- | --- |
+| **2.1a — expand** | add `lesson` **nullable**, backfill it from `title`, and a `before insert or update` trigger mirroring `title` into `lesson` so the still-live build's writes are not lost. Then deploy code that reads `row.lesson ?? row.title` and writes **both** columns |
+| **2.1b — contract** | drop the trigger, re-backfill anything the window missed, drop `title`, `set not null` on `lesson`, add its not-blank CHECK |
+
+Four details that are easy to get wrong and were each found rather than foreseen:
+
+- **The new build must write BOTH columns.** `title` is still `not null` during 2.1a, so an
+  insert naming only `lesson` fails with 23502. The trigger fills `lesson` from `title`, never
+  the reverse — it exists to protect the OLD build's writes, not the new one's.
+- **`coalesce(new.lesson, new.title)`, in that order.** The trigger fills a gap; it must not
+  overwrite an explicit value. Both directions are asserted.
+- **A DEFAULT cannot do this.** A default is a constant expression and cannot read another
+  column of the row being written.
+- **The backfill itself cannot be asserted in pgTAP.** The test transaction begins after every
+  migration has run, so no row can predate it — an assertion there would test the trigger a
+  second time while claiming to test the backfill. It is checked on production instead:
+  `select count(*) from sources where lesson is null` must be 0 immediately after the push.
+
+**The nullable window is the price, and it is confined to one function.** `toSource` in
+`lib/data/sources.ts` is the only place a row becomes a `Source`, so it is the only place the
+`?? row.title` fallback lives — 2.1b deletes four lines in one file rather than running a
+search. There is no `Source` boundary type (nothing equivalent to `TopicBoundaryIsSound` for
+`sources`), so no compile-time guard would have caught a null arriving where the domain says
+`string`; the mapper is the guard.
+
+### Two more locator traps, and both are the same shape as ones already recorded
+
+**`getByRole(name)` matches a SUBSTRING by default.** A chapter's *Practise* link and every
+lesson row in it both matched `{ name: 'Practise' }`, because a row's accessible name contains
+*"never **practise**d"*. `exact: true` fixes it. This is the arc 5 "Save" / "Save blocker"
+trap in a new place — worth stating as the general rule: **an accessible name that is a common
+word needs `exact: true` from the start**, not after the ambiguity error.
+
+**A popup must not borrow its field's accessible name.** The combobox's listbox started as
+`aria-label={label}`, so `getByLabel('Course')` resolved to the input *and* its popup — but
+only once there was something to suggest, which is why it passed first and failed later.
+Renaming it `${label} suggestions` did not fix it either: the natural locator is a prefix regex
+(`/^Course/`, needed because the hint text sits inside the label), and "Course suggestions"
+starts with "Course" too. It is now `Suggestions for course` — leading with the distinct word,
+which is both accurate and unambiguous under a prefix match.
+
+### `--repeat-each` is not a flake check for a stateful serial spec
+
+`globalSetup` seeds **once per Playwright invocation**. A serial describe that creates rows
+therefore accumulates them across repeats within one run, so `--repeat-each=2` fails the second
+pass for a reason that has nothing to do with flakiness — the fixture is simply twice as full.
+
+Use separate invocations to check for a flake in a spec that writes, and reserve
+`--repeat-each` for read-only specs.
+
 ## Production configuration is in the repo
 
 `supabase/config.toml` ends with a `[remotes.production]` block. Everything above it
@@ -2304,3 +2369,41 @@ already enforced** rather than adding a list to keep in sync. `export-columns.te
 the truth from `makeTopic`/`makeQuiz`, whose completeness the compiler already guarantees,
 which is why it costs nothing to maintain. Adding a sixth hand-written list would have been the
 same mistake one layer up.
+
+### Sources were the one fixture object nothing cleared
+
+`seed-e2e-user.mts` resets every fixture user's **topics** on each invocation, and arc 6 added
+an `extract` user whose purpose is being written to. It cleared that user's topics and not its
+**sources**, so sources accumulated across every run.
+
+The symptom was a test that passed once and never again: *"the first Practise link"* meant a
+different chapter each run as the page filled up. That reads as a flaky test and is actually
+fixture rot, which is the same failure the seeding-in-global-setup note above exists to
+prevent — caught in one place and missed in the neighbouring one.
+
+**Every object a spec creates has to be in the reset, not just the ones the first spec created.**
+The check is not "does the seed clear topics" but "what does any spec write, and is all of it
+cleared".
+
+### The seeded tie-break randomises the FIRST card, which is what issue #23 was
+
+`practice_ordered_page` orders by bucket, then staleness, then `md5(p_seed || id)` — and
+`p_seed` is the read timestamp, so **ties are shuffled on every request**. That is the
+specification, not a relaxation of it (see the note on the md5 tie-break above).
+
+The consequence nobody had written down: every never-practised entry ties at
+`staleness = -infinity`, so **which card is first in a default session is random**. The main
+fixture holds eight never-practised topics and two quizzes, and a quiz renders options where a
+topic renders *Reveal answer*.
+
+`practice.spec.ts` waited for *Reveal answer* to know a session had started. That is a
+one-in-five failure, and it presented exactly as issue #23 described: "one unreproduced failure
+per few full runs", unreproducible because re-running usually passed. Six consecutive runs of
+the single test reproduced it twice; the fix is to wait for something **both** card shapes
+render — the session's own counter, `Card 1 of N`.
+
+**The general rule: never assert on the content of a randomised position.** Anywhere a session,
+a queue or a shuffled list is involved, assert on the container, the count, or a specific item
+you put there — not on whatever happens to be first. A test that reads position 1 of a
+deliberately shuffled list is a test that fails at the shuffle's rate, and that rate is low
+enough to look like infrastructure.

@@ -41,7 +41,7 @@ export function TopicDetail({
   imageUrl: string | null
   /** Read separately: `source_id` is not on the domain Topic. */
   source: { source: SourceSummary; siblings: number } | null
-  sourceOptions: { id: string; title: string }[]
+  sourceOptions: { id: string; lesson: string }[]
   /** Read separately too: `capability_id` is not on the domain Topic either. */
   capability: { capability: Capability; phase: Phase } | null
   capabilityOptions: { phase: string; options: { id: string; name: string }[] }[]

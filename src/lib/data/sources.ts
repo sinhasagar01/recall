@@ -24,7 +24,7 @@ import { createClient } from '@/lib/supabase/server'
   so that number is available without reading the body.
 */
 const SUMMARY_COLUMNS =
-  'id, user_id, title, course, url, transcript_words, transcript_deleted_at, coverage, created_at, updated_at'
+  'id, user_id, title, lesson, course, chapter, url, duration_seconds, transcript_words, transcript_deleted_at, coverage, created_at, updated_at'
 
 function fail(action: string, error: { code?: string; message: string }): never {
   throw new Error(`${action} failed: ${error.code ?? 'unknown'} · ${error.message}`)
@@ -45,8 +45,26 @@ function fail(action: string, error: { code?: string; message: string }): never 
 function toSource(row: {
   id: string
   user_id: string
+  /*
+    ── Arc 2.1a only ─────────────────────────────────────────────────────────
+    `title` is still selected and still read here, for exactly one deploy.
+
+    The rename is expand → migrate → contract: 2.1a added `lesson` NULLABLE and
+    backfilled it, this build reads and writes `lesson`, and 2.1b drops `title`
+    and makes `lesson` NOT NULL. Until then a row CAN carry a null `lesson` —
+    one written by the previous build in the minutes before this one went live,
+    if the mirror trigger were ever missing — so the domain's `lesson: string`
+    is honoured here rather than asserted.
+
+    THIS IS THE ONLY FALLBACK. 2.1b deletes `title` from the select list above,
+    the two fields below, and the `?? row.title` on the next line. Four lines,
+    one file, no search.
+  */
   title: string
+  lesson: string | null
   course: string | null
+  chapter: string | null
+  duration_seconds: number | null
   url: string | null
   transcript_words: number | null
   transcript_deleted_at: string | null
@@ -57,8 +75,10 @@ function toSource(row: {
   return {
     id: row.id,
     user_id: row.user_id,
-    title: row.title,
+    lesson: row.lesson ?? row.title,
     course: row.course,
+    chapter: row.chapter,
+    duration_seconds: row.duration_seconds,
     url: row.url,
     transcript_words: row.transcript_words,
     transcript_deleted_at: row.transcript_deleted_at,
@@ -170,17 +190,18 @@ export const readTopicSource = cache(
   },
 )
 
-/** Every source, title-only, for the edit sheet's optional field. */
-export async function listSourceOptions(): Promise<{ id: string; title: string }[]> {
+/** Every source, name-only, for the edit sheet's optional field. */
+export async function listSourceOptions(): Promise<{ id: string; lesson: string }[]> {
   const supabase = await createClient()
 
   const { data, error } = await supabase
     .from('sources')
-    .select('id, title')
+    .select('id, lesson, title')
     .order('created_at', { ascending: false })
 
   if (error) fail('Loading your sources', error)
-  return data as { id: string; title: string }[]
+  // `?? title` for the same one-deploy reason as toSource — see above.
+  return data.map((row) => ({ id: row.id, lesson: row.lesson ?? row.title }))
 }
 
 /**
@@ -200,35 +221,53 @@ export const countSources = cache(async (): Promise<number> => {
 })
 
 export interface NewSource {
-  title: string
+  lesson: string
   course: string | null
+  chapter: string | null
+  duration_seconds: number | null
   url: string | null
   transcript: string | null
 }
 
-export async function insertSource(input: NewSource): Promise<Source> {
+/**
+ * ── Arc 2.1a writes BOTH columns, and it has to ─────────────────────────────
+ * `sources.title` is still `not null` until 2.1b drops it, so an insert naming
+ * only `lesson` fails with 23502. The mirror trigger fills `lesson` from
+ * `title`, never the other way round — it exists to protect the OLD build's
+ * writes, not this one's.
+ *
+ * So this build writes `title: input.lesson` alongside. 2.1b deletes that line
+ * and this comment with it.
+ */
+const withLegacyTitle = (input: NewSource) => ({ ...input, title: input.lesson })
+
+export async function insertSource(input: NewSource): Promise<SourceSummary> {
   const supabase = await createClient()
 
   // No user_id: it comes from the column default and the insert policy's
   // with-check refuses anything else.
-  const { data, error } = await supabase.from('sources').insert(input).select().single()
+  const { data, error } = await supabase
+    .from('sources')
+    .insert(withLegacyTitle(input))
+    .select(SUMMARY_COLUMNS)
+    .single()
 
   if (error) fail('Saving the source', error)
-  return data as unknown as Source
+  return toSource(data)
 }
 
-export async function updateSource(id: string, input: NewSource): Promise<Source> {
+export async function updateSource(id: string, input: NewSource): Promise<SourceSummary> {
   const supabase = await createClient()
 
   const { data, error } = await supabase
     .from('sources')
-    .update({ ...input, updated_at: new Date().toISOString() })
+    .update({ ...withLegacyTitle(input), updated_at: new Date().toISOString() })
     .eq('id', id)
-    .select()
+    .select(SUMMARY_COLUMNS)
     .single()
 
   if (error) fail('Saving your changes', error)
-  return data as unknown as Source
+  return toSource(data)
 }
 
 /**
@@ -274,3 +313,52 @@ export async function setTopicSource(topicId: string, sourceId: string | null): 
 
   if (error) fail('Linking the source', error)
 }
+
+/**
+ * The topic ids a course or a chapter produced, for `?scope=course` / `?scope=chapter`.
+ *
+ * The same shape arc 6 established for `?scope=source`, one and two levels up:
+ * this module knows what a source is, resolves the set here, and hands the queue
+ * a plain list of topic ids. `practice_ordered_page` takes a generic
+ * `p_ids uuid[]` and never learns that courses exist.
+ *
+ * That is what keeps `sources-boundary.test.ts` absolute AND literally true
+ * rather than true-with-an-exception: the practice modules still name none of
+ * `source_id`, `transcript` or `from('sources')`, because they never touch a
+ * source at all.
+ *
+ * Two reads rather than a join, for the same reason `listSources` uses two: a
+ * PostgREST embedded select would drag whole topic rows through a nested shape
+ * to produce a list of ids.
+ */
+async function topicIdsForSources(sourceIds: string[]): Promise<string[]> {
+  if (sourceIds.length === 0) return []
+
+  const supabase = await createClient()
+  const { data, error } = await supabase.from('topics').select('id').in('source_id', sourceIds)
+
+  if (error) fail('Finding what this produced', error)
+  return data.map((row) => row.id)
+}
+
+export const topicIdsForCourse = cache(async (course: string): Promise<string[]> => {
+  const supabase = await createClient()
+  const { data, error } = await supabase.from('sources').select('id').eq('course', course)
+
+  if (error) fail('Finding this course', error)
+  return topicIdsForSources(data.map((row) => row.id))
+})
+
+export const topicIdsForChapter = cache(
+  async (course: string, chapter: string): Promise<string[]> => {
+    const supabase = await createClient()
+    const { data, error } = await supabase
+      .from('sources')
+      .select('id')
+      .eq('course', course)
+      .eq('chapter', chapter)
+
+    if (error) fail('Finding this chapter', error)
+    return topicIdsForSources(data.map((row) => row.id))
+  },
+)

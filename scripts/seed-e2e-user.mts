@@ -225,7 +225,15 @@ console.log(`Nothing-needs-review user reset: ${strongEmail}`)
   One seeded topic, so duplicate detection has something to find. Reset from
   scratch each run, so what the spec saves never accumulates.
 */
+/*
+  Topics AND sources. `extraction.spec.ts` and `source-hierarchy.spec.ts` both
+  create sources, and sources are the one fixture object nothing else cleared —
+  so they accumulated across runs until "the first Practise link" meant a
+  different chapter every time. Fixture rot, caught by a test that passed once
+  and then never again.
+*/
 await admin.from('topics').delete().eq('user_id', extractUserId)
+await admin.from('sources').delete().eq('user_id', extractUserId)
 
 const { error: extractError } = await admin.from('topics').insert([
   {
@@ -425,8 +433,11 @@ const { data: seededSources, error: sourceError } = await admin
   .insert([
     {
       user_id: mainUserId,
+      lesson: 'Closures, in depth',
       title: 'Closures, in depth',
       course: 'JavaScript: The Hard Parts',
+      chapter: 'Principles of JavaScript',
+      duration_seconds: 803,
       url: 'https://example.com/closures',
       transcript: [
         'A closure is the combination of a function and the lexical environment within which that function was declared.',
@@ -438,19 +449,21 @@ const { data: seededSources, error: sourceError } = await admin
     },
     {
       user_id: mainUserId,
+      lesson: 'Database indexing internals',
       title: 'Database indexing internals',
+      duration_seconds: 6960,
       transcript: 'A B-tree keeps its leaves at the same depth, which is what bounds the lookup.',
       created_at: daysAgo(21),
     },
   ])
-  .select('id, title')
+  .select('id, lesson')
 
 if (sourceError) {
   console.error(`Could not seed the sources: ${sourceError.message}`)
   process.exit(1)
 }
 
-const closures = seededSources?.find((row) => row.title === 'Closures, in depth')
+const closures = seededSources?.find((row) => row.lesson === 'Closures, in depth')
 if (closures) {
   const { error: linkError } = await admin
     .from('topics')

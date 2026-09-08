@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import { ExtractPanel } from '@/components/sources/extract-panel'
 import { SourceWorkspace } from '@/components/sources/source-workspace'
 import { hasKey } from '@/lib/ai/extract'
-import { readSource } from '@/lib/data/sources'
+import { listSources, readSource } from '@/lib/data/sources'
 import { coverageSummary } from '@/lib/domain/extraction'
 import { transcriptState } from '@/lib/domain/sources'
 
@@ -15,6 +15,10 @@ export default async function SourcePage({ params }: PageProps<'/sources/[id]'>)
   if (found === null) notFound()
 
   const extractable = hasKey() && transcriptState(found.source) === 'present'
+
+  /* For the edit sheet's course and chapter comboboxes. Cached, so this is the
+     same read the list uses rather than a second one. */
+  const siblings = (await listSources()).map((view) => view.source)
 
   /*
     Which pass this would be. Coverage records it per entry, so a second reading
@@ -50,7 +54,7 @@ export default async function SourcePage({ params }: PageProps<'/sources/[id]'>)
         </div>
       ) : null}
 
-      <SourceWorkspace source={found.source} entries={found.entries} />
+      <SourceWorkspace source={found.source} entries={found.entries} siblings={siblings} />
     </>
   )
 }

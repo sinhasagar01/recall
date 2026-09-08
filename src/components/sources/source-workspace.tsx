@@ -18,6 +18,7 @@ import {
   sourceProgressCopy,
   transcriptState,
   type Source,
+  type SourceSummary,
 } from '@/lib/domain/sources'
 import type { Topic } from '@/lib/domain/types'
 
@@ -48,7 +49,16 @@ import type { Topic } from '@/lib/domain/types'
  * its absence — see the quiz rule in DESIGN.md, a disabled button still says
  * button.
  */
-export function SourceWorkspace({ source, entries }: { source: Source; entries: Topic[] }) {
+export function SourceWorkspace({
+  source,
+  entries,
+  siblings = [],
+}: {
+  source: Source
+  entries: Topic[]
+  /** Every other source, for the edit sheet's course and chapter comboboxes. */
+  siblings?: SourceSummary[]
+}) {
   // The confirmation's wording agrees with the count — see deleteSourceCopy.
   const deleteCopy = deleteSourceCopy(entries.length)
   const router = useRouter()
@@ -87,7 +97,7 @@ export function SourceWorkspace({ source, entries }: { source: Source; entries: 
       <div className="mb-[26px] flex items-start justify-between gap-4">
         <div className="min-w-0">
           <h1 className="font-display text-page-title font-medium tracking-[-0.022em]">
-            {source.title}
+            {source.lesson}
           </h1>
           <p className="mt-1.5 font-mono text-[11.5px] text-ink-3">
             {source.course ? `${source.course} · ` : ''}
@@ -175,7 +185,7 @@ export function SourceWorkspace({ source, entries }: { source: Source; entries: 
           ) : (
             <div className="rounded-lg border border-dashed border-rule-strong bg-surface-2 p-6 text-center text-meta text-ink-2">
               {state === 'deleted'
-                ? 'Deleted. The title, course and link are kept.'
+                ? 'Deleted. The lesson, course and link are kept.'
                 : 'No transcript. Distil from your own notes.'}
             </div>
           )}
@@ -260,13 +270,15 @@ export function SourceWorkspace({ source, entries }: { source: Source; entries: 
         </section>
       </div>
 
-      {editing ? <SourceSheet source={source} onClose={() => setEditing(false)} /> : null}
+      {editing ? (
+        <SourceSheet source={source} siblings={siblings} onClose={() => setEditing(false)} />
+      ) : null}
 
       <Modal
         open={confirming !== null}
         onClose={() => setConfirming(null)}
         title={
-          confirming === 'source' ? `Delete “${source.title}”?` : 'Delete this transcript?'
+          confirming === 'source' ? `Delete “${source.lesson}”?` : 'Delete this transcript?'
         }
         footer={
           <>
@@ -302,7 +314,7 @@ export function SourceWorkspace({ source, entries }: { source: Source; entries: 
             </>
           ) : (
             <>
-              The title, course and link are kept. Only the text you read from goes, and it
+              The lesson, course and link are kept. Only the text you read from goes, and it
               can&rsquo;t be undone.
             </>
           )}

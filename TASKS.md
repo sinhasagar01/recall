@@ -1501,6 +1501,79 @@ and go red when somebody else changed their weights.
 
 ---
 
+## Arc 2.1 — sources gain course, chapter and length
+
+An amendment to arc 2, not a new arc. A source is a **lesson**, inside a **chapter**, inside a
+**course** — arc 2 gave it a `title` and a `course` and nothing said which was which.
+
+**Phase A shipped first, deliberately.** `sources.title` → `sources.lesson` is the project's
+first rename on a table with production rows, and the migrate-first rule only ever covered
+*additive* migrations. A rename breaks the running build the moment it lands, and
+`countSources()` runs in the shared layout, so it takes down every page in the `(app)` group
+rather than just `/sources` — the arc 2 outage, chosen deliberately instead of caused
+accidentally. So: expand, deploy, then contract. Recorded in ARCHITECTURE.md.
+
+### What the mirror trigger is for, and why it was seen failing
+
+Between the migration landing and the new build going live, the still-serving old build inserts
+rows naming `title` and nothing else. Without the trigger those rows carry a null `lesson`, and
+2.1b then either fails on `SET NOT NULL` or backfills an empty string over a real lesson.
+
+It is the one clause nothing else in the suite would notice, so it was **run with the trigger
+dropped**: the insert succeeds and `lesson` comes back null. *A trigger that has never been
+seen to be necessary is a trigger someone removes.* Both directions of its `coalesce` are
+asserted too — it fills a gap, and must not overwrite an explicit value.
+
+**One thing pgTAP cannot assert, stated rather than faked:** the backfill itself. The test
+transaction begins after every migration has run, so no row can predate it, and an assertion
+there would test the trigger a second time while claiming to test the backfill. It is checked
+on production instead.
+
+### The rename enumeration was wrong twice more
+
+Arc 6 recorded that an enumeration produced by reading is not an enumeration. Arc 2.1 found
+the next layer: **an enumeration produced by searching is only as good as its vocabulary.**
+
+The plan's list was built from eleven tokens and the audit found five more sites; execution
+found four beyond that, and the misses cluster:
+
+- **A second read in a file already listed** — `export.ts:215` reads `from.title`, a variable
+  my `source.title` token could not match. The file was on the list; the line was not.
+- **Golden-string assertions** — `export.test.ts` asserts a whole rendered markdown line.
+- **Copy in a spec** — `sources.spec.ts` asserts *"Deleted. The title, course and link are
+  kept."* as visible text.
+- **Prop-type declarations in three components**, not one.
+
+The compiler found most of them, which is the real lesson: `Source.lesson` being a *required*
+field made `tsc` walk the tree for me. The grep was the plan; the type was the enumeration.
+
+### Six ways a reference can be wrong
+
+The sixth, from this mock: **its data contradicting its own stated principle.** The list drew
+lessons newest-first while the same file says the list reads *"the way the course sidebar
+reads"* — and a sidebar is syllabus order. Not a shipped rule, not another tab, not a fact
+about the world: the drawing's own words against its own example.
+
+It also produced two shapes already named — a bar at 62% beside "3 of 5 mined" (which is 60%),
+forbidden by its own rules tab; and *"4h 12m watched"*, which claims something the app cannot
+know. Plus two counts that simply did not add up, in a file whose own callout is *"two counts
+that mean different things"*.
+
+| | The check |
+| --- | --- |
+| A colour used for the wrong kind of claim | What kind of claim is this, not how should it feel |
+| A drawn affordance implying data the design does not store | What would have to be stored for this to be true |
+| A drawing that asserts a fact about the world | Is the sentence **true** |
+| A drawing that contradicts itself | Read the tabs against **each other** |
+| A drawing showing two states at once | Can both of these be on screen at the same moment |
+| **A drawing whose data contradicts its own principle** | **Does the example obey the rule stated beside it** |
+
+The last one is the cheapest to check and the easiest to miss, because both halves look
+right on their own. **Add up the numbers and re-read the ordering against the sentence that
+explains it.**
+
+---
+
 ## A fourth check for whoever writes the seventh reference
 
 Three shapes were already named. This arc's reference produced **all three, plus a new one**,
