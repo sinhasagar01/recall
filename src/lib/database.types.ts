@@ -196,10 +196,13 @@ export type Database = {
       }
       sources: {
         Row: {
+          chapter: string | null
           course: string | null
           coverage: Json
           created_at: string
+          duration_seconds: number | null
           id: string
+          lesson: string | null
           title: string
           transcript: string | null
           transcript_deleted_at: string | null
@@ -209,10 +212,13 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          chapter?: string | null
           course?: string | null
           coverage?: Json
           created_at?: string
+          duration_seconds?: number | null
           id?: string
+          lesson?: string | null
           title: string
           transcript?: string | null
           transcript_deleted_at?: string | null
@@ -222,10 +228,13 @@ export type Database = {
           user_id?: string
         }
         Update: {
+          chapter?: string | null
           course?: string | null
           coverage?: Json
           created_at?: string
+          duration_seconds?: number | null
           id?: string
+          lesson?: string | null
           title?: string
           transcript?: string | null
           transcript_deleted_at?: string | null

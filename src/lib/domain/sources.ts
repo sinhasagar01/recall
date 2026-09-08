@@ -26,8 +26,20 @@ export const SOURCE_COLUMNS = ['source_id', 'transcript', "from('sources')"] as 
 export interface Source {
   id: string
   user_id: string
-  title: string
+  /**
+   * A source IS a lesson, inside a chapter, inside a course.
+   *
+   * Arc 2 called this `title` and put an unexplained `course` beneath it, which
+   * is why neither read as what it is. Renamed in arc 2.1 — in the schema too,
+   * across two migrations, because a rename lands while the previous build is
+   * still serving. See ARCHITECTURE.md.
+   */
+  lesson: string
   course: string | null
+  /** Between course and lesson. Text, not a table — see the 2.1a migration. */
+  chapter: string | null
+  /** Whole seconds. Entered as free text; see lib/domain/duration.ts. */
+  duration_seconds: number | null
   url: string | null
   transcript: string | null
   transcript_words: number | null
@@ -36,6 +48,29 @@ export interface Source {
   coverage: CoverageEntry[]
   created_at: string
   updated_at: string
+}
+
+/**
+ * Course › chapter › lesson, with the levels that are absent left out.
+ *
+ * One function, because this string appears on the topic detail page, in the
+ * form's live breadcrumb and twice in the export — and four copies of "join the
+ * levels that exist" is four chances for them to disagree about a lesson with a
+ * course but no chapter.
+ *
+ * Returned as an ARRAY rather than a joined string: the topic page makes every
+ * level a separate link, and a component cannot un-join a string.
+ */
+export function sourceCrumbs(
+  source: Pick<Source, 'lesson' | 'course' | 'chapter'>,
+): string[] {
+  return [source.course, source.chapter, source.lesson].filter(
+    (level): level is string => level !== null && level !== '',
+  )
+}
+
+export function sourceBreadcrumb(source: Pick<Source, 'lesson' | 'course' | 'chapter'>): string {
+  return sourceCrumbs(source).join(' › ')
 }
 
 /** What the list needs, which is everything except the body. */
@@ -51,7 +86,7 @@ export interface SourceWithEntriesView {
  * The three states a transcript can be in, which read differently on screen.
  *
  * "Deleted" and "never had one" are the same absence in the data and different
- * sentences in the product — *"Deleted. The title, course and link are kept"*
+ * sentences in the product — *"Deleted. The lesson, course and link are kept"*
  * versus *"No transcript. Distil from your own notes."* — which is the whole
  * reason `transcript_deleted_at` exists.
  */

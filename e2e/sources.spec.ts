@@ -29,8 +29,8 @@ test.describe('sources', () => {
     await page.goto('/sources')
     await page.getByRole('button', { name: '+ Add a source' }).click()
     const sheet = page.getByRole('dialog')
-    await sheet.getByLabel('Title').fill(title)
-    await sheet.getByLabel('Course').fill('Frontend Masters')
+    await sheet.getByLabel('Lesson').fill(title)
+    await sheet.getByLabel(/^Course/).fill('Frontend Masters')
     await sheet.getByLabel(/^URL/).fill('https://example.com/rendering')
     await sheet
       .getByLabel(/^Transcript/)
@@ -96,7 +96,7 @@ test.describe('sources', () => {
     await page.getByRole('dialog').getByRole('button', { name: 'Delete transcript' }).click()
     await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 30_000 })
 
-    await expect(page.getByText('Deleted. The title, course and link are kept.')).toBeVisible()
+    await expect(page.getByText('Deleted. The lesson, course and link are kept.')).toBeVisible()
     await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible()
     await expect(page.getByRole('link', { name: new RegExp(topicTitle) })).toBeVisible()
 

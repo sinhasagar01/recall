@@ -101,7 +101,7 @@ export function LibraryView({
   data: LibraryData
   account: { topics: number; images: number }
   /** Passed alongside rather than folded into LibraryData: a source is not library data. */
-  sourceOptions: { id: string; title: string }[]
+  sourceOptions: { id: string; lesson: string }[]
   /** Grouped by phase — a capability's wording only makes sense under its phase. */
   capabilityOptions: { phase: string; options: { id: string; name: string }[] }[]
   /** The same counts the rail shows, so the two cannot disagree. */

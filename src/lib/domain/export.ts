@@ -2,7 +2,7 @@ import { categoryOf } from '@/lib/domain/category-suggest'
 import { CONFIDENCE_LABEL } from '@/lib/domain/confidence'
 import { EVIDENCE_COPY, evidenceEntries } from '@/lib/domain/evidence'
 import { DIFFICULTY_LABEL, formatShortDate } from '@/lib/domain/library'
-import type { SourceSummary } from '@/lib/domain/sources'
+import { sourceBreadcrumb, type SourceSummary } from '@/lib/domain/sources'
 import type { Topic } from '@/lib/domain/types'
 
 /**
@@ -212,7 +212,7 @@ export function renderLibraryMarkdown(
       lines.push(
         '## Where this came from',
         '',
-        `${from.title}${from.course ? ` · ${from.course}` : ''}${from.url ? ` — ${from.url}` : ''}`,
+        `${sourceBreadcrumb(from)}${from.url ? ` — ${from.url}` : ''}`,
         '',
       )
     }
@@ -279,7 +279,7 @@ function sourcesSection(sources: SourceSummary[]): string {
         : `${source.transcript_words.toLocaleString()} words, not exported`
 
     lines.push(
-      `- **${source.title}**${source.course ? ` · ${source.course}` : ''}`,
+      `- **${sourceBreadcrumb(source)}**`,
       `  ${source.url ?? 'no link'} · ${words}`,
     )
   }

@@ -72,7 +72,7 @@ export function TopicSheet({
     prop, in exchange for a queue that has no way to name a source.
   */
   sourceId?: string | null
-  sourceOptions?: { id: string; title: string }[]
+  sourceOptions?: { id: string; lesson: string }[]
   capabilityId?: string | null
   capabilityOptions?: { phase: string; options: { id: string; name: string }[] }[]
   /** A transcript selection. Fills the definition, and there is no other field it can reach. */
@@ -447,7 +447,7 @@ export function TopicSheet({
               <option value="">No source</option>
               {sourceOptions.map((option) => (
                 <option key={option.id} value={option.id}>
-                  {option.title}
+                  {option.lesson}
                 </option>
               ))}
             </select>
