@@ -7,7 +7,7 @@
 -- Written and run RED before the migration exists.
 
 begin;
-select plan(53);
+select plan(52);
 
 create function tests_create_user(uid uuid, email text) returns uuid
 language plpgsql as $fn$
@@ -46,6 +46,9 @@ end $fn$;
 
 create function tests_queue_order() returns text
 language sql as $fn$
+  -- `title` here is a TOPIC's title, not a source's. The bulk rename of this
+  -- file caught it once; practice_ordered_page returns topics and has never had
+  -- a `lesson`.
   select string_agg(title, ',' order by rn)
   from (
     select title, row_number() over () as rn
@@ -70,12 +73,11 @@ select has_table('public'::name, 'sources'::name, 'there is a sources table');
 -- because that file has this and this one did not. See ARCHITECTURE.md.
 select columns_are('public'::name, 'sources'::name, ARRAY[
   'id', 'user_id',
-  -- Arc 2.1, PHASE A. `title` and `lesson` are both here on purpose and only
-  -- for one deploy: the running build still selects `title` while the migration
-  -- is landing, because pushing is deploying. 2.1b drops `title`, and this array
-  -- is edited again there — it is exact in both directions, so a one-sided edit
-  -- fails, which is the point of it being columns_are.
-  'title', 'lesson',
+  -- Arc 2.1. `title` was renamed to `lesson` across two deploys; it was listed
+  -- here alongside `lesson` for exactly one of them. Dropping the column without
+  -- editing this array failed with "Missing columns: title" — which is the case
+  -- this assertion was added for in arc 6, biting.
+  'lesson',
   -- A source is a lesson inside a chapter inside a course. Chapter is new.
   'course', 'chapter', 'url',
   -- Free text in, seconds out, so lengths can be summed across a course.
@@ -92,23 +94,19 @@ select columns_are('public'::name, 'sources'::name, ARRAY[
 ], 'sources has exactly these columns — additions and removals both fail here');
 
 /*
-  ── Phase A's whole safety, asserted ────────────────────────────────────────
-  `lesson` is NULLABLE for exactly one deploy. It has to be: the rows already in
-  production have no value for it until the backfill runs, and the still-live
-  build writes `title` and knows nothing about `lesson`.
-
-  Which is what the mirror trigger is for, and the assertion below is the only
-  thing in the suite that would notice its absence. Seen failing by dropping the
-  trigger from the migration: the insert succeeds and `lesson` comes back null.
+  ── The rename, landed ──────────────────────────────────────────────────────
+  `lesson` was nullable for exactly one deploy — it had to be, because the rows
+  already in production had no value for it until the backfill ran, and the
+  still-live build wrote `title` and knew nothing about `lesson`. A mirror
+  trigger covered that window and is gone with it.
 */
-select col_is_null('public'::name, 'sources'::name, 'lesson'::name,
-  'lesson is nullable for exactly one deploy — 2.1b makes it NOT NULL');
+select col_not_null('public'::name, 'sources'::name, 'lesson'::name,
+  'a source must be a lesson — the window where this could be null is closed');
 select col_is_null('public'::name, 'sources'::name, 'chapter'::name, 'chapter is optional');
 select col_is_null('public'::name, 'sources'::name, 'duration_seconds'::name, 'length is optional');
 select col_type_is('public'::name, 'sources'::name, 'duration_seconds'::name, 'integer',
   'a length is whole seconds — the parse rounds, the column does not store fractions');
 
-select col_not_null('public'::name, 'sources'::name, 'title'::name, 'a source must have a title');
 select col_is_null('public'::name, 'sources'::name, 'course'::name, 'course is optional');
 select col_is_null('public'::name, 'sources'::name, 'url'::name, 'url is optional');
 select col_is_null('public'::name, 'sources'::name, 'transcript'::name, 'transcript is optional');
@@ -128,31 +126,31 @@ select has_column('public'::name, 'topics'::name, 'source_id'::name, 'topics has
 select tests_login_as('00000000-0000-0000-0000-0000000000f1');
 
 select lives_ok(
-  $$insert into public.sources (title) values ('Closures')$$,
-  'a title alone is enough — a lesson you took notes on paper still deserves a record'
+  $$insert into public.sources (lesson) values ('Closures')$$,
+  'a lesson alone is enough — one you took notes on paper still deserves a record'
 );
 
 select is(
-  (select user_id from public.sources where title = 'Closures'),
+  (select user_id from public.sources where lesson = 'Closures'),
   '00000000-0000-0000-0000-0000000000f1'::uuid,
   'user_id comes from the column default, never from the client'
 );
 
 select lives_ok(
-  $$insert into public.sources (title, course, url, transcript)
+  $$insert into public.sources (lesson, course, url, transcript)
     values ('Asynchronous JavaScript', 'JavaScript: The Hard Parts',
             'https://example.com/async', 'one two three four five')$$,
   'a source with every field is accepted'
 );
 
 select is(
-  (select transcript_words from public.sources where title = 'Asynchronous JavaScript'),
+  (select transcript_words from public.sources where lesson = 'Asynchronous JavaScript'),
   5,
   'the generated count counts words'
 );
 
 select is(
-  (select transcript_words from public.sources where title = 'Closures'),
+  (select transcript_words from public.sources where lesson = 'Closures'),
   null,
   'and is null when there is no transcript, rather than zero'
 );
@@ -163,20 +161,20 @@ select is(
   These three exist because the perturbation found them missing: relaxing any of
   the not-blank checks to `true` failed nothing, since every insert above supplies
   real text. An empty string is a lie the rest of the system then has to believe —
-  a source titled '' would render as a blank row in the list.
+  a source whose lesson is '' would render as a blank row in the list.
 */
 select throws_ok(
-  $$insert into public.sources (title) values ('   ')$$,
-  '23514', null, 'a whitespace-only title is rejected'
+  $$insert into public.sources (lesson) values ('   ')$$,
+  '23514', null, 'a whitespace-only lesson is rejected'
 );
 
 select throws_ok(
-  $$insert into public.sources (title, course) values ('Fine', '')$$,
+  $$insert into public.sources (lesson, course) values ('Fine', '')$$,
   '23514', null, 'an empty course is rejected — absent is null, not blank'
 );
 
 select throws_ok(
-  $$insert into public.sources (title, url) values ('Fine', '  ')$$,
+  $$insert into public.sources (lesson, url) values ('Fine', '  ')$$,
   '23514', null, 'and a whitespace-only url is rejected'
 );
 
@@ -190,7 +188,7 @@ select throws_ok(
   signed-in caller writing a row into someone else's account was untested.
 */
 select throws_ok(
-  $$insert into public.sources (user_id, title)
+  $$insert into public.sources (user_id, lesson)
     values ('00000000-0000-0000-0000-0000000000f2', 'Planted')$$,
   '42501', null, 'a signed-in caller cannot insert a source owned by someone else'
 );
@@ -231,7 +229,7 @@ select is(
 );
 
 select throws_ok(
-  $$insert into public.sources (title) values ('Anon source')$$,
+  $$insert into public.sources (lesson) values ('Anon source')$$,
   '42501', null, 'and cannot insert one'
 );
 
@@ -247,7 +245,7 @@ select is(
 );
 
 select is(
-  (select tests_affected($$update public.sources set title = 'Stolen'$$)),
+  (select tests_affected($$update public.sources set lesson = 'Stolen'$$)),
   0,
   'and cannot update them'
 );
@@ -265,12 +263,12 @@ select tests_login_as('00000000-0000-0000-0000-0000000000f1');
 
 insert into public.topics (user_id, title, definition, source_id)
 select '00000000-0000-0000-0000-0000000000f1', 'The backpack', 'A live reference.', id
-from public.sources where title = 'Closures';
+from public.sources where lesson = 'Closures';
 
 insert into public.topics (user_id, title, kind, options, correct_option, source_id)
 select '00000000-0000-0000-0000-0000000000f1', 'What does this log?', 'quiz',
        array['a','b'], 0, id
-from public.sources where title = 'Closures';
+from public.sources where lesson = 'Closures';
 
 select is(
   (select count(*)::int from public.topics where source_id is not null),
@@ -299,7 +297,7 @@ select lives_ok(
 -- sentence the delete confirmation makes, so it has to be true.
 -- ===========================================================================
 select lives_ok(
-  $$delete from public.sources where title = 'Closures'$$,
+  $$delete from public.sources where lesson = 'Closures'$$,
   'a source with linked entries can be deleted'
 );
 
@@ -321,20 +319,20 @@ select is(
 -- ===========================================================================
 select lives_ok(
   $$update public.sources set transcript = null, transcript_deleted_at = now()
-    where title = 'Asynchronous JavaScript'$$,
+    where lesson = 'Asynchronous JavaScript'$$,
   'a transcript can be deleted on its own'
 );
 
 select is(
-  (select title || ' · ' || coalesce(course, '—') from public.sources
-   where title = 'Asynchronous JavaScript'),
+  (select lesson || ' · ' || coalesce(course, '—') from public.sources
+   where lesson = 'Asynchronous JavaScript'),
   'Asynchronous JavaScript · JavaScript: The Hard Parts',
   'the source record survives its transcript'
 );
 
 select ok(
   (select transcript_deleted_at is not null from public.sources
-   where title = 'Asynchronous JavaScript'),
+   where lesson = 'Asynchronous JavaScript'),
   'and records that it WAS deleted, which is a different state from never having had one'
 );
 
@@ -367,8 +365,8 @@ select is(
 -- `authenticated` by this point, which may not create objects in public.
 select set_config('tests.queue_before', tests_queue_order(), false);
 
-insert into public.sources (title) values ('Rendering patterns');
-update public.topics set source_id = (select id from public.sources where title = 'Rendering patterns')
+insert into public.sources (lesson) values ('Rendering patterns');
+update public.topics set source_id = (select id from public.sources where lesson = 'Rendering patterns')
 where title = 'The backpack';
 
 select is(
@@ -413,79 +411,76 @@ select ok(has_table_privilege('authenticated', 'public.sources', 'DELETE'),
   'authenticated may DELETE sources');
 
 -- ===========================================================================
--- Arc 2.1a — the mirror trigger, and the two new constraints
+-- Arc 2.1 — the rename, landed, and the two new constraints
 -- ===========================================================================
 
 /*
-  THE assertion of phase A, and the only one that would notice the trigger going
-  missing.
+  The mirror trigger is GONE, and its absence is asserted rather than assumed.
 
-  Between the migration landing and the new build going live, the running app
-  inserts a source naming `title` and nothing else — it has never heard of
-  `lesson`. Without the trigger that row is written with `lesson` null, and 2.1b
-  then makes the column NOT NULL over a row that has no value: the contract
-  migration fails, or worse, the backfill quietly writes an empty string.
+  It existed for one deploy, to catch inserts from a build that named `title` and
+  had never heard of `lesson`. It was the whole safety of the expand phase — and
+  was seen to be necessary by dropping it from that migration and watching an
+  old-build insert leave `lesson` null.
 
-  A trigger that has never been seen to be necessary is a trigger someone
-  removes, so this was run with the trigger dropped from the migration and the
-  insert leaves `lesson` null.
+  Leaving it behind would be a trigger firing on every write to copy a column
+  that no longer exists, so it is dropped in the contract migration and this is
+  what would notice if it were not.
 */
-select lives_ok(
-  $$insert into public.sources (title) values ('Written by the old build')$$,
-  'the still-live build can insert naming only title'
+select is(
+  (select count(*)::int from pg_trigger t
+     join pg_class c on c.oid = t.tgrelid
+   where c.relname = 'sources' and not t.tgisinternal),
+  0,
+  'the mirror trigger went with the column it protected'
 );
 
-select is(
-  (select lesson from public.sources where title = 'Written by the old build'),
-  'Written by the old build',
-  'and the trigger mirrors it into lesson, so 2.1b has nothing left behind to backfill'
-);
+select hasnt_column('public'::name, 'sources'::name, 'title'::name,
+  'the old name is gone, not kept as a synonym');
 
 /*
-  The BACKFILL itself is deliberately not asserted here, and the reason is worth
-  writing down rather than leaving as a gap.
+  The RE-BACKFILL in the contract migration is deliberately not asserted here,
+  and the reason is worth writing down rather than leaving as a gap.
 
   pgTAP runs inside a transaction that begins after every migration has already
-  been applied, so there is no way to create a row that predates the migration —
-  every row this file inserts goes through the trigger, not the backfill. An
-  assertion here would be testing the trigger a second time while claiming to
-  test the backfill, which is the "passes for the wrong reason" failure this
-  project keeps finding.
+  been applied, so no row can predate one — every row this file inserts is
+  written under the final schema. An assertion here would be testing an UPDATE
+  that had nothing to do, while claiming to test the window it exists for, which
+  is the "passes for the wrong reason" failure this project keeps finding.
 
-  It is verified where it can be: on production, immediately after the push,
+  It is verified where it can be: on production, immediately after each push,
   `select count(*) from sources where lesson is null` must be 0.
 */
 
--- The new build writes `lesson`, and the trigger must not fight it.
-select lives_ok(
-  $$insert into public.sources (title, lesson) values ('ignored', 'Execution Context')$$,
-  'the new build writes lesson explicitly'
-);
-
-select is(
-  (select lesson from public.sources where lesson = 'Execution Context'),
-  'Execution Context',
-  'and an explicit lesson wins — the trigger only fills a gap, it does not overwrite'
+select throws_ok(
+  $$insert into public.sources (course) values ('A course with no lesson')$$,
+  '23502', null,
+  'a source must be a lesson — the nullable window is closed'
 );
 
 select throws_ok(
-  $$insert into public.sources (title, chapter) values ('Fine', '   ')$$,
+  $$insert into public.sources (lesson) values ('   ')$$,
+  '23514', null,
+  'and a blank one is not a lesson either — sources_lesson_is_not_blank'
+);
+
+select throws_ok(
+  $$insert into public.sources (lesson, chapter) values ('Fine', '   ')$$,
   '23514', null, 'a whitespace-only chapter is rejected — absent is null, not blank'
 );
 
 select throws_ok(
-  $$insert into public.sources (title, duration_seconds) values ('Fine', 0)$$,
+  $$insert into public.sources (lesson, duration_seconds) values ('Fine', 0)$$,
   '23514', null,
   'a zero length is rejected — a lesson that took no time is a parse failure, not a fact'
 );
 
 select throws_ok(
-  $$insert into public.sources (title, duration_seconds) values ('Fine', -5)$$,
+  $$insert into public.sources (lesson, duration_seconds) values ('Fine', -5)$$,
   '23514', null, 'and a negative one'
 );
 
 select lives_ok(
-  $$insert into public.sources (title, duration_seconds) values ('Has a length', 803)$$,
+  $$insert into public.sources (lesson, duration_seconds) values ('Has a length', 803)$$,
   '13m 23s in seconds is a length'
 );
 

@@ -202,8 +202,7 @@ export type Database = {
           created_at: string
           duration_seconds: number | null
           id: string
-          lesson: string | null
-          title: string
+          lesson: string
           transcript: string | null
           transcript_deleted_at: string | null
           transcript_words: number | null
@@ -218,8 +217,7 @@ export type Database = {
           created_at?: string
           duration_seconds?: number | null
           id?: string
-          lesson?: string | null
-          title: string
+          lesson: string
           transcript?: string | null
           transcript_deleted_at?: string | null
           transcript_words?: number | null
@@ -234,8 +232,7 @@ export type Database = {
           created_at?: string
           duration_seconds?: number | null
           id?: string
-          lesson?: string | null
-          title?: string
+          lesson?: string
           transcript?: string | null
           transcript_deleted_at?: string | null
           transcript_words?: number | null

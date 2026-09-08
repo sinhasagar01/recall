@@ -349,15 +349,34 @@ describe('sources in library.md', () => {
       guarantee is the select list, asserted at the source the way the queue
       boundary is.
     */
-    const read = readFileSync(join(process.cwd(), 'src/lib/data/export.ts'), 'utf8')
-    const from = read.indexOf("from('sources')")
-    const select = read.slice(from, read.indexOf("order('created_at'", from))
+    /*
+      Read from `data/sources.ts`, because that is where the list lives.
 
+      It used to be inlined in `export.ts` and this assertion sliced it out of
+      that file. Arc 2.1b made the two lists one — export.ts had kept its own
+      copy, which still said `title` after the rename and only surfaced as a
+      42703 when the column was dropped. Follow the constant: an assertion
+      pointed at where a value USED to be is one that passes while reading
+      nothing, which is the vacuous-guard failure this project keeps finding.
+    */
+    const read = readFileSync(join(process.cwd(), 'src/lib/data/sources.ts'), 'utf8')
+    const select = read.slice(
+      read.indexOf('export const SUMMARY_COLUMNS'),
+      read.indexOf('function fail('),
+    )
+
+    expect(select, 'the anchor must still find the column list').toContain('id, user_id')
     expect(select, 'the export read must not select the transcript body').not.toMatch(
-      /\btranscript\b(?!_words|_deleted_at)/,
+      /'[^']*\btranscript\b(?!_words|_deleted_at)[^']*'/,
     )
     expect(select, 'but must select the word count, so the omission is legible').toContain(
       'transcript_words',
+    )
+
+    // And export.ts must actually use it, or the check above guards nothing.
+    const exported = readFileSync(join(process.cwd(), 'src/lib/data/export.ts'), 'utf8')
+    expect(exported, 'export.ts must read sources through that one list').toContain(
+      'SOURCE_COLUMNS,',
     )
   })
 

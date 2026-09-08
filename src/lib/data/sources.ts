@@ -23,8 +23,18 @@ import { createClient } from '@/lib/supabase/server'
   it shows a word count, and `transcript_words` is a generated column precisely
   so that number is available without reading the body.
 */
-const SUMMARY_COLUMNS =
-  'id, user_id, title, lesson, course, chapter, url, duration_seconds, transcript_words, transcript_deleted_at, coverage, created_at, updated_at'
+/**
+ * Everything except the body. Exported because `data/export.ts` needs the same
+ * set, and used to keep its own copy of it.
+ *
+ * That copy still said `title` after arc 2.1a renamed the column, and nothing
+ * noticed — the old column was still there, so both lists worked. It surfaced
+ * only when 2.1b dropped it, as a 42703 in the export. Two hand-written lists
+ * for one shape is the single-source-of-truth failure this repo keeps
+ * rediscovering; there is one list now.
+ */
+export const SUMMARY_COLUMNS =
+  'id, user_id, lesson, course, chapter, url, duration_seconds, transcript_words, transcript_deleted_at, coverage, created_at, updated_at'
 
 function fail(action: string, error: { code?: string; message: string }): never {
   throw new Error(`${action} failed: ${error.code ?? 'unknown'} · ${error.message}`)
@@ -45,23 +55,7 @@ function fail(action: string, error: { code?: string; message: string }): never 
 function toSource(row: {
   id: string
   user_id: string
-  /*
-    ── Arc 2.1a only ─────────────────────────────────────────────────────────
-    `title` is still selected and still read here, for exactly one deploy.
-
-    The rename is expand → migrate → contract: 2.1a added `lesson` NULLABLE and
-    backfilled it, this build reads and writes `lesson`, and 2.1b drops `title`
-    and makes `lesson` NOT NULL. Until then a row CAN carry a null `lesson` —
-    one written by the previous build in the minutes before this one went live,
-    if the mirror trigger were ever missing — so the domain's `lesson: string`
-    is honoured here rather than asserted.
-
-    THIS IS THE ONLY FALLBACK. 2.1b deletes `title` from the select list above,
-    the two fields below, and the `?? row.title` on the next line. Four lines,
-    one file, no search.
-  */
-  title: string
-  lesson: string | null
+  lesson: string
   course: string | null
   chapter: string | null
   duration_seconds: number | null
@@ -75,7 +69,7 @@ function toSource(row: {
   return {
     id: row.id,
     user_id: row.user_id,
-    lesson: row.lesson ?? row.title,
+    lesson: row.lesson,
     course: row.course,
     chapter: row.chapter,
     duration_seconds: row.duration_seconds,
@@ -196,12 +190,11 @@ export async function listSourceOptions(): Promise<{ id: string; lesson: string 
 
   const { data, error } = await supabase
     .from('sources')
-    .select('id, lesson, title')
+    .select('id, lesson')
     .order('created_at', { ascending: false })
 
   if (error) fail('Loading your sources', error)
-  // `?? title` for the same one-deploy reason as toSource — see above.
-  return data.map((row) => ({ id: row.id, lesson: row.lesson ?? row.title }))
+  return data as { id: string; lesson: string }[]
 }
 
 /**
@@ -229,18 +222,6 @@ export interface NewSource {
   transcript: string | null
 }
 
-/**
- * ── Arc 2.1a writes BOTH columns, and it has to ─────────────────────────────
- * `sources.title` is still `not null` until 2.1b drops it, so an insert naming
- * only `lesson` fails with 23502. The mirror trigger fills `lesson` from
- * `title`, never the other way round — it exists to protect the OLD build's
- * writes, not this one's.
- *
- * So this build writes `title: input.lesson` alongside. 2.1b deletes that line
- * and this comment with it.
- */
-const withLegacyTitle = (input: NewSource) => ({ ...input, title: input.lesson })
-
 export async function insertSource(input: NewSource): Promise<SourceSummary> {
   const supabase = await createClient()
 
@@ -248,7 +229,7 @@ export async function insertSource(input: NewSource): Promise<SourceSummary> {
   // with-check refuses anything else.
   const { data, error } = await supabase
     .from('sources')
-    .insert(withLegacyTitle(input))
+    .insert(input)
     .select(SUMMARY_COLUMNS)
     .single()
 
@@ -261,7 +242,7 @@ export async function updateSource(id: string, input: NewSource): Promise<Source
 
   const { data, error } = await supabase
     .from('sources')
-    .update({ ...withLegacyTitle(input), updated_at: new Date().toISOString() })
+    .update({ ...input, updated_at: new Date().toISOString() })
     .eq('id', id)
     .select(SUMMARY_COLUMNS)
     .single()
@@ -273,7 +254,7 @@ export async function updateSource(id: string, input: NewSource): Promise<Source
 /**
  * Deleting the transcript, and only the transcript.
  *
- * The source record survives — title, course and link are kept — and
+ * The source record survives — the lesson, course and link are kept — and
  * `transcript_deleted_at` is what lets the workspace say "deleted" rather than
  * "there never was one". The delete is not recoverable, and the confirmation says
  * so.

@@ -63,7 +63,7 @@ select tests_create_user('00000000-0000-0000-0000-0000000000a1'::uuid, 'a@extrac
 select tests_create_user('00000000-0000-0000-0000-0000000000a2'::uuid, 'b@extract.test');
 select tests_login_as('00000000-0000-0000-0000-0000000000a1'::uuid);
 
-insert into public.sources (id, title)
+insert into public.sources (id, lesson)
 values ('00000000-0000-0000-0000-0000000000f1'::uuid, 'A course');
 
 select is(

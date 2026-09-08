@@ -1,5 +1,6 @@
 import 'server-only'
 
+import { SUMMARY_COLUMNS as SOURCE_COLUMNS } from '@/lib/data/sources'
 import { toTopic, type TopicRow } from '@/lib/data/topic-mapping'
 import type { SourceSummary } from '@/lib/domain/sources'
 import type { Topic } from '@/lib/domain/types'
@@ -76,7 +77,7 @@ export async function readSourcesForExport(): Promise<{
     supabase
       .from('sources')
       .select(
-        'id, user_id, title, course, url, transcript_words, transcript_deleted_at, coverage, created_at, updated_at',
+        SOURCE_COLUMNS,
       )
       .order('created_at', { ascending: false }),
     supabase.from('topics').select('id, source_id').not('source_id', 'is', null),
