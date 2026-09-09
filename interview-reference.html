@@ -88,11 +88,16 @@ code{font-family:var(--font-mono);font-size:.86em}
 .type--thin .type__pool{color:var(--rose)}
 .type[aria-pressed="true"]{border-color:var(--tone);box-shadow:inset 0 0 0 1px var(--tone)}
 .type[aria-pressed="true"] .type__dot{width:26px}
+.type__check{position:absolute;top:14px;right:14px;width:20px;height:20px;border-radius:50%;
+  background:var(--tone);color:#fff;display:none;place-items:center;font-size:11px;line-height:1}
+.type[aria-pressed="true"] .type__check{display:grid}
+.pill{position:relative}
+.pill__check{position:absolute;top:9px;right:10px;width:16px;height:16px;border-radius:50%;
+  background:var(--volt);color:#fff;display:none;place-items:center;font-size:9px;line-height:1}
+.pill[aria-pressed="true"] .pill__check{display:grid;background:#fff;color:var(--volt)}
 .t-js{--tone:#0F766E}
 .t-react{--tone:#1D4ED8}
 .t-ts{--tone:#4F46E5}
-.t-dsa{--tone:#7E22CE}
-.t-design{--tone:#047857}
 .t-behav{--tone:#BE185D}
 .t-mixed{--tone:#334155}
 .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
@@ -107,13 +112,6 @@ code{font-family:var(--font-mono);font-size:.86em}
 .startcard__k{font-family:var(--font-mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#A5B4FC}
 .startcard__t{font-family:var(--font-display);font-size:28px;font-weight:500;margin:8px 0 5px;letter-spacing:-.02em;color:#fff}
 .startcard__s{color:#CFD1E4;font-size:13.5px;max-width:56ch;line-height:1.65}
-.shape{display:flex;margin:22px 0 6px;border-radius:12px;overflow:hidden;
-  background:rgba(12,13,20,.72);border:1px solid rgba(255,255,255,.16);
-  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
-.shape__b{flex:var(--w,1);padding:13px 16px;border-right:1px solid rgba(255,255,255,.13)}
-.shape__b:last-child{border-right:none}
-.shape__b b{display:block;font-family:var(--font-mono);font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:#A5B4FC}
-.shape__b span{display:block;font-size:12.5px;color:#CFD1E4;margin-top:5px;line-height:1.45}
 .startfoot{display:flex;align-items:center;gap:14px;margin-top:20px;flex-wrap:wrap}
 .startcard .btn--volt{background:#6366F1;border-color:#6366F1;color:#fff;font-weight:600}
 .startcard .btn--volt:hover{background:#818CF8;border-color:#818CF8}
@@ -250,31 +248,62 @@ code{font-family:var(--font-mono);font-size:.86em}
 
 
 /* ---------- scorecard v2 ---------- */
-.sc-hero{position:relative;border-radius:22px;overflow:hidden;padding:34px 34px 30px;color:#F2F1FB;
-  background:var(--mesh);box-shadow:0 18px 50px rgba(21,22,31,.32)}
-.sc-hero__grid{display:flex;gap:38px;align-items:center;flex-wrap:wrap;position:relative;z-index:1}
-.sc-ring{width:164px;height:164px;flex:none;border-radius:50%;position:relative;display:grid;place-items:center;
-  background:conic-gradient(from -90deg, #34D399 0turn, #6366F1 .38turn, #A855F7 .60turn, rgba(255,255,255,.10) .74turn, rgba(255,255,255,.10) 1turn);
-  filter:drop-shadow(0 0 18px rgba(124,107,255,.35))}
-.sc-ring::after{content:"";position:absolute;inset:13px;border-radius:50%;background:#191A26}
-.sc-ring__in{position:relative;z-index:1;text-align:center}
-.sc-ring__v{font-family:var(--font-display);font-size:52px;font-weight:600;line-height:1;color:#fff;letter-spacing:-.02em}
-.sc-ring__k{font-family:var(--font-mono);font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:#B9BBD0;margin-top:7px}
-.sc-hero__m{flex:1;min-width:270px}
-.sc-band{display:inline-flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;
-  text-transform:uppercase;color:#FCD34D;background:rgba(252,211,77,.13);border:1px solid rgba(252,211,77,.45);
-  border-radius:100px;padding:5px 13px}
-.sc-hero__t{font-family:var(--font-display);font-weight:500;font-size:31px;font-weight:500;letter-spacing:-.022em;margin:13px 0 7px;color:#fff}
-.sc-hero__s{color:#CFD1E4;font-size:14.5px;max-width:46ch;line-height:1.65}
-.sc-stats{display:flex;gap:0;margin-top:22px;border-radius:12px;overflow:hidden;
-  background:rgba(12,13,20,.72);border:1px solid rgba(255,255,255,.16);
-  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
-.sc-stat{flex:1;padding:13px 16px;border-right:1px solid rgba(255,255,255,.13)}
+.sc-hero{position:relative;border-radius:22px;overflow:hidden;padding:0;color:#F4F3FB;
+  background:
+    radial-gradient(135% 120% at 0% 0%, #2E2178 0%, rgba(46,33,120,0) 56%),
+    radial-gradient(110% 130% at 100% 0%, #63308A 0%, rgba(99,48,138,0) 52%),
+    radial-gradient(130% 150% at 78% 130%, #0D6169 0%, rgba(13,97,105,0) 56%),
+    #0E0F16;
+  box-shadow:0 24px 64px rgba(14,15,22,.38), 0 1px 0 rgba(255,255,255,.07) inset}
+.sc-hero::before{content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,0) 34%)}
+.sc-hero::after{content:"";position:absolute;top:-140px;right:-90px;width:420px;height:420px;border-radius:50%;
+  pointer-events:none;background:radial-gradient(circle,rgba(168,85,247,.20) 0%,rgba(168,85,247,0) 68%)}
+
+.sc-body{position:relative;z-index:1;padding:30px 34px 26px}
+.sc-top{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.sc-eyebrow{display:inline-flex;align-items:center;gap:9px;font-family:var(--font-mono);font-size:10px;
+  letter-spacing:.17em;text-transform:uppercase;color:#A6A8C4}
+.sc-eyebrow em{font-style:normal;color:#5E607D}
+.sc-band{margin-left:auto;display:inline-flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:10px;
+  letter-spacing:.14em;text-transform:uppercase;color:#FCD34D;background:rgba(252,211,77,.10);
+  border:1px solid rgba(252,211,77,.36);border-radius:100px;padding:5px 13px}
+
+.sc-figure{display:flex;align-items:flex-end;gap:20px;margin-top:24px;flex-wrap:wrap}
+.sc-numwrap{display:flex;align-items:flex-end;gap:10px;flex:none}
+.sc-num{font-family:var(--font-display);font-weight:600;font-size:116px;line-height:.82;letter-spacing:-.05em;
+  background:linear-gradient(112deg,#6EE7B7 0%,#818CF8 44%,#C084FC 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 6px 26px rgba(129,140,248,.28))}
+.sc-outof{font-family:var(--font-mono);font-size:12.5px;color:#6E718E;padding-bottom:14px;letter-spacing:.06em}
+.sc-verdict{flex:1;min-width:250px;padding-bottom:6px}
+.sc-verdict h1{font-family:var(--font-display);font-weight:500;font-size:26px;letter-spacing:-.022em;color:#fff;line-height:1.24}
+.sc-verdict p{color:#B4B6D0;font-size:14px;line-height:1.62;margin-top:8px;max-width:44ch}
+
+.sc-meter{display:flex;gap:3px;margin-top:26px}
+.sc-meter i{flex:1;height:9px;border-radius:2px;background:rgba(255,255,255,.08)}
+.sc-meter i.on{background:linear-gradient(90deg,#6EE7B7,#818CF8)}
+.sc-meter i.on:nth-child(n+11){background:linear-gradient(90deg,#818CF8,#C084FC)}
+.sc-meter i.tip{box-shadow:0 0 14px rgba(192,132,252,.6)}
+.sc-scale{display:flex;justify-content:space-between;margin-top:9px;
+  font-family:var(--font-mono);font-size:9.5px;color:#6E718E;letter-spacing:.08em}
+.sc-scale b{color:#B4B6D0;font-weight:500}
+
+.sc-stats{display:flex;margin-top:0;border-top:1px solid rgba(255,255,255,.10);
+  background:rgba(8,9,15,.42);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
+  position:relative;z-index:1}
+.sc-stat{flex:1;padding:16px 18px;border-right:1px solid rgba(255,255,255,.08)}
 .sc-stat:last-child{border-right:none}
-.sc-stat b{display:block;font-family:var(--font-display);font-size:23px;color:#fff;line-height:1.1}
+.sc-stat b{display:block;font-family:var(--font-display);font-size:24px;color:#fff;line-height:1.1;font-weight:500;
+  letter-spacing:-.015em}
 .sc-stat span{display:block;font-family:var(--font-mono);font-size:9px;letter-spacing:.13em;text-transform:uppercase;
-  color:#C6C8DC;margin-top:6px}
+  color:#B9BBD4;margin-top:7px}
 .sc-up{color:#6EE7B7!important}.sc-down{color:#FB7185!important}
+@media(max-width:760px){
+  .sc-num{font-size:84px}
+  .sc-stats{flex-wrap:wrap}
+  .sc-stat{flex:1 1 33%;border-bottom:1px solid rgba(255,255,255,.08)}
+}
 
 .sc-dims{display:grid;grid-template-columns:repeat(auto-fit,minmax(206px,1fr));gap:13px;margin-top:15px}
 .sc-dim{position:relative;border-radius:14px;padding:17px 19px;overflow:hidden;
@@ -304,12 +333,17 @@ code{font-family:var(--font-mono);font-size:.86em}
 .g-mid{background:linear-gradient(90deg,#818CF8,#4F46E5)}
 .g-lo{background:linear-gradient(90deg,#F472B6,#BE185D)}
 
-.spark{display:flex;align-items:flex-end;gap:7px;height:64px;padding:0 2px}
-.spark__b{flex:1;border-radius:5px 5px 2px 2px;background:var(--surface-3);position:relative}
-.spark__b i{position:absolute;inset:auto 0 0 0;border-radius:5px 5px 2px 2px;background:linear-gradient(180deg,#818CF8,#4F46E5)}
-.spark__b--now i{background:linear-gradient(180deg,#34D399,#047857)}
-.spark__l{display:flex;gap:7px;margin-top:8px}
-.spark__l span{flex:1;text-align:center;font-family:var(--font-mono);font-size:9.5px;color:var(--ink-3)}
+.spark{display:flex;align-items:stretch;gap:10px;height:104px}
+.spark__c{flex:1;display:flex;flex-direction:column;justify-content:flex-end;gap:6px;min-width:0}
+.spark__v{font-family:var(--font-mono);font-size:11px;text-align:center;color:var(--ink-3);line-height:1}
+.spark__b--now + .spark__v,.spark__c--now .spark__v{color:var(--mint);font-weight:600}
+.spark__b{width:100%;border-radius:5px 5px 2px 2px;background:var(--surface-2);border:1px solid var(--rule);
+  position:relative;overflow:hidden}
+.spark__b i{position:absolute;left:0;right:0;bottom:0;border-radius:4px 4px 1px 1px;
+  background:linear-gradient(180deg,#818CF8,#4F46E5)}
+.spark__c--now .spark__b i{background:linear-gradient(180deg,#34D399,#047857)}
+.spark__l{display:flex;gap:10px;margin-top:9px;padding-top:9px;border-top:1px solid var(--rule)}
+.spark__l span{flex:1;text-align:center;font-family:var(--font-mono);font-size:9.5px;color:var(--ink-3);min-width:0}
 
 .ruleset{background:var(--surface);border:1px solid var(--rule);border-radius:var(--radius-lg);padding:4px 22px;margin-top:14px;box-shadow:var(--shadow)}
 .ruleset li{list-style:none;padding:13px 0;border-bottom:1px solid var(--rule);font-size:13.5px;color:var(--ink-2)}
@@ -339,42 +373,35 @@ code{font-family:var(--font-mono);font-size:.86em}
   <div class="rule"><span class="eyebrow">Round</span></div>
   <div class="types">
     <button class="type t-js" aria-pressed="true">
+      <span class="type__check">✓</span>
       <span class="type__dot"></span>
       <span class="type__n">JavaScript</span>
       <span class="type__s">Concepts, escalating follow-ups</span>
       <span class="type__pool"><b>21 topics</b> · 9 weak · 14 quizzes</span>
     </button>
     <button class="type t-react">
+      <span class="type__check">✓</span>
       <span class="type__dot"></span>
       <span class="type__n">React</span>
       <span class="type__s">Concepts, escalating follow-ups</span>
       <span class="type__pool"><b>8 topics</b> · 4 weak</span>
     </button>
     <button class="type t-ts">
+      <span class="type__check">✓</span>
       <span class="type__dot"></span>
       <span class="type__n">TypeScript</span>
       <span class="type__s">Concepts, escalating follow-ups</span>
       <span class="type__pool"><b>8 topics</b> · 1 weak</span>
     </button>
-    <button class="type t-dsa">
-      <span class="type__dot"></span>
-      <span class="type__n">DSA</span>
-      <span class="type__s">Code it, then complexity and edges</span>
-      <span class="type__pool"><b>3 problems</b> · your code is kept</span>
-    </button>
-    <button class="type t-design">
-      <span class="type__dot"></span>
-      <span class="type__n">System design</span>
-      <span class="type__s">One problem, four phases</span>
-      <span class="type__pool"><b>3 ADRs</b> · 1 diagram · 6 topics</span>
-    </button>
     <button class="type t-behav type--thin">
+      <span class="type__check">✓</span>
       <span class="type__dot"></span>
       <span class="type__n">Behavioural</span>
       <span class="type__s">Drawn from your ledger</span>
       <span class="type__pool">2 decisions, 1 incident — thin for 45 min</span>
     </button>
     <button class="type t-mixed">
+      <span class="type__check">✓</span>
       <span class="type__dot"></span>
       <span class="type__n">Mixed</span>
       <span class="type__s">A real loop, all three shapes</span>
@@ -384,44 +411,47 @@ code{font-family:var(--font-mono);font-size:.86em}
 
   <div class="rule"><span class="eyebrow">Length</span></div>
   <div class="row">
-    <button class="pill"><div class="pill__t">20 min</div><div class="pill__s">4 concepts</div></button>
-    <button class="pill" aria-pressed="true"><div class="pill__t">45 min</div><div class="pill__s">8 concepts</div></button>
-    <button class="pill"><div class="pill__t">60 min</div><div class="pill__s">11 concepts</div></button>
-    <button class="pill"><div class="pill__t">90 min</div><div class="pill__s">16 concepts</div></button>
+    <button class="pill"><span class="pill__check">✓</span><div class="pill__t">20 min</div><div class="pill__s">4 concepts</div></button>
+    <button class="pill" aria-pressed="true"><span class="pill__check">✓</span><div class="pill__t">45 min</div><div class="pill__s">8 concepts</div></button>
+    <button class="pill"><span class="pill__check">✓</span><div class="pill__t">60 min</div><div class="pill__s">11 concepts</div></button>
+    <button class="pill"><span class="pill__check">✓</span><div class="pill__t">90 min</div><div class="pill__s">16 concepts</div></button>
   </div>
 
   <div class="rule"><span class="eyebrow">Who is interviewing you</span></div>
   <div class="row">
-    <button class="pill"><div class="pill__t">Friendly senior</div><div class="pill__s">nudges, accepts a good direction</div></button>
-    <button class="pill" aria-pressed="true"><div class="pill__t">Staff, terse</div><div class="pill__s">two follow-ups, no encouragement</div></button>
-    <button class="pill"><div class="pill__t">Skeptical principal</div><div class="pill__s">pushes until you concede or hold</div></button>
-  </div>
-
-  <div class="rule"><span class="eyebrow">How you answer</span></div>
-  <div class="row">
-    <button class="pill" aria-pressed="true"><div class="pill__t">Typing</div><div class="pill__s">works everywhere</div></button>
-    <button class="pill"><div class="pill__t">Voice</div><div class="pill__s">it speaks, you speak · Chrome</div></button>
+    <button class="pill"><span class="pill__check">✓</span><div class="pill__t">Friendly senior</div><div class="pill__s">nudges, accepts a good direction</div></button>
+    <button class="pill" aria-pressed="true"><span class="pill__check">✓</span><div class="pill__t">Staff, terse</div><div class="pill__s">two follow-ups, no encouragement</div></button>
+    <button class="pill"><span class="pill__check">✓</span><div class="pill__t">Skeptical principal</div><div class="pill__s">pushes until you concede or hold</div></button>
   </div>
 
   <div class="startcard">
-    <div class="startcard__k">JavaScript · 45 minutes · staff, terse · typing</div>
+    <div class="startcard__k">JavaScript · 45 minutes · staff, terse</div>
     <div class="startcard__t">Eight concepts, weighted toward weak</div>
     <div class="startcard__s">Nine of your JavaScript topics read weak; the queue draws from those first. Three hints available, each visible on the scorecard.</div>
-    <div class="shape">
-      <div class="shape__b" style="--w:6"><b>0–30 min</b><span>6 questions, warm to hard</span></div>
-      <div class="shape__b" style="--w:3"><b>30–45</b><span>2 deep, two follow-ups each</span></div>
-      <div class="shape__b" style="--w:2"><b>then</b><span>scorecard</span></div>
-    </div>
     <div class="startfoot">
       <button class="btn btn--volt btn--lg">Enter the room</button>
       <span class="cost">≈ 26k–40k tokens · $0.06–$0.11 · resent each turn · capped at 40 exchanges</span>
     </div>
   </div>
 
+  <div class="rule"><span class="eyebrow">Before all three are picked</span></div>
+  <div class="startcard">
+    <div class="startcard__k">Nothing chosen yet</div>
+    <div class="startcard__t">Pick a round, a length and an interviewer</div>
+    <div class="startcard__s">The summary fills in as you choose. Everything below is read from your own library, so it cannot be written until it knows which library to read.</div>
+    <div class="startfoot">
+      <button class="btn btn--volt btn--lg" disabled>Enter the room</button>
+      <span class="cost">the cost estimate needs a length</span>
+    </div>
+  </div>
+  <p class="note"><strong>Enter the room</strong> is disabled until round, length and interviewer are all chosen — disabled rather than absent, because unlike a feature that does not exist, this one is one click away and the button is what tells you so. Each choice shows a check in its top-right corner the moment it is made, so three ticks means ready.</p>
+
   <div class="callout">
     <div class="callout__t">Type and length set the shape — there is no minutes-per-question slider</div>
     <p style="color:var(--ink-2);font-size:13.5px">Real rounds are not uniform. Forty-five minutes of JavaScript is eight concepts with follow-ups; sixty of design is one problem in four phases; ninety of DSA is three problems. The pool line under each type is read from your data and says honestly when a round would be thin.</p>
   </div>
+
+  <p class="note"><strong>A round is never resumed.</strong> Leaving this page, refreshing or closing the tab loses it — forty-five minutes of continuous attention or it is not a round. Said here, before you enter, rather than in a rules appendix you read afterwards.</p>
 
   <p class="note">Interviewer level changes only how hard the follow-ups push — it is a prompt, not a scoring multiplier. A skeptical principal is harder to satisfy and does not make your score lower; the dimensions measure what you said, not who asked.</p>
 </div>
@@ -628,21 +658,30 @@ code{font-family:var(--font-mono);font-size:.86em}
 <div class="wrap">
 
   <div class="sc-hero">
-    <div class="sc-hero__grid">
-      <div class="sc-ring"><div class="sc-ring__in">
-        <div class="sc-ring__v">74</div><div class="sc-ring__k">round score</div></div></div>
-      <div class="sc-hero__m">
+    <div class="sc-body">
+      <div class="sc-top">
+        <span class="sc-eyebrow">JavaScript <em>·</em> 45 minutes <em>·</em> staff, terse <em>·</em> 6 Sep</span>
         <span class="sc-band">◆ Solid — would pass a screen</span>
-        <h1 class="sc-hero__t">JavaScript · 45 minutes</h1>
-        <div class="sc-hero__s">Strong on mechanism, thin the moment a follow-up asked for a consequence. Staff-level interviewer, three topics went shallow under pressure.</div>
-        <div class="sc-stats">
-          <div class="sc-stat"><b>8/8</b><span>answered</span></div>
-          <div class="sc-stat"><b>11/14</b><span>follow-ups held</span></div>
-          <div class="sc-stat"><b>2</b><span>questions asked</span></div>
-          <div class="sc-stat"><b>1</b><span>hint used</span></div>
-          <div class="sc-stat"><b class="sc-up">+9</b><span>vs last JS</span></div>
+      </div>
+
+      <div class="sc-figure">
+        <span class="sc-numwrap"><span class="sc-num">74</span><span class="sc-outof">/ 100</span></span>
+        <div class="sc-verdict">
+          <h1>Strong on mechanism, thin on consequence</h1>
+          <p>You knew what things were, and went shallow the moment a follow-up asked what follows from them. Three topics broke that way.</p>
         </div>
       </div>
+
+      <div class="sc-meter"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on tip"></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="sc-scale"><span>0</span><span><b>74</b> this round</span><span>100</span></div>
+    </div>
+
+    <div class="sc-stats">
+      <div class="sc-stat"><b>8/8</b><span>answered</span></div>
+      <div class="sc-stat"><b>11/14</b><span>follow-ups held</span></div>
+      <div class="sc-stat"><b>2</b><span>questions asked</span></div>
+      <div class="sc-stat"><b>1</b><span>hint used</span></div>
+      <div class="sc-stat"><b class="sc-up">+9</b><span>vs last JS</span></div>
     </div>
   </div>
 
@@ -692,14 +731,14 @@ code{font-family:var(--font-mono);font-size:.86em}
   <div class="rule"><span class="eyebrow">Your JavaScript rounds</span></div>
   <div class="panel"><div class="panel__body">
     <div class="spark">
-      <div class="spark__b"><i style="height:52%"></i></div>
-      <div class="spark__b"><i style="height:48%"></i></div>
-      <div class="spark__b"><i style="height:61%"></i></div>
-      <div class="spark__b"><i style="height:65%"></i></div>
-      <div class="spark__b spark__b--now"><i style="height:74%"></i></div>
+      <div class="spark__c"><span class="spark__v">52</span><div class="spark__b" style="height:52%"><i style="height:100%"></i></div></div>
+      <div class="spark__c"><span class="spark__v">48</span><div class="spark__b" style="height:48%"><i style="height:100%"></i></div></div>
+      <div class="spark__c"><span class="spark__v">61</span><div class="spark__b" style="height:61%"><i style="height:100%"></i></div></div>
+      <div class="spark__c"><span class="spark__v">65</span><div class="spark__b" style="height:65%"><i style="height:100%"></i></div></div>
+      <div class="spark__c spark__c--now"><span class="spark__v">74</span><div class="spark__b" style="height:74%"><i style="height:100%"></i></div></div>
     </div>
-    <div class="spark__l"><span>52</span><span>48</span><span>61</span><span>65</span><span>74</span></div>
-    <p class="meta" style="margin-top:12px">Five rounds, your own scores only. No benchmark, no percentile, nobody else.</p>
+    <div class="spark__l"><span>18 Aug</span><span>24 Aug</span><span>29 Aug</span><span>3 Sep</span><span>today</span></div>
+    <p class="meta" style="margin-top:12px">Five rounds, your own scores only. No benchmark, no percentile, nobody else. Bar height is the score out of 100, so a short bar is a low round rather than an old one.</p>
   </div></div>
 
   <div class="rule"><span class="eyebrow">What it wants to change — you decide</span></div>
@@ -751,9 +790,12 @@ code{font-family:var(--font-mono);font-size:.86em}
   <div class="rule"><span class="eyebrow">Shape</span></div>
   <ul class="ruleset">
     <li><strong>Type plus duration sets the structure</strong>Never a minutes-per-question slider. Concepts are N questions with follow-ups; design is four phases; DSA is 1–3 problems.</li>
-    <li><strong>Seven types</strong>JavaScript, React, TypeScript, DSA, System design, Behavioural, Mixed. Machine coding is out — it needs a mini-IDE, and a build you did elsewhere is a ledger item with a repo link and a deployed URL.</li>
+    <li><strong>Five types</strong>JavaScript, React, TypeScript, Behavioural, Mixed. Machine coding is out — it needs a mini-IDE, and a build you did elsewhere is a ledger item with a repo link and a deployed URL.</li>
+    <li><strong>DSA, System design and voice are absent, not disabled</strong>None of the three is built, and absent is what the rule below prescribes for a feature that does not exist — the same rule that makes <em>Enter the room</em> disabled rather than absent, read the other way. A disabled control says "this is one click away"; these are not.</li>
     <li><strong>Every question comes from your library, weighted toward weak</strong>The pool line under each type is read from your data and says honestly when a round would be thin.</li>
     <li><strong>Follow-ups arrive when an answer leaves an opening</strong>Not on a fixed count. They are the point of the round.</li>
+    <li><strong>Three choices, three checks, then one button</strong>Round, length and interviewer each show a check in the top-right when chosen. <em>Enter the room</em> is disabled until all three are — disabled and not absent, because this is one click away rather than a feature that does not exist, and the button is what says so.</li>
+    <li><strong>End the round always works</strong>It is the only escape from a stuck exchange. It never waits on a model call, and it is never disabled while one is in flight — an interviewer that cannot be walked out on is a trap, not a simulation.</li>
   </ul>
 
   <div class="rule"><span class="eyebrow">The six additions</span></div>
@@ -761,7 +803,7 @@ code{font-family:var(--font-mono);font-size:.86em}
     <li><strong>Interviewer level is a prompt, not a multiplier</strong>Friendly senior, staff, skeptical principal. It changes how hard follow-ups push. A harder interviewer does not lower your score — the dimensions measure what you said, not who asked.</li>
     <li><strong>Asking a clarifying question counts for you</strong>Real rounds open with questions. <em>Ask a question</em> is its own action so a question is never scored as a wrong answer, and Enquiry is a scored dimension.</li>
     <li><strong>Three hints, each visible on the scorecard</strong>A hint is a real interview move; asking for the answer is not. The cost is transparency, never a hidden penalty — the row shows "1 hint" beside the score it earned.</li>
-    <li><strong>A follow-up can become a quiz, during the round</strong>Press, look at the drafted distractors, save. Two presses and no navigation — the room cannot know you got it wrong, and a thing you have not looked at is not a thing you chose. It is saved to your library linked to the topic the follow-up came from. The only thing in a round that feeds the library rather than the scorecard.</li>
+    <li><strong>A follow-up can become a quiz, during the round</strong>Press, look at the drafted distractors, press again. Two presses and no navigation — the room is forbidden from telling you that you got it wrong, and a thing you have not looked at is not a thing you chose. Saved to your library, linked to the topic the follow-up came from. The only thing in a round that feeds the library rather than the scorecard.</li>
     <li><strong>Rewind re-asks one question and never changes the score</strong>Immediately, while it is fresh. It produces its own small result. A score you can retry until it improves is not a score.</li>
     <li><strong>Voice is Chrome-only and always has a typed fallback</strong>Recognition runs in the browser; no audio is stored or sent, only text. You edit the transcript before sending, so a mis-hearing costs a correction rather than a wrong answer.</li>
   </ul>
