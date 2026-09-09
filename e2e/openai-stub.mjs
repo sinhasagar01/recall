@@ -172,6 +172,19 @@ const interviewBody = (system, messages) => {
     return turn('Same invocation. Good question.')
   }
   if (system.includes('Ask the next question')) {
+    /*
+      Moving on makes the model pick a NEW topic, and a real one invented an id:
+      well-formed, plausible, and naming nothing we hold. That is what broke the
+      room's tag, so the stub does it too — on the skip path only, so the opening
+      question still names a seeded topic and every other spec is unaffected.
+
+      The value matters. A slug would be caught by `asUuid`; this is a uuid, and
+      the only thing wrong with it is that it is not ours. A stub returning the
+      shape the parser wants is how the previous two attribution bugs survived.
+    */
+    if (last.includes('Move on.')) {
+      return turn('Different tack — what does the event loop do with a microtask?', '3f1c9a52-7b40-4e19-9d6a-0c1e5f8a2b77')
+    }
     return turn('Walk me through what a closure actually captures.', STUB_TOPIC_IDS[2] ?? null)
   }
   return turn(

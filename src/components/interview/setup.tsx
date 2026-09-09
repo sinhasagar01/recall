@@ -121,17 +121,29 @@ export function Setup({
   const router = useRouter()
   const [entering, startEntering] = useTransition()
 
-  const [type, setType] = useState<RoundType | null>(null)
-  const [minutes, setMinutes] = useState<Length | null>(initialMinutes)
-  const [level, setLevel] = useState<Level | null>(initialLevel)
+  /*
+    ── Every group arrives with a choice made ────────────────────────────────
+    The first option in each row, and its check with it — three ticks before you
+    have touched anything, which is what says these are choices rather than
+    fixed settings.
 
-  const ready = type !== null && minutes !== null && level !== null
-  const questions = minutes === null ? null : questionCount(minutes)
-  const cost = minutes === null ? null : estimateRoundCost(minutes)
+    This retires the gate. `Enter the room` was disabled until all three were
+    chosen, which was the right call against the thing it was guarding — a round
+    started unconfigured — and the wrong instrument. Defaults solve it better,
+    because nothing can BE unconfigured, and a button you cannot press teaches
+    less than a summary that is already true and that you can change.
+
+    A URL still wins where it supplies one, so a linked round keeps its shape.
+  */
+  const [type, setType] = useState<RoundType>(ROUND_TYPES[0])
+  const [minutes, setMinutes] = useState<Length>(initialMinutes ?? LENGTHS[0])
+  const [level, setLevel] = useState<Level>(initialLevel ?? LEVELS[0])
+
+  const questions = questionCount(minutes)
+  const cost = estimateRoundCost(minutes)
   const money = (value: number) => `$${value.toFixed(2)}`
 
   const enter = () => {
-    if (!ready) return
     startEntering(() => {
       router.push(`/interview?type=${type}&minutes=${minutes}&level=${level}`)
     })
@@ -148,7 +160,9 @@ export function Setup({
         <BackToLibrary>← Library</BackToLibrary>
       </div>
 
-      <h1 className="font-display text-[29px] font-medium tracking-[-0.022em]">Set up a round</h1>
+      <h1 className="font-display text-[29px] font-medium tracking-[-0.022em]">
+        Set up an interview round
+      </h1>
       <p className="mt-1.5 max-w-[62ch] text-ink-2">
         Every question comes from your own library. Nothing is asked that you have not saved.
       </p>
@@ -274,32 +288,29 @@ export function Setup({
         className="relative mt-5 overflow-hidden rounded-[22px] px-[30px] pt-7 pb-[26px] text-[var(--mesh-ink)] [background:var(--mesh)] [box-shadow:var(--mesh-shadow)]"
       >
         <p className="font-mono text-[10px] tracking-[0.16em] text-[var(--mesh-key)] uppercase">
-          {ready
-            ? `${TYPE[type].name} · ${minutes} minutes · ${LEVEL_LABEL[level].name.toLowerCase()}`
-            : 'Nothing chosen yet'}
+          {TYPE[type].name} · {minutes} minutes · {LEVEL_LABEL[level].name.toLowerCase()}
         </p>
         <p className="mt-2 mb-[5px] font-display text-[28px] font-medium tracking-[-0.02em] text-white">
-          {ready
-            ? `${plural(questions!, 'concept')}, weighted toward weak`
-            : 'Pick a round, a length and an interviewer'}
+          {plural(questions, 'concept')}, weighted toward weak
         </p>
+        {/*
+          Read from your data, like the pool lines above it — "Nine of your
+          JavaScript topics read weak", not "the weak ones come first". A summary
+          that could be written before knowing which library it is about is not a
+          summary of anything.
+        */}
         <p className="max-w-[56ch] text-[13.5px] leading-[1.65] text-[var(--mesh-ink-2)]">
-          {ready
-            ? /*
-                Read from your data, like the pool lines above it — the drawing
-                says "Nine of your JavaScript topics read weak", not "the weak
-                ones come first". A summary that could be written before knowing
-                which library it is about is not a summary of anything.
-              */
-              `${pools[type].weak > 0 ? `${pools[type].weak} of your ${TYPE[type].name} topics read weak; the queue draws from those first. ` : 'Nothing here reads weak, so the queue draws in order. '}${plural(HINTS_PER_ROUND, 'hint')} available, each visible on the scorecard.`
-            : 'The summary fills in as you choose. Everything below is read from your own library, so it cannot be written until it knows which library to read.'}
+          {pools[type].weak > 0
+            ? `${pools[type].weak} of your ${TYPE[type].name} topics read weak; the queue draws from those first. `
+            : 'Nothing here reads weak, so the queue draws in order. '}
+          {plural(HINTS_PER_ROUND, 'hint')} available, each visible on the scorecard.
         </p>
 
         <div className="mt-5 flex flex-wrap items-center gap-[14px]">
+          {/* No `disabled`. A round cannot be unconfigured, so there is nothing to gate. */}
           <VoltButton
             flat
             size="lg"
-            disabled={!ready}
             loading={entering}
             loadingLabel="Opening the room…"
             onClick={enter}
@@ -311,19 +322,19 @@ export function Setup({
             data-testid="cost-estimate"
             className="ml-auto font-mono text-[11px] text-[var(--mesh-ink-3)]"
           >
-            {cost === null
-              ? 'the cost estimate needs a length'
-              : `≈ ${Math.round(cost.lowTokens / 1000)}k–${Math.round(cost.highTokens / 1000)}k tokens · ${money(cost.lowUsd)}–${money(cost.highUsd)} · resent each turn · capped at ${EXCHANGE_CAP} exchanges`}
+            ≈ {Math.round(cost.lowTokens / 1000)}k–{Math.round(cost.highTokens / 1000)}k tokens ·{' '}
+            {money(cost.lowUsd)}–{money(cost.highUsd)} · resent each turn · capped at {EXCHANGE_CAP}{' '}
+            exchanges
           </span>
         </div>
       </div>
 
       <p className={NOTE}>
-        <strong className="font-medium text-ink">Enter the room</strong> is disabled until round,
-        length and interviewer are all chosen — disabled rather than absent, because unlike a
-        feature that does not exist, this one is one click away and the button is what tells you
-        so. Each choice shows a check in its top-right corner the moment it is made, so three
-        ticks means ready.
+        <strong className="font-medium text-ink">All three groups arrive with a choice made</strong>{' '}
+        — the first option in each row, each showing its check on arrival. Three ticks before you
+        have touched anything, which is what tells you these are choices rather than fixed
+        settings. There is no disabled state: the gate existed to stop a round being started
+        unconfigured, and a default solves that better, because nothing can be unconfigured.
       </p>
 
       <div className="mt-5 max-w-[74ch] rounded-[14px] border border-[rgba(79,70,229,0.3)] border-l-[3px] border-l-[var(--volt)] bg-[linear-gradient(135deg,#F6F7FE,#FFFFFF)] px-[19px] py-[15px]">

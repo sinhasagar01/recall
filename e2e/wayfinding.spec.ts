@@ -353,6 +353,6 @@ test.describe('the More sheet is the same list on a phone', () => {
 
     await link.click()
     await expect(page).toHaveURL(/\/interview/)
-    await expect(page.getByRole('heading', { level: 1, name: 'Set up a round' })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1, name: 'Set up an interview round' })).toBeVisible()
   })
 })

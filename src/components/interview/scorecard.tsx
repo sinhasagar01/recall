@@ -185,6 +185,8 @@ export function Scorecard({
   const [offers, setOffers] = useState(() => offersFrom(scorecard))
   const [saving, setSaving] = useState(false)
   const [done, setDone] = useState<string | null>(null)
+  /** How many the press actually marked — 0 after "Change nothing". */
+  const [marked, setMarked] = useState(0)
   const [error, setError] = useState<string | null>(null)
 
   /*
@@ -217,6 +219,7 @@ export function Scorecard({
       setError(result.error)
       return
     }
+    setMarked(result.marked ?? 0)
     setDone(`${plural(result.marked ?? 0, 'topic')} marked weak.`)
   }
 
@@ -619,9 +622,37 @@ export function Scorecard({
                 </span>
               </>
             ) : (
-              <p data-testid="offer-done" className="font-mono text-[11.5px] text-ink-2">
-                {done}
-              </p>
+              <div className="flex flex-wrap items-center gap-3">
+                <p data-testid="offer-done" className="font-mono text-[11.5px] text-ink-2">
+                  {done}
+                </p>
+                {/*
+                  ── The one next action, and only once there is one ───────────
+                  A scorecard's exit is `← Library` above; this is the specific
+                  thing, and it appears exactly when the question arises.
+
+                  Not "another round": a round is twenty to forty-five minutes of
+                  continuous attention and nobody starts a second one on finishing
+                  the first — the same reason a round is never resumed. Not "back
+                  to setup" either, which is the page you came from rather than a
+                  next step.
+
+                  What a person does after a scorecard is act on what it found.
+                  It found weak topics, you pressed the button that marked them,
+                  and the app's answer to weak topics is the queue. So the action
+                  is here, in the state where something HAS been marked — press
+                  "Change nothing" and there is nothing to practise, and no link.
+                */}
+                {marked > 0 ? (
+                  <Link
+                    href="/practice"
+                    data-testid="practise-marked"
+                    className="inline-flex min-h-11 cursor-pointer items-center rounded-md border border-accent bg-accent px-3.5 py-2.5 text-label font-medium text-white hover:border-accent-ink hover:bg-accent-ink"
+                  >
+                    Practise what went weak
+                  </Link>
+                ) : null}
+              </div>
             )}
           </div>
         </>
