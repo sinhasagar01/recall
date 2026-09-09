@@ -25,10 +25,20 @@ test.describe('a library past the local-mode threshold', () => {
   })
 
   test('renders one page, not the whole library', async ({ page }) => {
-    await expect(page.getByRole('heading', { name: 'My knowledge' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Library' })).toBeVisible()
 
-    // The subtitle counts the whole library; the grid holds one page of it.
-    await expect(page.getByText(`${LOCAL_MODE_MAX + 1} topics`)).toBeVisible()
+    /*
+      The rule is unchanged and its home moved: a count describes the LIBRARY,
+      not the page you can see. It used to live in the subtitle, which restated
+      the All chip with a false noun — 501 rows are not 501 topics once quizzes
+      exist — so the subtitle dropped it and the chip keeps it.
+
+      Asserted on the chip now. A count that silently became the page size would
+      still fail here, which is the test of a relocated guard.
+    */
+    await expect(page.getByRole('group', { name: 'Type' })).toContainText(
+      `All ${LOCAL_MODE_MAX + 1}`,
+    )
     await expect(cards(page)).toHaveCount(SERVER_PAGE_SIZE)
   })
 
@@ -71,7 +81,8 @@ test.describe('a library past the local-mode threshold', () => {
 
     await option.click()
 
-    await expect(page.getByText(`${advertised} of ${LOCAL_MODE_MAX + 1} topics match`)).toBeVisible()
+    // No noun: the filtered set is a mix of topics and quizzes.
+    await expect(page.getByText(`${advertised} of ${LOCAL_MODE_MAX + 1} match`)).toBeVisible()
   })
 })
 

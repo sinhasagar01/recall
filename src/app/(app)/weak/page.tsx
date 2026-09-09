@@ -43,7 +43,14 @@ export default async function WeakPage() {
             ? 'Nothing saved yet'
             : total === 0
               ? 'Nothing below okay'
-              : `${total} ${total === 1 ? 'topic' : 'topics'} · ${neverPracticed} never practiced`}
+              : /*
+                  No noun. This page lists whatever needs review, and since arc 1
+                  that includes quizzes — so "11 topics" was the same falsehood the
+                  library header carried. The two counts stay: how many need
+                  review and how many have never been practised are different
+                  questions, which is the test the library's pair failed.
+                */
+                `${total} need review · ${neverPracticed} never practiced`}
         </p>
       </div>
 

@@ -14,7 +14,7 @@ export default function LibraryLoading() {
       <div className="mb-[22px] flex items-start justify-between gap-5">
         <div>
           <h1 className="font-display text-page-title font-medium tracking-[-0.022em]">
-            My knowledge
+            Library
           </h1>
           <p className="mt-1 font-mono text-[11.5px] text-ink-3">Loading your topics…</p>
         </div>

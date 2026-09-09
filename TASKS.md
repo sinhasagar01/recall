@@ -1607,6 +1607,7 @@ that mean different things"*.
 | A drawing whose data contradicts its own principle | Does the example obey the rule stated beside it |
 | **A drawing whose numbers are internally impossible** | **Do the figures reconcile with each other, not just with reality** |
 | **Copy asserting a judgement the design forbids that surface from making** | **Is this sentence one this screen is allowed to know** |
+| **Copy that was true when drawn and went false when a later arc changed what a word means** | **Does this word still mean what it meant when it was written** |
 
 ### The seventh, and why it is not the same as a wrong count
 
@@ -1720,6 +1721,56 @@ schema is live with a query, and only then push the code that depends on it.
 The tell that it has gone wrong is `git branch --show-current` reading `master` while there is
 work in progress. Worth checking before the first commit rather than before the push, since
 that is the point at which it is free to fix.
+
+### The tenth, and the first that was never wrong
+
+`design-reference.html:447` reads:
+
+> **My knowledge** — 48 topics · 11 need review · last practiced 2 days ago
+
+The build shipped that, and by this arc it said **63 topics** over chips reading
+**All 63 · Topics 39 · Quizzes 24**.
+
+**Nothing about the drawing was wrong when it was drawn.** In arc 1 every row in that table
+*was* a topic; "48 topics" was exact. Arc 2 added quizzes as a second shape in the same table,
+and the word went false — with nobody editing the drawing, the header, or anything else. The
+defect was authored by a migration in a different arc.
+
+**This is the first of the ten that is distinct in kind rather than in mechanism.** The other
+nine are all wrong at the moment of drawing: a colour on the wrong sort of claim, a figure that
+cannot be reached, an assertion about another tab, a sentence a surface is not allowed to know.
+Every one of them is findable by reading the file carefully enough, on the day it arrives. This
+one is not findable that way at all, because on the day it arrived it was correct.
+
+── What would catch it, and whether it is worth doing ──────────────────────────
+
+The precedence rule and every check in this document are **static comparisons**: the drawing
+against a shipped decision, or the drawing against itself. Nothing in the process re-reads a
+reference after an arc changes what its words mean. The process-shaped answer would be: *after
+an arc introduces a new kind of thing, re-read every reference that counts or names the old
+thing.*
+
+**That is not worth doing, and the evidence is this defect's own history.** It would require
+recognising at the time that quizzes change what "topic" means everywhere else — which is
+exactly the judgement that failed, so the trigger for the process depends on the insight the
+process exists to supply. And the cost lands in the wrong arc: the session adding quizzes is
+looking at quizzes, and asking it to re-read arc 1's library drawing is asking for attention
+where there is none.
+
+**`63 topics` survived from arc 1 through six arcs and a side-by-side.** Then it was found in
+seconds, by someone looking at the screen, because the chips three inches below said
+`Topics 39 · Quizzes 24`. That is the honest answer: **this class is caught by use, not by
+process.**
+
+The one control that does generalise is the one already recorded for figures, widened by a
+word:
+
+> **Read every number on the screen against every other number — and every noun against every
+> other noun.** `63 topics` over `Topics 39 · Quizzes 24` is a contradiction on one screen, and
+> needs no reference, no migration history and no memory of arc 1 to see.
+
+That check costs nothing, needs no artefact, and would have caught this at any point in six
+arcs. The process would have needed to fire in exactly one of them, chosen correctly in advance.
 
 ---
 

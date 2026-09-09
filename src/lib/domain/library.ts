@@ -162,6 +162,47 @@ export function libraryStatsFromCounts(counts: LibraryCounts): LibraryStats {
   }
 }
 
+/**
+ * The line under the library's heading.
+ *
+ * ── What it used to say, and why both halves were wrong ─────────────────────
+ * `63 topics · 47 need review · last practiced 2 days ago`.
+ *
+ * **The noun was false.** 63 is every row, and 39 of them are topics while 24
+ * are quizzes — the chips directly below said exactly that. The word was true
+ * when the drawing was made, in an arc where every row WAS a topic; quizzes
+ * arrived later and made it false without anyone editing it.
+ *
+ * **And the counts were duplicates.** `63` is the same variable the `All` chip
+ * renders. `47` is the same predicate the `Weak` chip and the rail render, held
+ * to it by a test in search-filter.test.ts. Neither said anything a control
+ * three inches away did not say better — with the right noun, and clickable.
+ *
+ * The sources page kept two counts because they meant different things: mined
+ * and finished are different questions. These are one question asked twice. So
+ * this keeps only what nothing else says — when you last practised — and the
+ * composition of the library lives on the chips, where clicking a number is
+ * possible.
+ */
+export function librarySubtitle(input: {
+  total: number
+  matching: number
+  isFiltered: boolean
+  lastPracticedAt: string | null
+  at: Date
+}): string {
+  if (input.total === 0) return 'Nothing saved yet'
+
+  /*
+    The filtered line stays, because `matching` is the one figure here that
+    appears nowhere else — no chip carries the size of the current result. The
+    noun goes: "39 of 63" is exact and needs no word for a mixed set.
+  */
+  if (input.isFiltered) return `${input.matching} of ${input.total} match`
+
+  return `Last practiced ${formatRelativeTime(input.lastPracticedAt, input.at)}`
+}
+
 export const DIFFICULTY_LABEL: Record<Difficulty, string> = {
   easy: 'Easy',
   medium: 'Medium',
