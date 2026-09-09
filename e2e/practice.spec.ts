@@ -173,6 +173,18 @@ test('Escape leaves a practice session, and the exit says so', async ({ page }) 
   // The control names its own shortcut.
   await expect(page.getByRole('link', { name: /End session/ })).toBeVisible()
 
+  /*
+    And it names its destination.
+
+    The href was always `/library` — this screen has no rail, so that control is
+    the only way out and it always went to the right place. What it did not do
+    was SAY so: a person scanning for the affordance every other screen has
+    reads "End session" and concludes there is no way to the library. So the
+    accessible name is the consequence here, not a proxy for one; the effect was
+    already correct and the name was the whole defect.
+  */
+  await expect(page.getByTestId('back-to-library')).toContainText(/library/i)
+
   await page.keyboard.press('Escape')
   await expect(page).toHaveURL(/\/library/)
 })

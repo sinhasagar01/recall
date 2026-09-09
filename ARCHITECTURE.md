@@ -3430,3 +3430,38 @@ them — a sweep of 132 entries asserting connections I would be inventing at sp
 document would acquire confident wrong claims. The three entries in the harness family have the
 line added, because that family is exactly what failed and the connections there are ones I
 actually traced today. Everything else earns it when it is next touched.
+
+### A perturbation against a prebuilt server tests the build, not the source
+
+`playwright.config.ts` starts the app with `npm run start`, which serves whatever `.next` holds.
+`npm run test:e2e` is `npm run build && playwright test`, so the suite is always honest. A
+perturbation run by hand as `npx playwright test <spec>` is not: the edit sits in source and the
+server keeps serving the last build.
+
+**Both directions are wrong, and the second is the dangerous one.**
+
+- **False `DID NOT BITE`** — perturb after a build that contains the fix. The server still serves
+  the fix, the test passes, and the guard is written off as redundant. This is what happened
+  here: the scorecard's three actions were swapped in source, the spec passed, and the assertion
+  looked vacuous. With `npm run build` first it fails on the exact line, naming the two hrefs
+  that moved.
+- **False `BIT`** — perturb before any build that contains the fix. The test fails because the
+  fix was never compiled, the harness reports the constraint as load-bearing, and **nothing was
+  tested at all.** A green report and a red report are equally uninformative when the artifact
+  under test is stale; only the red one is believed.
+
+> **An e2e perturbation's verify command must build.** `npm run test:e2e -- --grep …`, never
+> `npx playwright test`.
+
+`scripts/perturb.mjs` is not at fault — it runs the `verify` command it is given, and a caller
+passing `npm run test:e2e` has always been correct. The failure is running perturbations by hand,
+outside the tool, where the tool's own rules do not apply. That is [the transfer lesson](#a-rule-recorded-against-one-instrument-does-not-transfer-to-the-next-instrument-by-being-written-down)
+in its cheapest form: not a rule that failed to reach a second instrument, but a rule skipped by
+stepping outside the first one.
+
+**Where else this mechanism runs:** anywhere a test exercises a compiled or copied artifact
+rather than the source that was edited — the Playwright suite via `.next`, and `npm run
+gen:parity -- --check`, which compares a generated `.sql` file against the generator. Editing
+the generator without regenerating is the same stale-artifact shape, and that one is caught
+because `--check` compares and fails. The pgTAP suite reads `supabase/tests/*.sql` directly and
+Vitest reads `src/` directly, so neither can go stale this way.

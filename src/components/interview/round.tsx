@@ -13,6 +13,7 @@ import { Scorecard as ScorecardView } from '@/components/interview/scorecard'
 import { Button } from '@/components/ui/button'
 import { VoltButton } from '@/components/interview/volt-button'
 import { BackToLibrary } from '@/components/ui/back-to-library'
+import { NewInterview } from '@/components/interview/new-interview'
 import {
   HINTS_PER_ROUND,
   countRound,
@@ -298,11 +299,14 @@ export function Round({
           </p>
         ) : null}
 
+        {/*
+          The same two controls as the scorecard's foot, in the same order and
+          under the same names. There is no "practise what went weak" here
+          because an abandoned round produced no findings to act on.
+        */}
         <div className="mt-6 flex flex-wrap items-center gap-2.5">
+          <NewInterview />
           <BackToLibrary />
-          <Link href="/interview" className="text-meta text-accent-ink underline">
-            Set up another round
-          </Link>
         </div>
       </main>
     )

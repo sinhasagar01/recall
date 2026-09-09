@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { reask, scoreRewind } from '@/app/(interview)/interview/actions'
 import { Button } from '@/components/ui/button'
 import { BackToLibrary } from '@/components/ui/back-to-library'
+import { NewInterview } from '@/components/interview/new-interview'
 import {
   canRewind,
   DIMENSIONS,
@@ -622,37 +623,25 @@ export function Scorecard({
                 </span>
               </>
             ) : (
-              <div className="flex flex-wrap items-center gap-3">
-                <p data-testid="offer-done" className="font-mono text-[11.5px] text-ink-2">
-                  {done}
-                </p>
-                {/*
-                  ── The one next action, and only once there is one ───────────
-                  A scorecard's exit is `← Library` above; this is the specific
-                  thing, and it appears exactly when the question arises.
+              /*
+                Confirmation, and only confirmation.
 
-                  Not "another round": a round is twenty to forty-five minutes of
-                  continuous attention and nobody starts a second one on finishing
-                  the first — the same reason a round is never resumed. Not "back
-                  to setup" either, which is the page you came from rather than a
-                  next step.
+                "Practise what went weak" used to sit here, beside the sentence
+                saying what was marked, on the argument that the action belongs
+                where the question arises. It now sits with the other two exits
+                at the foot. The cost is real and worth naming: pressing Mark no
+                longer puts the next step under your cursor.
 
-                  What a person does after a scorecard is act on what it found.
-                  It found weak topics, you pressed the button that marked them,
-                  and the app's answer to weak topics is the queue. So the action
-                  is here, in the state where something HAS been marked — press
-                  "Change nothing" and there is nothing to practise, and no link.
-                */}
-                {marked > 0 ? (
-                  <Link
-                    href="/practice"
-                    data-testid="practise-marked"
-                    className="inline-flex min-h-11 cursor-pointer items-center rounded-md border border-accent bg-accent px-3.5 py-2.5 text-label font-medium text-white hover:border-accent-ink hover:bg-accent-ink"
-                  >
-                    Practise what went weak
-                  </Link>
-                ) : null}
-              </div>
+                What it buys is that the page has ONE place holding every way
+                out, ranked, instead of a next step two thirds of the way up and
+                the exits at the bottom. A scorecard is read downward — hero,
+                dimensions, question by question — and the person who marks weak
+                topics carries on reading rather than leaving mid-page. This
+                stays the acknowledgement that something was written.
+              */
+              <p data-testid="offer-done" className="font-mono text-[11.5px] text-ink-2">
+                {done}
+              </p>
             )}
           </div>
         </>
@@ -768,16 +757,42 @@ export function Scorecard({
       ) : null}
 
       {/*
-        The way back. The ROOM deliberately has none — it is a single focused
-        card with nothing to click away to, and `End the round` is its exit — but
-        a scorecard is a page you have finished reading, and finishing it left
-        you nowhere.
+        The way onward, in the order a person wants it.
+
+        The ROOM deliberately has no exits — it is a single focused card with
+        nothing to click away to, and `End the round` is its way out — but a
+        scorecard is a page you have finished reading, and finishing it left you
+        nowhere. Three things follow it, ranked:
+
+          1. **Practise what went weak**, primary and conditional. It is the
+             action the page's own findings argue for, and it exists only in the
+             state where something HAS been marked — press "Change nothing" and
+             there is nothing to practise, so there is no link.
+          2. **Start a new interview**, which overrules the reasoning that kept
+             it off this page. That argument — nobody starts a second round on
+             finishing the first — is true, and it is an argument against this
+             being the PRIMARY action, not against it being reachable. Setup is
+             three choices and a button; going there is not starting a round.
+             See `new-interview.tsx`, which holds the full note.
+          3. **← Library**, the general exit, last because it is the one you
+             take when neither of the others is what you came for.
+
+        The middle one was an underlined `Set up another round`, which is the
+        plain-link shape this arc has been removing everywhere else, under a
+        second name for one action.
       */}
-      <div className="mt-8 flex flex-wrap items-center gap-2.5">
+      <div data-testid="scorecard-actions" className="mt-8 flex flex-wrap items-center gap-2.5">
+        {marked > 0 ? (
+          <Link
+            href="/practice"
+            data-testid="practise-marked"
+            className="inline-flex min-h-11 cursor-pointer items-center rounded-md border border-accent bg-accent px-3.5 py-2.5 text-label font-medium text-white hover:border-accent-ink hover:bg-accent-ink"
+          >
+            Practise what went weak
+          </Link>
+        ) : null}
+        <NewInterview />
         <BackToLibrary />
-        <Link href="/interview" className="text-meta text-accent-ink underline">
-          Set up another round
-        </Link>
       </div>
 
       <p className="mt-8 border-t border-rule pt-4 text-meta leading-[1.7] text-ink-2">

@@ -254,6 +254,20 @@ test.describe('interview mode', () => {
     const practise = page.getByTestId('practise-marked')
     await expect(practise).toBeVisible()
     await expect(practise).toHaveAttribute('href', '/practice')
+
+    /*
+      All three exits in one row, ranked.
+
+      Asserted as an ORDERED list of hrefs rather than three visibility checks,
+      because order is the thing being built: act on what the round found, then
+      go again, then leave. Three `toBeVisible` calls would pass with the row
+      shuffled, which is the guard-too-broad shape recorded in ARCHITECTURE.md.
+    */
+    const hrefs = await page
+      .getByTestId('scorecard-actions')
+      .getByRole('link')
+      .evaluateAll((links) => links.map((link) => link.getAttribute('href')))
+    expect(hrefs).toEqual(['/practice', '/interview', '/library'])
   })
 
   test('and offers nothing after Change nothing, because nothing was marked', async ({ page }) => {

@@ -40,7 +40,7 @@ test('every destination is reachable on a phone', async ({ page }) => {
   await expect(page).toHaveURL(/\/practice/)
 
   // Practice has no tab bar by design, so leaving it uses the screen's own exit.
-  await page.getByRole('link', { name: 'End session' }).click()
+  await page.getByRole('link', { name: /End session/ }).click()
   await expect(page).toHaveURL(/\/library/)
 
   // Weak — a filter chip on Library, per DESIGN.md, not a destination.
