@@ -253,6 +253,51 @@ describe('nothing touches confidence until you press', () => {
   })
 })
 
+describe('a turn carries the topic it is about', () => {
+  /**
+   * The guard for issue #25, and the one that did not exist.
+   *
+   * `Turn.topicId` was typed from the first day of interview mode and passed
+   * `null` at all five construction sites for a whole session. Nothing failed:
+   * the type was satisfied, the field was commented as available, and its two
+   * consumers — the transcript serializer's `(topic …)` branch and the round's
+   * `topic_ids` — read a value that was always null.
+   *
+   * A typed field that is never populated is a lie the type tells, and the type
+   * system cannot catch it because `null` is a legal value. So it is asserted on
+   * the source: the runner may not construct a turn with a literal null topic.
+   */
+  it('is never constructed with a hard-coded null topic', () => {
+    const runner = readFileSync(join(SRC, 'components/interview/round.tsx'), 'utf8')
+
+    expect(
+      runner.includes('topicId: null'),
+      'a literal null topic is how this field stayed empty for a whole session',
+    ).toBe(false)
+  })
+
+  it('has somewhere for the topic to come from, so the check above is not vacuous', () => {
+    /*
+      Guard the guard. The assertion above passes for a runner that removed the
+      field entirely, or that never asks the model for an attribution at all.
+    */
+    const ai = readFileSync(join(SRC, 'lib/ai/interview.ts'), 'utf8')
+    const runner = readFileSync(join(SRC, 'components/interview/round.tsx'), 'utf8')
+
+    expect(ai, 'the turn call must ask for an attribution').toContain('topic_id')
+
+    /*
+      On `result.topicId`, not on the local variable's name. The first draft
+      asserted the variable and a perturbation renaming its declaration DID NOT
+      BITE — the usages still carried the string, so the assertion could not tell
+      a rename from a removal. What matters is not that a variable exists but
+      that the MODEL's attribution reaches the turn, which is exactly what was
+      missing for a whole session.
+    */
+    expect(runner, 'the model’s attribution must reach the turn').toContain('result.topicId')
+  })
+})
+
 describe('a round is written once and never again', () => {
   /**
    * The structural half of "rewind never changes the stored round".

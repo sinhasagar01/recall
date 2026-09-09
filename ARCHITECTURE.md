@@ -2275,7 +2275,7 @@ cannot express a rule about the longer one.** They are two rules — *who may ho
 *the key must never be public* — and they need two assertions, so that the failure says which
 one broke. Collapsing them into one check reads as thorough and is strictly weaker than either.
 
-This is one of **eight distinct ways a guard has passed for the wrong reason** in this project.
+This is one of **nine distinct ways a guard has passed for the wrong reason** in this project.
 They are worth holding together because they are not variations of one mistake — each has its
 own tell and its own defence:
 
@@ -2289,6 +2289,23 @@ own tell and its own defence:
 | **Unmeasurable** | arc 4 | a perturbation the harness could not install reported "0 failed", indistinguishable from a redundant clause |
 | **Coupled to location** | arc 2.1 | an assertion that sliced a literal out of a file kept passing after the value moved — see below |
 | **Asserts the location, not the consequence** | arc 7 | a guard proving the interview scale is not *named* outside its tree said nothing about what happens if it is — see below |
+| **Asserts a name, not the effect** | arc 7 | a guard-the-guard asserting the source contained `currentTopicId` could not tell a rename from a removal — the identifier appeared in several places and any one of them satisfied it |
+
+**The ninth is close to the eighth and is not the same.** *Asserts the location* is about
+**where** a thing is written; *asserts a name* is about **what it is called**. The tell is
+different too: a location-coupled assertion breaks when code moves, and a name-coupled one
+keeps passing when the code stops working, because a rename leaves the identifier scattered
+through the usages that still mention it.
+
+It was found the way the rest of the table was — by perturbing, and by a perturbation that
+**DID NOT BITE**. Renaming `const currentTopicId =` to `const unusedTopicId =` left every
+usage still spelling `currentTopicId`, so `toContain('currentTopicId')` was satisfied by the
+wreckage of the thing it was checking for.
+
+> **Assert that the value arrives, not that the identifier exists.** The rewritten clause
+> asserts `result.topicId` — that the model's attribution reaches the turn — which is the
+> effect the guard was always about. A name is an implementation detail the guard happens to
+> be able to see; the effect is the rule.
 
 The defences do not generalise, which is the point of the table. **Too broad** is caught by
 counting a token against prose before writing it. **Too narrow** by running the tests red

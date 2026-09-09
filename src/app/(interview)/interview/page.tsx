@@ -78,6 +78,7 @@ export default async function InterviewPage({ searchParams }: PageProps<'/interv
         minutes={length}
         level={who}
         opening={opening.text}
+        openingTopicId={opening.topicId}
         past={history.map((round) => round.overall)}
         poolSize={poolSize}
       />

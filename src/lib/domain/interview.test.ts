@@ -9,6 +9,7 @@ import {
   offersFrom,
   parseQuizDraft,
   parseRewindScore,
+  parseTurn,
   parseScorecard,
   questionCount,
   scoreBand,
@@ -161,6 +162,61 @@ describe('the offer step', () => {
     withNull.questions[0].topicId = null
 
     expect(offersFrom(withNull)).toEqual([])
+  })
+})
+
+describe('the interviewer names the topic it is asking about', () => {
+  const ID = '65df131a-2375-4fbc-bac6-4484b187654e'
+
+  it('reads the reply and its attribution', () => {
+    const result = parseTurn(JSON.stringify({ say: 'What does a closure capture?', topic_id: ID }))
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.reply.text).toBe('What does a closure capture?')
+    expect(result.reply.topicId).toBe(ID)
+  })
+
+  it('refuses an id that is not a uuid, and keeps the turn', () => {
+    /*
+      THE regression. The real model returns slugs — "arrow-function-this" — where
+      it was asked for the bracketed uuid. Those reached a `uuid[]` column and
+      every round save in production failed 22P02, silently, from the day
+      interview mode shipped.
+
+      Dropped rather than rejected: an exchange whose topic could not be
+      identified is still an exchange worth having.
+    */
+    const result = parseTurn(JSON.stringify({ say: 'Go on.', topic_id: 'arrow-function-this' }))
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.reply.text).toBe('Go on.')
+    expect(result.reply.topicId, 'a slug is not an id').toBeNull()
+  })
+
+  it('accepts a null topic, which is what a hint is', () => {
+    const result = parseTurn(JSON.stringify({ say: 'Think about the scope.', topic_id: null }))
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.reply.topicId).toBeNull()
+  })
+
+  it('refuses a reply that says nothing', () => {
+    const result = parseTurn(JSON.stringify({ say: '   ', topic_id: ID }))
+
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.reason).toContain('said nothing')
+  })
+
+  it('is a readable error when it cannot be read at all', () => {
+    const result = parseTurn('Sure! Here is my next question:')
+
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.reason).toContain('unreadable')
   })
 })
 

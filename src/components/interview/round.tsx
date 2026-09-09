@@ -48,6 +48,7 @@ export function Round({
   minutes,
   level,
   opening,
+  openingTopicId,
   past,
   poolSize,
 }: {
@@ -56,6 +57,8 @@ export function Round({
   level: Level
   /** The first question, asked on the server so the room opens with something in it. */
   opening: string
+  /** Which topic that first question is about. Null if the model named none. */
+  openingTopicId: string | null
   /** Read before the round, so the scorecard has them without a second load. */
   past: number[]
   poolSize: number
@@ -63,7 +66,7 @@ export function Round({
   const target = questionCount(minutes)
 
   const [turns, setTurns] = useState<Turn[]>([
-    { speaker: 'interviewer', text: opening, topicId: null, kind: 'question' },
+    { speaker: 'interviewer', text: opening, topicId: openingTopicId, kind: 'question' },
   ])
   const [answer, setAnswer] = useState('')
   const [busy, setBusy] = useState(false)
@@ -97,6 +100,14 @@ export function Round({
     return () => clearInterval(id)
   }, [])
 
+  /*
+    The topic under discussion: the most recent one the interviewer named. Your
+    turns inherit it, so an answer belongs to the question it answers rather than
+    to nothing. Before issue #25 every turn carried null and this could not exist.
+  */
+  const currentTopicId =
+    [...turns].reverse().find((turn) => turn.topicId !== null)?.topicId ?? null
+
   const counts = countRound(turns)
   const hintsLeft = HINTS_PER_ROUND - counts.hintsUsed
   const remaining = minutes * 60 - elapsed
@@ -122,7 +133,12 @@ export function Round({
       {
         speaker: 'interviewer',
         text: result.text,
-        topicId: null,
+        /*
+          The model names the topic when it is asking and null when it is
+          hinting or answering a clarification — so a reply that names none
+          falls back to the one already under discussion rather than blanking it.
+        */
+        topicId: result.topicId ?? currentTopicId,
         kind: intent === 'clarify' ? 'clarification-answer' : intent === 'hint' ? 'hint' : 'follow-up',
       },
     ])
@@ -274,7 +290,7 @@ export function Round({
           loadingLabel="Thinking…"
           disabled={answer.trim() === ''}
           onClick={() =>
-            say({ speaker: 'you', text: answer, topicId: null, kind: 'answer' }, 'follow')
+            say({ speaker: 'you', text: answer, topicId: currentTopicId, kind: 'answer' }, 'follow')
           }
         >
           Answer
@@ -288,7 +304,7 @@ export function Round({
         <Button
           disabled={busy || answer.trim() === ''}
           onClick={() =>
-            say({ speaker: 'you', text: answer, topicId: null, kind: 'clarification' }, 'clarify')
+            say({ speaker: 'you', text: answer, topicId: currentTopicId, kind: 'clarification' }, 'clarify')
           }
         >
           Ask a question
@@ -299,7 +315,7 @@ export function Round({
             variant="ghost"
             disabled={busy}
             onClick={() =>
-              say({ speaker: 'you', text: 'Can I have a hint?', topicId: null, kind: 'hint' }, 'hint')
+              say({ speaker: 'you', text: 'Can I have a hint?', topicId: currentTopicId, kind: 'hint' }, 'hint')
             }
           >
             Hint · {hintsLeft} left

@@ -79,7 +79,9 @@ async function materialFor(roundType: RoundType): Promise<{ text: string; ids: s
   }
 }
 
-export type SpeakResult = { ok: true; text: string } | { ok: false; reason: string }
+export type SpeakResult =
+  | { ok: true; text: string; topicId: string | null }
+  | { ok: false; reason: string }
 
 export async function speak(input: {
   roundType: RoundType
@@ -103,7 +105,14 @@ export async function speak(input: {
   const { text } = await materialFor(input.roundType)
   const outcome = await nextTurn({ ...input, material: text })
 
-  return outcome.ok ? { ok: true, text: outcome.text } : { ok: false, reason: outcome.reason }
+  /*
+    The attribution rides back with the reply so the room can tag the exchange —
+    which topic, and whether you grade it weak. Issue #25: the field existed for
+    a whole session and nothing filled it.
+  */
+  return outcome.ok
+    ? { ok: true, text: outcome.reply.text, topicId: outcome.reply.topicId }
+    : { ok: false, reason: outcome.reason }
 }
 
 export type FinishResult =
@@ -154,6 +163,11 @@ export async function finish(input: {
       ].filter((id): id is string => id !== null),
     ),
   ]
+  /*
+    Both halves now contribute. The turns half was silently always empty until
+    issue #25 — a perturbation that DID NOT BITE is the only reason anyone
+    noticed, and the scorecard half was added beside it as the workaround.
+  */
 
   /*
     The clock is advisory — the question count ended the round. Its teeth are

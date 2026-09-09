@@ -152,6 +152,23 @@ const asText = (value: unknown): string =>
   typeof value === 'string' && value.trim() !== '' ? value.trim() : ''
 
 /**
+ * A uuid, or null. **Not "any string".**
+ *
+ * The model is handed topics as `[uuid] Title` and asked to give the id back. It
+ * does not always: production returned `"arrow-function-this"` and
+ * `"js-serialization-structuredclone-vs-json"` — plausible, well-formed, and not
+ * uuids. Those reached a `uuid[]` column and every round save failed 22P02.
+ *
+ * The scores were bounded here from the first day and the ids were not, which is
+ * the asymmetry worth naming: a number that is obviously a number invites
+ * validation, and a string that is obviously a string does not.
+ */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+const asUuid = (value: unknown): string | null =>
+  typeof value === 'string' && UUID.test(value.trim()) ? value.trim().toLowerCase() : null
+
+/**
  * A malformed scorecard is a readable error, never a partial row.
  *
  * The same contract as `parseExtraction`: every number is validated into 0–100
@@ -205,6 +222,51 @@ export function parseScorecard(text: string, titles: Map<string, string>): Score
   )
 
   return { ok: true, scorecard: { scores, overall, summary: asText(raw.summary), notes, questions } }
+}
+
+/**
+ * What the interviewer says, and which topic it is about.
+ *
+ * ── Why the room's turn is a structured call now ────────────────────────────
+ * `Turn.topicId` was typed from the first day of interview mode and populated at
+ * none of its five construction sites — a field that reads as available, is
+ * commented as available, and is always null. Two consumers read it: the
+ * transcript serializer's `(topic …)` branch, which could never be taken, and the
+ * round's `topic_ids`, which was silently always empty.
+ *
+ * Session two-a routed around it by having `draftQuiz` return the attribution,
+ * which left one fewer feature needing it to stop being a lie. This populates it,
+ * because the room's tag row has to say WHICH topic you are being asked about and
+ * whether you grade it weak — and a tag row that reads from your library is the
+ * difference between an interviewer and a question bank.
+ */
+export interface TurnReply {
+  text: string
+  /** Null when the reply is a hint or an answer to a clarification. */
+  topicId: string | null
+}
+
+export type TurnReplyResult = { ok: true; reply: TurnReply } | { ok: false; reason: string }
+
+export function parseTurn(raw: string): TurnReplyResult {
+  let parsed: Record<string, unknown>
+  try {
+    parsed = JSON.parse(raw) as Record<string, unknown>
+  } catch {
+    return { ok: false, reason: 'The interviewer’s reply came back unreadable. Try again.' }
+  }
+
+  const text = asText(parsed.say)
+  if (text === '') {
+    return { ok: false, reason: 'The interviewer said nothing. Try again.' }
+  }
+
+  /*
+    An unrecognised id is dropped, not rejected. A turn whose topic could not be
+    identified is still a turn worth having — the tag row simply says less. The
+    round is not worth losing over an attribution.
+  */
+  return { ok: true, reply: { text, topicId: asUuid(parsed.topic_id) } }
 }
 
 /**

@@ -146,20 +146,35 @@ const interviewBody = (system, messages) => {
     }
   }
 
+  /*
+    The room's turn is a structured call since issue #25 — `say` plus the topic it
+    is about — so these answer with JSON. A hint and a clarification carry a null
+    topic, exactly as the prompt asks: the model names a topic when it is ASKING,
+    not when it is helping.
+
+    The id is a real seeded uuid, not a slug. That distinction is the whole of
+    what a stub can get wrong here — see ARCHITECTURE.md on a stub returning the
+    shape the parser wants rather than the shape the vendor returns.
+  */
   const last = messages.at(-1)?.content ?? ''
+  const turn = (say, topicId = null) => ({
+    content: JSON.stringify({ say, topic_id: topicId }),
+    finish_reason: 'stop',
+  })
+
   if (system.includes('They asked for a hint')) {
-    return { content: 'Think about what the scope is a reference to.', finish_reason: 'stop' }
+    return turn('Think about what the scope is a reference to.')
   }
   if (system.includes('They asked a clarifying question')) {
-    return { content: 'Same invocation. Good question.', finish_reason: 'stop' }
+    return turn('Same invocation. Good question.')
   }
   if (system.includes('Ask the next question')) {
-    return { content: 'Walk me through what a closure actually captures.', finish_reason: 'stop' }
+    return turn('Walk me through what a closure actually captures.', STUB_TOPIC_IDS[2] ?? null)
   }
-  return {
-    content: `So if two closures share one scope — what does the other see? (you said: ${last.slice(0, 30)})`,
-    finish_reason: 'stop',
-  }
+  return turn(
+    `So if two closures share one scope — what does the other see? (you said: ${last.slice(0, 30)})`,
+    STUB_TOPIC_IDS[2] ?? null,
+  )
 }
 
 /*
