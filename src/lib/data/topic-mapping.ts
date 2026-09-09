@@ -2,7 +2,7 @@ import type { Database } from '@/lib/database.types'
 import type { Confidence, Difficulty, Quiz, Topic, TopicRecord } from '@/lib/domain/types'
 
 /**
- * Three columns are omitted deliberately, for two different reasons.
+ * Four columns are omitted deliberately, for two different reasons.
  *
  * **`search_text`** is a generated column that exists only so the trigram index
  * has something to index — derived from columns the domain already has, never
@@ -30,13 +30,35 @@ import type { Confidence, Difficulty, Quiz, Topic, TopicRecord } from '@/lib/dom
  * reading them off the topic. Props, in exchange for two boundaries with no
  * exception in either.
  *
- * Omitting exactly these three is what keeps the assertion honest: every OTHER
+ * **`parent_topic_id`** is the `source_id` kind of omission, not the
+ * `search_text` kind — **load-bearing, not merely tidy.** Plenty will read it:
+ * a quiz saved from an interview follow-up points at the topic that follow-up
+ * came from, and the quiz's detail page says so. The practice path must not.
+ *
+ * The hazard is concrete rather than theoretical. A parent link is exactly what
+ * a future "practise the parent, then the quiz it produced" ordering would reach
+ * for, and that would make the queue order by **provenance** instead of by
+ * confidence — the one thing seven arcs have kept it from doing. Omitting it
+ * means the practice path has no way to name it.
+ *
+ * It also extends the rule rather than merely obeying it. The rule was written
+ * as *"when a new TABLE links to topics, its foreign key goes on the row and
+ * stays off the domain type"*, and this is the first **self**-link, pointing at
+ * no new entity at all. The protection was never about what the key points at;
+ * it is about what the queue can name. So: **any foreign key on `topics` stays
+ * off the domain type, whatever its target.**
+ *
+ * The cost is the one the other two already pay, and it is paid the same way:
+ * the quiz's detail page reads its parent with its own query rather than off the
+ * topic. One more prop, in exchange for a boundary with no exception in it.
+ *
+ * Omitting exactly these four is what keeps the assertion honest: every OTHER
  * column difference still fails the build — as `capability_id` itself did, the
  * moment the migration landed and before this line was written.
  */
 export type TopicRow = Omit<
   Database['public']['Tables']['topics']['Row'],
-  'search_text' | 'source_id' | 'capability_id'
+  'search_text' | 'source_id' | 'capability_id' | 'parent_topic_id'
 >
 
 /*

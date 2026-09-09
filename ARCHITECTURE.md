@@ -2728,3 +2728,143 @@ least one route, naming the group when it does not.
 > **A count cannot detect an omission, because what is omitted is not in the count.** A
 > guard-the-guard written as a threshold is measuring the wrong thing whenever the risk is a
 > whole category going unwalked.
+
+### The coupled-to-location slice came due, and it now dictates where functions may be written
+
+`A guard that slices a literal out of a file is coupled to where the value lives` predicted a
+cost. Arc 7's second session is where it arrived, in a form worth naming: **the weakness stopped
+being a risk to the guard and became a constraint on unrelated work.**
+
+`interview-boundary.test.ts` proves the scoring prompt cannot see the interviewer level. Its
+last clause reads:
+
+```ts
+const scoreStart = ai.indexOf('export async function scoreRound')
+const scoreBody = ai.slice(scoreStart)
+expect(scoreBody, 'scoreRound must not take or pass a level').not.toContain('level')
+```
+
+`slice(scoreStart)` runs to **end of file**. So the assertion is not about `scoreRound` — it is
+about `scoreRound` *and everything anyone writes below it, forever*. Session two-a adds
+`draftQuiz` and `reaskOne` to that file. Either one mentioning a level — plausibly, since the
+room's difficulty is a level — fails a test about a rule they have nothing to do with, with a
+message naming `scoreRound`.
+
+**Respected rather than widened.** Both new functions are placed **above** `scoreRound`, and a
+comment at the boundary says why, so the next person does not discover it by going red. Nothing
+was added to the slice and nothing was excepted from it.
+
+**And the comment could not name the anchor.** The first draft of that warning quoted the
+declaration verbatim so the next reader would recognise it. `indexOf` takes the FIRST match, so
+the slice moved to the comment — which, being about levels, contains the word "level" — and the
+test failed reporting *"scoreRound must not take or pass a level"* while pointing at a block of
+prose. **A location-coupled anchor is matched by prose as readily as by code, so documenting the
+coupling can create it.** The warning had to be reworded to describe the anchor without spelling
+it, which is a strange sentence to have to write and the sharpest available argument for closing
+the slice.
+
+**What it would take to fix**, recorded so the choice is available rather than rediscovered:
+close the slice at the function's end instead of the file's — find the next `\nexport ` after
+`scoreStart` and slice to it, then assert **both** anchors resolve, which is the fix the
+original entry already prescribes for the opening anchor and which this clause only half
+applies. It was not done here because changing a guard's shape inside the arc it is guarding is
+how a guard quietly stops guarding; it belongs in its own change, red first.
+
+**The general shape, which is the reason this is its own entry.** A location-coupled assertion
+does not merely risk failing for the wrong reason. **It silently claims territory.** An
+unbounded slice converts every future line in the file into part of the assertion, so the cost
+is paid by people who never read the test — as a rule about where code may be written that
+nothing states and only a red run explains.
+
+### A dispatcher of substring checks is an allowlist nobody declared
+
+`e2e/openai-stub.mjs` routes a request to one of two response builders by looking at the system
+prompt:
+
+```js
+system.includes('interview transcript') || system.includes('ONE thing at a time')
+  ? interviewBody(...)
+  : body(...)          // ← the extraction branch, and the DEFAULT
+```
+
+Session two-a added three calls — a quiz draft, a re-ask, a single-answer score. None matched
+either substring, so all three took the `else`, and the else is not an error. It is the
+extraction scenario, which answered every one of them with a **well-formed list of concepts**.
+
+The first failure read:
+
+```
+✘ drafts it, shows it, saves it
+  Error: expect(getByTestId('quiz-draft')).toBeVisible() — element(s) not found
+```
+
+and the server had reported *"the draft had no question"*. **Both name the parser.** Nothing
+named the router, because the router did exactly what it was written to do. The parse was
+correct, the draft call was correct, and the wiring between them silently sent one to the wrong
+place.
+
+**A wrong answer in the right shape is harder to diagnose than an error**, and this is the same
+family as the entries above about instruments that produce the shape of good news: a grep that
+finds nothing, a query returning zero rows, a probe against the wrong host answering 404s that
+read as denial. In every case the failure arrives somewhere downstream of the thing that is
+actually wrong, wearing the costume of a different problem.
+
+What makes this one worth its own entry is the mechanism. **Two substring checks in a ternary
+are an allowlist**, with all the properties of one — a closed set of accepted inputs, everything
+else handled by a rule nobody stated — except that nobody wrote the word `allowlist`, nobody
+counted the tokens, and there is no line to add an entry to. It looks like a condition. It reads
+as a condition. It behaves like an undeclared list with a silent default.
+
+The fix is the same one the guard tests already use: a named list, each entry the shortest
+phrase unique to one caller, with that caller named beside it, so extending it is deliberate.
+
+> **A dispatcher must fail on an unmatched input rather than falling through to a default
+> branch.** A default is only safe where "none of the above" is a real case with a real
+> handling; where every input is supposed to match something, the fallthrough is a bug that
+> reports itself somewhere else.
+
+The stub keeps its default, because `body()` genuinely is the extraction scenario and extraction
+requests genuinely do not carry a marker. What changed is that interview calls are now an
+explicit, commented list rather than two conditions someone would have to notice.
+
+### The slice charged again, and this time it made documentation a code change
+
+The entry above records the level-invariance slice dictating where new functions may be written.
+It has now cost something a second time, in a form worth separating, because the two are
+different failures with different fixes.
+
+`interview-boundary.test.ts` locates its subject with a plain `indexOf` for a declaration and
+slices to end of file. Session two-a added a comment above that declaration warning the next
+reader about exactly this — and quoted the declaration verbatim so it would be recognisable.
+`indexOf` returns the **first** match. The slice moved to the comment. The comment, being about
+interviewer levels, contains the word "level". The suite reported:
+
+```
+AssertionError: scoreRound must not take or pass a level
+  expected 'export async function scoreRound` to …' not to contain 'level'
+```
+
+— a rule about prompt construction, failing on a block of prose, naming a function the slice was
+no longer pointing at. The warning had to be reworded to describe the anchor **without spelling
+it**, which is a strange thing to have to do and the plainest evidence available that the
+assertion is in the wrong shape.
+
+**Two distinct costs, from one weakness:**
+
+| | |
+| --- | --- |
+| Session two-a, first | dictates **where** new functions may be placed in a file |
+| Session two-a, second | makes **writing prose above a function** a code change |
+
+The first is a constraint people can be told about. The second is worse, because the natural way
+to tell them triggers it.
+
+**What closing it takes**, unchanged from the earlier entry and now with two demands behind it:
+anchor on the declaration, find the next `\nexport ` after that offset, slice between them, and
+assert **both** anchors resolve — the fix this file already prescribes for opening anchors and
+which this clause only half applies. Guard the guard by checking the slice is shorter than the
+file, or the fix can silently degrade back to what it replaced.
+
+It was not done inside the arc it was guarding, because changing a guard's shape while relying on
+it is how a guard quietly stops guarding. It is the first thing to do in a change of its own,
+red first.

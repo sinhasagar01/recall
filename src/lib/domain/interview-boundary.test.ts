@@ -253,6 +253,78 @@ describe('nothing touches confidence until you press', () => {
   })
 })
 
+describe('a round is written once and never again', () => {
+  /**
+   * The structural half of "rewind never changes the stored round".
+   *
+   * Session two-a lets you re-ask a question after the scorecard is on screen.
+   * The rule is that the stored round cannot move — and the cheapest way to keep
+   * a rule like that is for there to be no code capable of breaking it.
+   *
+   * ── Token, counted against the tree before being written ────────────────────
+   * `rewind` was **0 hits in src/** before this session, which makes it usable.
+   * `quiz` was **331**, which makes it worthless — the arc 5 `days` lesson
+   * exactly, so nothing here is asserted on that word. What is asserted on is
+   * `interview_rounds`, which was 0 outside the one data module and still is.
+   */
+  const ROUNDS_TABLE = "from('interview_rounds')"
+
+  it('is inserted in exactly one module, and updated in none', () => {
+    const writers = sourceFiles(SRC)
+      .filter((file) => readFileSync(file, 'utf8').includes(ROUNDS_TABLE))
+      .map(relative)
+
+    expect(writers, 'only the data module may reach the rounds table').toEqual([
+      'lib/data/interview.ts',
+    ])
+
+    const data = readFileSync(join(SRC, 'lib/data/interview.ts'), 'utf8')
+
+    /*
+      Sliced to the round-writing function so this cannot pass because some OTHER
+      part of the file has no update — `markTopicsWeak` lives here too and does
+      call `.update(`, on `topics`, which is a different table and a different
+      rule.
+    */
+    const start = data.indexOf('export async function saveRound')
+    const end = data.indexOf('\nexport ', start)
+
+    expect(start, 'the saveRound anchor must still resolve').toBeGreaterThan(-1)
+    expect(end, 'and so must its closing anchor').toBeGreaterThan(start)
+
+    const body = data.slice(start, end)
+
+    expect(body, 'a round is one insert').toContain('.insert(')
+    expect(body, 'and nothing updates it — a rewind must not be able to move a stored score').not.toContain(
+      '.update(',
+    )
+  })
+
+  it('has no rewind anywhere near a write', () => {
+    /*
+      The other direction, and the one that would catch a rewind quietly gaining
+      a write of its own somewhere new. `rewind` is distinctive enough that a
+      match MEANS the rewind path — see the token count above.
+    */
+    const offenders = sourceFiles(SRC)
+      .filter((file) => {
+        const source = readFileSync(file, 'utf8')
+        if (!/rewind/i.test(source)) return false
+        return (
+          source.includes('@/lib/supabase') ||
+          source.includes("from '@supabase/supabase-js'") ||
+          source.includes(ROUNDS_TABLE)
+        )
+      })
+      .map(relative)
+
+    expect(
+      offenders,
+      'nothing that knows what a rewind is may also hold a client or name the rounds table',
+    ).toEqual([])
+  })
+})
+
 describe('interviewer level is a prompt, never a multiplier', () => {
   it('cannot vary the scoring prompt, because the scoring prompt takes no level', () => {
     /*

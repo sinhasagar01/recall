@@ -1606,6 +1606,7 @@ that mean different things"*.
 | A drawing showing two states at once | Can both of these be on screen at the same moment |
 | A drawing whose data contradicts its own principle | Does the example obey the rule stated beside it |
 | **A drawing whose numbers are internally impossible** | **Do the figures reconcile with each other, not just with reality** |
+| **Copy asserting a judgement the design forbids that surface from making** | **Is this sentence one this screen is allowed to know** |
 
 ### The seventh, and why it is not the same as a wrong count
 
@@ -1627,6 +1628,39 @@ fixture that would then have encoded it.
 **The check: for any screen carrying more than one figure over the same events, reconcile them
 against each other before reading anything else.** Totals against their parts, and parts
 against their own ceilings.
+
+### The eighth, and why it is not a contradiction
+
+`interview-reference.html`'s room draws a bar reading:
+
+> **You did not get this one.** Keep the follow-up as a quiz?
+
+The room cannot know that. Its own rules, in the same file, are explicit:
+
+> Never grade, never score, never say how they are doing. **That happens once, at the end,
+> elsewhere.**
+
+Scoring happens in one call, after the round. Nothing mid-round evaluates an answer, so the
+sentence claims a judgement the design has deliberately made the room incapable of forming.
+
+**Why this is not the fourth shape wearing a new hat.** A self-contradiction is caught by
+reading two tabs against each other and finding them disagreeing about a *fact* — the coverage
+tab's *Add anyway* against the rules tab's *nothing else is stored*. Nothing here disagrees.
+The drawing is internally consistent, the copy is plausible, the layout is right, and every
+number reconciles. The sentence is only wrong once you know a **rule** stated elsewhere in the
+file and ask whether this surface is permitted to know what it is saying.
+
+That is a different reading pass. The earlier shapes are caught by checking the drawing against
+itself or against the world. This one is caught by checking the drawing against the **design's
+own grants of authority** — which surface is allowed to know which thing.
+
+**The check: for any sentence a screen asserts about the user, ask which component would have to
+compute it, and whether the design permits that component to.** A screen forbidden from judging
+cannot open with a judgement.
+
+Corrected to *"Keep this follow-up as a quiz?"*, offered on any follow-up rather than on a
+failure the room is not allowed to detect. The correction is written back into the reference,
+as session one's *"never resumed"* correction was.
 
 ---
 

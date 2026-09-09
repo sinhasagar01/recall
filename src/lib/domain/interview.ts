@@ -223,17 +223,179 @@ export interface Offer {
   note: string
   /** Ticked by default below the threshold; still a checkbox either way. */
   ticked: boolean
+  /** Whether this question was re-asked after the round. Never changes `ticked`. */
+  rewound: boolean
 }
 
-export function offersFrom(scorecard: Scorecard): Offer[] {
+/**
+ * The offers, and what a rewind does to them: **nothing automatic.**
+ *
+ * `ticked` still comes from the ORIGINAL score, because that is what the round
+ * found and the round is the artefact. A rewind is information you were given
+ * after the fact, so it appears on the row and you decide — which is the same
+ * rule as everywhere else here: the scorecard offers and you confirm.
+ *
+ * ── The key is the question's index, not the offer's ────────────────────────
+ * Offers are a FILTERED view of questions — those with a topic id — so the two
+ * lists have different lengths and different positions. Keying a rewind by its
+ * position in the offers would silently annotate the wrong row as soon as any
+ * question came back without a topic id. The index is captured before the
+ * filter, deliberately.
+ */
+export function offersFrom(
+  scorecard: Scorecard,
+  rewound: ReadonlySet<number> = new Set(),
+): Offer[] {
   return scorecard.questions
-    .filter((question): question is QuestionResult & { topicId: string } => question.topicId !== null)
-    .map((question) => ({
+    .map((question, index) => ({ question, index }))
+    .filter(
+      (entry): entry is { question: QuestionResult & { topicId: string }; index: number } =>
+        entry.question.topicId !== null,
+    )
+    .map(({ question, index }) => ({
       topicId: question.topicId,
       title: question.title,
       note: question.note,
       ticked: question.score < OFFER_BELOW,
+      rewound: rewound.has(index),
     }))
+}
+
+/**
+ * Whether a question may be re-asked.
+ *
+ * Below the offer threshold, and not already re-asked. `OFFER_BELOW` is reused
+ * rather than a second threshold invented: the reference draws Rewind on the 41
+ * and the 33 and not on the 64, which is exactly this line.
+ *
+ * **Once per question is the weakest of the three things that stop a retry.** The
+ * stored score cannot move — asserted byte-identical — and a round is never
+ * resumed, so the scorecard does not exist tomorrow. This one only stops the room
+ * becoming a grinder inside the session it lives in.
+ */
+export function canRewind(score: number, alreadyRewound: boolean): boolean {
+  return score < OFFER_BELOW && !alreadyRewound
+}
+
+/**
+ * A re-asked question's own small result. **Never stored.**
+ *
+ * It lives in the scorecard's state for as long as the page does and is written
+ * nowhere — the same rule as the conversation. The round row is inserted once, at
+ * the end, and is never written again; `interview-boundary.test.ts` asserts there
+ * is no update to it anywhere in the tree.
+ *
+ * The cost, stated: tomorrow's sparkline cannot tell you that you went back.
+ */
+export interface RewindResult {
+  /** Index into `Scorecard.questions` — the list is immutable for this page's life. */
+  questionIndex: number
+  question: string
+  answer: string
+  score: number
+  /** Model prose. Rendered once, never stored. */
+  note: string
+}
+
+export type RewindScoreResult =
+  | { ok: true; score: number; note: string }
+  | { ok: false; reason: string }
+
+/** One number and one line, for one answer. The same contract as the scorecard. */
+export function parseRewindScore(text: string): RewindScoreResult {
+  let raw: Record<string, unknown>
+  try {
+    raw = JSON.parse(text) as Record<string, unknown>
+  } catch {
+    return { ok: false, reason: 'The rewind came back unreadable. Your round is unchanged.' }
+  }
+
+  const score = asScore(raw.score)
+  if (score === null) {
+    return { ok: false, reason: 'The rewind had no score from 0 to 100. Your round is unchanged.' }
+  }
+
+  return { ok: true, score, note: asText(raw.note) }
+}
+
+/**
+ * A drafted quiz, before you have looked at it.
+ *
+ * ── This parse enforces the database's own shape rule ───────────────────────
+ * `topics_shape_is_consistent` requires a quiz to have two or more options and a
+ * `correct_option` inside them. Checking it here means a malformed draft is a
+ * readable sentence on the screen you are standing on, rather than a constraint
+ * violation from an insert — the same reason `parseScorecard` bounds 0-100 rather
+ * than letting the CHECK do it. Two gates, and this is the first.
+ *
+ * Note what is NOT checked: that the distractors are wrong and the answer right.
+ * No parse can know that, which is exactly why the draft is shown to you before
+ * it is saved.
+ */
+export interface QuizDraft {
+  question: string
+  options: string[]
+  correctOption: number
+  /** Becomes the quiz's `mental_model` — one field, one register, as arc 6 set. */
+  explanation: string
+  /** Which saved topic the follow-up was about, so the quiz can point at it. */
+  topicId: string | null
+}
+
+export type QuizDraftResult = { ok: true; draft: QuizDraft } | { ok: false; reason: string }
+
+/** A quiz needs at least this many options, and the database agrees. */
+export const MIN_OPTIONS = 2
+
+export function parseQuizDraft(text: string): QuizDraftResult {
+  let raw: Record<string, unknown>
+  try {
+    raw = JSON.parse(text) as Record<string, unknown>
+  } catch {
+    return { ok: false, reason: 'The draft came back unreadable. Nothing was saved.' }
+  }
+
+  const question = asText(raw.question)
+  if (question === '') {
+    return { ok: false, reason: 'The draft had no question. Nothing was saved.' }
+  }
+
+  const options = (Array.isArray(raw.options) ? raw.options : [])
+    .map((option) => asText(option))
+    .filter((option) => option !== '')
+
+  if (options.length < MIN_OPTIONS) {
+    return {
+      ok: false,
+      reason: `A quiz needs at least ${MIN_OPTIONS} options and the draft had ${options.length}. Nothing was saved.`,
+    }
+  }
+
+  /*
+    Bounded against the options that SURVIVED the filter above, not against the
+    raw array. A draft with a blank option and `correct_option: 3` would
+    otherwise pass here and be refused by the CHECK, which is the failure this
+    function exists to move earlier.
+  */
+  const correctOption =
+    typeof raw.correct_option === 'number' && Number.isInteger(raw.correct_option)
+      ? raw.correct_option
+      : null
+
+  if (correctOption === null || correctOption < 0 || correctOption > options.length - 1) {
+    return { ok: false, reason: 'The draft did not say which option was correct. Nothing was saved.' }
+  }
+
+  return {
+    ok: true,
+    draft: {
+      question,
+      options,
+      correctOption,
+      explanation: asText(raw.explanation),
+      topicId: typeof raw.topic_id === 'string' && raw.topic_id !== '' ? raw.topic_id : null,
+    },
+  }
 }
 
 /** The band label beside the ring. Words, so the number is not the only signal. */

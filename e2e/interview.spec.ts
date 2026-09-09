@@ -194,3 +194,153 @@ test.describe('interview mode', () => {
     expect(response?.status()).toBeLessThan(400)
   })
 })
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Session two-a: a follow-up becomes a quiz, and one question can be re-asked.
+   ──────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * The stored round, read straight from the database.
+ *
+ * Not a mock and not a substitute for the app: the claim under test is *"the row
+ * does not change"*, and no screen exposes a stored round — the scorecard renders
+ * from the value `finish` returned, and a past round is only ever seen as a bar
+ * in a sparkline. A claim about a row has to be checked against the row.
+ *
+ * `fixture-invariants.ts` already reads the database this way for the same
+ * reason. The rule that stands is the other one: **the app under test never gets
+ * a mocked Supabase.** This reads what the real app really wrote.
+ */
+async function readRound(id: string) {
+  const { createClient } = await import('@supabase/supabase-js')
+  const admin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SECRET_KEY!,
+    { auth: { persistSession: false } },
+  )
+  const { data, error } = await admin.from('interview_rounds').select('*').eq('id', id).single()
+  if (error) throw new Error(`reading the round back: ${error.message}`)
+  return data as Record<string, unknown>
+}
+
+test.describe('a follow-up you could not answer becomes a quiz', () => {
+  test.describe.configure({ mode: 'serial' })
+  test.setTimeout(90_000)
+
+  test('drafts it, shows it, saves it — and it is an ordinary quiz afterwards', async ({ page }) => {
+    await signInAs(page, 'extract')
+    await page.goto('/interview?type=javascript&minutes=20&level=staff')
+
+    await page.getByLabel('Your answer').fill('It keeps a live reference to the scope.')
+    await page.getByRole('button', { name: 'Answer' }).click()
+    await expect(page.getByTestId('turn-follow-up')).toBeVisible({ timeout: 30_000 })
+
+    /*
+      The bar does NOT say "You did not get this one".
+
+      The room's own rules forbid it from grading, scoring or saying how you are
+      doing — scoring happens once, at the end, elsewhere — so it cannot know.
+      The reference said it anyway; recorded in TASKS.md as the eighth way a
+      reference can be wrong, and corrected there.
+    */
+    const bar = page.getByTestId('save-quiz')
+    await expect(bar).toBeVisible()
+    await expect(bar, 'the room cannot know you got it wrong').not.toContainText('did not get')
+
+    /*
+      Two presses, not one. The reference asked for one tap; the distractors are
+      model-written and you have not seen them, and a thing you have not looked
+      at is not a thing you chose.
+    */
+    await page.getByTestId('draft-quiz').click()
+    const draft = page.getByTestId('quiz-draft')
+    await expect(draft).toBeVisible({ timeout: 30_000 })
+    await expect(page.getByTestId('draft-option')).toHaveCount(4)
+    await expect(page.locator('[data-testid="draft-option"][data-correct="true"]')).toHaveCount(1)
+
+    await page.getByTestId('keep-quiz').click()
+    await expect(page.getByTestId('saved-count')).toContainText('1 quiz', { timeout: 30_000 })
+
+    /* ── It is an ordinary quiz now, by every measure that matters ────────── */
+    const title = 'What does the other closure see'
+
+    await page.goto(`/library?q=${encodeURIComponent(title)}`)
+    const card = page.locator('a[href^="/topic/"]').filter({ hasText: title }).first()
+    await expect(card, 'a quiz saved in a round is in the library').toBeVisible()
+
+    await card.click()
+    await expect(page).toHaveURL(/\/topic\//)
+
+    /*
+      The link, which is the whole point of `parent_topic_id`. Inheriting the
+      category would have put it on the same shelf; only a referent answers
+      "where did this come from".
+    */
+    await expect(page.getByTestId('from-topic')).toContainText('Microtasks drain first')
+
+    /*
+      And it is in the practice queue — which it is by being an ordinary row at
+      confidence `new`, from the column default, exactly as a hand-made quiz is.
+      Nothing about interviews had to be taught to the queue.
+    */
+    await page.goto('/weak')
+    await expect(page.getByText(title, { exact: false }).first()).toBeVisible()
+  })
+})
+
+test.describe('rewind re-asks one question and never changes the score', () => {
+  test.describe.configure({ mode: 'serial' })
+  test.setTimeout(120_000)
+
+  test('produces its own result, and the stored round is byte-identical', async ({ page }) => {
+    await signInAs(page, 'extract')
+    await page.goto('/interview?type=javascript&minutes=20&level=staff')
+
+    await page.getByLabel('Your answer').fill('A live reference to the defining scope.')
+    await page.getByRole('button', { name: 'Answer' }).click()
+    await expect(page.getByTestId('turn-follow-up')).toBeVisible({ timeout: 30_000 })
+    await page.getByTestId('end-round').click()
+    await expect(page.getByTestId('scorecard')).toBeVisible({ timeout: 30_000 })
+
+    /*
+      This round's id, off the page — NOT the newest row in the table. Two other
+      specs in this file also finish rounds and the describes do not share a
+      serial group, so "newest" would be a channel through which another test's
+      round becomes this one's subject. An assertion must be able to fail for its
+      own reason alone.
+    */
+    const roundId = await page.getByTestId('scorecard').getAttribute('data-round-id')
+    expect(roundId, 'the scorecard must name the row it was written from').toBeTruthy()
+    const before = await readRound(roundId!)
+
+    /*
+      Offered below OFFER_BELOW and not above: the stub scores one question 41
+      and the other 88, which is the reference drawing Rewind on the 41 and the
+      33 and not on the 64.
+    */
+    await expect(page.getByTestId('rewind'), 'only the thin one may be re-asked').toHaveCount(1)
+
+    await page.getByTestId('rewind').click()
+    await expect(page.getByTestId('rewind-room')).toBeVisible({ timeout: 30_000 })
+    await page.getByTestId('rewind-room').getByLabel('Your answer').fill('They share one binding, so the other sees the change.')
+    await page.getByTestId('rewind-answer').click()
+
+    const again = page.getByTestId('rewind-result')
+    await expect(again).toBeVisible({ timeout: 30_000 })
+    await expect(again, 'its own small result, and it says it does not count').toContainText('not counted')
+    await expect(again).toContainText('71')
+
+    // The ring is untouched on screen…
+    await expect(page.getByTestId('round-score')).toContainText('74')
+    // …and it may be re-asked only once.
+    await expect(page.getByTestId('rewind')).toHaveCount(0)
+
+    /*
+      ── THE assertion ────────────────────────────────────────────────────────
+      The whole row, not just the five scores. A rewind must not move the stored
+      round in any respect, and asserting every column costs nothing more than
+      asserting five. Seen failing by putting an update on the rewind path.
+    */
+    expect(await readRound(roundId!), 'a rewind must not change the stored round').toEqual(before)
+  })
+})

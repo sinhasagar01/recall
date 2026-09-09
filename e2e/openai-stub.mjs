@@ -22,6 +22,9 @@
  *   contains "NOTHING-RUN"  → a valid, empty list
  *   contains "BROKEN-RUN"   → finish_reason "stop", unparseable body
  *   otherwise               → three concepts, one of which duplicates a seeded topic
+ *
+ * Interview mode's calls are told apart by the SYSTEM prompt instead, because
+ * that is what actually differs between them — see `interviewBody`.
  */
 import { createServer } from 'node:http'
 import { readFileSync } from 'node:fs'
@@ -107,6 +110,42 @@ const interviewBody = (system, messages) => {
     }
   }
 
+  /*
+    Session two-a. Three more shapes through the same endpoint, told apart by the
+    system prompt for the same reason as above.
+
+    The draft returns a topic_id the SEED wrote, so the spec can assert the saved
+    quiz points at a real row rather than at whatever the model felt like. Index 2
+    is `Microtasks drain first` — the one the scorecard also scores 41, which is
+    what makes it the question you would want to keep.
+  */
+  if (system.includes('could not answer the follow-up')) {
+    return {
+      content: JSON.stringify({
+        question: 'What does the other closure see when one changes a captured variable?',
+        options: [
+          'The new value — they share one scope',
+          'A copy taken when the closure was created',
+          'Undefined, until the outer function returns',
+          'Whatever it saw first, frozen',
+        ],
+        correct_option: 0,
+        explanation: 'Both closures hold a reference to one binding, so a change through either is visible to the other.',
+        topic_id: STUB_TOPIC_IDS[2] ?? null,
+      }),
+      finish_reason: 'stop',
+    }
+  }
+  if (system.includes('Ask one question on this topic')) {
+    return { content: 'Two closures, one scope: which sees a change made through the other?', finish_reason: 'stop' }
+  }
+  if (system.includes('Score this single answer')) {
+    return {
+      content: JSON.stringify({ score: 71, note: 'Got the shared-scope consequence this time.' }),
+      finish_reason: 'stop',
+    }
+  }
+
   const last = messages.at(-1)?.content ?? ''
   if (system.includes('They asked for a hint')) {
     return { content: 'Think about what the scope is a reference to.', finish_reason: 'stop' }
@@ -138,6 +177,29 @@ const topicIds = () => {
     return []
   }
 }
+
+/**
+ * Which calls belong to interview mode, matched on the SYSTEM prompt because that
+ * is what actually differs between them.
+ *
+ * ── Listed, and the list has to grow when the mode does ─────────────────────
+ * This was two inline `system.includes(...)` checks. Session two-a added three
+ * calls and every one of them fell through to the EXTRACTION branch, which
+ * answered with a well-formed list of concepts — so `parseQuizDraft` reported
+ * "the draft had no question" and the failure named the parser rather than the
+ * router. An unmatched call does not error here; it gets a plausible answer to a
+ * different question, which is the most expensive kind of wrong.
+ *
+ * Each marker is the shortest phrase unique to one prompt, with the call named
+ * beside it, so adding one is deliberate rather than remembered.
+ */
+const INTERVIEW_CALLS = [
+  'interview transcript', // scoreRound
+  'ONE thing at a time', // nextTurn
+  'could not answer the follow-up', // draftQuiz
+  'Ask one question on this topic', // reaskOne
+  'Score this single answer', // scoreOne
+]
 
 const body = (transcript) => {
   if (transcript.includes('NOTHING-RUN')) {
@@ -185,8 +247,7 @@ createServer((req, res) => {
     }
     const system = parsed.messages?.find((m) => m.role === 'system')?.content ?? ''
 
-    const { content, finish_reason } = system.includes('interview transcript') ||
-      system.includes('ONE thing at a time')
+    const { content, finish_reason } = INTERVIEW_CALLS.some((marker) => system.includes(marker))
       ? interviewBody(system, parsed.messages ?? [])
       : body(transcript)
     res.writeHead(200, { 'content-type': 'application/json' })

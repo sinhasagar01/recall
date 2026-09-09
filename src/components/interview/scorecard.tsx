@@ -1,11 +1,14 @@
 'use client'
 
 import { useState } from 'react'
+import { reask, scoreRewind } from '@/app/(interview)/interview/actions'
 import { Button } from '@/components/ui/button'
 import {
+  canRewind,
   DIMENSIONS,
   offersFrom,
   scoreBand,
+  type RewindResult,
   type Length,
   type RoundCounts,
   type RoundType,
@@ -42,6 +45,18 @@ const ROUND_LABEL: Record<RoundType, string> = {
  * rather than being combined, so a wrong count is a visible disagreement rather
  * than a silently different number.
  *
+ * ── Rewind writes NOTHING ───────────────────────────────────────────────────
+ * Re-asking a question produces its own small result, which lives in the state
+ * below and is written nowhere. The round row was inserted once, when the round
+ * ended, and no path in the tree updates it — so a stored score cannot move
+ * however many times a question is re-asked. Asserted by rewinding and comparing
+ * the whole row byte for byte, and seen failing by putting an update on it.
+ *
+ * Three things stop a retry-until-it-improves, and only the last is a rule
+ * anyone has to remember: the stored score cannot move, a question may be
+ * re-asked once, and a round is never resumed — so this page does not exist
+ * tomorrow.
+ *
  * ── The colour is a SCALE ───────────────────────────────────────────────────
  * `var(--volt)` and friends resolve only inside `[data-mode='interview']`. On any
  * other page these same classes paint nothing — measured, not assumed, in
@@ -55,6 +70,8 @@ export function Scorecard({
   elapsedSeconds,
   past,
   poolSize,
+  savedQuizzes,
+  roundId,
   onMarkWeak,
 }: {
   scorecard: Scorecard
@@ -66,12 +83,90 @@ export function Scorecard({
   past: number[]
   /** How many topics the pool held, so the round can say what it did NOT ask. */
   poolSize: number
+  /** Questions kept as quizzes during the round. Titles only — the rows are real. */
+  savedQuizzes: string[]
+  /**
+   * The row this scorecard was written from.
+   *
+   * Rendered as an attribute so a spec can read back **its own** round rather
+   * than the newest one in the table. Three specs in `interview.spec.ts` finish
+   * rounds and they do not run in one serial group, so "newest" is a channel
+   * through which one test's round becomes another's assertion — the coupling
+   * ARCHITECTURE.md warns about, arriving as a flake nobody could reproduce.
+   */
+  roundId: string | null
   onMarkWeak: (topicIds: string[]) => Promise<{ error: string | null; marked?: number }>
 }) {
+  /*
+    Rewinds are keyed by the QUESTION's index, not the offer's. Offers are a
+    filtered view — only questions carrying a topic id — so the two lists have
+    different positions, and keying by the offer's would annotate the wrong row
+    the moment a question came back without one.
+  */
+  const [rewinds, setRewinds] = useState<RewindResult[]>([])
+  const rewound = new Set(rewinds.map((result) => result.questionIndex))
+
+  /** The question currently being re-asked: its index, the new question, your reply. */
+  const [asking, setAsking] = useState<{ index: number; question: string } | null>(null)
+  const [reply, setReply] = useState('')
+  const [rewinding, setRewinding] = useState(false)
+  const [rewindError, setRewindError] = useState<string | null>(null)
+
+  const beginRewind = async (index: number) => {
+    const question = scorecard.questions[index]
+    setRewinding(true)
+    setRewindError(null)
+    const result = await reask({ title: question.title, note: question.note })
+    setRewinding(false)
+    if (!result.ok) {
+      setRewindError(result.reason)
+      return
+    }
+    setReply('')
+    setAsking({ index, question: result.question })
+  }
+
+  const finishRewind = async () => {
+    if (asking === null) return
+    setRewinding(true)
+    const result = await scoreRewind({ question: asking.question, answer: reply })
+    setRewinding(false)
+    if (!result.ok) {
+      setRewindError(result.reason)
+      return
+    }
+    /*
+      Straight into state, and nowhere else. There is no action that writes this
+      and no column to write it to — which is the arc's hard rule, held
+      structurally rather than by care.
+    */
+    setRewinds((current) => [
+      ...current,
+      {
+        questionIndex: asking.index,
+        question: asking.question,
+        answer: reply,
+        score: result.score,
+        note: result.note,
+      },
+    ])
+    setAsking(null)
+  }
+
   const [offers, setOffers] = useState(() => offersFrom(scorecard))
   const [saving, setSaving] = useState(false)
   const [done, setDone] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  /*
+    `ticked` is state — you may have changed it — but `rewound` is derived, so the
+    two are merged rather than the offers being rebuilt. Rebuilding would throw
+    away every checkbox you had touched the moment a rewind finished.
+  */
+  const shown = offers.map((offer, index) => ({
+    ...offer,
+    rewound: offersFrom(scorecard, rewound)[index]?.rewound ?? false,
+  }))
 
   const ticked = offers.filter((offer) => offer.ticked)
   const overBy = Math.max(0, elapsedSeconds - minutes * 60)
@@ -89,7 +184,11 @@ export function Scorecard({
   }
 
   return (
-    <main className="mx-auto max-w-[840px] px-6 py-8" data-testid="scorecard">
+    <main
+      className="mx-auto max-w-[840px] px-6 py-8"
+      data-testid="scorecard"
+      data-round-id={roundId ?? undefined}
+    >
       <div className="flex flex-wrap items-center gap-6 rounded-xl border border-rule bg-surface p-6">
         <div
           data-testid="round-score"
@@ -150,6 +249,117 @@ export function Scorecard({
         ))}
       </div>
 
+      {scorecard.questions.length > 0 ? (
+        <>
+          <h2 className="mt-8 mb-3 font-mono text-mono font-medium tracking-[0.16em] text-ink-3 uppercase">
+            Question by question
+          </h2>
+          <ul className="list-none rounded-lg border border-rule bg-surface px-4">
+            {scorecard.questions.map((question, index) => {
+              const again = rewinds.find((result) => result.questionIndex === index)
+
+              return (
+                <li
+                  key={index}
+                  data-testid="question-row"
+                  className="border-b border-rule py-3.5 last:border-b-0"
+                >
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-body font-medium">{question.title}</p>
+                      <p className="mt-0.5 text-meta leading-[1.55] text-ink-2">{question.note}</p>
+                    </div>
+                    <div className="h-1.5 w-[120px] flex-none overflow-hidden rounded-full bg-surface-2">
+                      <i
+                        className="block h-full rounded-full bg-[var(--volt)]"
+                        style={{ width: `${question.score}%` }}
+                      />
+                    </div>
+                    <span className="w-8 flex-none text-right font-display text-[18px] font-medium">
+                      {question.score}
+                    </span>
+
+                    {/*
+                      Removed, never disabled — DESIGN.md's rule that an option
+                      stops being a button rather than becoming a dead one.
+                      Offered below OFFER_BELOW, which is why the reference draws
+                      Rewind on the 41 and the 33 and not on the 64.
+                    */}
+                    {canRewind(question.score, rewound.has(index)) && asking === null ? (
+                      <Button
+                        variant="ghost"
+                        loading={rewinding}
+                        loadingLabel="Asking…"
+                        onClick={() => beginRewind(index)}
+                        data-testid="rewind"
+                      >
+                        Rewind
+                      </Button>
+                    ) : null}
+                  </div>
+
+                  {asking?.index === index ? (
+                    <div data-testid="rewind-room" className="mt-3 rounded-md border border-[var(--volt)] bg-[var(--volt-soft)] px-4 py-3">
+                      <p className="text-body leading-[1.5] font-medium">{asking.question}</p>
+                      <textarea
+                        aria-label="Your answer"
+                        value={reply}
+                        onChange={(event) => setReply(event.target.value)}
+                        rows={3}
+                        className="mt-2.5 w-full rounded-md border border-rule-strong bg-surface px-3 py-2 text-meta leading-[1.6] text-ink focus:border-accent focus:outline-2 focus:outline-accent"
+                      />
+                      <div className="mt-2.5 flex flex-wrap items-center gap-2.5">
+                        <Button
+                          variant="primary"
+                          loading={rewinding}
+                          loadingLabel="Scoring…"
+                          disabled={reply.trim() === ''}
+                          onClick={finishRewind}
+                          data-testid="rewind-answer"
+                        >
+                          Answer
+                        </Button>
+                        <Button variant="ghost" disabled={rewinding} onClick={() => setAsking(null)}>
+                          Leave it
+                        </Button>
+                        <span className="font-mono text-[11px] text-ink-3">
+                          This does not change your {scorecard.overall}
+                        </span>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {again ? (
+                    <p
+                      data-testid="rewind-result"
+                      className="mt-2.5 border-l-2 border-[var(--volt)] pl-3 text-meta leading-[1.55] text-ink-2"
+                    >
+                      <span className="font-mono text-[11px] text-[var(--volt-ink)]">
+                        Rewound · {again.score} · not counted
+                      </span>
+                      <br />
+                      {again.note}
+                    </p>
+                  ) : null}
+                </li>
+              )
+            })}
+          </ul>
+
+          {rewindError ? (
+            <p role="alert" className="mt-3 rounded-md border border-flag bg-flag-soft px-4 py-3 text-meta text-flag">
+              {rewindError}
+            </p>
+          ) : null}
+
+          <p className="mt-2.5 text-meta leading-[1.6] text-ink-3">
+            Rewind re-asks that one question now, while it is fresh. It produces its own small
+            result and <strong className="font-medium text-ink-2">never changes the {scorecard.overall}</strong> — a score you
+            can retry until it improves is not a score.
+          </p>
+        </>
+      ) : null}
+
       {offers.length > 0 ? (
         <>
           <h2 className="mt-8 mb-3 font-mono text-mono font-medium tracking-[0.16em] text-ink-3 uppercase">
@@ -157,7 +367,7 @@ export function Scorecard({
           </h2>
 
           <ul className="list-none rounded-lg border border-rule bg-surface px-4">
-            {offers.map((offer, index) => (
+            {shown.map((offer, index) => (
               <li
                 key={offer.topicId}
                 data-testid="offer"
@@ -190,6 +400,16 @@ export function Scorecard({
                 <div className="min-w-0 flex-1">
                   <p className="text-body font-medium">{offer.title}</p>
                   <p className="mt-0.5 text-meta leading-[1.55] text-ink-2">{offer.note}</p>
+                  {/*
+                    A rewind is shown here and changes nothing here. The tick still
+                    comes from the score the ROUND found; going back afterwards is
+                    information you now have, and the decision stays yours.
+                  */}
+                  {offer.rewound ? (
+                    <p data-testid="offer-rewound" className="mt-1 font-mono text-[11px] text-[var(--volt-ink)]">
+                      You re-asked this one afterwards
+                    </p>
+                  ) : null}
                 </div>
                 <span className="flex-none font-mono text-[10.5px] text-ink-3">→ mark weak</span>
               </li>
@@ -228,6 +448,26 @@ export function Scorecard({
                 {done}
               </p>
             )}
+          </div>
+        </>
+      ) : null}
+
+      {savedQuizzes.length > 0 ? (
+        <>
+          <h2 className="mt-8 mb-3 font-mono text-mono font-medium tracking-[0.16em] text-ink-3 uppercase">
+            Saved from the round
+          </h2>
+          <div
+            data-testid="saved-from-round"
+            className="rounded-lg border border-rule bg-surface p-5 text-meta leading-[1.7] text-ink-2"
+          >
+            <strong className="font-medium text-ink">
+              {plural(savedQuizzes.length, 'quiz', 'quizzes')}
+            </strong>{' '}
+            — {savedQuizzes.map((title) => `"${title}"`).join(', ')}, saved during the round from a
+            follow-up. {savedQuizzes.length === 1 ? 'It is' : 'They are'} in your library, linked to
+            the topic {savedQuizzes.length === 1 ? 'it' : 'they'} came from, and already in the
+            practice queue.
           </div>
         </>
       ) : null}

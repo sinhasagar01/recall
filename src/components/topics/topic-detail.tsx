@@ -31,6 +31,7 @@ export function TopicDetail({
   categories,
   imageUrl,
   source,
+  parent,
   sourceOptions,
   capability,
   capabilityOptions,
@@ -41,6 +42,14 @@ export function TopicDetail({
   imageUrl: string | null
   /** Read separately: `source_id` is not on the domain Topic. */
   source: { source: SourceSummary; siblings: number } | null
+  /**
+   * The topic this one was saved out of, for a quiz kept during an interview.
+   *
+   * A prop for the third time and the same reason: `parent_topic_id` is
+   * deliberately not on the domain Topic, so the practice queue has no way to
+   * order by provenance. See topic-mapping.ts.
+   */
+  parent: { id: string; title: string } | null
   sourceOptions: { id: string; lesson: string }[]
   /** Read separately too: `capability_id` is not on the domain Topic either. */
   capability: { capability: Capability; phase: Phase } | null
@@ -149,6 +158,25 @@ export function TopicDetail({
         deliberately not on the domain Topic; see topic-mapping.ts.
       */}
       {source ? <TopicSourceLine source={source.source} siblings={source.siblings} /> : null}
+
+      {/*
+        Where a quiz came from. The line is the whole point of `parent_topic_id`:
+        without something reading it, the column would be write-only, which
+        ARCHITECTURE.md records as a smell rather than a design.
+
+        It disappears if the parent is deleted — the link is `on delete set null`,
+        so the quiz survives and the line goes, which is the cascade direction
+        chosen deliberately and proven in topics_test.sql.
+      */}
+      {parent ? (
+        <p data-testid="from-topic" className="mt-3 text-meta text-ink-2">
+          Saved from{' '}
+          <Link href={`/topic/${parent.id}`} className="text-accent-ink underline">
+            {parent.title}
+          </Link>{' '}
+          during an interview round.
+        </p>
+      ) : null}
 
       {/*
         After the source and before Evidence: where it came from, then what it is
