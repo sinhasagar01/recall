@@ -18,7 +18,7 @@
 -- Written and run RED before the migration exists.
 
 begin;
-select plan(32);
+select plan(40);
 
 create function tests_create_user(uid uuid, email text) returns uuid
 language plpgsql as $fn$
@@ -85,6 +85,8 @@ select columns_are('public'::name, 'interview_rounds'::name, ARRAY[
   'recall', 'depth', 'precision', 'enquiry', 'overall',
   -- Which topics the round drew on, so the scorecard can offer them.
   'topic_ids',
+  -- The one thing from a round that is YOURS and is kept. DSA only.
+  'code',
   'created_at'
 ], 'interview_rounds has exactly these columns — and nowhere to put prose');
 
@@ -103,21 +105,40 @@ select hasnt_column('public'::name, 'interview_rounds'::name, 'notes'::name,
   'PERMANENT: per-question notes are prose too');
 
 /*
-  ── SESSION ONE ONLY. Session two deletes this line. ──────────────────────
-  A different kind of assertion from the three above, and they sit together so
-  the difference is visible rather than inferred.
+  ── The line that used to sit here has been deleted, on schedule ───────────
+  `hasnt_column('code')` was marked SESSION ONE ONLY, and its own comment said
+  the session that builds DSA removes it. This is that session. It is noted here
+  rather than vanishing silently, because the three assertions above are
+  PERMANENT and the difference between the two kinds is the point of them
+  sitting together.
 
-  DSA is not built in session one, so the column its "your code is kept" implies
-  must not exist yet — nothing stubbed. Session two adds the DSA round AND the
-  `code` column, and **deleting this assertion is part of that work**, not a
-  regression in it.
-
-  Written this way because an unqualified `hasnt_column` reads as a permanent
-  rule, and the next person then argues with the plan instead of deleting the
-  line.
+  What replaces it is below: the column exists, it is `text[]`, and three CHECKs
+  bound what can go in it.
 */
-select hasnt_column('public'::name, 'interview_rounds'::name, 'code'::name,
-  'SESSION ONE ONLY: DSA is not built yet, so its column does not exist yet — session two removes this assertion');
+
+-- ===========================================================================
+-- The code column: one solution per problem, and DSA only
+-- ===========================================================================
+select has_column('public'::name, 'interview_rounds'::name, 'code'::name,
+  'a DSA round keeps the code you wrote');
+
+/*
+  `text[]`, not jsonb, and the reasoning is recorded in ARCHITECTURE.md: the
+  jsonb rule is that a column the database cannot see the inside of is one the
+  application has to see the inside of twice. An array has an element type,
+  `array_length` works on it, and a CHECK can bound it — so it needs no
+  serialiser and cannot silently store the wrong key.
+
+  It carries solutions and nothing else. Storing each problem's statement
+  alongside its code is the tempting jsonb shape and it is the one this table
+  already refuses: a statement is generated, so it is the model's prose. The
+  code is yours, which is why it is the one thing here that is not a number.
+*/
+select col_type_is('public'::name, 'interview_rounds'::name, 'code'::name, 'text[]',
+  'one solution per problem, in the order they were asked');
+
+select col_not_null('public'::name, 'interview_rounds'::name, 'code'::name,
+  'empty for every round that is not DSA, never null');
 
 select col_not_null('public'::name, 'interview_rounds'::name, 'round_type'::name,
   'a round is always of some type');
@@ -211,6 +232,98 @@ select throws_ok(
             50, 50, 50, 50, 50, '{}'::uuid[])$$,
   '23514', null,
   'more follow-ups held than were offered is not a low score, it is impossible'
+);
+
+-- ===========================================================================
+-- The two new round types, and what the code column may hold
+-- ===========================================================================
+
+/*
+  Seven types now. The CHECK is the enumeration the setup screen's cards must
+  match, and it is the one claim in the reference that a test can actually hold
+  to account — see ARCHITECTURE.md on why the rest of a reference cannot be.
+*/
+select lives_ok(
+  $$insert into public.interview_rounds
+      (round_type, minutes, level, asked, answered, follow_ups_offered, follow_ups_held,
+       questions_asked, hints_used, elapsed_seconds, over_by_seconds,
+       recall, depth, precision, enquiry, overall, topic_ids, code)
+    values ('dsa', 45, 'staff', 2, 2, 3, 2, 1, 0, 2700, 0,
+            80, 72, 75, 70, 74, '{}'::uuid[],
+            ARRAY['function merge(a) { return a }', 'const x = 1'])$$,
+  'a DSA round saves, with one solution per problem'
+);
+
+select lives_ok(
+  $$insert into public.interview_rounds
+      (round_type, minutes, level, asked, answered, follow_ups_offered, follow_ups_held,
+       questions_asked, hints_used, elapsed_seconds, over_by_seconds,
+       recall, depth, precision, enquiry, overall, topic_ids)
+    values ('design', 60, 'skeptical', 4, 4, 5, 3, 2, 1, 3600, 0,
+            70, 80, 65, 88, 76, '{}'::uuid[])$$,
+  'a System design round saves, and keeps no code'
+);
+
+select throws_ok(
+  $$insert into public.interview_rounds
+      (round_type, minutes, level, asked, answered, follow_ups_offered, follow_ups_held,
+       questions_asked, hints_used, elapsed_seconds, over_by_seconds,
+       recall, depth, precision, enquiry, overall, topic_ids)
+    values ('machine_coding', 45, 'staff', 2, 2, 2, 2, 0, 0, 2700, 0,
+            50, 50, 50, 50, 50, '{}'::uuid[])$$,
+  '23514', null,
+  'a type the setup screen does not offer is still refused — seven, not any'
+);
+
+/*
+  Code belongs to DSA and to nothing else.
+
+  Not a tidiness rule. A concept round that carried code would mean the editor
+  had rendered somewhere it should not, and the scorecard would offer to expand
+  a solution to a question that never asked for one. The database is where that
+  stops being writable.
+*/
+select throws_ok(
+  $$insert into public.interview_rounds
+      (round_type, minutes, level, asked, answered, follow_ups_offered, follow_ups_held,
+       questions_asked, hints_used, elapsed_seconds, over_by_seconds,
+       recall, depth, precision, enquiry, overall, topic_ids, code)
+    values ('javascript', 20, 'staff', 4, 4, 4, 4, 0, 0, 1200, 0,
+            50, 50, 50, 50, 50, '{}'::uuid[], ARRAY['const x = 1'])$$,
+  '23514', null,
+  'a concept round cannot carry code — there was no editor to write it in'
+);
+
+/*
+  More solutions than problems asked, which is the same shape as held-exceeds-
+  offered above: not a bad round, an impossible one. The pair cannot both be
+  free, so the database holds them to each other.
+*/
+select throws_ok(
+  $$insert into public.interview_rounds
+      (round_type, minutes, level, asked, answered, follow_ups_offered, follow_ups_held,
+       questions_asked, hints_used, elapsed_seconds, over_by_seconds,
+       recall, depth, precision, enquiry, overall, topic_ids, code)
+    values ('dsa', 20, 'staff', 1, 1, 1, 1, 0, 0, 1200, 0,
+            50, 50, 50, 50, 50, '{}'::uuid[], ARRAY['a', 'b'])$$,
+  '23514', null,
+  'two solutions to one problem is not a low score, it is impossible'
+);
+
+/*
+  And a ceiling, because the longest round is three problems. `asked` alone
+  would not catch a runner that asked four — this is the clause that says the
+  product decision out loud.
+*/
+select throws_ok(
+  $$insert into public.interview_rounds
+      (round_type, minutes, level, asked, answered, follow_ups_offered, follow_ups_held,
+       questions_asked, hints_used, elapsed_seconds, over_by_seconds,
+       recall, depth, precision, enquiry, overall, topic_ids, code)
+    values ('dsa', 90, 'staff', 4, 4, 4, 4, 0, 0, 5400, 0,
+            50, 50, 50, 50, 50, '{}'::uuid[], ARRAY['a', 'b', 'c', 'd'])$$,
+  '23514', null,
+  'ninety minutes is three problems, and four is beyond what any length offers'
 );
 
 select throws_ok(
