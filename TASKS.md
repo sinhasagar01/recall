@@ -1698,6 +1698,29 @@ The failure mode is specifically that it *reads* as a summary. A missing element
 missing *specificity* is not, because the generic sentence occupies the same space and the same
 grammar as the real one.
 
+### The branch flow, written down because I got it wrong
+
+Five commits went onto `master` directly before anyone noticed. They were moved — a branch cut
+at `HEAD`, `master` reset to `origin/master`, then `git merge --no-ff` — so the history reads
+the way every other arc's does. Nothing was lost and nothing was force-pushed to a shared
+branch, because none of it had been pushed yet.
+
+Recorded so the next session does not rediscover it. **The flow this project uses:**
+
+1. Cut a feature branch off `master` *before the first commit*, not after the last one.
+2. Commit onto the branch. Stage explicit paths — never `git add -A`, because `.claude/` must
+   stay untracked.
+3. `git push -u origin <branch>`.
+4. `git checkout master && git merge --no-ff <branch> -m "Merge <branch>: <what it does>"`.
+5. `git push origin master`, then confirm the deployment and the alias.
+
+Migrations go **before** the code push, always: `supabase db push --linked`, then verify the
+schema is live with a query, and only then push the code that depends on it.
+
+The tell that it has gone wrong is `git branch --show-current` reading `master` while there is
+work in progress. Worth checking before the first commit rather than before the push, since
+that is the point at which it is free to fix.
+
 ---
 
 ## A fourth check for whoever writes the seventh reference

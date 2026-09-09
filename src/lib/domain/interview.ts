@@ -196,9 +196,37 @@ export function countRound(turns: Turn[]): RoundCounts {
     if (next?.kind === 'answer') followUpsHeld += 1
   }
 
+  /*
+    ── `answered` counts QUESTIONS answered, not answers given ───────────────
+    It counted `kind === 'answer'`, which includes every answer to a follow-up.
+    One question with three follow-ups therefore reported `answered = 4` against
+    `asked = 1`, and the round could not be saved:
+
+        23514 · violates check constraint "interview_rounds_counts_reconcile"
+
+    That constraint exists because the reference's own hero claimed 11 of 14
+    follow-ups held over a list whose ceiling was 9 — a figure counting cannot
+    produce. It was written to stop an impossible number reaching a row, and the
+    first impossible number it caught was one of ours.
+
+    A question is answered if an answer follows it before the next question.
+    Symmetric with `followUpsHeld` below, and it cannot exceed `asked` by
+    construction rather than by care.
+  */
+  let answered = 0
+  for (const [index, turn] of turns.entries()) {
+    if (turn.speaker !== 'interviewer' || turn.kind !== 'question') continue
+
+    const rest = turns.slice(index + 1)
+    const next = rest.findIndex((later) => later.speaker === 'interviewer' && later.kind === 'question')
+    const window = next === -1 ? rest : rest.slice(0, next)
+
+    if (window.some((later) => later.speaker === 'you' && later.kind === 'answer')) answered += 1
+  }
+
   return {
     asked: turns.filter((turn) => turn.speaker === 'interviewer' && turn.kind === 'question').length,
-    answered: of('answer'),
+    answered,
     followUpsOffered,
     followUpsHeld,
     questionsAsked: of('clarification'),
@@ -241,8 +269,16 @@ export function followUpTag(level: Level, turns: Turn[]): string | null {
   if (nth === 0) return null
 
   const ceiling = FOLLOW_UP_CEILING[level]
-  /* No total where there is no ceiling — inventing one would be a promise. */
-  return ceiling === null ? `follow-up ${nth}` : `follow-up ${nth} of ${ceiling}`
+
+  /*
+    No total where there is no ceiling — and none where the ceiling has been
+    passed either. The prompt asks a staff interviewer to follow up twice; it is
+    an instruction, not a constraint, and a third arrives. Rendering "follow-up
+    3 of 2" puts a figure on screen that cannot be true, which is the same
+    failure the reference made and this project recorded.
+  */
+  if (ceiling === null || nth > ceiling) return `follow-up ${nth}`
+  return `follow-up ${nth} of ${ceiling}`
 }
 
 /**
