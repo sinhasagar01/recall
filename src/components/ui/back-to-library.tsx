@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import { LinkButton } from '@/components/ui/link-button'
 import type { ReactNode } from 'react'
 
 /**
@@ -24,10 +24,10 @@ import type { ReactNode } from 'react'
  * element is an anchor, so the browser gives it a real link's behaviour;
  * everything else is paint.
  *
- * ── 44px ────────────────────────────────────────────────────────────────────
- * `min-h-11` rather than padding alone. This is the control someone reaches for
- * when they are lost, often on a phone, and the app's touch floor applies to it
- * more than to most things.
+ * ── The paint lives in `LinkButton` ────────────────────────────────────────
+ * Including the 44px floor. This component is the DESTINATION and its reasoning;
+ * the class string is shared with every other link-as-control so a third one
+ * cannot arrive looking slightly different.
  */
 export function BackToLibrary({
   /** The label. Defaults to the name of the destination, which is usually right. */
@@ -41,16 +41,8 @@ export function BackToLibrary({
   className?: string
 }) {
   return (
-    <Link
-      href="/library"
-      data-testid="back-to-library"
-      className={`inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-md border px-3.5 py-2.5 text-label font-medium ${
-        variant === 'primary'
-          ? 'border-accent bg-accent text-white hover:border-accent-ink hover:bg-accent-ink'
-          : 'border-rule-strong bg-surface text-ink hover:border-ink-3'
-      } ${className}`}
-    >
+    <LinkButton href="/library" data-testid="back-to-library" variant={variant} className={className}>
       {children}
-    </Link>
+    </LinkButton>
   )
 }
