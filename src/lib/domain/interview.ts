@@ -10,6 +10,22 @@
  * nothing to order one by. Asserted in `interview-boundary.test.ts`.
  */
 
+/**
+ * The round's name as a person writes it, not as the enum is stored.
+ *
+ * Rendering the enum raw put "javascript · 20 minutes" in an h1, caught by
+ * looking at the page beside the drawing. It lives here rather than in a
+ * component because two screens now say it — the room's topic tag and the
+ * scorecard's heading — and two copies would drift.
+ */
+export const ROUND_LABEL: Record<string, string> = {
+  javascript: 'JavaScript',
+  react: 'React',
+  typescript: 'TypeScript',
+  behavioural: 'Behavioural',
+  mixed: 'Mixed',
+}
+
 /** Session one ships five. DSA and System design arrive with their runners. */
 export const ROUND_TYPES = ['javascript', 'react', 'typescript', 'behavioural', 'mixed'] as const
 export type RoundType = (typeof ROUND_TYPES)[number]
@@ -26,6 +42,61 @@ export type Length = (typeof LENGTHS)[number]
  */
 export function questionCount(minutes: Length): number {
   return { 20: 4, 45: 8, 60: 11, 90: 16 }[minutes]
+}
+
+/**
+ * What a round type has to draw on, and how the card says it.
+ *
+ * Three shapes, because the three kinds of round count different things and the
+ * reference draws each differently: concepts count topics, weak and quizzes;
+ * behavioural counts decisions and incidents separately, because a ledger with
+ * three decisions and no incidents is a different round from one with both;
+ * mixed does not count at all and says "everything above", since restating the
+ * sum of four cards directly beneath them tells you nothing.
+ *
+ * A function rather than four fields on a props object, so the sentence and the
+ * thin test are decided in one place and tested without a browser.
+ */
+export interface Pool {
+  /** Concepts: topics in the category. Behavioural: decisions in the ledger. */
+  topics: number
+  weak: number
+  /** Concepts only. */
+  quizzes: number
+  /** Behavioural only. */
+  incidents: number
+}
+
+export interface PoolLine {
+  /** The count, drawn in the type's own tone. */
+  lead: string
+  /** Everything after it, in the muted ink. */
+  rest: string
+  /** Said honestly, before you press, rather than starting a round that cannot fill. */
+  thin: boolean
+}
+
+export function poolLine(type: RoundType, pool: Pool, questions: number | null): PoolLine {
+  if (type === 'mixed') {
+    /* No count: it is the sum of the cards directly above it. */
+    return { lead: 'everything', rest: ' above', thin: false }
+  }
+
+  const thin = questions !== null && pool.topics + pool.incidents < questions
+
+  if (type === 'behavioural') {
+    return {
+      lead: `${pool.topics} ${pool.topics === 1 ? 'decision' : 'decisions'}`,
+      rest: `, ${pool.incidents} ${pool.incidents === 1 ? 'incident' : 'incidents'}`,
+      thin,
+    }
+  }
+
+  return {
+    lead: `${pool.topics} ${pool.topics === 1 ? 'topic' : 'topics'}`,
+    rest: `${pool.weak > 0 ? ` · ${pool.weak} weak` : ''}${pool.quizzes > 0 ? ` · ${pool.quizzes} quizzes` : ''}`,
+    thin,
+  }
 }
 
 /** Three hints a round, each visible on the scorecard. */
@@ -60,7 +131,22 @@ export interface Turn {
   /** Which topic the exchange is about, so session two can save a quiz from it. */
   topicId: string | null
   /** A clarifying question is never scored as a wrong answer. */
-  kind: 'question' | 'answer' | 'follow-up' | 'clarification' | 'clarification-answer' | 'hint'
+  /**
+   * `skip` is you moving on, and it is NOT an answer.
+   *
+   * Its own kind for the same reason `clarification` is: `countRound` counts
+   * `answered` by kind, so folding a skip into `answer` would inflate the one
+   * number the scorecard is judged against. Leaving a question is a real move
+   * and it is not a wrong answer either — it is simply not an answer.
+   */
+  kind:
+    | 'question'
+    | 'answer'
+    | 'follow-up'
+    | 'clarification'
+    | 'clarification-answer'
+    | 'hint'
+    | 'skip'
 }
 
 /**
@@ -120,6 +206,60 @@ export function countRound(turns: Turn[]): RoundCounts {
   }
 }
 
+/**
+ * How many follow-ups this interviewer presses for, or null where there is no
+ * ceiling.
+ *
+ * The same three numbers `LEVEL_PROMPT` states in prose — friendly follows up
+ * once, staff twice, a skeptical principal until you concede or hold. Held here
+ * so the room's tag and the prompt cannot drift apart; the drawing's
+ * "follow-up 2 of 3" over a staff round is an example, and the ceiling is the
+ * rule.
+ */
+export const FOLLOW_UP_CEILING: Record<Level, number | null> = {
+  friendly: 1,
+  staff: 2,
+  skeptical: null,
+}
+
+/**
+ * Which follow-up you are on, for the current question.
+ *
+ * Counted from the transcript rather than tracked, so it cannot disagree with
+ * what is on screen — the same rule `countRound` follows.
+ */
+export function followUpsOnCurrent(turns: Turn[]): number {
+  const lastQuestion = turns.map((turn) => turn.kind).lastIndexOf('question')
+  return turns
+    .slice(lastQuestion + 1)
+    .filter((turn) => turn.speaker === 'interviewer' && turn.kind === 'follow-up').length
+}
+
+/** The room's follow-up tag, or null when there is nothing to say yet. */
+export function followUpTag(level: Level, turns: Turn[]): string | null {
+  const nth = followUpsOnCurrent(turns)
+  if (nth === 0) return null
+
+  const ceiling = FOLLOW_UP_CEILING[level]
+  /* No total where there is no ceiling — inventing one would be a promise. */
+  return ceiling === null ? `follow-up ${nth}` : `follow-up ${nth} of ${ceiling}`
+}
+
+/**
+ * The progress pips: one per question, filling behind you.
+ *
+ * **They do not grade you.** The reference fills them green, amber or rose —
+ * which is the room scoring you question by question, and `ROOM_RULES` forbids
+ * this surface from grading, scoring or saying how you are doing. Scoring happens
+ * once, at the end, elsewhere. So a pip is done, current, or not yet.
+ */
+export type PipState = 'done' | 'now' | 'todo'
+
+export function pipState(index: number, answered: number): PipState {
+  if (index < answered) return 'done'
+  return index === answered ? 'now' : 'todo'
+}
+
 /** The four dimensions, in the order the scorecard shows them. */
 export const DIMENSIONS = ['recall', 'depth', 'precision', 'enquiry'] as const
 export type Dimension = (typeof DIMENSIONS)[number]
@@ -135,7 +275,15 @@ export interface QuestionResult {
 export interface Scorecard {
   scores: Record<Dimension, number>
   overall: number
-  /** Model prose. Rendered once, never stored. */
+  /**
+   * The one-line verdict, and the paragraph under it. Two fields because the
+   * drawing has two: a headline you read at a glance and the sentences that
+   * justify it. Collapsing them into one made the hero a heading with nothing
+   * beneath it and a wide empty column beside the numeral.
+   *
+   * Both are model prose, rendered once and never stored.
+   */
+  verdict: string
   summary: string
   notes: Record<Dimension, string>
   questions: QuestionResult[]
@@ -150,6 +298,23 @@ const asScore = (value: unknown): number | null =>
 
 const asText = (value: unknown): string =>
   typeof value === 'string' && value.trim() !== '' ? value.trim() : ''
+
+/**
+ * A uuid, or null. **Not "any string".**
+ *
+ * The model is handed topics as `[uuid] Title` and asked to give the id back. It
+ * does not always: production returned `"arrow-function-this"` and
+ * `"js-serialization-structuredclone-vs-json"` — plausible, well-formed, and not
+ * uuids. Those reached a `uuid[]` column and every round save failed 22P02.
+ *
+ * The scores were bounded here from the first day and the ids were not, which is
+ * the asymmetry worth naming: a number that is obviously a number invites
+ * validation, and a string that is obviously a string does not.
+ */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+const asUuid = (value: unknown): string | null =>
+  typeof value === 'string' && UUID.test(value.trim()) ? value.trim().toLowerCase() : null
 
 /**
  * A malformed scorecard is a readable error, never a partial row.
@@ -191,7 +356,20 @@ export function parseScorecard(text: string, titles: Map<string, string>): Score
       if (typeof entry !== 'object' || entry === null) return []
       const item = entry as Record<string, unknown>
       const score = asScore(item.score)
-      const topicId = typeof item.topic_id === 'string' ? item.topic_id : null
+      /*
+        A uuid or nothing — never "any string".
+
+        Every score here was bounded 0-100 from the first day and this was not,
+        and the asymmetry cost the feature: the real model answers
+        "arrow-function-this" where it was handed `[uuid] Title`, that reached a
+        `uuid[]` column, and EVERY round save in production failed 22P02 from the
+        day interview mode shipped. `interview_rounds` had 0 rows and always had.
+
+        Dropped rather than rejected: a question whose topic could not be
+        identified is still a scored question, and losing the round over an
+        attribution would be the worse trade. The scorecard says so on the row.
+      */
+      const topicId = asUuid(item.topic_id)
       if (score === null) return []
       return [
         {
@@ -204,7 +382,63 @@ export function parseScorecard(text: string, titles: Map<string, string>): Score
     },
   )
 
-  return { ok: true, scorecard: { scores, overall, summary: asText(raw.summary), notes, questions } }
+  return {
+    ok: true,
+    scorecard: {
+      scores,
+      overall,
+      /* A missing verdict falls back to the band rather than leaving a gap. */
+      verdict: asText(raw.verdict) || scoreBand(overall),
+      summary: asText(raw.summary),
+      notes,
+      questions,
+    },
+  }
+}
+
+/**
+ * What the interviewer says, and which topic it is about.
+ *
+ * ── Why the room's turn is a structured call now ────────────────────────────
+ * `Turn.topicId` was typed from the first day of interview mode and populated at
+ * none of its five construction sites — a field that reads as available, is
+ * commented as available, and is always null. Two consumers read it: the
+ * transcript serializer's `(topic …)` branch, which could never be taken, and the
+ * round's `topic_ids`, which was silently always empty.
+ *
+ * Session two-a routed around it by having `draftQuiz` return the attribution,
+ * which left one fewer feature needing it to stop being a lie. This populates it,
+ * because the room's tag row has to say WHICH topic you are being asked about and
+ * whether you grade it weak — and a tag row that reads from your library is the
+ * difference between an interviewer and a question bank.
+ */
+export interface TurnReply {
+  text: string
+  /** Null when the reply is a hint or an answer to a clarification. */
+  topicId: string | null
+}
+
+export type TurnReplyResult = { ok: true; reply: TurnReply } | { ok: false; reason: string }
+
+export function parseTurn(raw: string): TurnReplyResult {
+  let parsed: Record<string, unknown>
+  try {
+    parsed = JSON.parse(raw) as Record<string, unknown>
+  } catch {
+    return { ok: false, reason: 'The interviewer’s reply came back unreadable. Try again.' }
+  }
+
+  const text = asText(parsed.say)
+  if (text === '') {
+    return { ok: false, reason: 'The interviewer said nothing. Try again.' }
+  }
+
+  /*
+    An unrecognised id is dropped, not rejected. A turn whose topic could not be
+    identified is still a turn worth having — the tag row simply says less. The
+    round is not worth losing over an attribution.
+  */
+  return { ok: true, reply: { text, topicId: asUuid(parsed.topic_id) } }
 }
 
 /**
@@ -396,6 +630,54 @@ export function parseQuizDraft(text: string): QuizDraftResult {
       topicId: typeof raw.topic_id === 'string' && raw.topic_id !== '' ? raw.topic_id : null,
     },
   }
+}
+
+/** The hero meter: twenty segments, one per five points. */
+export const METER_SEGMENTS = 20
+
+/**
+ * Which segments are lit, and which is the tip.
+ *
+ * Floor, not round — 74 lights fourteen of twenty and marks the fourteenth,
+ * which is what the drawing shows. A meter that rounds up would claim a point
+ * the round did not earn.
+ */
+export function meterSegments(overall: number): { on: boolean; tip: boolean }[] {
+  const lit = Math.max(0, Math.min(METER_SEGMENTS, Math.floor(overall / (100 / METER_SEGMENTS))))
+  return Array.from({ length: METER_SEGMENTS }, (_, index) => ({
+    on: index < lit,
+    tip: index === lit - 1,
+  }))
+}
+
+/**
+ * The three bands a score falls in, for the bar colours.
+ *
+ * Both thresholds already exist — `scoreBand`'s 70, and `OFFER_BELOW`. Reusing
+ * them is the point rather than a saving: the drawing puts a rose bar on exactly
+ * the rows that carry a Rewind button, and that is true here *because both read
+ * the same constant* instead of two numbers that happen to agree today.
+ */
+export type Tone = 'hi' | 'mid' | 'lo'
+
+export function scoreTone(score: number): Tone {
+  if (score >= 70) return 'hi'
+  return score < OFFER_BELOW ? 'lo' : 'mid'
+}
+
+/**
+ * A sparkline column's label. `now` is taken rather than computed, so this stays
+ * pure and a test does not have to mock the clock.
+ */
+export function sparkLabel(iso: string, now: Date): string {
+  const then = new Date(iso)
+  const sameDay =
+    then.getFullYear() === now.getFullYear() &&
+    then.getMonth() === now.getMonth() &&
+    then.getDate() === now.getDate()
+
+  if (sameDay) return 'today'
+  return `${then.getDate()} ${then.toLocaleString('en-GB', { month: 'short' })}`
 }
 
 /** The band label beside the ring. Words, so the number is not the only signal. */

@@ -1,4 +1,5 @@
 import 'server-only'
+import { fail } from '@/lib/data/fail'
 
 import { cache } from 'react'
 
@@ -21,10 +22,6 @@ import { createClient } from '@/lib/supabase/server'
 
 const COLUMNS =
   'id, user_id, day, explain_text, explain_done, rebuild_text, rebuild_done, apply_text, apply_done, blocker_text, blocker_resolved_at, created_at, updated_at'
-
-function fail(action: string, error: { code?: string; message: string }): never {
-  throw new Error(`${action} failed: ${error.code ?? 'unknown'} · ${error.message}`)
-}
 
 /**
  * The most recent days, newest first.

@@ -1,4 +1,5 @@
 import 'server-only'
+import { fail } from '@/lib/data/fail'
 
 import { cache } from 'react'
 
@@ -57,10 +58,6 @@ export type NewTopic =
     })
 
 /** Supabase errors carry a code worth showing — the mock's error state shows one. */
-function fail(action: string, error: { code?: string; message: string }): never {
-  throw new Error(`${action} failed: ${error.code ?? 'unknown'} · ${error.message}`)
-}
-
 /*
   There is deliberately no "read every topic" function here any more.
 

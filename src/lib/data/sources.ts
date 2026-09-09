@@ -1,4 +1,5 @@
 import 'server-only'
+import { fail } from '@/lib/data/fail'
 
 import { cache } from 'react'
 
@@ -35,10 +36,6 @@ import { createClient } from '@/lib/supabase/server'
  */
 export const SUMMARY_COLUMNS =
   'id, user_id, lesson, course, chapter, url, duration_seconds, transcript_words, transcript_deleted_at, coverage, created_at, updated_at'
-
-function fail(action: string, error: { code?: string; message: string }): never {
-  throw new Error(`${action} failed: ${error.code ?? 'unknown'} · ${error.message}`)
-}
 
 /**
  * A row into a `Source`, with `coverage` PARSED rather than cast.
@@ -174,6 +171,19 @@ export const readTopicSource = cache(
 
     const { count, error: countError } = await supabase
       .from('topics')
+      /*
+        `head: true` STAYS here, and the difference from the two layout counts is
+        not taste.
+
+        Those run on every page in the (app) group, so a failure there takes the
+        whole group down and its message is the only thing anyone gets. This runs
+        on one detail page, beside a read of the source itself that returns a
+        body — so when something is wrong with the session or the grants, THAT
+        read reports it properly and this one is not the only witness.
+
+        Where a request is the sole reporter of its own failure, it must carry a
+        body. Where it is one of several, the cheaper call is fine.
+      */
       .select('id', { count: 'exact', head: true })
       .eq('source_id', row.source_id)
       .neq('id', topicId)
@@ -205,11 +215,12 @@ export async function listSourceOptions(): Promise<{ id: string; lesson: string 
 export const countSources = cache(async (): Promise<number> => {
   const supabase = await createClient()
 
-  const { count, error } = await supabase
+  const { count, error, status } = await supabase
     .from('sources')
-    .select('id', { count: 'exact', head: true })
+    /* No `head: true` — see countLedger for why, and ARCHITECTURE.md for the rule. */
+    .select('id', { count: 'exact' })
 
-  if (error) fail('Counting your sources', error)
+  if (error) fail('Counting your sources', error, status)
   return count ?? 0
 })
 

@@ -197,6 +197,129 @@
   --teal-soft: #e6f4f2;
 
   /*
+    ── Why every composite is a token ────────────────────────────────────────
+    A Tailwind arbitrary value may not contain spaces, so a gradient, a shadow
+    stack or a filter CANNOT be written at a call site — it has to be a custom
+    property. That is a constraint doing useful work: it puts every composite the
+    interview draws in one diffable place, next to the reference it comes from.
+
+    Components write `[background:var(--mesh)]` for a multi-layer value and
+    `bg-[var(--volt)]` for a single one. All of it resolves only inside this
+    subtree, which is what keeps a 0–100 scale off a topic card.
+  */
+
+  /* The light stops the gradients need. Not the scale — the ends of it. */
+  --indigo: #818cf8;
+  --indigo-2: #6366f1;
+  --blue: #1d4ed8;
+  --slate: #334155;
+
+  --volt-grad: linear-gradient(135deg, var(--volt), var(--volt-2));
+  --volt-grad-hover: linear-gradient(135deg, var(--volt-2), var(--indigo));
+  --volt-glow: 0 2px 10px rgba(79, 70, 229, 0.26);
+
+  /*
+    The start card's mesh. Split from its base colour because a colour is not a
+    valid `background-image` layer — `bg-[image:var(--mesh)]` would drop the whole
+    declaration silently, so the card is painted with `[background:…]`.
+  */
+  --mesh-base: #15161f;
+  --mesh:
+    radial-gradient(120% 130% at 8% 0%, #4b3fd6 0%, rgba(75, 63, 214, 0) 55%),
+    radial-gradient(90% 120% at 100% 20%, #7b3fa8 0%, rgba(123, 63, 168, 0) 60%),
+    radial-gradient(100% 140% at 60% 110%, #1e7f87 0%, rgba(30, 127, 135, 0) 55%),
+    var(--mesh-base);
+  --mesh-ink: #f2f1fb;
+  --mesh-ink-2: #cfd1e4;
+  --mesh-ink-3: #a9abc4;
+  --mesh-key: #a5b4fc;
+  --mesh-shadow: 0 16px 44px rgba(21, 22, 31, 0.3);
+
+  /* ── the room ─────────────────────────────────────────────────────────── */
+  --purple: #7e22ce;
+  --room-shadow: 0 4px 22px rgba(18, 19, 26, 0.07);
+  --room-rule: linear-gradient(90deg, var(--volt), var(--purple) 55%, var(--teal));
+  --pip-now: linear-gradient(90deg, var(--indigo), var(--volt));
+  --pip-glow: 0 0 8px rgba(79, 70, 229, 0.35);
+
+  /*
+    The second stop of each turn's gradient. Not derivable from the soft tokens
+    above — the reference picks its own, and a `color-mix` here would be a
+    different colour that merely looks like a tidy derivation.
+  */
+  --volt-soft-2: #e7e9fd;
+  --gold-soft-2: #fde8c8;
+  --mint-soft-2: #dcf2ea;
+  --follow-bg: linear-gradient(135deg, var(--volt-soft) 0%, var(--volt-soft-2) 55%, var(--teal-soft) 100%);
+  --hint-bg: linear-gradient(135deg, var(--gold-soft), var(--gold-soft-2));
+  --saveq-bg: linear-gradient(135deg, var(--mint-soft), var(--mint-soft-2));
+
+  /*
+    Border tints, and these are the reference's own hues rather than the tokens'.
+    `--gold` is #B45309 and this line is rgba(176,119,20,…): expressing it as a
+    mix of --gold would silently change the colour.
+  */
+  --volt-line: rgba(79, 70, 229, 0.34);
+  --gold-line: rgba(176, 119, 20, 0.34);
+  --mint-line: rgba(16, 137, 106, 0.34);
+  --teal-line: rgba(30, 127, 151, 0.45);
+  --teal-ink: #115e59;
+
+  /* ── the scorecard ────────────────────────────────────────────────────── */
+  --emerald: #34d399;
+  --emerald-2: #6ee7b7;
+  --violet: #c084fc;
+  --pink: #f472b6;
+  --teal-2: #5eead4;
+  --coral: #fb7185;
+
+  /*
+    The hero. Base split from the radial stack for the same reason the mesh is:
+    a colour is not a valid background-image layer.
+  */
+  --sc-base: #0e0f16;
+  --sc-hero:
+    radial-gradient(135% 120% at 0% 0%, #2e2178 0%, rgba(46, 33, 120, 0) 56%),
+    radial-gradient(110% 130% at 100% 0%, #63308a 0%, rgba(99, 48, 138, 0) 52%),
+    radial-gradient(130% 150% at 78% 130%, #0d6169 0%, rgba(13, 97, 105, 0) 56%);
+  --sc-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0) 34%);
+  --sc-blob: radial-gradient(circle, rgba(168, 85, 247, 0.2) 0%, rgba(168, 85, 247, 0) 68%);
+  --sc-shadow: 0 24px 64px rgba(14, 15, 22, 0.38), 0 1px 0 rgba(255, 255, 255, 0.07) inset;
+
+  --sc-ink: #f4f3fb;
+  --sc-ink-2: #b4b6d0;
+  --sc-ink-3: #6e718e;
+  --sc-eyebrow: #a6a8c4;
+  --sc-stat-ink: #b9bbd4;
+  --sc-stats-bg: rgba(8, 9, 15, 0.42);
+  --sc-stats-line: rgba(255, 255, 255, 0.1);
+  --sc-stat-rule: rgba(255, 255, 255, 0.08);
+  --sc-track: rgba(255, 255, 255, 0.08);
+  --band: #fcd34d;
+  --band-soft: rgba(252, 211, 77, 0.1);
+  --band-line: rgba(252, 211, 77, 0.36);
+
+  /*
+    The numeral is painted with a gradient clipped to the glyphs — no SVG and no
+    conic gradient anywhere on this screen. A ring built from a conic gradient
+    rendered as a black disc twice; it is not coming back.
+  */
+  --sc-num: linear-gradient(112deg, var(--emerald-2) 0%, var(--indigo) 44%, var(--violet) 100%);
+  --sc-num-glow: drop-shadow(0 6px 26px rgba(129, 140, 248, 0.28));
+
+  --meter-lo: linear-gradient(90deg, var(--emerald-2), var(--indigo));
+  --meter-hi: linear-gradient(90deg, var(--indigo), var(--violet));
+  --meter-tip: 0 0 14px rgba(192, 132, 252, 0.6);
+
+  /* The 0–100 scale, in three bands. Emerald through violet to rose. */
+  --g-hi: linear-gradient(90deg, var(--emerald), var(--mint));
+  --g-mid: linear-gradient(90deg, var(--indigo), var(--volt));
+  --g-lo: linear-gradient(90deg, var(--pink), var(--rose));
+
+  --spark-bar: linear-gradient(180deg, var(--indigo), var(--volt));
+  --spark-now: linear-gradient(180deg, var(--emerald), var(--mint));
+
+  /*
     The room's own focus ring. Scoped, unlike the reference's — inside the room
     it is the scale, outside it never resolves and the app's accent ring stands.
   */

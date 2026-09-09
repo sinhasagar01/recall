@@ -21,6 +21,7 @@
  *   contains "PARTIAL-RUN"  → finish_reason "length", JSON cut mid-object
  *   contains "NOTHING-RUN"  → a valid, empty list
  *   contains "BROKEN-RUN"   → finish_reason "stop", unparseable body
+ *   contains "SLOW-ANSWER"  → the same reply, five seconds later
  *   otherwise               → three concepts, one of which duplicates a seeded topic
  *
  * Interview mode's calls are told apart by the SYSTEM prompt instead, because
@@ -89,7 +90,9 @@ const interviewBody = (system, messages) => {
         precision: { score: 79, note: 'Mostly exact.' },
         enquiry: { score: 80, note: 'Both clarifying questions were load-bearing.' },
         overall: 74,
-        summary: 'Strong on mechanism, thin under follow-up.',
+        verdict: 'Strong on mechanism, thin on consequence',
+        summary:
+          'You knew what things were, and went shallow the moment a follow-up asked what follows from them.',
         /*
           Index 2 and 4 deliberately — the seed makes those `okay` and `strong`,
           NOT weak.
@@ -146,20 +149,35 @@ const interviewBody = (system, messages) => {
     }
   }
 
+  /*
+    The room's turn is a structured call since issue #25 — `say` plus the topic it
+    is about — so these answer with JSON. A hint and a clarification carry a null
+    topic, exactly as the prompt asks: the model names a topic when it is ASKING,
+    not when it is helping.
+
+    The id is a real seeded uuid, not a slug. That distinction is the whole of
+    what a stub can get wrong here — see ARCHITECTURE.md on a stub returning the
+    shape the parser wants rather than the shape the vendor returns.
+  */
   const last = messages.at(-1)?.content ?? ''
+  const turn = (say, topicId = null) => ({
+    content: JSON.stringify({ say, topic_id: topicId }),
+    finish_reason: 'stop',
+  })
+
   if (system.includes('They asked for a hint')) {
-    return { content: 'Think about what the scope is a reference to.', finish_reason: 'stop' }
+    return turn('Think about what the scope is a reference to.')
   }
   if (system.includes('They asked a clarifying question')) {
-    return { content: 'Same invocation. Good question.', finish_reason: 'stop' }
+    return turn('Same invocation. Good question.')
   }
   if (system.includes('Ask the next question')) {
-    return { content: 'Walk me through what a closure actually captures.', finish_reason: 'stop' }
+    return turn('Walk me through what a closure actually captures.', STUB_TOPIC_IDS[2] ?? null)
   }
-  return {
-    content: `So if two closures share one scope — what does the other see? (you said: ${last.slice(0, 30)})`,
-    finish_reason: 'stop',
-  }
+  return turn(
+    `So if two closures share one scope — what does the other see? (you said: ${last.slice(0, 30)})`,
+    STUB_TOPIC_IDS[2] ?? null,
+  )
 }
 
 /*
@@ -250,8 +268,21 @@ createServer((req, res) => {
     const { content, finish_reason } = INTERVIEW_CALLS.some((marker) => system.includes(marker))
       ? interviewBody(system, parsed.messages ?? [])
       : body(transcript)
-    res.writeHead(200, { 'content-type': 'application/json' })
-    res.end(JSON.stringify({ choices: [{ message: { content }, finish_reason }] }))
+
+    /*
+      A deliberately slow reply, chosen by what the spec types — the same way
+      every other scenario here is chosen.
+
+      It exists for one assertion: `End the round` must work WHILE a reply is in
+      flight. That is not a state a fast stub can produce, and it is the state
+      the control exists for.
+    */
+    const delay = transcript.includes('SLOW-ANSWER') ? 5000 : 0
+
+    setTimeout(() => {
+      res.writeHead(200, { 'content-type': 'application/json' })
+      res.end(JSON.stringify({ choices: [{ message: { content }, finish_reason }] }))
+    }, delay)
   })
 }).listen(PORT, () => {
   console.log(`openai stub listening on ${PORT}`)

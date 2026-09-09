@@ -6,9 +6,17 @@ import {
   canRewind,
   countRound,
   estimateRoundCost,
+  meterSegments,
+  METER_SEGMENTS,
   offersFrom,
+  poolLine,
+  scoreTone,
+  sparkLabel,
+  pipState,
+  followUpTag,
   parseQuizDraft,
   parseRewindScore,
+  parseTurn,
   parseScorecard,
   questionCount,
   scoreBand,
@@ -139,6 +147,7 @@ describe('the offer step', () => {
   const card = (scores: number[]): Scorecard => ({
     scores: { recall: 70, depth: 70, precision: 70, enquiry: 70 },
     overall: 70,
+    verdict: '',
     summary: '',
     notes: { recall: '', depth: '', precision: '', enquiry: '' },
     questions: scores.map((score, index) => ({
@@ -164,10 +173,162 @@ describe('the offer step', () => {
   })
 })
 
+describe('the interviewer names the topic it is asking about', () => {
+  const ID = '65df131a-2375-4fbc-bac6-4484b187654e'
+
+  it('reads the reply and its attribution', () => {
+    const result = parseTurn(JSON.stringify({ say: 'What does a closure capture?', topic_id: ID }))
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.reply.text).toBe('What does a closure capture?')
+    expect(result.reply.topicId).toBe(ID)
+  })
+
+  it('refuses an id that is not a uuid, and keeps the turn', () => {
+    /*
+      THE regression. The real model returns slugs — "arrow-function-this" — where
+      it was asked for the bracketed uuid. Those reached a `uuid[]` column and
+      every round save in production failed 22P02, silently, from the day
+      interview mode shipped.
+
+      Dropped rather than rejected: an exchange whose topic could not be
+      identified is still an exchange worth having.
+    */
+    const result = parseTurn(JSON.stringify({ say: 'Go on.', topic_id: 'arrow-function-this' }))
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.reply.text).toBe('Go on.')
+    expect(result.reply.topicId, 'a slug is not an id').toBeNull()
+  })
+
+  it('accepts a null topic, which is what a hint is', () => {
+    const result = parseTurn(JSON.stringify({ say: 'Think about the scope.', topic_id: null }))
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.reply.topicId).toBeNull()
+  })
+
+  it('refuses a reply that says nothing', () => {
+    const result = parseTurn(JSON.stringify({ say: '   ', topic_id: ID }))
+
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.reason).toContain('said nothing')
+  })
+
+  it('is a readable error when it cannot be read at all', () => {
+    const result = parseTurn('Sure! Here is my next question:')
+
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.reason).toContain('unreadable')
+  })
+})
+
+describe('a scorecard question that names a topic id which is not one', () => {
+  it('keeps the question and drops the attribution', () => {
+    /*
+      The production failure, at the layer it escaped through. The model answers
+      "arrow-function-this" where it was handed `[uuid] Title`; that string
+      reached a `uuid[]` column and every round save failed 22P02 — silently,
+      from the day interview mode shipped, with `interview_rounds` at 0 rows.
+
+      The scores were validated here from the first day. The ids were not.
+    */
+    const raw = JSON.stringify({
+      recall: { score: 80, note: '' },
+      depth: { score: 60, note: '' },
+      precision: { score: 70, note: '' },
+      enquiry: { score: 75, note: '' },
+      overall: 71,
+      summary: 'ok',
+      questions: [
+        { topic_id: 'arrow-function-this', title: 'Arrow functions', score: 41, note: 'thin' },
+        { topic_id: '65df131a-2375-4fbc-bac6-4484b187654e', title: 'This binding', score: 88, note: 'good' },
+      ],
+    })
+
+    const result = parseScorecard(raw, new Map())
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+
+    expect(result.scorecard.questions, 'the question is kept').toHaveLength(2)
+    expect(result.scorecard.questions[0].score, 'and so is its score').toBe(41)
+    expect(result.scorecard.questions[0].topicId, 'a slug is not an id').toBeNull()
+    expect(result.scorecard.questions[1].topicId).toBe('65df131a-2375-4fbc-bac6-4484b187654e')
+  })
+
+  it('is therefore not offered, which is why the scorecard says so', () => {
+    // offersFrom drops it — so the row has to explain its own absence.
+    const raw = JSON.stringify({
+      recall: { score: 80, note: '' }, depth: { score: 60, note: '' },
+      precision: { score: 70, note: '' }, enquiry: { score: 75, note: '' },
+      overall: 71, summary: '',
+      questions: [{ topic_id: 'not-a-uuid', title: 'X', score: 10, note: '' }],
+    })
+    const result = parseScorecard(raw, new Map())
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(offersFrom(result.scorecard)).toEqual([])
+  })
+})
+
+describe('what each round type says it has to draw on', () => {
+  const pool = { topics: 21, weak: 9, quizzes: 14, incidents: 0 }
+
+  it('counts topics, weak and quizzes for a concept round', () => {
+    const line = poolLine('javascript', pool, 8)
+
+    expect(line.lead).toBe('21 topics')
+    expect(line.rest).toBe(' · 9 weak · 14 quizzes')
+    expect(line.thin).toBe(false)
+  })
+
+  it('counts decisions and incidents separately for behavioural', () => {
+    /*
+      A ledger with three decisions and no incidents is a different round from
+      one with both, so one number cannot stand for the pair.
+    */
+    const line = poolLine('behavioural', { topics: 2, weak: 0, quizzes: 0, incidents: 1 }, 8)
+
+    expect(line.lead).toBe('2 decisions')
+    expect(line.rest).toBe(', 1 incident')
+    expect(line.thin, '3 of 8 is thin').toBe(true)
+  })
+
+  it('does not count at all for mixed', () => {
+    // It is the sum of the cards directly above it; restating that says nothing.
+    const line = poolLine('mixed', pool, 8)
+
+    expect(line.lead).toBe('everything')
+    expect(line.rest).toBe(' above')
+    expect(line.thin, 'and it can never be thin, because it is all of them').toBe(false)
+  })
+
+  it('cannot be thin before a length is chosen', () => {
+    // Thin is a claim about a round you have shaped. There is no round yet.
+    expect(poolLine('javascript', { topics: 1, weak: 0, quizzes: 0, incidents: 0 }, null).thin).toBe(
+      false,
+    )
+  })
+
+  it('omits a count it does not have rather than printing a zero', () => {
+    const line = poolLine('react', { topics: 8, weak: 0, quizzes: 0, incidents: 0 }, 4)
+
+    expect(line.rest, 'no “· 0 weak · 0 quizzes”').toBe('')
+  })
+})
+
 describe('the offer step, with a question that was re-asked', () => {
   const card = (scores: number[]): Scorecard => ({
     scores: { recall: 70, depth: 70, precision: 70, enquiry: 70 },
     overall: 70,
+    verdict: '',
     summary: '',
     notes: { recall: '', depth: '', precision: '', enquiry: '' },
     questions: scores.map((score, index) => ({
@@ -312,6 +473,83 @@ describe('a drafted quiz, before you have looked at it', () => {
     expect(result.ok).toBe(false)
     if (result.ok) return
     expect(result.reason).toContain('Nothing was saved')
+  })
+})
+
+describe('the hero meter', () => {
+  const lit = (overall: number) => meterSegments(overall).filter((s) => s.on).length
+
+  it('lights one segment per five points, floored', () => {
+    // 74 lights fourteen — rounding up would claim a point the round did not earn.
+    expect(lit(74)).toBe(14)
+    expect(lit(75)).toBe(15)
+    expect(lit(79)).toBe(15)
+  })
+
+  it('marks the last lit segment as the tip, and only that one', () => {
+    const tips = meterSegments(74).map((s, i) => (s.tip ? i : -1)).filter((i) => i >= 0)
+    expect(tips).toEqual([13])
+  })
+
+  it('has no tip at zero, and every segment at a hundred', () => {
+    expect(lit(0)).toBe(0)
+    expect(meterSegments(0).some((s) => s.tip)).toBe(false)
+    expect(lit(100)).toBe(METER_SEGMENTS)
+  })
+})
+
+describe('the three bands the scale is drawn in', () => {
+  it('agrees with canRewind at the boundary, because both read OFFER_BELOW', () => {
+    /*
+      The point of deriving this from the existing thresholds. The drawing puts a
+      rose bar on exactly the rows that carry a Rewind, and that is true HERE
+      because they are one rule rather than two numbers that happen to agree.
+    */
+    expect(scoreTone(OFFER_BELOW - 1)).toBe('lo')
+    expect(canRewind(OFFER_BELOW - 1, false)).toBe(true)
+
+    expect(scoreTone(OFFER_BELOW)).toBe('mid')
+    expect(canRewind(OFFER_BELOW, false)).toBe(false)
+  })
+
+  it('matches the reference row for row', () => {
+    // 92 and 81 emerald, 64 violet, 41 and 33 rose.
+    expect([92, 81, 64, 41, 33].map(scoreTone)).toEqual(['hi', 'hi', 'mid', 'lo', 'lo'])
+  })
+})
+
+describe('the sparkline axis', () => {
+  const now = new Date('2026-09-09T12:00:00Z')
+
+  it('says today for today, and a date for anything else', () => {
+    expect(sparkLabel('2026-09-09T09:00:00Z', now)).toBe('today')
+    expect(sparkLabel('2026-08-18T09:00:00Z', now)).toMatch(/^18 Aug/)
+  })
+})
+
+describe('the room says which follow-up you are on', () => {
+  const q = (): Turn => them('question')
+  const f = (): Turn => them('follow-up')
+
+  it('counts follow-ups since the current question, not the whole round', () => {
+    expect(followUpTag('staff', [q(), f(), you('answer'), f()])).toBe('follow-up 2 of 2')
+    expect(followUpTag('staff', [q(), f(), q(), f()])).toBe('follow-up 1 of 2')
+  })
+
+  it('says nothing before the first follow-up', () => {
+    expect(followUpTag('staff', [q(), you('answer')])).toBeNull()
+  })
+
+  it('gives no total where the interviewer has no ceiling', () => {
+    // A skeptical principal pushes until you concede or hold. Inventing a
+    // total would be a promise the prompt does not make.
+    expect(followUpTag('skeptical', [q(), f()])).toBe('follow-up 1')
+  })
+})
+
+describe('the progress pips', () => {
+  it('fill behind you and mark where you are', () => {
+    expect([0, 1, 2, 3].map((i) => pipState(i, 2))).toEqual(['done', 'done', 'now', 'todo'])
   })
 })
 

@@ -1,3 +1,4 @@
+import { fail } from '@/lib/data/fail'
 import { cache } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import {
@@ -16,10 +17,6 @@ import {
  * different one, and being a different one is what makes that assertion
  * meaningful rather than a comment.
  */
-
-function fail(action: string, error: { code?: string; message: string }): never {
-  throw new Error(`${action} failed: ${error.code ?? 'unknown'} · ${error.message}`)
-}
 
 /**
  * The transcript, read on the server.

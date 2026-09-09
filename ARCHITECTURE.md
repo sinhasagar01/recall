@@ -2275,7 +2275,7 @@ cannot express a rule about the longer one.** They are two rules — *who may ho
 *the key must never be public* — and they need two assertions, so that the failure says which
 one broke. Collapsing them into one check reads as thorough and is strictly weaker than either.
 
-This is one of **eight distinct ways a guard has passed for the wrong reason** in this project.
+This is one of **nine distinct ways a guard has passed for the wrong reason** in this project.
 They are worth holding together because they are not variations of one mistake — each has its
 own tell and its own defence:
 
@@ -2289,6 +2289,23 @@ own tell and its own defence:
 | **Unmeasurable** | arc 4 | a perturbation the harness could not install reported "0 failed", indistinguishable from a redundant clause |
 | **Coupled to location** | arc 2.1 | an assertion that sliced a literal out of a file kept passing after the value moved — see below |
 | **Asserts the location, not the consequence** | arc 7 | a guard proving the interview scale is not *named* outside its tree said nothing about what happens if it is — see below |
+| **Asserts a name, not the effect** | arc 7 | a guard-the-guard asserting the source contained `currentTopicId` could not tell a rename from a removal — the identifier appeared in several places and any one of them satisfied it |
+
+**The ninth is close to the eighth and is not the same.** *Asserts the location* is about
+**where** a thing is written; *asserts a name* is about **what it is called**. The tell is
+different too: a location-coupled assertion breaks when code moves, and a name-coupled one
+keeps passing when the code stops working, because a rename leaves the identifier scattered
+through the usages that still mention it.
+
+It was found the way the rest of the table was — by perturbing, and by a perturbation that
+**DID NOT BITE**. Renaming `const currentTopicId =` to `const unusedTopicId =` left every
+usage still spelling `currentTopicId`, so `toContain('currentTopicId')` was satisfied by the
+wreckage of the thing it was checking for.
+
+> **Assert that the value arrives, not that the identifier exists.** The rewritten clause
+> asserts `result.topicId` — that the model's attribution reaches the turn — which is the
+> effect the guard was always about. A name is an implementation detail the guard happens to
+> be able to see; the effect is the rule.
 
 The defences do not generalise, which is the point of the table. **Too broad** is caught by
 counting a token against prose before writing it. **Too narrow** by running the tests red
@@ -2868,3 +2885,235 @@ file, or the fix can silently degrade back to what it replaced.
 It was not done inside the arc it was guarding, because changing a guard's shape while relying on
 it is how a guard quietly stops guarding. It is the first thing to do in a change of its own,
 red first.
+
+### A stub that answers in the shape the parser wants hides a contract the vendor breaks
+
+`e2e/openai-stub.mjs` returned real seeded uuids for `topic_id`, because that is what
+`parseScorecard` was written to consume. The real model returns slugs:
+
+```
+Saving the round failed: 22P02 · invalid input syntax for type uuid: "arrow-function-this"
+Saving the round failed: 22P02 · invalid input syntax for type uuid: "js-serialization-structuredclone-vs-json"
+```
+
+Those reached a `uuid[]` column and **every round save failed, from the day interview mode
+shipped.** `interview_rounds` sat at 0 rows for two sessions. 175 specs were green throughout,
+and so was a production walk — which deliberately did not complete a round, so the one path
+that would have hit it was the one path not taken.
+
+**The stub could not have caught it, because the stub was written from the parser.** A fixture
+built to satisfy the code it exercises can only ever confirm that code. It is not a second
+opinion; it is the same opinion, restated in JSON.
+
+> **The shape a stub returns must be the shape the vendor actually returns, not the shape our
+> parser hopes for.** Where the vendor's shape is not known, the stub should return the
+> *nastiest plausible* thing the contract permits — a slug where an id is asked for, a string
+> where a number is asked for, a null where a value is promised.
+
+This is a sharper case than "too broad" or "vacuous fixture", both of which are about an
+assertion. Here every assertion was correct and the *input* was flattering. The parse bounded
+every score to 0–100 from the first day and let `topic_id` through as "any string" — and the
+asymmetry is worth naming, because it recurs: **a value that is obviously a number invites
+validation, and a value that is obviously a string does not.** `topic_id` is a string in the
+same sense that a score is a number, and only one of them got checked.
+
+### A shared busy flag that disables the exit is how a UI becomes a trap
+
+The room held one `busy` state. Every control read it, including `End the round` — so while an
+answer was in flight the escape hatch carried the native `disabled` attribute and the browser
+never dispatched the click. It kept its ordinary label while inert, so it read as a button that
+does nothing rather than one that is unavailable.
+
+The diagnosis matters more than the fix, because three explanations were live and only one was
+true: the handler never fired. Not a handler awaiting the in-flight call, not a navigation
+swallowed downstream — **an inert control**. Those three have different fixes and only one of
+them is "stop disabling it".
+
+> **In-flight state may disable the actions. It may never disable the way out.** They are
+> different kinds of control and a single flag cannot tell them apart.
+
+Two further faults sat on the same path, and both are general:
+
+- **`setBusy(false)` on the resolved path only.** No `try`/`finally`, so any rejection stranded
+  the flag at `true` forever with nothing rendered to say why. That is how a production round
+  was lost: `saveRound` threw 22P02, `finish` had no catch, and the room disabled itself
+  permanently. `finally`, not a trailing statement.
+- **Leaving and scoring were one act.** `end()` awaited the scorecard before it let you out, so
+  "leave" inherited model latency. They are now two: pressing leaves the room synchronously —
+  there is no `await` before it — and the scorecard resolves into the screen you land on. The
+  perturbation that proves it is not "does the scorecard arrive" but "does the room disappear
+  *now*".
+
+**Abandoned, not aborted, and the copy says so.** A server action is one round trip with no
+client-reachable abort; there is no `AbortController` anywhere in `src/` and `chat()` passes no
+signal. An in-flight reply finishes on the server and its answer is discarded. Implying a stop
+would be the easier sentence and a false one.
+
+### `disabled ?? loading` means an explicit `false` defeats the loading guard
+
+`components/ui/button.tsx` resolves `disabled={disabled ?? loading}`. Nullish coalescing only
+falls back when `disabled` is `undefined` — so a caller passing a real boolean gets exactly
+that boolean, and `loading` stops guarding anything.
+
+The room's `Answer` button passed `disabled={answer.trim() === ''}` with `loading={busy}`. Type
+one character while a request is in flight and `false ?? true` is `false`: the button is live
+again and a second call can fire over a stale closure. It was masked only because `say()` clears
+the textarea, which re-disables it by the empty check — an accident, not a guard.
+
+Left as it is in `ui/button.tsx`, deliberately: `??` is the right operator for a component whose
+callers must be able to force a control enabled. **The rule belongs with the callers** — a
+caller that passes both `loading` and an explicit `disabled` must include the loading condition
+in the boolean itself, because the component will not do it for them.
+
+### A value whose type is self-evident invites no validation
+
+`parseScorecard` bounds every score: four dimensions and an overall, each refused unless it is
+an integer from 0 to 100. In the same function, over the same untrusted model output, in the
+same loop, `topic_id` was accepted as *any string*. That asymmetry is not carelessness about
+one field — it is a pattern, and it has a mechanism.
+
+**A number does not look like itself.** `86` could be a percentage, a count, an index, an id,
+a timestamp; writing `typeof value === 'number'` and stopping feels obviously insufficient, so
+the range goes in. A string looks like exactly what it is. `typeof value === 'string'` reads as
+a finished thought, because the type and the value are the same shape — and the question *what
+kind of string* never gets asked.
+
+So the fields most likely to go unchecked are the ones whose shape looks least like a
+constraint:
+
+| | what it actually is |
+| --- | --- |
+| ids | a uuid, or a key that exists in a set you hold |
+| slugs | a bounded character class, usually lowercase and hyphenated |
+| names | non-empty after trimming, and length-bounded |
+| urls | a scheme you allow, a host you allow |
+| dates | parseable, and inside a range that makes sense |
+
+Every one of those is `string` to the compiler and a *constrained* string in the domain, and the
+gap between those two is where a value gets in. Interview mode's cost was two sessions of rounds
+that could never save, from a field the parser knew the type of and nothing else.
+
+> **A parser must state what each string IS, not merely that it is a string.** Where the
+> constraint cannot be expressed, say so at the line — an unconstrained string is a decision,
+> not a default.
+
+**The check, which is cheap and worth running on every parser in this repo:** read the parser
+and ask, field by field, *which of these do I only know the type of?* Anything the answer
+includes is either validated or has a comment saying why it is not. `parseExtraction`,
+`parseQuizDraft`, `parseScorecard`, `parseTurn` and `parseRewindScore` all take model output;
+the numbers in all five were bounded from the first day and the strings were not.
+
+### An optimisation that removes a response body removes the error channel with it
+
+`countLedger` counted with `head: true` — an HTTP HEAD, which transfers no body. On a fresh
+sign-in it failed and reported:
+
+```
+Counting your ledger failed: unknown ·
+```
+
+An action name, a separator, and nothing. Reproduced exactly, the same read twice against a
+token the server rejects:
+
+```
+HEAD + count exact    status=401   error={"message":""}          count=null
+GET  + count exact    status=401   error={"code":"PGRST301",
+                                          "message":"No suitable key or wrong key type",
+                                          "details":"None of the keys was able to decode the JWT"}
+```
+
+**A PostgREST error's description lives in the response body.** A HEAD response has no body by
+definition, so there is nothing to parse and the error arrives as `{ message: '' }`. The count
+itself was handled correctly the whole time — `count ?? 0`, failing only `if (error)`. Nothing
+in our code discarded the diagnosis; the request shape did, before our code was reached.
+
+> **A request that carries no payload fails in a way that carries no explanation.** Whenever an
+> optimisation removes a response body — HEAD, `204`, a fire-and-forget write, a count that only
+> needs a header — check what the error path was going to use that body for. Usually: all of it.
+
+**The cost was not the outage.** The page renders on refresh, because the underlying fault was a
+transient 401 and the next request carried an accepted token. The cost is that **which** 401 it
+was can never be established: this repo records two local causes for a freshly-minted token
+being refused — single-use refresh tokens losing a race under the layout's six parallel reads,
+and container clock drift surfacing as `PGRST303 · JWT issued at future` — and the sentence that
+would have named one of them was never transferred. A real auth bug is now unreproducible.
+
+**The same family as two entries above.** A stub returning well-formed uuids because that is
+what the parser wanted; an anon probe whose 404s read as denial; and now an error object that is
+correctly shaped, correctly typed, correctly empty. **An instrument producing well-formed
+nothing is worse than one producing an error**, because nothing about the output says it is not
+an answer.
+
+**Where the trade IS worth taking**, stated so the remaining `head: true` is a decision rather
+than an inconsistency: `readTopicSource`'s sibling count keeps it. That read runs on one detail
+page, beside a read of the source itself that returns a body — so a session or grant failure is
+reported properly by its neighbour and this call is not the only witness. The two counts that
+lost it run on **every page in the `(app)` group**, inside one `Promise.all`, where a failure
+takes the whole group down and its message is all anyone gets.
+
+> **Where a request is the sole reporter of its own failure, it must carry a body. Where it is
+> one of several, the cheaper call is fine.**
+
+`fail` was also ten byte-identical copies, one per data module, all asserting a shape the error
+might not have. Now one module, which reports the HTTP status and says plainly when the server
+sent no description instead of trailing off after a colon.
+
+**And fixing it broke a test, which is the third instance of the slice weakness.**
+`export.test.ts` bounded its assertion with
+`read.slice(read.indexOf('export const SUMMARY_COLUMNS'), read.indexOf('function fail('))` —
+closing on a helper with no relationship to the rule. Hoisting `fail` out of that module made
+the closing `indexOf` return `-1`, `slice(start, -1)` ran to the end of the file, and the
+assertion quietly became a claim about the whole module. It failed loudly this time; with a
+`toContain` instead of a `not.toMatch` it would have failed open and passed from anywhere.
+Both anchors are asserted now, and the slice is required to be shorter than the file.
+
+### A screen that only renders correctly with data nobody seeds is untested
+
+`interview_rounds` reached **61 rows** locally. The seed clears topics, phases, ledger items and
+days for each fixture user, and never cleared rounds — so every run that finished one left it
+behind. Third instance of the same shape: **a seed clears what it created, and a later arc adds
+a table it does not know about.** Sources were the first, days the second.
+
+What is new is how it surfaced. The first two arrived as failing specs — a count that drifted, a
+unique key that collided. This arrived as a **screenshot**: a sparkline of six identical bars,
+every column labelled *today*, noticed only because the screen was being held up against its
+drawing. No assertion could have found it, because every assertion passed.
+
+**And the sharper half.** There were no seeded past rounds at all. The sparkline therefore
+rendered from whatever junk had accumulated, and in a clean database it renders one bar —
+which looks fine. It had already collapsed to nothing once, resolving a percentage against an
+implicit height, and it would have collapsed again without a single test going red.
+
+> **A screen that only renders correctly with data nobody seeds is untested, however many specs
+> pass.** The specs are exercising a shape the fixture cannot produce.
+
+The check is not "is there a spec for this screen" but **"what does this screen look like with
+the fixture, and is that the shape it is supposed to have?"** A sparkline needs several rounds
+with *different* scores or its whole job — comparison — is invisible. The fixture now seeds
+four, 52 / 48 / 61 / 65, dated back, so the heights differ and a wrong one is visible.
+
+**The rule for a seed, stated so the fourth instance does not happen:** a migration that adds a
+user-owned table adds a line to the seed's clear-down in the same change. And a surface whose
+correctness is a *shape* — a chart, a meter, a sparkline, a distribution — needs fixture data
+with spread, not merely fixture data.
+
+### Moving a guard to where the thing it protects now lives is not weakening it
+
+The scorecard's `h1` was asserted to contain `JavaScript`, guarding a real defect: the round
+type reached the screen as the stored enum, `javascript · 20 minutes`, caught by the first
+side-by-side. Building the hero to its drawing moved the round's name into the eyebrow and put
+the model's verdict in the `h1`, so that assertion failed — correctly, and for a reason that had
+nothing to do with the rule.
+
+The temptation at that moment is to soften it, because the quickest green is a looser matcher.
+
+> **The test of a relocated guard is whether the rule can still fail.** Not whether the
+> assertion still passes — whether there is a change to the code that would break it.
+
+The rule here was never *"the h1 says JavaScript"*. It was **"a stored enum must never reach the
+screen"**, and that is now checked on the eyebrow, where the name lives, with a negative on the
+lowercase form added — so the guard is strictly stronger than the one it replaced. Render the
+enum in either place and it goes red.
+
+The failure mode this avoids is the one the guard table already records twice: an assertion
+pointed at where a value *used* to be, passing while reading nothing.

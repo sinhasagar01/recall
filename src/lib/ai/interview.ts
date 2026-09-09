@@ -5,12 +5,14 @@ import {
   parseQuizDraft,
   parseRewindScore,
   parseScorecard,
+  parseTurn,
   type Level,
   type QuizDraftResult,
   type RewindScoreResult,
   type RoundType,
   type ScorecardResult,
   type Turn,
+  type TurnReplyResult,
 } from '@/lib/domain/interview'
 
 /**
@@ -54,8 +56,21 @@ const ROOM_RULES = [
   'If they ask a clarifying question, ANSWER it and then return to your question. Asking is not a wrong answer and must never be treated as one.',
   'If they ask for a hint, give one that points at the shape of the answer without stating it.',
   'Never grade, never score, never say how they are doing. That happens once, at the end, elsewhere.',
-  'Reply with the next thing you say, as plain text. No preamble, no labels, no markdown.',
+  'Reply as JSON: `say` is the next thing you say, plain prose with no preamble, labels or markdown.',
+  '`topic_id` is the id in brackets of the supplied topic you are asking about, copied exactly.',
+  'Use null for topic_id when you are giving a hint or answering a clarifying question rather than asking.',
+  'NEVER invent an id. If the exchange is about none of the supplied topics, use null.',
 ].join('\n')
+
+const TURN_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['say', 'topic_id'],
+  properties: {
+    say: { type: 'string' },
+    topic_id: { type: ['string', 'null'] },
+  },
+} as const
 
 /**
  * ── The scoring prompt is a CONSTANT ────────────────────────────────────────
@@ -75,8 +90,10 @@ const SCORING_PROMPT = [
   'precision  — were the answers exact, or true-but-vague enough to be unfalsifiable?',
   'enquiry    — did they ask clarifying questions, and were they load-bearing? Asking counts FOR them.',
   '',
-  'Also give an overall 0-100, a one-or-two-sentence summary of where they were strong and where',
-  'they went thin, a note per dimension, and a per-question result with its topic_id and a score.',
+  'Also give an overall 0-100; a `verdict` of at most eight words naming the single shape of the',
+  'round ("Strong on mechanism, thin on consequence"); a one-or-two-sentence `summary` saying where',
+  'they were strong and where they went thin; a note per dimension; and a per-question result with',
+  'its topic_id and a score.',
   '',
   'Score what was SAID. Do not consider who was asking or how hard they pushed.',
   'Do not count anything — how many questions there were, how many hints were used, how many',
@@ -86,7 +103,7 @@ const SCORING_PROMPT = [
 const SCORECARD_SCHEMA = {
   type: 'object',
   additionalProperties: false,
-  required: ['recall', 'depth', 'precision', 'enquiry', 'overall', 'summary', 'questions'],
+  required: ['recall', 'depth', 'precision', 'enquiry', 'overall', 'verdict', 'summary', 'questions'],
   properties: {
     ...Object.fromEntries(
       ['recall', 'depth', 'precision', 'enquiry'].map((dimension) => [
@@ -100,6 +117,7 @@ const SCORECARD_SCHEMA = {
       ]),
     ),
     overall: { type: 'integer' },
+    verdict: { type: 'string' },
     summary: { type: 'string' },
     questions: {
       type: 'array',
@@ -126,7 +144,14 @@ const asMessages = (turns: Turn[]) =>
 
 export type TurnOutcome = { ok: true; text: string } | { ok: false; reason: string }
 
-/** What the interviewer says next. Plain text, one thing at a time. */
+/**
+ * What the interviewer says next, and which topic it is about.
+ *
+ * Structured rather than plain text since issue #25: the room's tag row has to
+ * name the topic and say whether you grade it weak, and nothing else in the
+ * round knows. `Turn.topicId` existed for this from the first day and was never
+ * populated — see `parseTurn` for the full account.
+ */
 export async function nextTurn(
   input: {
     roundType: RoundType
@@ -137,7 +162,7 @@ export async function nextTurn(
     intent: 'ask' | 'follow' | 'hint' | 'clarify'
   },
   fetchImpl: typeof fetch = fetch,
-): Promise<TurnOutcome> {
+): Promise<TurnReplyResult> {
   const intent = {
     ask: 'Ask the next question.',
     follow: 'Respond to what they just said. Follow up if it left an opening.',
@@ -159,12 +184,15 @@ export async function nextTurn(
       ].join('\n'),
       messages: asMessages(input.turns),
       maxOutputTokens: 700,
+      schema: { name: 'interviewer_turn', schema: TURN_SCHEMA },
       whatWasLost: 'The round is still going — try again, or leave.',
     },
     fetchImpl,
   )
 
-  return outcome.ok ? { ok: true, text: outcome.content } : { ok: false, reason: outcome.reason }
+  if (!outcome.ok) return { ok: false, reason: outcome.reason }
+
+  return parseTurn(outcome.content)
 }
 
 /*
