@@ -1,7 +1,13 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { finish, markWeak, speak } from '@/app/(interview)/interview/actions'
+import {
+  draftQuizFromFollowUp,
+  finish,
+  markWeak,
+  saveQuizFromRound,
+  speak,
+} from '@/app/(interview)/interview/actions'
 import { Scorecard as ScorecardView } from '@/components/interview/scorecard'
 import { Button } from '@/components/ui/button'
 import {
@@ -10,10 +16,12 @@ import {
   questionCount,
   type Length,
   type Level,
+  type QuizDraft,
   type RoundType,
   type Scorecard,
   type Turn,
 } from '@/lib/domain/interview'
+import { plural } from '@/lib/domain/plural'
 
 /**
  * The room, and the whole round's state.
@@ -61,8 +69,28 @@ export function Round({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [scorecard, setScorecard] = useState<Scorecard | null>(null)
+  /* The row `finish` wrote. Carried so the scorecard can name what it is about. */
+  const [roundId, setRoundId] = useState<string | null>(null)
   const [elapsed, setElapsed] = useState(0)
   const started = useRef(Date.now())
+
+  /*
+    ── Save a follow-up as a quiz ────────────────────────────────────────────
+    Two states, because drafting and saving are two acts. The reference asked for
+    one tap; arc 6's rule is that a thing you have not looked at is not a thing
+    you chose. So pressing drafts, the bar expands in place to show what was
+    drafted, and a second press saves it. No navigation either way.
+
+    `saved` is titles only, for the scorecard's "Saved from the round" panel. It
+    is state, like everything else in this room, and dies with the page — the
+    quizzes themselves are ordinary rows in the library by then.
+  */
+  const [draft, setDraft] = useState<QuizDraft | null>(null)
+  const [drafting, setDrafting] = useState(false)
+  const [saved, setSaved] = useState<string[]>([])
+  /* Which follow-ups already produced one, so the bar cannot save the same twice. */
+  const [savedFor, setSavedFor] = useState<string[]>([])
+  const [quizError, setQuizError] = useState<string | null>(null)
 
   useEffect(() => {
     const id = setInterval(() => setElapsed(Math.round((Date.now() - started.current) / 1000)), 1000)
@@ -111,6 +139,7 @@ export function Round({
       return
     }
     setScorecard(result.scorecard)
+    setRoundId(result.roundId)
   }
 
   if (scorecard) {
@@ -123,12 +152,59 @@ export function Round({
         elapsedSeconds={elapsed}
         past={past}
         poolSize={poolSize}
+        savedQuizzes={saved}
+        roundId={roundId}
         onMarkWeak={markWeak}
       />
     )
   }
 
   const last = turns[turns.length - 1]
+
+  /*
+    The bar is offered on any follow-up, and the copy does not claim you failed.
+
+    The reference read "You did not get this one. Keep the follow-up as a quiz?"
+    — but ROOM_RULES forbid this surface from grading, scoring or saying how you
+    are doing, so it cannot know. Recorded in TASKS.md as the eighth way a
+    reference can be wrong, and corrected in the reference itself.
+  */
+  const openFollowUp =
+    last?.speaker === 'interviewer' && last.kind === 'follow-up' ? last.text : null
+  /* What you said just before it — the draft needs to see the gap it is filling. */
+  const answeredBefore =
+    [...turns].reverse().find((turn) => turn.speaker === 'you' && turn.kind === 'answer')?.text ?? ''
+
+  const startDraft = async () => {
+    if (openFollowUp === null) return
+    setDrafting(true)
+    setQuizError(null)
+    const result = await draftQuizFromFollowUp({
+      roundType,
+      followUp: openFollowUp,
+      answer: answeredBefore,
+    })
+    setDrafting(false)
+    if (!result.ok) {
+      setQuizError(result.reason)
+      return
+    }
+    setDraft(result.draft)
+  }
+
+  const keepDraft = async () => {
+    if (draft === null) return
+    setDrafting(true)
+    const result = await saveQuizFromRound({ draft })
+    setDrafting(false)
+    if (result.error !== null) {
+      setQuizError(result.error)
+      return
+    }
+    setSaved((current) => [...current, draft.question])
+    if (openFollowUp !== null) setSavedFor((current) => [...current, openFollowUp])
+    setDraft(null)
+  }
 
   return (
     <main className="mx-auto max-w-[720px] px-6 py-8" data-testid="room">
@@ -234,6 +310,89 @@ export function Round({
           {counts.answered >= target ? 'See the scorecard' : 'End the round'}
         </Button>
       </div>
+
+      {/*
+        The only thing in a round that feeds the LIBRARY rather than the
+        scorecard. It writes a row — and it does not touch the
+        no-write-until-pressed guarantee, which is about confidence and the
+        scorecard. A saved quiz arrives at confidence `new` from the column
+        default, exactly as a hand-made one does.
+      */}
+      {openFollowUp !== null && !savedFor.includes(openFollowUp) ? (
+        <div
+          data-testid="save-quiz"
+          className="mt-6 rounded-lg border border-[var(--gold)] bg-[var(--gold-soft)] px-4 py-3.5"
+        >
+          {draft === null ? (
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-meta text-ink-2">Keep this follow-up as a quiz?</span>
+              <Button
+                variant="ghost"
+                loading={drafting}
+                loadingLabel="Drafting…"
+                disabled={busy}
+                onClick={startDraft}
+                data-testid="draft-quiz"
+              >
+                Save as a quiz
+              </Button>
+            </div>
+          ) : (
+            /*
+              Two presses, not one. The distractors are model-written and you
+              have not seen them yet — arc 6's rule, which beats the drawing.
+            */
+            <div data-testid="quiz-draft">
+              <p className="text-label font-medium">{draft.question}</p>
+              <ul className="mt-2.5 list-none space-y-1">
+                {draft.options.map((option, index) => (
+                  <li
+                    key={index}
+                    data-testid="draft-option"
+                    data-correct={index === draft.correctOption}
+                    className="flex items-start gap-2 text-meta text-ink-2"
+                  >
+                    <span className="font-mono text-[11px] text-ink-3">
+                      {index === draft.correctOption ? '✓' : '·'}
+                    </span>
+                    {option}
+                  </li>
+                ))}
+              </ul>
+              {draft.explanation !== '' ? (
+                <p className="mt-2.5 text-meta leading-[1.6] text-ink-3">{draft.explanation}</p>
+              ) : null}
+
+              <div className="mt-3 flex flex-wrap items-center gap-2.5">
+                <Button
+                  variant="primary"
+                  loading={drafting}
+                  loadingLabel="Saving…"
+                  onClick={keepDraft}
+                  data-testid="keep-quiz"
+                >
+                  Save to my library
+                </Button>
+                <Button variant="ghost" disabled={drafting} onClick={() => setDraft(null)}>
+                  Discard
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {quizError ? (
+            <p role="alert" className="mt-2.5 text-meta text-flag">
+              {quizError}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
+      {saved.length > 0 ? (
+        <p data-testid="saved-count" className="mt-3 font-mono text-[11px] text-ink-3">
+          {plural(saved.length, 'quiz', 'quizzes')} saved from this round
+        </p>
+      ) : null}
     </main>
   )
 }

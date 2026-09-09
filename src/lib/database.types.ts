@@ -330,6 +330,7 @@ export type Database = {
           mental_model: string | null
           mental_model_image_path: string | null
           options: string[] | null
+          parent_topic_id: string | null
           practice_count: number
           production_at: string | null
           production_note: string | null
@@ -362,6 +363,7 @@ export type Database = {
           mental_model?: string | null
           mental_model_image_path?: string | null
           options?: string[] | null
+          parent_topic_id?: string | null
           practice_count?: number
           production_at?: string | null
           production_note?: string | null
@@ -394,6 +396,7 @@ export type Database = {
           mental_model?: string | null
           mental_model_image_path?: string | null
           options?: string[] | null
+          parent_topic_id?: string | null
           practice_count?: number
           production_at?: string | null
           production_note?: string | null
@@ -414,6 +417,13 @@ export type Database = {
             columns: ["capability_id"]
             isOneToOne: false
             referencedRelation: "capabilities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "topics_parent_topic_id_fkey"
+            columns: ["parent_topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
             referencedColumns: ["id"]
           },
           {

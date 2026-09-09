@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import { TopicDetail } from '@/components/topics/topic-detail'
 import { libraryTotals } from '@/lib/data/library'
-import { getTopic, signedImageUrl } from '@/lib/data/topics'
+import { getTopic, parentTopicOf, signedImageUrl } from '@/lib/data/topics'
 import { listSourceOptions, readTopicSource } from '@/lib/data/sources'
 import { listCapabilityOptions, readTopicCapability } from '@/lib/data/phases'
 import { categoryOptionsFromCounts } from '@/lib/domain/library'
@@ -27,7 +27,7 @@ export default async function TopicPage({ params }: PageProps<'/topic/[id]'>) {
     client-side fetch would leave a hole in the layout while it resolved; this way
     there is nothing to resolve.
   */
-  const [imageUrl, source, sourceOptions, capability, capabilityOptions] = await Promise.all([
+  const [imageUrl, source, sourceOptions, capability, capabilityOptions, parent] = await Promise.all([
     signedImageUrl(topic.mental_model_image_path),
     readTopicSource(id),
     listSourceOptions(),
@@ -38,6 +38,8 @@ export default async function TopicPage({ params }: PageProps<'/topic/[id]'>) {
     */
     readTopicCapability(id),
     listCapabilityOptions(),
+    /* And a third, for the same reason: `parent_topic_id` is not on the Topic either. */
+    parentTopicOf(id),
   ])
 
   return (
@@ -46,6 +48,7 @@ export default async function TopicPage({ params }: PageProps<'/topic/[id]'>) {
       categories={categoryOptionsFromCounts(counts.byCategory, counts.total)}
       imageUrl={imageUrl}
       source={source}
+      parent={parent}
       sourceOptions={sourceOptions}
       capability={capability}
       capabilityOptions={capabilityOptions}

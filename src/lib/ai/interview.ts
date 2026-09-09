@@ -2,8 +2,12 @@ import 'server-only'
 
 import { chat } from '@/lib/ai/client'
 import {
+  parseQuizDraft,
+  parseRewindScore,
   parseScorecard,
   type Level,
+  type QuizDraftResult,
+  type RewindScoreResult,
   type RoundType,
   type ScorecardResult,
   type Turn,
@@ -161,6 +165,156 @@ export async function nextTurn(
   )
 
   return outcome.ok ? { ok: true, text: outcome.content } : { ok: false, reason: outcome.reason }
+}
+
+/*
+  ── Everything below this comment must stay ABOVE `scoreRound` ──────────────
+
+  `interview-boundary.test.ts` proves the scoring prompt cannot see the
+  interviewer level. Its last clause does so by finding the declaration of
+  `scoreRound`, slicing from there to the END OF THE FILE, and asserting the
+  slice never contains the word "level". So anything written below that function
+  which mentions a level fails a test about a rule it has nothing to do with.
+
+  That is the "coupled to location" weakness in ARCHITECTURE.md coming due as a
+  constraint on unrelated work. It is respected here rather than widened — see
+  that entry for what fixing it would take, and why that is its own change.
+
+  This comment cannot spell that declaration out, either: the anchor is a plain
+  `indexOf`, so writing the exact phrase in prose ABOVE the function moves the
+  slice to the prose. It did, on the first attempt, and the failure named
+  `scoreRound` while pointing at a comment.
+*/
+
+const DRAFT_PROMPT = [
+  'A candidate could not answer the follow-up below. Turn it into a multiple-choice quiz they can practise.',
+  '',
+  'The question is the follow-up, rewritten to stand alone — it will be read months later with no transcript.',
+  'Give 4 options: one correct, three wrong in ways someone who half-knows this would actually be wrong.',
+  'A distractor nobody would pick teaches nothing.',
+  'The explanation is one or two sentences saying WHY the answer is right. It becomes the card they read.',
+  '',
+  'Also give the topic_id of the supplied topic this follow-up was about, exactly as it appears in brackets.',
+  'Return null for topic_id if it was about none of them. Never invent an id.',
+].join('\n')
+
+const DRAFT_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['question', 'options', 'correct_option', 'explanation', 'topic_id'],
+  properties: {
+    question: { type: 'string' },
+    options: { type: 'array', items: { type: 'string' } },
+    correct_option: { type: 'integer' },
+    explanation: { type: 'string' },
+    topic_id: { type: ['string', 'null'] },
+  },
+} as const
+
+/**
+ * Draft a quiz from a follow-up, and say which topic it came from.
+ *
+ * ── Why the attribution rides along here ────────────────────────────────────
+ * Saving mid-round needs to know which saved topic the follow-up was about, and
+ * `Turn.topicId` is typed but never populated (issue #25). The alternative was
+ * making every turn a structured call so it could be tagged — a change to the
+ * turn transport, the e2e stub and session one's five specs, to obtain something
+ * exactly one action needs. This call has to be schema'd anyway, so it carries
+ * the attribution at no extra cost, by the same mechanism `scoreRound` already
+ * uses to attribute questions to topics.
+ *
+ * Nothing here writes, and nothing here can: this module has no database client.
+ */
+export async function draftQuiz(
+  input: { followUp: string; answer: string; material: string },
+  fetchImpl: typeof fetch = fetch,
+): Promise<QuizDraftResult> {
+  const outcome = await chat(
+    {
+      system: [DRAFT_PROMPT, '', 'The topics they have saved:', input.material].join('\n'),
+      messages: [
+        {
+          role: 'user',
+          content: `FOLLOW-UP: ${input.followUp}\n\nWHAT THEY SAID: ${input.answer}`,
+        },
+      ],
+      maxOutputTokens: 700,
+      schema: { name: 'quiz_draft', schema: DRAFT_SCHEMA },
+      whatWasLost: 'Nothing was saved — the round is still going.',
+    },
+    fetchImpl,
+  )
+
+  if (!outcome.ok) return { ok: false, reason: outcome.reason }
+
+  return parseQuizDraft(outcome.content)
+}
+
+/**
+ * Re-ask one question. Plain text, exactly like the room.
+ *
+ * The round is over, so this is deliberately NOT counted against `EXCHANGE_CAP`:
+ * the cap bounds a round's quadratic transcript, and a rewind is two messages
+ * with no history behind them.
+ */
+export async function reaskOne(
+  input: { title: string; note: string },
+  fetchImpl: typeof fetch = fetch,
+): Promise<TurnOutcome> {
+  const outcome = await chat(
+    {
+      system: [
+        'Ask one question on this topic, at interview difficulty, aimed at the gap described below.',
+        'Rephrased so it cannot be answered from memory of the original wording, and testing the same thing.',
+        'One question. No preamble, no encouragement, no markdown.',
+      ].join('\n'),
+      messages: [
+        { role: 'user', content: `TOPIC: ${input.title}\n\nWHERE THEY WENT THIN: ${input.note}` },
+      ],
+      maxOutputTokens: 300,
+      whatWasLost: 'Your round is unchanged — the score was already saved.',
+    },
+    fetchImpl,
+  )
+
+  return outcome.ok ? { ok: true, text: outcome.content } : { ok: false, reason: outcome.reason }
+}
+
+const REASK_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['score', 'note'],
+  properties: { score: { type: 'integer' }, note: { type: 'string' } },
+} as const
+
+/**
+ * Score one re-asked answer, on its own.
+ *
+ * A number and a line, for this answer only. **It never reaches the stored
+ * round** — the row was inserted once, at the end, and nothing updates it. The
+ * result lives in the scorecard's state and dies with the page.
+ */
+export async function scoreOne(
+  input: { question: string; answer: string },
+  fetchImpl: typeof fetch = fetch,
+): Promise<RewindScoreResult> {
+  const outcome = await chat(
+    {
+      system: [
+        'Score this single answer 0-100 on how well it holds up, and give one sentence saying why.',
+        'Score what was said. This is one answer, not a round — do not compare it to anything.',
+      ].join('\n'),
+      messages: [{ role: 'user', content: `QUESTION: ${input.question}\n\nANSWER: ${input.answer}` }],
+      maxOutputTokens: 300,
+      schema: { name: 'rewind_score', schema: REASK_SCHEMA },
+      whatWasLost: 'Your round is unchanged.',
+    },
+    fetchImpl,
+  )
+
+  if (!outcome.ok) return { ok: false, reason: outcome.reason }
+
+  return parseRewindScore(outcome.content)
 }
 
 /** The scorecard, once, at the end. Judgement only. */

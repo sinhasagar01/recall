@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import {
   EXCHANGE_CAP,
+  MIN_OPTIONS,
   OFFER_BELOW,
+  canRewind,
   countRound,
   estimateRoundCost,
   offersFrom,
+  parseQuizDraft,
+  parseRewindScore,
   parseScorecard,
   questionCount,
   scoreBand,
@@ -157,6 +161,157 @@ describe('the offer step', () => {
     withNull.questions[0].topicId = null
 
     expect(offersFrom(withNull)).toEqual([])
+  })
+})
+
+describe('the offer step, with a question that was re-asked', () => {
+  const card = (scores: number[]): Scorecard => ({
+    scores: { recall: 70, depth: 70, precision: 70, enquiry: 70 },
+    overall: 70,
+    summary: '',
+    notes: { recall: '', depth: '', precision: '', enquiry: '' },
+    questions: scores.map((score, index) => ({
+      topicId: `t${index}`,
+      title: `Q${index}`,
+      score,
+      note: '',
+    })),
+  })
+
+  it('marks the rewound one and changes nothing about the tick', () => {
+    /*
+      A rewind is information you were given after the round. It appears on the
+      row and it does not decide anything: `ticked` still comes from the score
+      the ROUND found, because that is what the artefact says and the artefact is
+      what is stored.
+    */
+    const scorecard = card([OFFER_BELOW - 30, OFFER_BELOW + 20])
+    const before = offersFrom(scorecard)
+    const after = offersFrom(scorecard, new Set([0]))
+
+    expect(after.map((offer) => offer.rewound)).toEqual([true, false])
+    expect(after.map((offer) => offer.ticked)).toEqual(before.map((offer) => offer.ticked))
+  })
+
+  it('keys the rewind by the QUESTION index, not the offer index', () => {
+    /*
+      The trap this test exists for.
+
+      Offers are a filtered view — only questions that carry a topic id — so the
+      two lists have different positions. Here question 0 has no topic and is
+      dropped, so question 2 is offer 1. Re-asking question 2 must mark offer 1.
+      Keying by the offer's own index would mark the wrong row, and with three
+      plausible questions on screen nobody would notice.
+    */
+    const scorecard = card([10, 20, 30])
+    scorecard.questions[0].topicId = null
+
+    const offers = offersFrom(scorecard, new Set([2]))
+
+    expect(offers.map((offer) => offer.title)).toEqual(['Q1', 'Q2'])
+    expect(offers.map((offer) => offer.rewound)).toEqual([false, true])
+  })
+})
+
+describe('what may be re-asked', () => {
+  it('offers it below the threshold and not above', () => {
+    // The reference draws Rewind on the 41 and the 33, and not on the 64.
+    expect(canRewind(OFFER_BELOW - 1, false)).toBe(true)
+    expect(canRewind(OFFER_BELOW, false)).toBe(false)
+  })
+
+  it('offers it once', () => {
+    /*
+      The weakest of the three things that stop a retry, and the only one that is
+      a rule rather than a property: the stored score cannot move, and a round is
+      never resumed so this page does not exist tomorrow.
+    */
+    expect(canRewind(OFFER_BELOW - 1, true)).toBe(false)
+  })
+})
+
+describe('a re-asked answer is one number and one line', () => {
+  it('reads a well-formed result', () => {
+    const result = parseRewindScore('{"score":71,"note":"Got the consequence this time."}')
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.score).toBe(71)
+  })
+
+  it('refuses a score outside the scale the whole mode is built on', () => {
+    const result = parseRewindScore('{"score":137,"note":"x"}')
+
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.reason, 'and says the round is safe, because it is').toContain('unchanged')
+  })
+})
+
+describe('a drafted quiz, before you have looked at it', () => {
+  const draft = (over: Record<string, unknown> = {}) =>
+    JSON.stringify({
+      question: 'What does the other closure see?',
+      options: ['The new value', 'A copy', 'Undefined', 'A frozen snapshot'],
+      correct_option: 0,
+      explanation: 'They share one scope, so a change through one is visible to the other.',
+      topic_id: 't1',
+      ...over,
+    })
+
+  it('reads a well-formed draft', () => {
+    const result = parseQuizDraft(draft())
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.draft.options).toHaveLength(4)
+    expect(result.draft.correctOption).toBe(0)
+    expect(result.draft.topicId).toBe('t1')
+  })
+
+  it('refuses fewer options than the database will accept', () => {
+    /*
+      `topics_shape_is_consistent` requires two or more. Checking it here makes a
+      bad draft a sentence on the screen you are standing on rather than a
+      constraint violation from an insert — two gates, and this is the first.
+    */
+    const result = parseQuizDraft(draft({ options: ['Only one'] }))
+
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.reason).toContain(String(MIN_OPTIONS))
+  })
+
+  it('bounds the answer against the options that SURVIVED cleaning, not the raw array', () => {
+    /*
+      The specific hole. A blank option is dropped, so a draft of four options
+      with `correct_option: 3` becomes three options and an index that no longer
+      exists. Bounding against the raw array would pass it here and let the CHECK
+      refuse it, which is exactly what this function exists to prevent.
+    */
+    const result = parseQuizDraft(draft({ options: ['a', 'b', '   ', 'd'], correct_option: 3 }))
+
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.reason).toContain('which option was correct')
+  })
+
+  it('treats a missing topic as no parent rather than as a failure', () => {
+    // A follow-up may genuinely be about nothing you have saved. The quiz is
+    // still worth keeping; it just has no provenance to record.
+    const result = parseQuizDraft(draft({ topic_id: null }))
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.draft.topicId).toBeNull()
+  })
+
+  it('is a readable error when it cannot be read at all', () => {
+    const result = parseQuizDraft('Sure! Here is a quiz for you:')
+
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.reason).toContain('Nothing was saved')
   })
 })
 

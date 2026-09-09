@@ -93,15 +93,72 @@ function rowFor(input: NewTopic) {
   }
 }
 
-export async function insertTopic(input: NewTopic): Promise<Topic> {
+/**
+ * Where a topic came from, on the INSERT only.
+ *
+ * ── Why this is a second argument and not a field on `NewShared` ────────────
+ * `rowFor` is shared with `updateTopic`, and `TopicEdit` is `NewTopic` plus a
+ * difficulty — so a field added to `NewShared` is a field every EDIT sends. The
+ * edit sheet has no idea a quiz has a parent, so it would send `null`, and
+ * **editing a quiz's wording would silently cut it loose from the topic it came
+ * from.** The same shape would have happened to `extracted` had it been added
+ * there, un-marking extracted topics on their first edit.
+ *
+ * Provenance is set once, when the thing is made. Expressing that as a separate
+ * argument to the insert is what stops the update path from being able to change
+ * it at all.
+ */
+export interface Provenance {
+  /** The topic a quiz was saved out of. Null for everything made by hand. */
+  parent_topic_id?: string | null
+}
+
+export async function insertTopic(input: NewTopic, provenance: Provenance = {}): Promise<Topic> {
   const supabase = await createClient()
 
-  const { data, error } = await supabase.from('topics').insert(rowFor(input)).select().single()
+  const { data, error } = await supabase
+    .from('topics')
+    .insert({ ...rowFor(input), parent_topic_id: provenance.parent_topic_id ?? null })
+    .select()
+    .single()
 
   if (error) fail('Saving the topic', error)
 
   return toTopic(data)
 }
+
+/**
+ * The topic a quiz came out of, or null.
+ *
+ * Its own query, because `parent_topic_id` is deliberately off the domain
+ * `Topic` — see topic-mapping.ts for why, and for the cost this function is.
+ * `maybeSingle`, so a parent that was deleted (the link is `on delete set
+ * null`) and a parent belonging to somebody else both read as "no parent"
+ * rather than as an error.
+ */
+export const parentTopicOf = cache(
+  async (id: string): Promise<{ id: string; title: string } | null> => {
+    const supabase = await createClient()
+
+    const { data, error } = await supabase
+      .from('topics')
+      .select('parent_topic_id')
+      .eq('id', id)
+      .maybeSingle()
+
+    if (error) fail('Reading where this came from', error)
+    if (!data?.parent_topic_id) return null
+
+    const { data: parent, error: parentError } = await supabase
+      .from('topics')
+      .select('id, title')
+      .eq('id', data.parent_topic_id)
+      .maybeSingle()
+
+    if (parentError) fail('Reading where this came from', parentError)
+    return parent ?? null
+  },
+)
 
 /**
  * One topic, or null.

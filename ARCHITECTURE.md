@@ -2754,6 +2754,15 @@ message naming `scoreRound`.
 comment at the boundary says why, so the next person does not discover it by going red. Nothing
 was added to the slice and nothing was excepted from it.
 
+**And the comment could not name the anchor.** The first draft of that warning quoted the
+declaration verbatim so the next reader would recognise it. `indexOf` takes the FIRST match, so
+the slice moved to the comment — which, being about levels, contains the word "level" — and the
+test failed reporting *"scoreRound must not take or pass a level"* while pointing at a block of
+prose. **A location-coupled anchor is matched by prose as readily as by code, so documenting the
+coupling can create it.** The warning had to be reworded to describe the anchor without spelling
+it, which is a strange sentence to have to write and the sharpest available argument for closing
+the slice.
+
 **What it would take to fix**, recorded so the choice is available rather than rediscovered:
 close the slice at the function's end instead of the file's — find the next `\nexport ` after
 `scoreStart` and slice to it, then assert **both** anchors resolve, which is the fix the

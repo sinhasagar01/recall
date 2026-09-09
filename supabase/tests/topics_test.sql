@@ -1,5 +1,5 @@
 begin;
-select plan(64);
+select plan(69);
 
 -- ---------------------------------------------------------------------------
 -- Local helpers.
@@ -94,8 +94,14 @@ select columns_are('public'::name, 'topics'::name, ARRAY[
   -- Arc 2. Nullable, ON DELETE SET NULL, and deliberately absent from the domain
   -- Topic — see supabase/tests/sources_test.sql and topic-mapping.ts.
   'source_id',
-  'capability_id'
-]::name[], 'topics has exactly the columns in the brief, plus search_text, the quiz shape, evidence, source_id and capability_id');
+  'capability_id',
+  -- Arc 7 session two-a. A quiz saved from an interview follow-up points at the
+  -- topic that follow-up came from. Self-referencing, nullable, ON DELETE SET
+  -- NULL — and, like source_id and capability_id and unlike `extracted`,
+  -- deliberately absent from the domain Topic so the practice queue has no way
+  -- to name it. See topic-mapping.ts for which kind of omission it is.
+  'parent_topic_id'
+]::name[], 'topics has exactly the columns in the brief, plus search_text, the quiz shape, evidence, source_id, capability_id and parent_topic_id');
 
 select is(
   (select is_generated from information_schema.columns
@@ -362,6 +368,58 @@ select tests_logout();
 select is((select title from public.topics where id = '00000000-0000-0000-0000-000000000a03'),
   'A private topic',
   'user A''s row is untouched after user B''s and anon''s attempts');
+
+-- ===========================================================================
+-- parent_topic_id — a quiz remembers the topic it came out of
+-- ===========================================================================
+--
+-- The first SELF-reference on this table. Everything else that links to topics
+-- points at another entity; this points back at topics, which is why the
+-- cascade direction had to be chosen rather than inherited.
+--
+-- `on delete set null`, not cascade: deleting the topic a quiz came from must
+-- KEEP the quiz and drop the line. The quiz is a thing you chose to save and
+-- can answer on its own; the parent is provenance. Cascade here would make
+-- tidying your library silently delete questions you had been practising.
+
+select col_type_is('public'::name, 'topics'::name, 'parent_topic_id'::name, 'uuid'::text);
+select col_is_null('public'::name, 'topics'::name, 'parent_topic_id'::name,
+  'parent_topic_id is nullable: almost nothing has a parent');
+
+select is(
+  (select confdeltype from pg_constraint
+    where conrelid = 'public.topics'::regclass
+      and contype = 'f'
+      and conname = 'topics_parent_topic_id_fkey'),
+  'n'::"char",
+  'the parent link is ON DELETE SET NULL, so deleting a parent keeps the quiz');
+
+-- The cascade proven by exercising it, not only by reading its catalogue entry.
+-- `confdeltype` says what Postgres was told; this says what Postgres does.
+select tests_login_as('00000000-0000-0000-0000-0000000000aa');
+
+insert into public.topics (id, user_id, title, definition)
+  values ('00000000-0000-0000-0000-000000000c01', '00000000-0000-0000-0000-0000000000aa',
+          'A parent topic', 'd');
+
+insert into public.topics (id, user_id, title, kind, options, correct_option, parent_topic_id)
+  values ('00000000-0000-0000-0000-000000000c02', '00000000-0000-0000-0000-0000000000aa',
+          'A quiz saved from a follow-up', 'quiz', ARRAY['a', 'b'], 0,
+          '00000000-0000-0000-0000-000000000c01');
+
+delete from public.topics where id = '00000000-0000-0000-0000-000000000c01';
+
+select is(
+  (select count(*)::int from public.topics where id = '00000000-0000-0000-0000-000000000c02'),
+  1,
+  'deleting the parent KEEPS the quiz');
+
+select is(
+  (select parent_topic_id from public.topics where id = '00000000-0000-0000-0000-000000000c02'),
+  null::uuid,
+  'and drops the line rather than leaving it dangling');
+
+select tests_logout();
 
 select * from finish();
 rollback;
