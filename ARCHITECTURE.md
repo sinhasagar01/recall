@@ -2728,3 +2728,41 @@ least one route, naming the group when it does not.
 > **A count cannot detect an omission, because what is omitted is not in the count.** A
 > guard-the-guard written as a threshold is measuring the wrong thing whenever the risk is a
 > whole category going unwalked.
+
+### The coupled-to-location slice came due, and it now dictates where functions may be written
+
+`A guard that slices a literal out of a file is coupled to where the value lives` predicted a
+cost. Arc 7's second session is where it arrived, in a form worth naming: **the weakness stopped
+being a risk to the guard and became a constraint on unrelated work.**
+
+`interview-boundary.test.ts` proves the scoring prompt cannot see the interviewer level. Its
+last clause reads:
+
+```ts
+const scoreStart = ai.indexOf('export async function scoreRound')
+const scoreBody = ai.slice(scoreStart)
+expect(scoreBody, 'scoreRound must not take or pass a level').not.toContain('level')
+```
+
+`slice(scoreStart)` runs to **end of file**. So the assertion is not about `scoreRound` — it is
+about `scoreRound` *and everything anyone writes below it, forever*. Session two-a adds
+`draftQuiz` and `reaskOne` to that file. Either one mentioning a level — plausibly, since the
+room's difficulty is a level — fails a test about a rule they have nothing to do with, with a
+message naming `scoreRound`.
+
+**Respected rather than widened.** Both new functions are placed **above** `scoreRound`, and a
+comment at the boundary says why, so the next person does not discover it by going red. Nothing
+was added to the slice and nothing was excepted from it.
+
+**What it would take to fix**, recorded so the choice is available rather than rediscovered:
+close the slice at the function's end instead of the file's — find the next `\nexport ` after
+`scoreStart` and slice to it, then assert **both** anchors resolve, which is the fix the
+original entry already prescribes for the opening anchor and which this clause only half
+applies. It was not done here because changing a guard's shape inside the arc it is guarding is
+how a guard quietly stops guarding; it belongs in its own change, red first.
+
+**The general shape, which is the reason this is its own entry.** A location-coupled assertion
+does not merely risk failing for the wrong reason. **It silently claims territory.** An
+unbounded slice converts every future line in the file into part of the assertion, so the cost
+is paid by people who never read the test — as a rule about where code may be written that
+nothing states and only a red run explains.
