@@ -61,9 +61,22 @@ test('the FAB opens the add sheet, full screen', async ({ page }) => {
   await expect(sheet).toBeVisible()
 
   // Full screen, not a side panel: it spans the viewport width.
+  /*
+    Polled, not measured once. The sheet slides in from the right edge now, so a
+    single boundingBox() taken the moment it is visible reads a position it is
+    still travelling through — this asserted `x <= 1` and got 133.
+
+    What the test is about is unchanged: at 390px the panel is the full width of
+    the screen, flush to the left edge. That is a claim about where it COMES TO
+    REST, and polling is how you assert a resting position on something that
+    moves.
+  */
+  await expect
+    .poll(async () => Math.round((await sheet.boundingBox())!.x))
+    .toBeLessThanOrEqual(1)
+
   const box = await sheet.boundingBox()
   expect(box!.width).toBeGreaterThanOrEqual(390 - 1)
-  expect(box!.x).toBeLessThanOrEqual(1)
 })
 
 test('the three selects collapse behind one Filters chip', async ({ page }) => {
@@ -197,4 +210,109 @@ test('the library does not scroll sideways on a phone', async ({ page }) => {
 
   // And the desktop-only action really is absent, not merely off-screen.
   await expect(page.getByRole('button', { name: '+ Add topic' })).toHaveCount(0)
+})
+
+test.describe('the phone knows which tab you are on', () => {
+  test.use({ viewport: { width: 390, height: 844 } })
+
+  /*
+    The tab bar had no selected state: Library and Practice rendered identically
+    whichever one you were on, so the only navigation a phone has could not
+    answer "where am I". The rail has said this since phase 12.
+  */
+  test('exactly one tab is selected, and it is the one you are on', async ({ page }) => {
+    await signInAs(page, 'few')
+
+    await page.goto('/library')
+    await expect(page.getByTestId('tab-bar')).toBeVisible()
+
+    /*
+      EXACTLY one. "At least one" passes for a bar that marks every tab, which
+      carries the same amount of information as marking none.
+    */
+    const selected = page.locator('[data-testid="tab-bar"] [data-current="true"]')
+    await expect(selected).toHaveCount(1)
+    await expect(selected).toContainText('Library')
+
+    // The indicator is the signal that is not colour, so it is asserted apart.
+    await expect(page.getByTestId('tab-indicator')).toHaveCount(1)
+    // And this is the only one a screen reader gets.
+    await expect(page.locator('[data-testid="tab-bar"] [aria-current="page"]')).toHaveCount(1)
+  })
+
+  test('and marks nothing on a page that is not a tab', async ({ page }) => {
+    /*
+      The other half, and the one that stops "mark everything" from passing.
+      /phases is in the group so the bar renders, and it is not a tab
+      destination — so the correct number of selected tabs there is zero.
+
+      Note what this cannot check: /practice is in its own route group and
+      renders no tab bar at all, by the decision recorded in the layout — that
+      screen is meant to have nothing to glance at. So the Practice tab can never
+      show as current. The bar answers "am I on Library" rather than "which of
+      the two am I on", and that is a consequence of the group split rather than
+      of this change.
+    */
+    await signInAs(page, 'few')
+    await page.goto('/phases')
+
+    await expect(page.getByTestId('tab-bar')).toBeVisible()
+    await expect(page.locator('[data-testid="tab-bar"] [data-current="true"]')).toHaveCount(0)
+    await expect(page.getByTestId('tab-indicator')).toHaveCount(0)
+  })
+
+  test('a topic counts as the library, the way the rail already says it does', async ({ page }) => {
+    await signInAs(page, 'few')
+    const first = page.locator('a[href^="/topic/"]').first()
+    await first.waitFor()
+    await first.click()
+    await expect(page).toHaveURL(/\/topic\//)
+
+    const selected = page.locator('[data-testid="tab-bar"] [data-current="true"]')
+    await expect(selected).toHaveCount(1)
+    await expect(selected).toContainText('Library')
+  })
+})
+
+test.describe('the More sheet arrives without moving the page', () => {
+  test.use({ viewport: { width: 390, height: 844 } })
+
+  /*
+    The sheet had no animation of any kind — in the DOM one frame, painted the
+    next. It has one now, and an animation that slides is exactly the kind that
+    can push the document sideways for 260ms: a full-width panel translated in
+    from an edge, inside a scrim that does not clip.
+
+    So this measures the page across the whole animation rather than after it.
+  */
+  test('no horizontal overflow and no vertical shift while it opens', async ({ page }) => {
+    await signInAs(page, 'few')
+
+    const metrics = () =>
+      page.evaluate(() => ({
+        overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        scrollY: window.scrollY,
+        headingTop: Math.round(document.querySelector('h1')!.getBoundingClientRect().top),
+      }))
+
+    const before = await metrics()
+    expect(before.overflow, 'the page must not scroll sideways to begin with').toBeLessThanOrEqual(0)
+
+    await page.getByTestId('more-trigger').click()
+
+    /*
+      Sampled DURING the 260ms, not after it. A slide that overflows has usually
+      finished by the time an assertion that waits for the dialog runs.
+    */
+    for (let i = 0; i < 5; i += 1) {
+      const during = await metrics()
+      expect(during.overflow, `frame ${i}: the sheet pushed the page sideways`).toBeLessThanOrEqual(0)
+      expect(during.scrollY, `frame ${i}: the page scrolled`).toBe(before.scrollY)
+      expect(during.headingTop, `frame ${i}: the page moved under the sheet`).toBe(before.headingTop)
+      await page.waitForTimeout(60)
+    }
+
+    await expect(page.getByRole('dialog', { name: 'More' })).toBeVisible()
+    expect(await metrics()).toEqual(before)
+  })
 })

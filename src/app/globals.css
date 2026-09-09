@@ -142,6 +142,44 @@
   }
 
   /*
+    ── The overlay's entrance ────────────────────────────────────────────────
+    A sheet APPEARED. It was in the DOM one frame and painted the next, which
+    reads as a glitch rather than as a panel arriving — and on the bottom sheet,
+    which covers most of a phone, it reads as the page having been replaced.
+
+    Keyframes rather than a transition on a state change: the component mounts
+    only when open, so there is no "before" for a transition to run from. An
+    animation runs on mount, which is exactly when this needs to.
+
+    The end state is the resting state — `translate: none`, `opacity: 1` — so the
+    reduced-motion rule below, which collapses every duration to 0.01ms, lands
+    the panel in the right place instantly rather than leaving it half-arrived.
+    That is the trap DESIGN.md's motion note names: an animation whose final
+    position exists only inside the animation.
+
+    The curve is a deceleration — fast out of the gate, settling rather than
+    stopping. The scrim fades over the same interval so the two read as one
+    movement.
+  */
+  @keyframes sheet-up {
+    from {
+      transform: translateY(100%);
+    }
+  }
+
+  @keyframes sheet-in {
+    from {
+      transform: translateX(100%);
+    }
+  }
+
+  @keyframes scrim-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  /*
     DESIGN.md, "Accessibility floor": reduced motion kills the spinner and skeleton animations.
     Nothing depends on an animation to reach its end state — the spinner is
     decorative and the button's text carries the meaning on its own.

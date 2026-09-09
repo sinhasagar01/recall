@@ -77,14 +77,29 @@ export function MoreSheet({
 
   return (
     <>
+      {/*
+        ── A burger, not an underlined word ──────────────────────────────────
+        It was a 13px text link doing a navigation menu's job: it read as prose
+        rather than as a control, and at that size it was well under the 44px
+        floor the rest of this app keeps.
+
+        The accessible name stays "More" — the sheet it opens is titled More, and
+        an icon-only control with no name is worse than the word was. `size-11`
+        is the floor exactly, and the glyph sits at its visual size inside it,
+        which is the same arrangement the confidence boxes use.
+      */}
       <button
         type="button"
         onClick={() => setOpen(true)}
         aria-expanded={open}
         aria-haspopup="dialog"
-        className="flex-none cursor-pointer text-[13px] text-ink-2 underline hover:text-ink md:hidden"
+        aria-label="More"
+        data-testid="more-trigger"
+        className="grid size-11 flex-none cursor-pointer place-items-center rounded-md text-ink-2 hover:bg-surface-2 hover:text-ink md:hidden"
       >
-        More
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" aria-hidden="true">
+          <path d="M4 7h16M4 12h16M4 17h16" />
+        </svg>
       </button>
 
       {open ? (

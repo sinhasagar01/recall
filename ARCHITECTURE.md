@@ -180,12 +180,13 @@ The narrower point still stands too: the harness that checks the tests was the l
 code in the loop, and it was wrong for two arcs without anyone noticing, because its failure
 mode was to report the reassuring answer.
 
-── A third failure mode: BIT for a reason that is not the guard ───────────────
+── A third failure mode: the harness reads prose to decide whether a run passed ──
 
-Arc 7 added one, and it is the worst of the three.
+Arc 7 hit this twice, **hours apart in one session, from opposite ends**, and they are one
+defect rather than two.
 
-Proving the new way-in assertion needed `prepare: npm run build` and a Playwright `verify`.
-The harness reported:
+**A false bite.** Proving the way-in assertion needed `prepare: npm run build` and a Playwright
+`verify`:
 
 ```
 no entry point anywhere — the state arc 7 actually shipped BIT
@@ -193,23 +194,43 @@ no entry point anywhere — the state arc 7 actually shipped BIT
 1 perturbations, 1 bit, 0 did not.
 ```
 
-The perturbation applied — exactly, byte for byte, every check the harness makes satisfied. The
-verify command exited non-zero. **And nothing was tested:** Playwright refused to start because a
-dev server held the port, so not one assertion ran.
+The perturbation applied, byte for byte. The verify command exited non-zero. **And nothing was
+tested** — Playwright refused to start because a dev server held the port, so not one assertion
+ran. A runner that never started prints nothing that looks like failure, so "did not match the
+pass marker" was read as "the guard bit".
 
-**A false bite is worse than a false pass, and the asymmetry is the point.** A false pass — "0
-failed" from a broken instrument — leaves you where you were: you believe a clause is redundant
-and go and look. A false bite leaves you **further back than you started**. You believe a guard
-works when nothing tested it, and then you write that belief into a commit message, where it
-outlives the run.
+**A false pass.** Later the same session, a perturbation removing the tab bar's indicator
+reported `DID NOT BITE`. Playwright had printed:
 
-The harness's exactness is all on one side of the operation. It proves the **edit** applied and
-never that the **verification** ran. `passMarker` says what "did not bite" looks like; nothing
-says what "ran at all" looks like, so a runner that never started is indistinguishable from a
-runner that started and failed.
+```
+  1 failed
+    … exactly one tab is selected, and it is the one you are on
+  2 passed (11.3s)
+```
 
-> **An exit code from a runner that never started is not a result.** The harness must confirm
-> the test command executed, not merely that the edit applied.
+`passMarker: "2 passed"` matched **the passed half of a failing run**.
+
+── One defect, and the fix is not a better marker ─────────────────────────────
+
+Both come from the same mechanism: **the harness inferred a boolean by grepping prose written
+for a person, and prose written for a person contains both words.** A partial failure says
+"failed" and "passed" in the same summary. A run that never happened says neither. There is no
+string that is safe in both directions, because the output was never designed to answer a
+yes/no question.
+
+> **A pass is an exit code and nothing else.** `<command> && echo HARNESS_ALL_GREEN`, with the
+> marker emitted only when the shell says the command succeeded.
+
+**The first fix patched the hole rather than the mechanism**, and that is the part worth
+carrying. After the false bite, the response was to read the failure text more carefully and
+free the port — a fix to that occurrence. The mechanism, `passMarker` as a substring search, was
+left in place and produced the opposite error hours later on a different spec. A defect that can
+fail in two directions is not fixed by handling one of them.
+
+**A false bite is still worse than a false pass**, and the asymmetry is worth keeping: a false
+pass leaves you where you were — you believe a clause is redundant and go and look. A false bite
+leaves you **further back than you started**, believing a guard works when nothing tested it,
+and writing that belief into a commit message where it outlives the run.
 
 Same family as *"could not measure wearing the costume of a result"* — **third instance**, after
 the checker that could not tell "no effect" from "could not measure", and "slow" that was a

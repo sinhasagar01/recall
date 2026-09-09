@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { DeleteAccount } from '@/components/topics/delete-account'
 import { GlobalKeys } from '@/components/topics/global-keys'
 import { RailNav } from '@/components/topics/rail-nav'
+import { TabBar } from '@/components/topics/tab-bar'
 import { Kbd } from '@/components/ui/kbd'
 import { Wordmark } from '@/components/ui/wordmark'
 import { hasKey } from '@/lib/ai/client'
@@ -162,57 +163,15 @@ export default async function AppLayout({ children }: LayoutProps<'/'>) {
 
       {/*
         The tab bar replaces the rail below --breakpoint-md. Two destinations plus
-        the FAB: Weak topics is a filter chip on Library, per DESIGN.md, "Mobile has two destinations plus add",
-        not a third tab. /practice sits in its own route group, so it never renders
-        this at all — that screen is meant to have nothing to glance at.
+        the FAB: Weak topics is a filter chip on Library, per DESIGN.md, "Mobile has
+        two destinations plus add", not a third tab. /practice sits in its own route
+        group, so it never renders this at all — that screen is meant to have
+        nothing to glance at.
+
+        A component rather than markup here, because it has to know the route to
+        say which tab you are on, and this file is a server component.
       */}
-      <nav
-        aria-label="Main"
-        className="fixed inset-x-0 bottom-0 z-50 flex items-center justify-around gap-1.5 border-t border-rule bg-surface px-3 pt-2.5 pb-4 md:hidden"
-      >
-        <TabItem href="/library" label="Library">
-          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-            <path d="M4 5h7v14H4zM13 5h7v14h-7z" />
-          </svg>
-        </TabItem>
-
-        <Link
-          href="/library?add=1"
-          aria-label="Add topic"
-          className="-mt-[22px] grid size-[46px] shrink-0 place-items-center rounded-full border-[3px] border-surface bg-accent text-white"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true">
-            <path d="M12 5v14M5 12h14" />
-          </svg>
-        </Link>
-
-        <TabItem href="/practice" label="Practice">
-          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-            <path d="M12 4a8 8 0 1 0 8 8" />
-            <path d="M12 8v4l3 2" />
-          </svg>
-        </TabItem>
-      </nav>
+      <TabBar />
     </div>
-  )
-}
-
-function TabItem({
-  href,
-  label,
-  children,
-}: {
-  href: string
-  label: string
-  children: React.ReactNode
-}) {
-  return (
-    <Link
-      href={href}
-      className="flex flex-col items-center gap-1 font-mono text-[9.5px] tracking-[0.06em] text-ink-3 uppercase"
-    >
-      {children}
-      {label}
-    </Link>
   )
 }

@@ -460,6 +460,39 @@ ARCHITECTURE.md, and closed in issue #9 by setting the header directly.
 
 ---
 
+## An open question: the tab bar has two tabs and one of them can never be selected
+
+Building the tab bar's selected state surfaced something that had been true since phase 12 and
+was invisible until then.
+
+`/practice` lives in its own route group, `(practice)`, which renders **no tab bar at all** —
+the decision is recorded in the layout: *"that screen is meant to have nothing to glance at."*
+So the bar only ever renders inside `(app)`, and the only tab destination in `(app)` is
+`/library`. **The Practice tab cannot show as current, on any route, ever.**
+
+The bar therefore answers *"am I on Library"* rather than *"which of the two am I on"*.
+
+**Two readings, and I do not know which is right:**
+
+- **A correct consequence of the group split.** Practice is a mode, not a destination — you
+  enter it, do it, and leave. A tab that launches a mode is a button that happens to live in the
+  tab bar, and buttons do not have a selected state. On that reading nothing is wrong: the bar
+  is one Library tab plus two actions.
+- **A sign the tab bar has the wrong two items.** DESIGN.md says *"mobile has two destinations
+  plus add"*. If one of the two is not a destination in the sense the bar implies, then either
+  it should not be a tab, or the thing that belongs there instead — Weak, or Today, both of
+  which live in `(app)` and would light correctly — is currently a chip or a sheet entry.
+
+**Not changed, deliberately.** Both readings are defensible and the shipped decision has written
+reasoning behind it, which wins by the precedence rule.
+
+Written here rather than left in a commit message because of how it was found: **it was
+invisible until the selected state existed.** A tab bar with no selected state cannot show that
+one of its tabs would never be selected — the defect and the thing that reveals it arrived in
+the same change. Anyone revisiting the mobile navigation will meet this question; nobody reading
+the diff would have.
+
+
 ## The backlog lives in GitHub issues
 
 Everything this build knew it was leaving undone is tracked at
