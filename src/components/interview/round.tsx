@@ -15,12 +15,14 @@ import { VoltButton } from '@/components/interview/volt-button'
 import { BackToLibrary } from '@/components/ui/back-to-library'
 import { useRoomKeys } from '@/components/interview/use-room-keys'
 import { useSpeech } from '@/components/interview/use-speech'
+import { Scoring } from '@/components/interview/scoring'
 import type { AnswerMode } from '@/lib/domain/voice'
 import { useSerial } from '@/components/interview/use-serial'
 import { NewInterview } from '@/components/interview/new-interview'
 import {
   HINTS_PER_ROUND,
   countRound,
+  outlineRound,
   followUpTag,
   ROUND_LABEL,
   pipState,
@@ -324,52 +326,25 @@ export function Round({
     can be slow.
   */
   if (left && scorecard === null) {
+    /*
+      Everything on this screen that is not a skeleton is already in this
+      component. `counts` and `outline` come from the transcript, `elapsed` from
+      the clock that was running, and `past` decides whether the strip has a
+      sixth cell — so the geometry is settled before the request returns.
+    */
     return (
-      <main className="mx-auto max-w-[620px] px-6 py-16" data-testid="left-room">
-        <h1 className="font-display text-[26px] leading-[1.3] font-medium">
-          {endError === null ? 'Scoring what you said' : 'The round ended without a scorecard'}
-        </h1>
-
-        {endError === null ? (
-          <p className="mt-3 text-meta leading-[1.7] text-ink-2">
-            You are out of the room. This takes a few seconds, and the scorecard replaces this
-            page when it arrives.
-          </p>
-        ) : (
-          <p
-            role="alert"
-            className="mt-3 rounded-md border border-flag bg-flag-soft px-4 py-3 text-meta text-flag"
-          >
-            {endError}
-          </p>
-        )}
-
-        {/*
-          Abandoned, not aborted — and it says so rather than implying a stop.
-          A server action is one round trip with no client-reachable abort: there
-          is no AbortController on this path and `chat()` passes no signal. The
-          honest sentence is that the request finishes and its answer is thrown
-          away, which is the same wording the extraction panel uses for the same
-          reason.
-        */}
-        {abandoned ? (
-          <p className="mt-4 max-w-[58ch] border-t border-rule pt-4 font-mono text-[11px] leading-[1.8] text-ink-3">
-            A reply was still on its way when you left. It cannot be called back — the request
-            finishes on the server and its answer is discarded. Leaving stops you waiting for it,
-            not the work.
-          </p>
-        ) : null}
-
-        {/*
-          The same two controls as the scorecard's foot, in the same order and
-          under the same names. There is no "practise what went weak" here
-          because an abandoned round produced no findings to act on.
-        */}
-        <div className="mt-6 flex flex-wrap items-center gap-2.5">
-          <NewInterview />
-          <BackToLibrary />
-        </div>
-      </main>
+      <Scoring
+        roundType={roundType}
+        minutes={minutes}
+        level={level}
+        counts={counts}
+        elapsedSeconds={elapsed}
+        outline={outlineRound(turns)}
+        topicMeta={topicMeta}
+        hasPast={past.length > 0}
+        endError={endError}
+        abandoned={abandoned}
+      />
     )
   }
 

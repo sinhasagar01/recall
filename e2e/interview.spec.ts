@@ -330,6 +330,211 @@ test.describe('interview mode', () => {
     await expect(page.getByLabel('Your answer')).toBeVisible()
   })
 
+  test('the waiting screen shows what is known, and the score fills the shape', async ({
+    page,
+  }) => {
+    /*
+      `SLOW-ANSWER` reaches the scoring call too — the whole transcript is sent
+      to it — so the stub holds the score for five seconds and the waiting screen
+      is a place we can actually stand and measure.
+    */
+    await signInAs(page, 'extract')
+    await page.goto('/interview?type=javascript&minutes=20&level=staff')
+
+    await page.getByLabel('Your answer').fill('SLOW-ANSWER a live reference to the scope.')
+    await page.getByRole('button', { name: 'Answer', exact: true }).click()
+    await expect(page.getByTestId('turn-follow-up')).toBeVisible({ timeout: 30_000 })
+
+    await page.getByTestId('end-round').click()
+    await expect(page.getByTestId('scoring-hero')).toBeVisible()
+
+    // ── Half of it is known, and known things do not wait ─────────────────
+    await expect(page.getByTestId('stat-answered')).toContainText('1/1')
+    await expect(page.getByTestId('stat-elapsed')).toContainText(/\d+:\d\d/)
+    await expect(page.getByTestId('outline-row')).toHaveCount(1)
+    // The real title, from the room's own topic map — not a placeholder.
+    await expect(page.getByTestId('outline-row')).not.toContainText('…')
+
+    // ── No buttons while it works ─────────────────────────────────────────
+    await expect(page.getByTestId('back-to-library')).toHaveCount(0)
+    await expect(page.getByTestId('new-interview')).toHaveCount(0)
+
+    /*
+      ── Nothing reflows ───────────────────────────────────────────────────
+      Measured, not asserted by eye. The stat strip and the first dimension card
+      exist in BOTH states under the same testids, so their boxes are directly
+      comparable — and they are the two things that move if the skeleton is an
+      approximation of the page rather than the page. The container width alone
+      was wrong by 160px when this test was first written.
+    */
+    interface Box {
+      x: number
+      y: number
+      width: number
+    }
+
+    const boxOf = async (testid: string): Promise<Box> => {
+      const box = await page.getByTestId(testid).boundingBox()
+      if (box === null) throw new Error(`${testid} has no box`)
+      return { x: Math.round(box.x), y: Math.round(box.y), width: Math.round(box.width) }
+    }
+
+    const before = {
+      strip: await boxOf('stat-answered'),
+      dimension: await boxOf('dimension-recall'),
+    }
+
+    await expect(page.getByTestId('scorecard')).toBeVisible({ timeout: 30_000 })
+
+    /*
+      Within a pixel, and not because a pixel is acceptable slack — because
+      fractional layout rounds differently either side of a text node appearing,
+      and pinning the last pixel would mean hard-coding heights, which is the
+      brittleness this screen's placeholder was just rewritten to avoid.
+
+      What it catches is what it is for. The container width was wrong by 160px
+      and the numeral's slot by 10px when this was first written; both showed up
+      here and nowhere else.
+    */
+    const settled = (after: Box, first: Box, what: string) => {
+      expect(Math.abs(after.y - first.y), `${what} moved vertically`).toBeLessThanOrEqual(1)
+      expect(Math.abs(after.x - first.x), `${what} moved sideways`).toBeLessThanOrEqual(1)
+      expect(Math.abs(after.width - first.width), `${what} changed width`).toBeLessThanOrEqual(1)
+    }
+
+    settled(await boxOf('stat-answered'), before.strip, 'the stat strip')
+    settled(await boxOf('dimension-recall'), before.dimension, 'the dimension cards')
+
+    // And the cells are the same cells, filled — not a different strip.
+    await expect(page.getByTestId('stat-answered')).toContainText('1/1')
+    await expect(page.getByTestId('stat-elapsed')).toContainText(/\d+:\d\d/)
+  })
+
+  test('after twenty seconds it says so, and offers one way out that names the cost', async ({
+    page,
+  }) => {
+    /*
+      Not before twenty seconds, which is the assertion that matters — the old
+      screen offered an exit from the first frame, and an escape hatch on a page
+      you are meant to wait on reads as "this may not finish".
+
+      The clock is driven rather than waited out: Playwright's fake timers are
+      not available here, so the page's own interval is advanced by holding the
+      scoring call open and checking the two states either side of the boundary.
+    */
+    await signInAs(page, 'extract')
+    await page.clock.install()
+    await page.goto('/interview?type=javascript&minutes=20&level=staff')
+
+    await page.getByLabel('Your answer').fill('SLOW-ANSWER a live reference.')
+    await page.getByRole('button', { name: 'Answer', exact: true }).click()
+    await expect(page.getByTestId('turn-follow-up')).toBeVisible({ timeout: 30_000 })
+
+    await page.getByTestId('end-round').click()
+    await expect(page.getByTestId('scoring-hero')).toBeVisible()
+
+    // Immediately: nothing to press.
+    await expect(page.getByTestId('taking-longer')).toHaveCount(0)
+
+    /*
+      Then twenty seconds, driven rather than waited out. `page.clock` advances
+      the page's own timers, so this asserts the real threshold in the real
+      component instead of a constant read back from the module that sets it.
+    */
+    await page.clock.fastForward('00:21')
+
+    const longer = page.getByTestId('taking-longer')
+    await expect(longer).toBeVisible()
+    await expect(longer).toContainText('still going')
+
+    /*
+      One way out, and it says what leaving costs rather than implying the score
+      is waiting somewhere for you.
+    */
+    const leave = longer.getByTestId('back-to-library')
+    await expect(leave).toHaveText('Leave without a scorecard')
+    await expect(leave).toHaveAttribute('href', '/library')
+  })
+
+  test('when scoring fails the buttons come back, and it says nothing was written', async ({
+    page,
+  }) => {
+    /*
+      The same two controls as the waiting screen deliberately does NOT have,
+      in the state where they are the only thing to do. Same pair, opposite
+      meaning, decided by whether anything is still happening.
+    */
+    await signInAs(page, 'extract')
+    await page.goto('/interview?type=javascript&minutes=20&level=staff')
+
+    await page.getByLabel('Your answer').fill('RATE-LIMIT a live reference to the scope.')
+    await page.getByRole('button', { name: 'Answer', exact: true }).click()
+    await expect(page.getByTestId('turn-follow-up')).toBeVisible({ timeout: 30_000 })
+
+    await page.getByTestId('end-round').click()
+
+    const failure = page.getByTestId('scoring-failed')
+    await expect(failure).toBeVisible({ timeout: 30_000 })
+
+    // The real reason, from the vendor, not "something went wrong".
+    await expect(failure).toContainText(/rate limit/i)
+
+    /*
+      And the line that says what it took with it. A failure naming only what
+      broke leaves the reader to guess what was lost, and the guess is always
+      worse than the truth.
+    */
+    await expect(failure).toContainText('not saved')
+    await expect(failure).toContainText('no topic was marked')
+
+    await expect(page.getByTestId('new-interview')).toBeVisible()
+    await expect(page.getByTestId('back-to-library')).toBeVisible()
+
+    // The skeleton is gone: there is nothing still coming to fill it.
+    await expect(page.getByTestId('scoring-hero')).toHaveCount(0)
+  })
+
+  test('reduced motion stops the shimmer, and the screen still reads', async ({ browser }) => {
+    /*
+      The rule the mock states and does not draw: every animation obeys
+      `prefers-reduced-motion`, and the screen reads the same without them. The
+      placeholders keep their fill, the meter keeps its track, and the word
+      "Scoring" is what carries the meaning either way — motion is the
+      reassurance, never the message.
+    */
+    const context = await browser.newContext({ reducedMotion: 'reduce' })
+    const page = await context.newPage()
+
+    await signInAs(page, 'extract')
+    await page.goto('/interview?type=javascript&minutes=20&level=staff')
+    await page.getByLabel('Your answer').fill('SLOW-ANSWER a live reference.')
+    await page.getByRole('button', { name: 'Answer', exact: true }).click()
+    await expect(page.getByTestId('turn-follow-up')).toBeVisible({ timeout: 30_000 })
+    await page.getByTestId('end-round').click()
+    await expect(page.getByTestId('scoring-hero')).toBeVisible()
+
+    const running = await page.evaluate(() =>
+      [...document.querySelectorAll('.sc-wave, .sc-blink')]
+        .map((element) => getComputedStyle(element).animationName)
+        .filter((name) => name !== 'none'),
+    )
+    expect(running, 'an animation ignored the preference').toEqual([])
+
+    // Read on the pseudo-element, which is where the sweep actually lives.
+    const sweeping = await page.evaluate(() =>
+      [...document.querySelectorAll('.sc-shimmer')]
+        .map((element) => getComputedStyle(element, '::after').animationName)
+        .filter((name) => name !== 'none'),
+    )
+    expect(sweeping, 'the shimmer ignored the preference').toEqual([])
+
+    // And it still says what it is doing.
+    await expect(page.getByTestId('working')).toContainText('Scoring')
+    await expect(page.getByTestId('stat-answered')).toContainText('1/1')
+
+    await context.close()
+  })
+
   test('the send hint names a shortcut that works from the answer field', async ({ page }) => {
     /*
       The room advertised `⌘↵ to send` with nothing behind it — no key handler

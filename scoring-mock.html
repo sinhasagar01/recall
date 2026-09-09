@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recall — the scoring screen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;450;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#E9EAF0;--surface:#FFFFFF;--surface-2:#F5F5FA;--surface-3:#EDEEF4;
+  --ink:#12131A;--ink-2:#53555F;--ink-3:#83858F;--rule:#E1E1E9;--rule-strong:#C9C9D4;
+  --volt:#4F46E5;--volt-2:#6D63EF;--volt-ink:#3730A3;--volt-soft:#EEF0FE;
+  --mint:#047857;--rose:#BE185D;--gold:#B45309;
+  --mesh:radial-gradient(135% 120% at 0% 0%,#2E2178 0%,rgba(46,33,120,0) 56%),
+         radial-gradient(110% 130% at 100% 0%,#63308A 0%,rgba(99,48,138,0) 52%),
+         radial-gradient(130% 150% at 78% 130%,#0D6169 0%,rgba(13,97,105,0) 56%),#0E0F16;
+  --font-display:"Newsreader",Georgia,serif;--font-body:"IBM Plex Sans",system-ui,sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:14.5px;line-height:1.55;-webkit-font-smoothing:antialiased}
+code{font-family:var(--font-mono);font-size:.86em}
+.chrome{position:sticky;top:0;z-index:60;display:flex;gap:6px;align-items:center;padding:9px 16px;background:var(--surface);border-bottom:1px solid var(--rule);flex-wrap:wrap}
+.chrome__label{font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin-right:6px}
+.tab{font-family:var(--font-mono);font-size:11.5px;padding:5px 9px;border:1px solid transparent;border-radius:6px;background:none;color:var(--ink-2);cursor:pointer}
+.tab[aria-selected="true"]{background:var(--volt-soft);color:var(--volt-ink);border-color:var(--volt)}
+.screen{display:none}.screen[data-active]{display:block}
+.wrap{max-width:1000px;margin:0 auto;padding:28px 26px 80px}
+.eyebrow{font-family:var(--font-mono);font-size:10.5px;font-weight:500;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3)}
+.meta{font-family:var(--font-mono);font-size:11.5px;color:var(--ink-3)}
+.rule{display:flex;align-items:center;gap:12px;margin:28px 0 12px}
+.rule::after{content:"";flex:1;height:1px;background:var(--rule)}
+.note{max-width:70ch;color:var(--ink-2);font-size:13.5px;margin-top:24px;padding-top:16px;border-top:1px solid var(--rule)}
+.callout{background:linear-gradient(135deg,#F6F7FE,#fff);border:1px solid rgba(79,70,229,.3);border-left:3px solid var(--volt);border-radius:14px;padding:15px 19px;margin:20px 0;max-width:74ch}
+.callout__t{font-weight:600;color:var(--volt-ink);margin-bottom:4px}
+.btn{font-family:var(--font-body);font-size:13.5px;font-weight:500;display:inline-flex;align-items:center;gap:7px;padding:10px 15px;border-radius:6px;border:1px solid var(--rule-strong);background:var(--surface);color:var(--ink);cursor:pointer}
+.btn--primary{background:var(--volt);border-color:var(--volt);color:#fff}
+
+/* hero */
+.hero{position:relative;border-radius:22px;overflow:hidden;color:#F4F3FB;background:var(--mesh);box-shadow:0 24px 64px rgba(14,15,22,.36)}
+.hero::before{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,0) 34%)}
+.hero__b{position:relative;z-index:1;padding:30px 34px 26px}
+.top{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.kicker{font-family:var(--font-mono);font-size:10px;letter-spacing:.17em;text-transform:uppercase;color:#A6A8C4}
+.kicker em{font-style:normal;color:#5E607D}
+.working{margin-left:auto;display:inline-flex;align-items:center;gap:9px;font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#C9CBE4;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.18);border-radius:100px;padding:5px 13px}
+.dots{display:inline-flex;gap:3px}
+.dots i{width:4px;height:4px;border-radius:50%;background:#A5B4FC;animation:blink 1.2s ease-in-out infinite}
+.dots i:nth-child(2){animation-delay:.16s}.dots i:nth-child(3){animation-delay:.32s}
+@keyframes blink{0%,60%,100%{opacity:.25}30%{opacity:1}}
+
+.figure{display:flex;align-items:flex-end;gap:20px;margin-top:24px;flex-wrap:wrap}
+.numslot{width:150px;height:92px;border-radius:12px;flex:none;position:relative;overflow:hidden;background:rgba(255,255,255,.06)}
+.shim{position:absolute;inset:0;background:linear-gradient(100deg,rgba(255,255,255,0) 20%,rgba(255,255,255,.16) 50%,rgba(255,255,255,0) 80%);background-size:220% 100%;animation:sweep 1.5s linear infinite}
+@keyframes sweep{from{background-position:180% 0}to{background-position:-80% 0}}
+.num{font-family:var(--font-display);font-weight:600;font-size:116px;line-height:.82;letter-spacing:-.05em;background:linear-gradient(112deg,#6EE7B7 0%,#818CF8 44%,#C084FC 100%);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 6px 26px rgba(129,140,248,.28))}
+.outof{font-family:var(--font-mono);font-size:12.5px;color:#6E718E;padding-bottom:14px}
+.verd{flex:1;min-width:250px;padding-bottom:6px}
+.verd h1{font-family:var(--font-display);font-weight:500;font-size:26px;letter-spacing:-.022em;color:#fff;line-height:1.24}
+.verd p{color:#B4B6D0;font-size:14px;line-height:1.62;margin-top:8px;max-width:44ch}
+.ln{height:13px;border-radius:5px;background:rgba(255,255,255,.09);position:relative;overflow:hidden}
+.ln+.ln{margin-top:10px}
+
+.meter{display:flex;gap:3px;margin-top:26px}
+.meter i{flex:1;height:9px;border-radius:2px;background:rgba(255,255,255,.08)}
+.meter i.on{background:linear-gradient(90deg,#6EE7B7,#818CF8)}
+.meter i.on:nth-child(n+11){background:linear-gradient(90deg,#818CF8,#C084FC)}
+.meter--wait i{animation:wave 1.6s ease-in-out infinite}
+@keyframes wave{0%,100%{background:rgba(255,255,255,.07)}50%{background:rgba(255,255,255,.17)}}
+.meter--wait i:nth-child(1){animation-delay:0s}.meter--wait i:nth-child(2){animation-delay:.05s}
+.meter--wait i:nth-child(3){animation-delay:.1s}.meter--wait i:nth-child(4){animation-delay:.15s}
+.meter--wait i:nth-child(5){animation-delay:.2s}.meter--wait i:nth-child(6){animation-delay:.25s}
+.meter--wait i:nth-child(7){animation-delay:.3s}.meter--wait i:nth-child(8){animation-delay:.35s}
+.meter--wait i:nth-child(9){animation-delay:.4s}.meter--wait i:nth-child(10){animation-delay:.45s}
+.meter--wait i:nth-child(11){animation-delay:.5s}.meter--wait i:nth-child(12){animation-delay:.55s}
+.meter--wait i:nth-child(13){animation-delay:.6s}.meter--wait i:nth-child(14){animation-delay:.65s}
+.meter--wait i:nth-child(15){animation-delay:.7s}.meter--wait i:nth-child(16){animation-delay:.75s}
+.meter--wait i:nth-child(17){animation-delay:.8s}.meter--wait i:nth-child(18){animation-delay:.85s}
+.meter--wait i:nth-child(19){animation-delay:.9s}.meter--wait i:nth-child(20){animation-delay:.95s}
+.scale{display:flex;justify-content:space-between;margin-top:9px;font-family:var(--font-mono);font-size:9.5px;color:#6E718E}
+
+.stats{display:flex;border-top:1px solid rgba(255,255,255,.10);background:rgba(8,9,15,.42);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);position:relative;z-index:1}
+.stat{flex:1;padding:16px 18px;border-right:1px solid rgba(255,255,255,.08)}
+.stat:last-child{border-right:none}
+.stat b{display:block;font-family:var(--font-display);font-size:24px;color:#fff;line-height:1.1;font-weight:500}
+.stat span{display:block;font-family:var(--font-mono);font-size:9px;letter-spacing:.13em;text-transform:uppercase;color:#B9BBD4;margin-top:7px}
+.stat--wait b{color:#6E718E}
+
+.dims{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:13px;margin-top:15px}
+.dim{border:1px solid var(--rule);border-radius:14px;background:var(--surface);padding:17px 19px;position:relative;overflow:hidden}
+.dim__k{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-3)}
+.sk{border-radius:6px;background:var(--surface-3);position:relative;overflow:hidden}
+.sk::after{content:"";position:absolute;inset:0;background:linear-gradient(100deg,rgba(255,255,255,0) 20%,rgba(255,255,255,.85) 50%,rgba(255,255,255,0) 80%);background-size:220% 100%;animation:sweep 1.5s linear infinite}
+.qs{border:1px solid var(--rule);border-radius:14px;background:var(--surface);overflow:hidden}
+.q{display:flex;align-items:center;gap:16px;padding:15px 19px;border-bottom:1px solid var(--rule)}
+.q:last-child{border-bottom:none}
+
+.long{display:flex;align-items:center;gap:14px;margin-top:16px;padding:15px 18px;border:1px solid var(--rule);border-left:3px solid var(--gold);background:#FEF9EF;border-radius:12px;color:#7A4A0B;font-size:13.5px;flex-wrap:wrap}
+.long .btn{margin-left:auto}
+.err{border:1px solid var(--rose);border-left-width:3px;background:#FDF0F5;border-radius:12px;padding:16px 19px;color:#9D174D;max-width:70ch}
+.err b{display:block;font-size:15px;margin-bottom:5px}
+.err p{color:var(--ink-2);font-size:13.5px}
+.ruleset{background:var(--surface);border:1px solid var(--rule);border-radius:14px;padding:4px 22px;margin-top:14px}
+.ruleset li{list-style:none;padding:13px 0;border-bottom:1px solid var(--rule);font-size:13.5px;color:var(--ink-2)}
+.ruleset li:last-child{border-bottom:none}
+.ruleset strong{color:var(--ink);font-weight:500;display:block;margin-bottom:2px}
+@media(prefers-reduced-motion:reduce){*{animation:none!important}}
+</style></head><body>
+
+<div class="chrome"><span class="chrome__label">Screen</span>
+<button class="tab" data-go="wait" aria-selected="true">Scoring</button>
+<button class="tab" data-go="long">Taking longer</button>
+<button class="tab" data-go="done">Arrived</button>
+<button class="tab" data-go="fail">It failed</button>
+<button class="tab" data-go="rules">The rules</button></div>
+
+<!-- WAIT -->
+<section class="screen" data-screen="wait" data-active><div class="wrap">
+  <div class="hero"><div class="hero__b">
+    <div class="top">
+      <span class="kicker">JavaScript <em>·</em> 20 minutes <em>·</em> staff, terse <em>·</em> 9 Sep</span>
+      <span class="working"><span class="dots"><i></i><i></i><i></i></span> Scoring</span>
+    </div>
+    <div class="figure">
+      <span class="numslot"><span class="shim"></span></span>
+      <div class="verd">
+        <div class="ln" style="width:76%"><span class="shim"></span></div>
+        <div class="ln" style="width:92%;height:10px"><span class="shim"></span></div>
+        <div class="ln" style="width:58%;height:10px"><span class="shim"></span></div>
+      </div>
+    </div>
+    <div class="meter meter--wait"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <div class="scale"><span>0</span><span>reading your answers</span><span>100</span></div>
+  </div>
+  <div class="stats">
+    <div class="stat"><b>4/4</b><span>answered</span></div>
+    <div class="stat"><b>7/9</b><span>follow-ups held</span></div>
+    <div class="stat"><b>1</b><span>questions asked</span></div>
+    <div class="stat"><b>2</b><span>hints used</span></div>
+    <div class="stat"><b>18:41</b><span>elapsed</span></div>
+  </div></div>
+
+  <div class="rule"><span class="eyebrow">Where the score came from</span></div>
+  <div class="dims">
+    <div class="dim"><div class="dim__k">Recall</div><div class="sk" style="width:56px;height:34px;margin:9px 0 12px"></div><div class="sk" style="height:8px"></div><div class="sk" style="height:11px;width:88%;margin-top:11px"></div></div>
+    <div class="dim"><div class="dim__k">Depth</div><div class="sk" style="width:56px;height:34px;margin:9px 0 12px"></div><div class="sk" style="height:8px"></div><div class="sk" style="height:11px;width:72%;margin-top:11px"></div></div>
+    <div class="dim"><div class="dim__k">Precision</div><div class="sk" style="width:56px;height:34px;margin:9px 0 12px"></div><div class="sk" style="height:8px"></div><div class="sk" style="height:11px;width:80%;margin-top:11px"></div></div>
+    <div class="dim"><div class="dim__k">Enquiry</div><div class="sk" style="width:56px;height:34px;margin:9px 0 12px"></div><div class="sk" style="height:8px"></div><div class="sk" style="height:11px;width:66%;margin-top:11px"></div></div>
+  </div>
+
+  <div class="rule"><span class="eyebrow">Question by question</span></div>
+  <div class="qs">
+    <div class="q"><div style="flex:1"><div style="font-size:14.5px;font-weight:500">Closures hold a reference, not a copy</div><div class="meta" style="margin-top:4px">3 follow-ups · 1 held</div></div><div class="sk" style="width:150px;height:9px"></div><div class="sk" style="width:30px;height:15px"></div></div>
+    <div class="q"><div style="flex:1"><div style="font-size:14.5px;font-weight:500">The event loop &amp; microtasks</div><div class="meta" style="margin-top:4px">2 follow-ups · 2 held</div></div><div class="sk" style="width:150px;height:9px"></div><div class="sk" style="width:30px;height:15px"></div></div>
+    <div class="q"><div style="flex:1"><div style="font-size:14.5px;font-weight:500">Prototypal inheritance</div><div class="meta" style="margin-top:4px">2 follow-ups · 2 held</div></div><div class="sk" style="width:150px;height:9px"></div><div class="sk" style="width:30px;height:15px"></div></div>
+    <div class="q"><div style="flex:1"><div style="font-size:14.5px;font-weight:500">Iterators and generators</div><div class="meta" style="margin-top:4px">2 follow-ups · 2 held</div></div><div class="sk" style="width:150px;height:9px"></div><div class="sk" style="width:30px;height:15px"></div></div>
+  </div>
+
+  <div class="callout"><div class="callout__t">Half of this is already known</div>
+  <p style="color:var(--ink-2);font-size:13.5px">Every number in the strip is counted in code, not judged by a model — answered, follow-ups held, questions asked, hints, elapsed. So they render immediately and truthfully while the four scores and the prose are still coming. The skeleton is the shape of the page you are about to read, in its real proportions, so nothing jumps when it arrives.</p></div>
+
+  <p class="note">No buttons while it works. An escape hatch on a screen you are meant to wait on reads as "this may not finish", which is the message the old screen sent by accident. The one thing that always works — leaving — is the browser's own back, and it always did.</p>
+</div></section>
+
+<!-- LONG -->
+<section class="screen" data-screen="long"><div class="wrap">
+  <div class="hero"><div class="hero__b">
+    <div class="top"><span class="kicker">JavaScript <em>·</em> 20 minutes <em>·</em> staff, terse <em>·</em> 9 Sep</span>
+      <span class="working"><span class="dots"><i></i><i></i><i></i></span> Scoring · 24s</span></div>
+    <div class="figure"><span class="numslot"><span class="shim"></span></span>
+      <div class="verd"><div class="ln" style="width:76%"><span class="shim"></span></div>
+        <div class="ln" style="width:92%;height:10px"><span class="shim"></span></div>
+        <div class="ln" style="width:58%;height:10px"><span class="shim"></span></div></div></div>
+    <div class="meter meter--wait"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <div class="scale"><span>0</span><span>reading your answers</span><span>100</span></div>
+  </div>
+  <div class="stats">
+    <div class="stat"><b>4/4</b><span>answered</span></div>
+    <div class="stat"><b>7/9</b><span>follow-ups held</span></div>
+    <div class="stat"><b>1</b><span>questions asked</span></div>
+    <div class="stat"><b>2</b><span>hints used</span></div>
+    <div class="stat"><b>18:41</b><span>elapsed</span></div>
+  </div></div>
+
+  <div class="long">
+    <span>This is slower than usual — it is still going, and nothing is lost if you wait.</span>
+    <button class="btn">Leave without a scorecard</button>
+  </div>
+
+  <p class="note">After twenty seconds, and not before. One honest sentence and one way out, which appears because the wait has become unusual rather than because leaving is expected. Leaving discards the score; the round is not saved, and the copy says so on press rather than pretending otherwise.</p>
+</div></section>
+
+<!-- DONE -->
+<section class="screen" data-screen="done"><div class="wrap">
+  <div class="hero"><div class="hero__b">
+    <div class="top"><span class="kicker">JavaScript <em>·</em> 20 minutes <em>·</em> staff, terse <em>·</em> 9 Sep</span>
+      <span class="working" style="color:#FCD34D;background:rgba(252,211,77,.11);border-color:rgba(252,211,77,.38)">◆ Solid</span></div>
+    <div class="figure"><span style="display:flex;align-items:flex-end;gap:10px"><span class="num">74</span><span class="outof">/ 100</span></span>
+      <div class="verd"><h1>Strong on mechanism, thin on consequence</h1>
+        <p>You knew what things were, and went shallow the moment a follow-up asked what follows from them.</p></div></div>
+    <div class="meter"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <div class="scale"><span>0</span><span><b style="color:#B4B6D0">74</b> this round</span><span>100</span></div>
+  </div>
+  <div class="stats">
+    <div class="stat"><b>4/4</b><span>answered</span></div>
+    <div class="stat"><b>7/9</b><span>follow-ups held</span></div>
+    <div class="stat"><b>1</b><span>questions asked</span></div>
+    <div class="stat"><b>2</b><span>hints used</span></div>
+    <div class="stat"><b>18:41</b><span>elapsed</span></div>
+  </div></div>
+  <p class="note">The same layout, in the same place. The kicker stays, the strip does not move a pixel, and the numeral fades in where the shimmer was. Nothing reflows, because the skeleton was the real geometry rather than an approximation of it.</p>
+</div></section>
+
+<!-- FAIL -->
+<section class="screen" data-screen="fail"><div class="wrap">
+  <h1 style="font-family:var(--font-display);font-size:29px;font-weight:500;letter-spacing:-.022em">The scoring did not come back</h1>
+  <div class="err" style="margin-top:18px">
+    <b>Rate limited by OpenAI</b>
+    <p>Your round is not saved and there is no scorecard for it. Nothing else changed — no topic was marked, and your library is exactly as you left it.</p>
+  </div>
+  <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
+    <button class="btn btn--primary">Start a new interview</button>
+    <button class="btn">Back to library</button>
+  </div>
+  <p class="note">The buttons belong here and not on the waiting screen. Here they are the only thing to do; there they were an invitation to give up on something that was working. Same two controls, opposite meaning, decided by whether anything is still happening.</p>
+</div></section>
+
+<!-- RULES -->
+<section class="screen" data-screen="rules"><div class="wrap">
+  <h1 style="font-family:var(--font-display);font-size:29px;font-weight:500;letter-spacing:-.022em">The rules</h1>
+  <ul class="ruleset">
+    <li><strong>Render what is already known</strong>The stat strip is counted in code — answered, follow-ups held, questions asked, hints, elapsed. None of it waits on a model, so none of it waits on screen.</li>
+    <li><strong>The skeleton is the real geometry</strong>Same hero, same strip, same four cards, same question rows in their real order with their real titles. When the score arrives it fills the shape rather than replacing a different one, so nothing jumps.</li>
+    <li><strong>Indeterminate, never fake progress</strong>A shimmer and a pulsing meter, because it is one round trip and there are no stages. A bar that fills to 80% and waits is a lie about a request that either returns or does not.</li>
+    <li><strong>No buttons while it works</strong>An escape hatch on a screen you are meant to wait on reads as "this may not finish". The browser's back button has always been there for anyone who truly wants out.</li>
+    <li><strong>After twenty seconds, one sentence and one way out</strong>The wait has become unusual, so say so and offer the exit. It says leaving loses the score, because it does.</li>
+    <li><strong>On failure, the buttons return</strong>Same two controls, opposite meaning — there is now nothing else to do. And the error names the real reason, with an explicit line that nothing was written.</li>
+    <li><strong>Reduced motion stops every animation</strong>The shimmer, the meter and the dots all obey it, and the screen still reads correctly still.</li>
+  </ul>
+  <p class="note">The old screen's defect was not that it lacked a spinner. It was that it showed nothing it already knew, invented an escape from a working process, and left the reader unable to tell waiting from broken.</p>
+</div></section>
+
+<script>
+const s=document.querySelectorAll('[data-screen]');
+document.querySelector('.chrome').addEventListener('click',e=>{const b=e.target.closest('[data-go]');if(!b)return;
+document.querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-selected',t===b));
+s.forEach(x=>x.toggleAttribute('data-active',x.dataset.screen===b.dataset.go));window.scrollTo(0,0);});
+</script></body></html>
