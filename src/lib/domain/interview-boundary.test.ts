@@ -126,6 +126,16 @@ describe('the interview scale never leaves the interview', () => {
     '--rose',
     '--teal',
     /*
+      The scoring screen's skeleton fills, added with it. Same reason as the
+      composites below: a token the guard does not know about is a token that
+      can leave the tree unnoticed.
+    */
+    '--sk-dark',
+    '--sk-dark-sweep',
+    '--sk-light-sweep',
+    '--sk-wait',
+    '--sk-wait-lit',
+    /*
       The composites the three screens draw with. Added when the screens were
       built to the reference: a Tailwind arbitrary value cannot contain spaces,
       so every gradient and shadow stack is a token — and a token the guard does

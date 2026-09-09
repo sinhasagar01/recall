@@ -8,6 +8,7 @@ import { BackToLibrary } from '@/components/ui/back-to-library'
 import { NewInterview } from '@/components/interview/new-interview'
 import {
   canRewind,
+  clockOf,
   DIMENSIONS,
   METER_SEGMENTS,
   meterSegments,
@@ -333,6 +334,18 @@ export function Scorecard({
               value: String(counts.hintsUsed),
               label: counts.hintsUsed === 1 ? 'hint used' : 'hints used',
             },
+            /*
+              Elapsed, drawn by `scoring-mock.html` and absent here until it was.
+
+              It is the fifth cell the waiting screen can fill from the clock it
+              was already running, and a cell that exists while waiting and not
+              after would be the reflow that screen exists to avoid. `vs last`
+              keeps its place as the sixth: the scoring mock's arrived strip is
+              illustrating the transition rather than respecifying this one, and
+              `interview-reference.html` draws `vs last JS` and argues for it.
+              Both drawings are true with six cells and only one is with five.
+            */
+            { key: 'stat-elapsed', value: clockOf(elapsedSeconds), label: 'elapsed' },
             ...(past.length > 0
               ? [
                   {
@@ -422,7 +435,16 @@ export function Scorecard({
                   <div className="flex flex-wrap items-center gap-4">
                     <div className="min-w-0 flex-1">
                       <p className="text-body font-medium">{question.title}</p>
-                      <p className="mt-0.5 text-meta leading-[1.55] text-ink-2">{question.note}</p>
+                      {/*
+                        One line, which is the other half of the scoring screen's
+                        promise: while waiting, this line is the follow-up count,
+                        and a note that wrapped to two would grow every row the
+                        moment the score landed. Clamped rather than truncated so
+                        a long note still ends in an ellipsis rather than a cut.
+                      */}
+                      <p className="mt-0.5 line-clamp-1 text-meta leading-[1.55] text-ink-2">
+                        {question.note}
+                      </p>
                       {/*
                         Said, not swallowed. A question the model could not tie to
                         a saved topic still scores — but it cannot appear in the

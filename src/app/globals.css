@@ -324,6 +324,31 @@
   --sc-blob: radial-gradient(circle, rgba(168, 85, 247, 0.2) 0%, rgba(168, 85, 247, 0) 68%);
   --sc-shadow: 0 24px 64px rgba(14, 15, 22, 0.38), 0 1px 0 rgba(255, 255, 255, 0.07) inset;
 
+  /*
+    ── The scoring screen's skeleton ─────────────────────────────────────────
+    A sweep, not a pulse, and one shared keyframe for every placeholder so the
+    whole page shimmers in phase rather than as a dozen independent flickers.
+
+    `--sk-*` are two fills because the skeleton spans both grounds: the hero is
+    dark and the dimension cards are light, and one translucent white would be
+    invisible on one of them.
+  */
+  --sk-dark: rgba(255, 255, 255, 0.09);
+  --sk-dark-sweep: linear-gradient(
+    100deg,
+    rgba(255, 255, 255, 0) 20%,
+    rgba(255, 255, 255, 0.16) 50%,
+    rgba(255, 255, 255, 0) 80%
+  );
+  --sk-light-sweep: linear-gradient(
+    100deg,
+    rgba(255, 255, 255, 0) 20%,
+    rgba(255, 255, 255, 0.85) 50%,
+    rgba(255, 255, 255, 0) 80%
+  );
+  --sk-wait: rgba(255, 255, 255, 0.07);
+  --sk-wait-lit: rgba(255, 255, 255, 0.17);
+
   --sc-ink: #f4f3fb;
   --sc-ink-2: #b4b6d0;
   --sc-ink-3: #6e718e;
@@ -364,5 +389,79 @@
   :focus-visible {
     outline: 2px solid var(--volt);
     outline-offset: 2px;
+  }
+}
+
+/*
+  The scoring screen's motion, and the one rule that governs all of it.
+
+  Indeterminate only — a sweep and a slow wave, never a bar that fills. It is
+  one round trip with no stages, and a bar that reaches 80% and waits is a lie
+  about a request that either returns or does not.
+
+  Every animation here is switched off under `prefers-reduced-motion`, and the
+  screen still reads correctly without them: the placeholders keep their fill,
+  the meter keeps its track, and the word "Scoring" is doing the work either way.
+  Motion is the flourish, never the message.
+*/
+@keyframes sc-sweep {
+  from {
+    background-position: 180% 0;
+  }
+  to {
+    background-position: -80% 0;
+  }
+}
+
+@keyframes sc-wave {
+  0%,
+  100% {
+    background-color: var(--sk-wait);
+  }
+  50% {
+    background-color: var(--sk-wait-lit);
+  }
+}
+
+@keyframes sc-blink {
+  0%,
+  60%,
+  100% {
+    opacity: 0.25;
+  }
+  30% {
+    opacity: 1;
+  }
+}
+
+[data-mode='interview'] .sc-shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-size: 220% 100%;
+  animation: sc-sweep 1.5s linear infinite;
+}
+
+[data-mode='interview'] .sc-shimmer--dark::after {
+  background-image: var(--sk-dark-sweep);
+}
+
+[data-mode='interview'] .sc-shimmer--light::after {
+  background-image: var(--sk-light-sweep);
+}
+
+[data-mode='interview'] .sc-wave {
+  animation: sc-wave 1.6s ease-in-out infinite;
+}
+
+[data-mode='interview'] .sc-blink {
+  animation: sc-blink 1.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-mode='interview'] .sc-shimmer::after,
+  [data-mode='interview'] .sc-wave,
+  [data-mode='interview'] .sc-blink {
+    animation: none;
   }
 }

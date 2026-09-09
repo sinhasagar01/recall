@@ -168,6 +168,76 @@ export interface RoundCounts {
   hintsUsed: number
 }
 
+/**
+ * `mm:ss`, for a duration measured in seconds. Minutes are not capped at 60 —
+ * a ninety-minute round reads `92:14` rather than pretending to be an hour.
+ */
+export function clockOf(seconds: number): string {
+  const whole = Math.max(0, Math.floor(seconds))
+  return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, '0')}`
+}
+
+/** One question in the round, as the transcript alone can describe it. */
+export interface QuestionOutline {
+  /** For looking the title up in the room's topic map. Null if none was named. */
+  topicId: string | null
+  followUpsOffered: number
+  followUpsHeld: number
+}
+
+/**
+ * The question list, derived from turns and nothing else.
+ *
+ * The scoring screen needs the shape of *Question by question* before any score
+ * exists: how many rows, in what order, about what, with how many follow-ups
+ * each. All of that is in the transcript already — only the numbers are pending.
+ *
+ * Deliberately the same positional reasoning as `countRound`, one scope down. A
+ * follow-up belongs to the question above it, and it is HELD when an answer
+ * follows it before the next question or follow-up, skipping the turns that are
+ * neither — a hint, a clarification, and the reply to one. Written as one shared
+ * predicate rather than twice, so the per-question counts cannot sum to
+ * something the round total disagrees with.
+ */
+export function outlineRound(turns: Turn[]): QuestionOutline[] {
+  const outline: QuestionOutline[] = []
+
+  for (const [index, turn] of turns.entries()) {
+    if (turn.speaker !== 'interviewer' || turn.kind !== 'question') continue
+
+    const rest = turns.slice(index + 1)
+    const nextQuestion = rest.findIndex(
+      (later) => later.speaker === 'interviewer' && later.kind === 'question',
+    )
+    const window = nextQuestion === -1 ? rest : rest.slice(0, nextQuestion)
+
+    let offered = 0
+    let held = 0
+    for (const [at, inner] of window.entries()) {
+      if (inner.kind !== 'follow-up') continue
+      offered += 1
+      if (answeredAfter(window, at)) held += 1
+    }
+
+    outline.push({ topicId: turn.topicId, followUpsOffered: offered, followUpsHeld: held })
+  }
+
+  return outline
+}
+
+/** Whether the next turn that is not an aside is an answer. */
+function answeredAfter(turns: Turn[], index: number): boolean {
+  const next = turns
+    .slice(index + 1)
+    .find(
+      (later) =>
+        later.kind !== 'clarification' &&
+        later.kind !== 'clarification-answer' &&
+        later.kind !== 'hint',
+    )
+  return next?.kind === 'answer'
+}
+
 export function countRound(turns: Turn[]): RoundCounts {
   /*
     Only YOUR turns count for the things you did.

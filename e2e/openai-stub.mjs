@@ -306,6 +306,33 @@ createServer((req, res) => {
       flight. That is not a state a fast stub can produce, and it is the state
       the control exists for.
     */
+    /*
+      A scoring call that fails, for the one screen that has to handle it.
+
+      Gated on the SCORING marker specifically, not on the transcript alone, so
+      the answer that carries the word still succeeds and the round reaches the
+      point where scoring is what breaks.
+
+      The body is OpenAI's real error envelope and the status is the real status
+      — copied from the vendor's documented shape rather than from what our code
+      does with it. A failure fixture invented from the consumer proves only that
+      the consumer accepts it; see ARCHITECTURE.md.
+    */
+    if (system.includes('interview transcript') && transcript.includes('RATE-LIMIT')) {
+      res.writeHead(429, { 'content-type': 'application/json' })
+      res.end(
+        JSON.stringify({
+          error: {
+            message: 'Rate limit reached for gpt-4o in organization org-xxxx on tokens per min.',
+            type: 'tokens',
+            param: null,
+            code: 'rate_limit_exceeded',
+          },
+        }),
+      )
+      return
+    }
+
     const delay = transcript.includes('SLOW-ANSWER') ? 5000 : 0
 
     setTimeout(() => {

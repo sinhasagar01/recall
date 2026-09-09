@@ -3308,6 +3308,43 @@ gate with the constructor **deleted from `window`** — removing a global tests 
 rather than simulating a service. What is not asserted is stated out loud, in TASKS.md, as a list
 of things a person has to do by hand.
 
+### Reserve space with the real thing made invisible, never with a number that matched it once
+
+The scoring screen holds a slot for the score that has not arrived. The first version was a
+`150×92` box, sized from the scorecard's 116px numeral. It was 10px short, the whole page
+stepped down when the score landed, and **nothing failed** — the numbers were plausible, the
+screen looked right, and only a test measuring the stat strip either side of arrival could see it.
+
+The second version was a better number. That is the part worth recording, because it looked like
+the fix: measure again, correct the constant, watch the test go green. It would have been wrong
+at the next type-scale change — the numeral is `text-[84px] md:text-[116px]`, and any edit to
+either, to the leading, to the font, or to the `/ 100` beside it, silently reintroduces the step.
+**A geometry held by a measured number is correct until the thing it measures changes, and
+nothing fails when it drifts. The page just moves.**
+
+The third version reserves the space with the content itself:
+
+```tsx
+<span className="invisible font-display text-[84px] leading-[0.82] md:text-[116px]">00</span>
+<span className="invisible pb-3.5 font-mono text-[12.5px]">/ 100</span>
+<span className="absolute inset-0 …skeleton…" />
+```
+
+Same font, same size, same leading, same sibling, same box — because it *is* the box, computed
+from the same rules by the same engine. It cannot disagree with what arrives, and it needs no
+maintenance when the type scale moves, because there is no number to update.
+
+> **A placeholder must be the real element made invisible, not a rectangle that measured the
+> same once.** If a slot's size is written as a literal, it is a snapshot of a layout that has
+> since been free to change without it.
+
+**Where else this mechanism runs:** anywhere a literal encodes something the layout engine
+already computes — a hard-coded row height beside a variable-length label, a `min-h` chosen to
+fit today's longest string, a spacer sized to a sibling, an aspect ratio typed rather than
+declared. The tell is a magic number in a class name whose correctness depends on a *different*
+declaration somewhere else. `min-h-11`, by contrast, is not this: it encodes a touch-target rule
+that stands on its own, and nothing else has to agree with it.
+
 ### Absence looks the same on screen whatever produced it
 
 A fourth control was reported missing: *Practise this chapter*, on a course that now has two
