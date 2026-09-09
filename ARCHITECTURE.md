@@ -3498,6 +3498,42 @@ constant-comparison would have caught, write that one assertion, named for that 
 do not generalise it. One narrow guard that says what it checks is worth more than a suite whose
 name overstates it.
 
+### Settled: a null-guard in a CHECK, and the prediction that is always wrong
+
+Twice now a CHECK clause has been written with a prediction attached — *without this guard the
+clause goes vacuous on NULL* — and twice the perturbation has shown the prediction false. It is
+settled, so it is recorded as an answer rather than found again.
+
+**The pattern.** A CHECK on a nullable field or on an array whose length is NULL when empty:
+
+```sql
+check (x_note is null or length(btrim(x_note)) > 0)     -- the evidence constraint
+check (coalesce(array_length(code, 1), 0) <= asked)     -- the DSA code column
+```
+
+**The prediction, every time:** remove the guard and the clause stops rejecting anything,
+because NULL is not FALSE.
+
+**The answer, every time:** a CHECK passes on NULL exactly as it passes on TRUE, so the row that
+would have been "let through by NULL" is the row the constraint was always meant to accept — an
+absent note, an empty code array. **The vacuous case is the accepted case.** There is no hole,
+and the perturbation correctly reports DID NOT BITE.
+
+**So the clause is redundant today and it stays**, on the same terms both times: it makes the
+line independently NULL-safe rather than borrowing correctness from semantics one edit away from
+changing. It becomes load-bearing the moment someone writes a lower bound there — `>= 1`, or
+`between 1 and 3` — at which point NULL would silently satisfy a clause that is supposed to
+demand something.
+
+> **And the comment has to say all of that, or the next person deletes it as dead code.** A
+> redundant clause with no explanation is indistinguishable from an oversight, and the only thing
+> standing between it and a well-meant cleanup is a sentence saying it is deliberate and naming
+> the edit that would make it matter.
+
+The general rule is unchanged — **perturb every clause** — and what this settles is what a
+zero-failure result means for this specific shape. It is not dead code to delete. It is a claim
+to re-derive, and for a null-guard in a CHECK the re-derivation now has a known answer.
+
 ### Absence looks the same on screen whatever produced it
 
 A fourth control was reported missing: *Practise this chapter*, on a course that now has two
