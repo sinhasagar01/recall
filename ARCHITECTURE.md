@@ -221,6 +221,12 @@ yes/no question.
 > **A pass is an exit code and nothing else.** `<command> && echo HARNESS_ALL_GREEN`, with the
 > marker emitted only when the shell says the command succeeded.
 
+**Where else this mechanism runs:** anywhere a script decides a boolean from another program's
+human-readable output. In this repo that is `scripts/perturb.mjs` (this entry), the same file's
+edit-application check, `scripts/gen-library-parity.mts --check`, and `scripts/test-db.sh`, which
+greps `supabase status`. The first two have been bitten; the last two use exit codes already and
+should keep doing so.
+
 **The first fix patched the hole rather than the mechanism**, and that is the part worth
 carrying. After the false bite, the response was to read the failure text more carefully and
 free the port — a fix to that occurrence. The mechanism, `passMarker` as a substring search, was
@@ -3274,6 +3280,12 @@ what it attempted rather than what it achieved.
 > count before replacing, assert the text actually differs after, and never print a success line
 > that cannot fail.
 
+**Where else this mechanism runs:** every ad-hoc edit script, every codemod, and every migration
+that rewrites files rather than schema. The rule is not about Python's `str.replace` — it is
+about any operation whose failure mode is *silently doing nothing*, which includes `sed -i` with
+a pattern that does not match, a `jq` filter selecting an absent key, and an `UPDATE … WHERE`
+matching zero rows. Each of those returns success.
+
 `perturb.mjs` already does exactly this, and says so in its own header: *"the file after the edit
 must equal `original.replace(old, new)` and must differ from the original"*, with a missing
 anchor as an **error, never a result**. The discipline existed, in this repo, applied to
@@ -3381,3 +3393,40 @@ argument for preferring one.
 The seventh was a different defect the same search surfaced: `/weak`'s empty state offered
 **+ Add topic** pointing at bare `/library`, which lands you in the library with no form open —
 the label promising what the destination does not do, exactly as the practice page's did.
+
+### No index. The question goes in the entry, asked by the person who just paid for it
+
+This file is indexed by incident — 132 entries, each named for the thing that went wrong. That
+is right for writing them and wrong for consulting them, which is how a rule sat in
+`scripts/perturb.mjs`'s header all session while the same mechanism failed twice more, three
+feet away.
+
+**Two fixes were available and only one of them survives contact.**
+
+**An index at the top is the wrong one, and this project has the evidence.** It is a
+hand-written list of where to look, over a file that grows every session — the same shape as the
+route list that went stale twice, the `PRIVATE_GROUPS` list that never learned about a new
+group, and the seed clear-down that never learned about a new table. Each rotted silently and
+nothing failed, because **nothing fails when a list of pointers is incomplete.** An index of 132
+entries would be wrong within two arcs and would look authoritative the whole time.
+
+**A mechanism line per entry is cheap and mostly beside the point.** It cannot drift, because it
+lives in the entry and is written in the same edit, and `grep` over it is derived rather than
+maintained. But it only helps a reader who already suspects the connection — and today's failure
+was not "I could not find the rule". It was that I did not recognise an edit script and a
+perturbation checker as one mechanism. Recognising it is the whole difficulty; anyone who has
+done that can already find the entry.
+
+> **So: when an entry is written, it names where else the same mechanism runs and whether the
+> rule applies there — including "nowhere else yet, and here is what would qualify".**
+
+That is done once, by the person who has just finished debugging the thing and understands the
+mechanism better than any later reader will. Its output is prose inside the entry, which a
+reader gets without knowing to look for it. It is not a pointer that can go stale; it is an
+argument that was either made or not.
+
+**The cost, stated:** it does nothing for the 132 entries already here, and I am not retrofitting
+them — a sweep of 132 entries asserting connections I would be inventing at speed is how this
+document would acquire confident wrong claims. The three entries in the harness family have the
+line added, because that family is exactly what failed and the connections there are ones I
+actually traced today. Everything else earns it when it is next touched.
