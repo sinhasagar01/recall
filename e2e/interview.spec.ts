@@ -74,9 +74,25 @@ test.describe('interview mode', () => {
     await expect(page.getByTestId('length-20')).toHaveAttribute('data-picked', 'false')
     await expect(page.getByTestId('pill-check'), 'still one per group').toHaveCount(3)
 
-    // Absent, not disabled: session one ships five types.
-    await expect(page.getByTestId('round-type-dsa')).toHaveCount(0)
-    await expect(page.getByTestId('round-type-design')).toHaveCount(0)
+    /*
+      Seven types now. This assertion said `toHaveCount(0)` for two sessions —
+      absent, not disabled, because DSA was not built — and deleting it is this
+      arc's work in the same way deleting `hasnt_column('code')` was. It is
+      inverted rather than removed, so the card's existence is still asserted by
+      the test that used to assert its absence.
+    */
+    await expect(page.getByTestId('round-type-dsa')).toHaveCount(1)
+    await expect(page.getByTestId('round-type-design')).toHaveCount(1)
+
+    /*
+      And the exception is on the card, not only in the sub-line at the top. The
+      sub-line covers all seven types; someone choosing DSA is looking here.
+    */
+    await expect(page.getByTestId('round-type-dsa')).toContainText(
+      'generated, not from your library',
+    )
+    /* And the design card says what it draws on, or that it has nothing to. */
+    await expect(page.getByTestId('round-type-design')).toContainText(/ADR/)
 
     // A round is never resumed, and the setup screen says so before you enter —
     // the rules tab claimed this and the reference did not do it.
@@ -923,5 +939,126 @@ test.describe('the room always says which topic it is asking about', () => {
 
     expect(await named('after a skip the model could not attribute'),
       'an unresolvable id must not replace a known one').toBe(afterSkip)
+  })
+})
+
+test.describe('DSA and System design', () => {
+  test.setTimeout(120_000)
+
+  test('a DSA round writes code, keeps it across a follow-up, and stores it', async ({ page }) => {
+    await signInAs(page, 'extract')
+    await page.goto('/interview?type=dsa&minutes=45&level=staff&mode=typing')
+
+    /*
+      The editor is the answer surface, and it is a real one — nothing is
+      executed, but you type into it and what you type is the round.
+    */
+    const editor = page.getByTestId('code-editor')
+    await expect(editor).toBeVisible({ timeout: 30_000 })
+    await expect(page.getByTestId('editor-note')).toContainText('nothing runs')
+
+    await editor.click()
+    await page.keyboard.type('const merged = intervals.sort()')
+    await expect(editor).toContainText('const merged')
+
+    /*
+      Code alone is an answer. Writing a solution and saying nothing is a real
+      move — the follow-up about complexity is where the round is anyway — so
+      Answer is live with the box empty and the editor written in.
+    */
+    await page.getByRole('button', { name: 'Answer', exact: true }).click()
+    await expect(page.getByTestId('turn-follow-up')).toBeVisible({ timeout: 30_000 })
+
+    // And it survives the exchange: still the same problem, still your code.
+    await expect(editor).toContainText('const merged')
+
+    await page.getByTestId('end-round').click()
+    await expect(page.getByTestId('scorecard')).toBeVisible({ timeout: 60_000 })
+
+    /*
+      Stored, which is what "your code is kept" means. The round only reaches a
+      row if the insert passed every CHECK — including code_is_dsa_only and
+      code_fits_the_round — so a scorecard with an id is the assertion.
+    */
+    await expect(page.getByTestId('scorecard')).toHaveAttribute('data-round-id', /[0-9a-f-]{36}/)
+
+    // The row carries the solution, collapsed.
+    const solution = page.getByTestId('solution').first()
+    await expect(solution).toBeVisible()
+    await expect(solution).toContainText('const merged')
+
+    /*
+      And a problem offers nothing to mark weak — in its own words, not the
+      unattributable question's. There is no topic to fail to identify.
+    */
+    await expect(page.getByTestId('unattributed').first()).toContainText(
+      'A problem is not a topic in your library',
+    )
+    await expect(page.getByTestId('practise-marked')).toHaveCount(0)
+  })
+
+  test('Next problem on an empty editor records unanswered, not zero', async ({ page }) => {
+    /*
+      The same rule Move on already follows for a concept: leaving is a real move
+      and it is not a wrong answer. `answered` counts questions answered, so an
+      untouched problem must not appear as one.
+    */
+    await signInAs(page, 'extract')
+    await page.goto('/interview?type=dsa&minutes=45&level=staff&mode=typing')
+    await expect(page.getByTestId('code-editor')).toBeVisible({ timeout: 30_000 })
+
+    const next = page.getByTestId('move-on')
+    await expect(next).toHaveText('Next problem')
+    await next.click()
+    await expect(page.getByTestId('turn-skip')).toBeVisible({ timeout: 30_000 })
+
+    await page.getByTestId('end-round').click()
+    await expect(page.getByTestId('scorecard')).toBeVisible({ timeout: 60_000 })
+
+    // Nothing answered, and the round still saved.
+    await expect(page.getByTestId('stat-answered-value')).toHaveText(/^0\//)
+    await expect(page.getByTestId('scorecard')).toHaveAttribute('data-round-id', /[0-9a-f-]{36}/)
+  })
+
+  test('a design round is phased, forward only, and never renders pips', async ({ page }) => {
+    await signInAs(page, 'extract')
+    await page.goto('/interview?type=design&minutes=60&level=skeptical&mode=typing')
+
+    const strip = page.getByTestId('phase-strip')
+    await expect(strip).toBeVisible({ timeout: 30_000 })
+
+    // Four at every length, and no pips — a pip per question counts a shape
+    // that has no questions.
+    await expect(strip.locator('[data-phase]')).toHaveCount(4)
+    await expect(page.locator('[data-pip]')).toHaveCount(0)
+    await expect(strip).toContainText('Requirements')
+    await expect(strip).toContainText('Deep dive')
+
+    const phaseNow = () => strip.locator('[data-phase="now"]')
+    await expect(phaseNow()).toContainText('Requirements')
+
+    // You advance.
+    await page.getByTestId('move-on').click()
+    await expect(phaseNow()).toContainText('High-level shape', { timeout: 30_000 })
+
+    /*
+      Or the interviewer does — by exactly one, because it reports only that the
+      phase is done and never names the next. And it arrives as a turn, so the
+      strip follows the conversation rather than repainting beside you.
+    */
+    await page.getByLabel('Your answer').fill('PHASE-DONE the shape is a modular monolith.')
+    await page.getByRole('button', { name: 'Answer', exact: true }).click()
+    await expect(phaseNow()).toContainText('Deep dive', { timeout: 30_000 })
+
+    /*
+      Forward only. There is no back — a design round is a conversation and you
+      cannot un-say the requirements — so the first phase never returns to `now`.
+    */
+    await expect(strip.locator('[data-phase="done"]')).toHaveCount(2)
+
+    await page.getByTestId('end-round').click()
+    await expect(page.getByTestId('scorecard')).toBeVisible({ timeout: 60_000 })
+    // A design round keeps no code, so no row offers a solution.
+    await expect(page.getByTestId('solution')).toHaveCount(0)
   })
 })

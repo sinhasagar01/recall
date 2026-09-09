@@ -278,6 +278,14 @@
   --room-shadow: 0 4px 22px rgba(18, 19, 26, 0.07);
   --room-rule: linear-gradient(90deg, var(--volt), var(--purple) 55%, var(--teal));
   --pip-now: linear-gradient(90deg, var(--indigo), var(--volt));
+
+  /*
+    The design round's phase strip. Composites, so they are tokens: a Tailwind
+    arbitrary value cannot contain spaces, and a gradient is all spaces.
+  */
+  --phase-now: linear-gradient(135deg, #eef0fe, #ffffff);
+  --phase-done: linear-gradient(135deg, #e7f6f0, #dcf2ea);
+  --phase-glow: 0 0 0 1px var(--volt), 0 4px 14px rgba(79, 70, 229, 0.16);
   --pip-glow: 0 0 8px rgba(79, 70, 229, 0.35);
 
   /*

@@ -121,6 +121,7 @@ export type Database = {
         Row: {
           answered: number
           asked: number
+          code: string[]
           created_at: string
           depth: number
           elapsed_seconds: number
@@ -143,6 +144,7 @@ export type Database = {
         Insert: {
           answered: number
           asked: number
+          code?: string[]
           created_at?: string
           depth: number
           elapsed_seconds: number
@@ -165,6 +167,7 @@ export type Database = {
         Update: {
           answered?: number
           asked?: number
+          code?: string[]
           created_at?: string
           depth?: number
           elapsed_seconds?: number

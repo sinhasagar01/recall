@@ -89,6 +89,7 @@ export function Scorecard({
   scorecard,
   counts,
   roundType,
+  code = [],
   minutes,
   level,
   elapsedSeconds,
@@ -101,6 +102,8 @@ export function Scorecard({
   scorecard: Scorecard
   counts: RoundCounts
   roundType: RoundType
+  /** DSA only: the solutions, index-aligned with the question rows. */
+  code?: string[]
   minutes: Length
   /** Named in the eyebrow — the round is "JavaScript · 45 minutes · staff, terse". */
   level: Level
@@ -453,13 +456,45 @@ export function Scorecard({
                         can see is worse than one that admits what it does not
                         know.
                       */}
+                      {/*
+                        Two different absences, and they are not the same
+                        sentence. A concept question with no topic is one the
+                        model could not attribute. A DSA problem has no topic to
+                        attribute — it was generated, it is not in your library,
+                        and there is nothing to be uncertain about.
+
+                        The reference asked for "the same words an unattributable
+                        question already uses". Those words say the topic could
+                        not be told, which would be false here, and they end
+                        "so it isn't offered below" — but with every row
+                        unattributed the offer block is absent entirely.
+                      */}
                       {question.topicId === null ? (
                         <p
                           data-testid="unattributed"
                           className="mt-1 font-mono text-[11px] text-ink-3"
                         >
-                          Couldn’t tell which of your topics this came from, so it isn’t offered below
+                          {roundType === 'dsa'
+                            ? 'A problem is not a topic in your library, so there is nothing here to mark weak'
+                            : 'Couldn’t tell which of your topics this came from, so it isn’t offered below'}
                         </p>
+                      ) : null}
+
+                      {/*
+                        The code you wrote, collapsed. From client state — the
+                        round that produced it is still open in this tab — and
+                        the column it was also written to has no reader in this
+                        arc, which the migration says out loud.
+                      */}
+                      {roundType === 'dsa' && (code[index] ?? '').trim() !== '' ? (
+                        <details className="mt-2" data-testid="solution">
+                          <summary className="cursor-pointer font-mono text-[11px] text-ink-3 hover:text-ink">
+                            Your solution
+                          </summary>
+                          <pre className="mt-2 overflow-x-auto rounded-md border border-rule bg-surface-2 px-3 py-2.5 font-mono text-[12px] leading-[1.7] text-ink">
+                            {code[index]}
+                          </pre>
+                        </details>
                       ) : null}
                     </div>
                     {/*

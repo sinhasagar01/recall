@@ -16,13 +16,18 @@ import { BackToLibrary } from '@/components/ui/back-to-library'
 import { useRoomKeys } from '@/components/interview/use-room-keys'
 import { useSpeech } from '@/components/interview/use-speech'
 import { Scoring } from '@/components/interview/scoring'
+import { CodeEditor } from '@/components/interview/code-editor'
 import type { AnswerMode } from '@/lib/domain/voice'
 import { useSerial } from '@/components/interview/use-serial'
 import { NewInterview } from '@/components/interview/new-interview'
 import {
   HINTS_PER_ROUND,
+  advancePhase,
   countRound,
   outlineRound,
+  PHASES,
+  phaseWindows,
+  problemCount,
   followUpTag,
   ROUND_LABEL,
   pipState,
@@ -83,7 +88,17 @@ export function Round({
   past: { overall: number; created_at: string }[]
   poolSize: number
 }) {
-  const target = questionCount(minutes)
+  /*
+    The unit of the round, which is not the same unit for every type. Concepts
+    are questions; DSA is problems, far fewer of them; a design round is four
+    phases and the strip below is its progress rather than these pips.
+  */
+  const target =
+    roundType === 'dsa'
+      ? problemCount(minutes)
+      : roundType === 'design'
+        ? PHASES.length
+        : questionCount(minutes)
 
   const [turns, setTurns] = useState<Turn[]>([
     { speaker: 'interviewer', text: opening, topicId: openingTopicId, kind: 'question' },
@@ -201,6 +216,18 @@ export function Round({
         ARCHITECTURE.md: an edit is applied when the file changed, not when the
         script says so.
       */
+      /*
+        The interviewer's own advance.
+
+        It reports only that the phase is done; the room decides where that goes,
+        by one, forward. And it arrives with `result.text` — the sentence it said
+        while advancing — so the strip follows a turn in the transcript rather
+        than repainting beside you. If you were not finished, you can carry on
+        answering: the strip is a record of where the conversation is, not a gate
+        on what you may say, and the scorer scores what was said.
+      */
+      if (design && result.phaseDone) setPhase(advancePhase)
+
       if (result.topicId !== null && result.topicTitle !== null) {
         const id = result.topicId
         const title = result.topicTitle
@@ -257,6 +284,24 @@ export function Round({
     it every result would re-append to a box that already contains the previous
     result.
   */
+  /*
+    ── The two shapes this round can also be ─────────────────────────────────
+    Branches rather than an extraction. This file holds eight recorded fixes and
+    a three-shape refactor is the highest-risk move available; see
+    ARCHITECTURE.md on why a file that has accumulated fixes costs the number of
+    fixes to move, not the number of lines.
+
+    `code` is one entry per problem, index-aligned with the problem you are on,
+    so it lands in the `text[]` column in the order the problems were asked.
+    `phase` is the design round's position, and only ever moves forward.
+  */
+  const dsa = roundType === 'dsa'
+  const design = roundType === 'design'
+  const [code, setCode] = useState<string[]>(dsa ? [''] : [])
+  const [phase, setPhase] = useState(0)
+  const problem = code.length - 1
+  const windows = phaseWindows(minutes)
+
   const typedBefore = useRef('')
   const speech = useSpeech({
     onTranscript: (spoken) => {
@@ -287,10 +332,43 @@ export function Round({
     unmounts the tree and the room renders as "This page couldn't load". Caught
     by three existing specs going red, not by types.
   */
+  /*
+    A DSA answer may be code alone: writing a solution and saying nothing is a
+    real answer, and the follow-up about complexity is where the round is anyway.
+    So the gate is "both empty", not "the box is empty" — which is what the
+    reference means by *Answer is disabled while the editor is empty AND the box
+    is empty*. Computed once so the button and the send path read the same
+    condition instead of two that can disagree.
+
+    `Ask a question` keeps needing prose: a clarifying question is something you
+    say, and code is not a question.
+  */
+  const written = dsa ? (code[problem] ?? '').trim() : ''
+  const nothingToSend = answer.trim() === '' && written === ''
+
   const sendAnswer = () => {
-    if (answer.trim() === '') return
+    if (nothingToSend) return
     /* Sending ends the answer, so it ends the dictation of it. */
     speech.stop()
+
+    /*
+      The code goes in the turn as a fenced block, so the model reads it as code
+      rather than as a paragraph that happens to contain semicolons. It is the
+      transcript, not a second channel — which is why `TRANSCRIPT_BYTE_CAP`
+      exists and why session one wrote it for this round specifically.
+    */
+    if (written !== '') {
+      say(
+        {
+          speaker: 'you',
+          text: `\`\`\`ts\n${written}\n\`\`\`${answer.trim() === '' ? '' : `\n\n${answer}`}`,
+          topicId: currentTopicId,
+          kind: 'answer',
+        },
+        'follow',
+      )
+      return
+    }
     say({ speaker: 'you', text: answer, topicId: currentTopicId, kind: 'answer' }, 'follow')
   }
 
@@ -304,7 +382,20 @@ export function Round({
 
     void (async () => {
       try {
-        const result = await finish({ roundType, minutes, level, turns, elapsedSeconds: elapsed })
+        const result = await finish({
+          roundType,
+          minutes,
+          level,
+          turns,
+          elapsedSeconds: elapsed,
+          /*
+            Trailing empties trimmed: `Next problem` appends a slot immediately,
+            so a round ended right after pressing it would otherwise store one
+            more solution than there were problems — which the
+            `code_fits_the_round` CHECK would refuse at the insert.
+          */
+          code: dsa ? code.filter((_, index) => index < code.length - 1 || code[index] !== '') : [],
+        })
         if (!result.ok) {
           setEndError(result.reason)
           return
@@ -352,6 +443,7 @@ export function Round({
     return (
       <ScorecardView
         scorecard={scorecard}
+        code={code}
         counts={counts}
         roundType={roundType}
         minutes={minutes}
@@ -453,8 +545,13 @@ export function Round({
             question, and ROOM_RULES forbid this surface from doing that. Done,
             now, or not yet.
           */}
-          <div className="flex gap-1" aria-hidden="true">
-            {Array.from({ length: target }, (_, index) => {
+          {/*
+            No pips in a design round. A pip per question counts a shape that has
+            no questions — the phase strip below is the progress, and rendering
+            both would be two answers to "how far in am I".
+          */}
+          <div className={`flex gap-1 ${design ? 'hidden' : ''}`} aria-hidden="true">
+            {Array.from({ length: design ? 0 : target }, (_, index) => {
               const state = pipState(index, counts.answered)
               return (
                 <i
@@ -502,6 +599,54 @@ export function Round({
           </span>
         </div>
 
+        {/*
+          The phase strip: the design round's whole sense of progress.
+
+          Four at every length; the minute ranges stretch and are a guide the
+          clock does not enforce, exactly as the advisory clock does not end a
+          round. Forward only — done, now, or not yet, and nothing here can move
+          backwards because `advancePhase` cannot return a smaller number.
+        */}
+        {design ? (
+          <div data-testid="phase-strip" className="mt-[18px] flex flex-wrap gap-2">
+            {PHASES.map((name, index) => {
+              const state = index < phase ? 'done' : index === phase ? 'now' : 'todo'
+              return (
+                <div
+                  key={name}
+                  data-phase={state}
+                  className={`min-w-[150px] flex-1 rounded-xl border px-3.5 py-3 ${
+                    state === 'now'
+                      ? 'border-[var(--volt)] [background:var(--phase-now)] [box-shadow:var(--phase-glow)]'
+                      : state === 'done'
+                        ? 'border-[var(--mint)]/40 [background:var(--phase-done)]'
+                        : 'border-rule bg-surface-2'
+                  }`}
+                >
+                  <div
+                    className={`font-mono text-[9.5px] tracking-[0.12em] uppercase ${
+                      state === 'now'
+                        ? 'text-[var(--volt-ink)]'
+                        : state === 'done'
+                          ? 'text-[var(--mint-ink)]'
+                          : 'text-ink-3'
+                    }`}
+                  >
+                    {state === 'done' ? '✓ ' : ''}
+                    Phase {index + 1}
+                    {state === 'now' ? ' · now' : ''}
+                  </div>
+                  <div className="mt-1.5 text-[13.5px]">{name}</div>
+                  <div className="mt-[5px] font-mono text-[10px] text-ink-3">
+                    {windows[index].from}–{windows[index].to}
+                    {index === PHASES.length - 1 ? ' min' : ''}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        ) : null}
+
         {error ? (
           <p
             role="alert"
@@ -518,11 +663,20 @@ export function Round({
           room could not name the thing it was asking about.
         */}
         <div className="mt-[22px] flex flex-wrap items-center gap-2">
+          {/*
+            A DSA round names no topic, because it has none: the problem was
+            generated and there is nothing in your library it came from. The tag
+            said "DSA · Microtasks drain first" in the first side-by-side —
+            faithfully rendering an id the stub should not have returned, and a
+            claim the real model has no material to make either. Gated here
+            rather than trusted upstream, so the screen is right whatever comes
+            back.
+          */}
           <span data-testid="qtag-topic" className={`${TAG} border-rule bg-surface-2 text-ink-2`}>
             {ROUND_LABEL[roundType]}
-            {meta ? ` · ${meta.title}` : ''}
+            {meta && !dsa ? ` · ${meta.title}` : ''}
           </span>
-          {meta?.weak ? (
+          {meta?.weak && !dsa ? (
             <span
               data-testid="qtag-weak"
               className={`${TAG} border-[var(--rose)] bg-[var(--rose-soft)] text-[var(--rose-ink)]`}
@@ -598,14 +752,31 @@ export function Round({
               )
             }
 
+            /*
+              A DSA answer carries the solution as a fenced block. Rendered as
+              prose it comes out as backticks and a one-line smear of source —
+              which is what the first side-by-side showed. The fence is split off
+              and set as code, so the transcript reads the way the editor does.
+            */
+            const fenced = /^```ts\n([\s\S]*?)\n```(?:\n\n([\s\S]*))?$/.exec(turn.text)
+
             return (
-              <p
+              <div
                 key={index}
                 data-testid={`turn-${turn.kind}`}
                 className="my-4 border-l-2 border-rule-strong py-1 pl-[17px] text-body leading-[1.72] text-ink-2"
               >
-                {turn.text}
-              </p>
+                {fenced === null ? (
+                  turn.text
+                ) : (
+                  <>
+                    <pre className="overflow-x-auto rounded-md border border-rule bg-surface-2 px-3 py-2.5 font-mono text-[12px] leading-[1.7] text-ink">
+                      {fenced[1]}
+                    </pre>
+                    {fenced[2] ? <p className="mt-2">{fenced[2]}</p> : null}
+                  </>
+                )}
+              </div>
             )
           }
 
@@ -648,6 +819,21 @@ export function Round({
           )
         })}
 
+      {/*
+        The editor sits ABOVE the answer box, because that is the order of the
+        work: you write the solution, then you say what its complexity is. Both
+        are sent together — the code as a fenced block in the same turn — so the
+        model reads them as one answer rather than two.
+      */}
+      {dsa ? (
+        <CodeEditor
+          value={code[problem] ?? ''}
+          onChange={(next) =>
+            setCode((current) => current.map((was, index) => (index === problem ? next : was)))
+          }
+        />
+      ) : null}
+
       <textarea
         aria-label="Your answer"
         placeholder="Keep going…"
@@ -668,10 +854,8 @@ export function Round({
             Typing during a call would re-arm it and fire a second `say` over a
             stale `turns`.
           */
-          disabled={thinking || answer.trim() === ''}
-          onClick={() =>
-            sendAnswer()
-          }
+          disabled={thinking || nothingToSend}
+          onClick={() => sendAnswer()}
         >
           Answer
         </VoltButton>
@@ -707,13 +891,39 @@ export function Round({
           not read it as an answer — moving on is a real move and it is not a
           wrong answer either.
         */}
+        {/*
+          One control, three labels, because it is one move: leave what you are
+          on and go to the next thing. A concept moves on, a DSA round takes the
+          next problem, a design round moves to the next phase — and in every
+          case it is a `skip`, so `countRound` does not read it as an answer.
+
+          `Next problem` works with an empty editor, and the scorecard records
+          that problem as unanswered rather than scored zero. Same rule `Move on`
+          already follows: leaving is a real move and it is not a wrong answer.
+        */}
         <Button
           variant="ghost"
-          disabled={thinking}
-          onClick={() => say({ speaker: 'you', text: 'Move on.', topicId: currentTopicId, kind: 'skip' }, 'ask')}
+          disabled={thinking || (design && phase >= PHASES.length - 1)}
+          onClick={() => {
+            if (dsa) setCode((current) => [...current, ''])
+            if (design) setPhase(advancePhase)
+            say(
+              {
+                speaker: 'you',
+                text: dsa ? 'Next problem.' : design ? 'Move on to the next phase.' : 'Move on.',
+                topicId: currentTopicId,
+                kind: 'skip',
+              },
+              'ask',
+            )
+          }}
           data-testid="move-on"
         >
-          Move on
+          {dsa
+            ? 'Next problem'
+            : design
+              ? `Move to ${PHASES[Math.min(phase + 1, PHASES.length - 1)].toLowerCase()}`
+              : 'Move on'}
         </Button>
 
         {/*
@@ -809,7 +1019,15 @@ export function Round({
         scorecard. A saved quiz arrives at confidence `new` from the column
         default, exactly as a hand-made one does.
       */}
-      {openFollowUp !== null && !savedFor.includes(openFollowUp) ? (
+      {/*
+        A follow-up becomes a quiz only in a round drawn from your library.
+
+        A DSA problem is generated and a design round is drawn from the ledger,
+        so neither has a topic to link a quiz to — and arc 6's rule is that a
+        saved quiz belongs to the topic the follow-up came from. Offering it here
+        would either write an orphan or invent a parent.
+      */}
+      {openFollowUp !== null && !dsa && !design && !savedFor.includes(openFollowUp) ? (
         <div
           data-testid="save-quiz"
           className="mt-3.5 rounded-[14px] border border-l-[3px] border-[var(--mint-line)] border-l-[var(--mint)] px-[17px] py-[13px] text-[13.5px] text-[var(--mint-ink)] [background:var(--saveq-bg)]"

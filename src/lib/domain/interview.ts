@@ -22,12 +22,22 @@ export const ROUND_LABEL: Record<string, string> = {
   javascript: 'JavaScript',
   react: 'React',
   typescript: 'TypeScript',
+  dsa: 'DSA',
+  design: 'System design',
   behavioural: 'Behavioural',
   mixed: 'Mixed',
 }
 
-/** Session one ships five. DSA and System design arrive with their runners. */
-export const ROUND_TYPES = ['javascript', 'react', 'typescript', 'behavioural', 'mixed'] as const
+/** Seven. DSA and System design arrived with their runners, in session three. */
+export const ROUND_TYPES = [
+  'javascript',
+  'react',
+  'typescript',
+  'dsa',
+  'design',
+  'behavioural',
+  'mixed',
+] as const
 export type RoundType = (typeof ROUND_TYPES)[number]
 
 export const LEVELS = ['friendly', 'staff', 'skeptical'] as const
@@ -42,6 +52,89 @@ export type Length = (typeof LENGTHS)[number]
  */
 export function questionCount(minutes: Length): number {
   return { 20: 4, 45: 8, 60: 11, 90: 16 }[minutes]
+}
+
+/**
+ * DSA counts problems, not concepts, and far fewer of them.
+ *
+ * Writing a solution and then defending its complexity is fifteen to thirty
+ * minutes of one problem — so twenty minutes is one, and ninety is three rather
+ * than the sixteen concepts the same ninety minutes buys. The unit of the round
+ * changes, which is why this is its own function and not a divisor applied to
+ * `questionCount`.
+ *
+ * The upper bound is also the `code` column's CHECK. Both say three; the column
+ * says it because a runner that asked four would otherwise write a fourth
+ * solution nobody can see.
+ */
+export function problemCount(minutes: Length): number {
+  return { 20: 1, 45: 2, 60: 2, 90: 3 }[minutes]
+}
+
+/**
+ * A design round is four movements at every length.
+ *
+ * The phases stretch; the count does not. Twenty minutes is a rushed design
+ * round, not a two-phase one — the shape of the conversation is the same and you
+ * have less time for each part of it.
+ *
+ * Generic on purpose. The reference draws phase three as "Permissions & audit",
+ * which is the DRAWN EXAMPLE's deep dive rather than the phase's name — reading
+ * a worked example's label as the specification is the mistake recorded against
+ * this same file's line 151.
+ */
+export const PHASES = [
+  'Requirements',
+  'High-level shape',
+  'Deep dive',
+  'Scale it 100×',
+] as const
+export type Phase = (typeof PHASES)[number]
+
+/**
+ * The minute range under each phase, stretched to the round's length.
+ *
+ * The fractions are read off the reference's sixty-minute strip — 0–10, 10–25,
+ * 25–45, 45–60 — which is 1/6, 1/4, 1/3, 1/4. A deep dive is the longest
+ * movement and requirements the shortest, at every length.
+ *
+ * A guide the clock does not enforce, exactly as the advisory clock does not end
+ * a round: nothing here advances a phase, and the last window always ends at the
+ * round's length so the strip cannot claim time the round does not have.
+ */
+export function phaseWindows(minutes: Length): { from: number; to: number }[] {
+  const shares = [1 / 6, 1 / 4, 1 / 3, 1 / 4]
+  const windows: { from: number; to: number }[] = []
+  let from = 0
+
+  for (const [index, share] of shares.entries()) {
+    /*
+      The last window is pinned to the length rather than accumulated, so
+      rounding never leaves the strip ending at 59 or 61 on a 60-minute round.
+    */
+    const to = index === shares.length - 1 ? minutes : Math.round(from + minutes * share)
+    windows.push({ from, to })
+    from = to
+  }
+
+  return windows
+}
+
+/**
+ * Forward only, one at a time, and it is the CLIENT that decides.
+ *
+ * A design round is a conversation and you cannot un-say the requirements, so
+ * there is no way back. Either you press the advance or the interviewer reports
+ * the phase finished — and in the second case the model says only THAT it is
+ * done, never which phase comes next. Naming would let it skip or reverse; this
+ * is the same rule as never inventing a topic id, one field over.
+ *
+ * Clamped at the last phase rather than wrapping or erroring: a model that keeps
+ * saying "done" past the end should leave the round in its final phase, not
+ * crash the room or start it again.
+ */
+export function advancePhase(current: number): number {
+  return Math.min(Math.max(current, 0) + 1, PHASES.length - 1)
 }
 
 /**
@@ -65,6 +158,16 @@ export interface Pool {
   quizzes: number
   /** Behavioural only. */
   incidents: number
+  /*
+    System design only — three ledger kinds, each identified by a column rather
+    than inferred. There is deliberately no "design-shaped topics" count: a
+    topic's category is free text, nothing marks one as design material, and a
+    keyword list over what the user typed would be a claim the app cannot check.
+    With none of these three the round is thin, and the card says so.
+  */
+  adrs: number
+  diagrams: number
+  exercises: number
 }
 
 export interface PoolLine {
@@ -80,6 +183,47 @@ export function poolLine(type: RoundType, pool: Pool, questions: number | null):
   if (type === 'mixed') {
     /* No count: it is the sum of the cards directly above it. */
     return { lead: 'everything', rest: ' above', thin: false }
+  }
+
+  /*
+    ── DSA is the one type that draws on nothing ────────────────────────────
+    Its problems are generated, because your library has no DSA problems in it
+    and pretending otherwise would be the fake this product refuses. So the line
+    ignores the pool entirely — the way `mixed` does, for the opposite reason —
+    and it is never thin: a generated round always fills.
+
+    It names the exception here rather than only in the page's sub-line, because
+    this card is where someone choosing DSA is looking. The sub-line says an
+    exception exists; this says it is this one.
+  */
+  if (type === 'dsa') {
+    const n = questions ?? 0
+    return {
+      lead: `${n} ${n === 1 ? 'problem' : 'problems'}`,
+      rest: ' · generated, not from your library · your code is kept',
+      thin: false,
+    }
+  }
+
+  /*
+    ── System design draws on the ledger, and is thin without it ────────────
+    ADRs, diagrams and scale exercises. Thin is a real state here and it is the
+    honest one: without them there is nothing to defend, and the alternative was
+    a keyword heuristic over free-text categories claiming to have found
+    "design-shaped topics".
+  */
+  if (type === 'design') {
+    const material = pool.adrs + pool.diagrams + pool.exercises
+    if (material === 0) {
+      return { lead: '0 ADRs', rest: ', 0 diagrams — nothing to draw on', thin: true }
+    }
+    return {
+      lead: `${pool.adrs} ${pool.adrs === 1 ? 'ADR' : 'ADRs'}`,
+      rest:
+        `${pool.diagrams > 0 ? ` · ${pool.diagrams} ${pool.diagrams === 1 ? 'diagram' : 'diagrams'}` : ''}` +
+        `${pool.exercises > 0 ? ` · ${pool.exercises} scale ${pool.exercises === 1 ? 'exercise' : 'exercises'}` : ''}`,
+      thin: false,
+    }
   }
 
   const thin = questions !== null && pool.topics + pool.incidents < questions
@@ -522,6 +666,8 @@ export interface TurnReply {
   text: string
   /** Null when the reply is a hint or an answer to a clarification. */
   topicId: string | null
+  /** Design rounds only. The model says a phase is done; it never says which. */
+  phaseDone: boolean
 }
 
 export type TurnReplyResult = { ok: true; reply: TurnReply } | { ok: false; reason: string }
@@ -544,7 +690,24 @@ export function parseTurn(raw: string): TurnReplyResult {
     identified is still a turn worth having — the tag row simply says less. The
     round is not worth losing over an attribution.
   */
-  return { ok: true, reply: { text, topicId: asUuid(parsed.topic_id) } }
+  /*
+    `phase_done` is the design round's one extra field, and it is deliberately
+    the only thing the model gets to say about phases. It reports that THIS phase
+    is finished; it never names or numbers the next one, because naming would let
+    it skip or reverse and the room is the thing that owns forward-only.
+
+    Absent or malformed reads as false, which is the safe direction: a missing
+    field leaves you where you are, and you can always press the advance
+    yourself. The opposite default would move the round on a parse failure.
+  */
+  return {
+    ok: true,
+    reply: {
+      text,
+      topicId: asUuid(parsed.topic_id),
+      phaseDone: parsed.phase_done === true,
+    },
+  }
 }
 
 /**

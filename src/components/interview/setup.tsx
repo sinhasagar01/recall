@@ -6,6 +6,7 @@ import { VoltButton } from '@/components/interview/volt-button'
 import { BackToLibrary } from '@/components/ui/back-to-library'
 import { ANSWER_MODES, speechSupported, type AnswerMode } from '@/lib/domain/voice'
 import {
+  problemCount,
   LENGTHS,
   LEVELS,
   ROUND_TYPES,
@@ -79,6 +80,14 @@ const TYPE: Record<RoundType, { name: string; how: string; tone: string }> = {
     how: 'Concepts, escalating follow-ups',
     tone: '[--tone:var(--volt)]',
   },
+  /*
+    `--purple` and `--mint` are ordinary hues, not scale positions, so neither
+    joins `interview-boundary.test.ts`'s SCALE list — the same reading that keeps
+    `--blue` and `--slate` out of it while they serve as React's and Mixed's
+    tones. A hue outside the tree is not the leak that guard is about.
+  */
+  dsa: { name: 'DSA', how: 'Write code, then complexity and edges', tone: '[--tone:var(--purple)]' },
+  design: { name: 'System design', how: 'One problem, four phases', tone: '[--tone:var(--mint)]' },
   behavioural: { name: 'Behavioural', how: 'Drawn from your ledger', tone: '[--tone:var(--rose)]' },
   mixed: { name: 'Mixed', how: 'A real loop, all the shapes you have', tone: '[--tone:var(--slate)]' },
 }
@@ -161,7 +170,15 @@ export function Setup({
     if (canHear === false) setMode('typing')
   }, [canHear])
 
-  const questions = questionCount(minutes)
+  /*
+    The unit of the round, which is not the same unit for every type. Concepts
+    are questions; DSA is problems, far fewer of them, because writing a solution
+    and then defending its complexity is fifteen to thirty minutes of one. Design
+    is four phases at every length — the phases stretch and the count does not,
+    so a length does not produce a number here at all.
+  */
+  const questions =
+    type === 'dsa' ? problemCount(minutes) : type === 'design' ? null : questionCount(minutes)
   const cost = estimateRoundCost(minutes)
   const money = (value: number) => `$${value.toFixed(2)}`
 
@@ -186,7 +203,8 @@ export function Setup({
         Set up an interview round
       </h1>
       <p className="mt-1.5 max-w-[62ch] text-ink-2">
-        Every question comes from your own library. Nothing is asked that you have not saved.
+        Every question comes from your own library. Nothing is asked that you have not saved —
+        with one exception, and the card that makes it says so.
       </p>
 
       {/* ── Round ─────────────────────────────────────────────────────────── */}
@@ -384,7 +402,11 @@ export function Setup({
           {mode}
         </p>
         <p className="mt-2 mb-[5px] font-display text-[28px] font-medium tracking-[-0.02em] text-white">
-          {plural(questions, 'concept')}, weighted toward weak
+          {type === 'design'
+            ? 'Four phases, however long you have'
+            : type === 'dsa'
+              ? `${plural(questions ?? 0, 'problem')}, written and defended`
+              : `${plural(questions ?? 0, 'concept')}, weighted toward weak`}
         </p>
         {/*
           Read from your data, like the pool lines above it — "Nine of your
@@ -393,9 +415,13 @@ export function Setup({
           summary of anything.
         */}
         <p className="max-w-[56ch] text-[13.5px] leading-[1.65] text-[var(--mesh-ink-2)]">
-          {pools[type].weak > 0
-            ? `${pools[type].weak} of your ${TYPE[type].name} topics read weak; the queue draws from those first. `
-            : 'Nothing here reads weak, so the queue draws in order. '}
+          {type === 'dsa'
+            ? 'Problems are generated — your library has none, and this is the only round where that is true. Your code is kept; the conversation is not. '
+            : type === 'design'
+              ? 'Requirements, then the shape, then a deep dive, then scaling it a hundred times. Forward only: you cannot un-say the requirements. '
+              : pools[type].weak > 0
+                ? `${pools[type].weak} of your ${TYPE[type].name} topics read weak; the queue draws from those first. `
+                : 'Nothing here reads weak, so the queue draws in order. '}
           {plural(HINTS_PER_ROUND, 'hint')} available, each visible on the scorecard.
         </p>
 
@@ -423,8 +449,8 @@ export function Setup({
       </div>
 
       <p className={NOTE}>
-        <strong className="font-medium text-ink">All three groups arrive with a choice made</strong>{' '}
-        — the first option in each row, each showing its check on arrival. Three ticks before you
+        <strong className="font-medium text-ink">All four groups arrive with a choice made</strong>{' '}
+        — the first option in each row, each showing its check on arrival. Four ticks before you
         have touched anything, which is what tells you these are choices rather than fixed
         settings. There is no disabled state: the gate existed to stop a round being started
         unconfigured, and a default solves that better, because nothing can be unconfigured.
@@ -436,8 +462,11 @@ export function Setup({
         </p>
         <p className="mt-1 text-[13.5px] text-ink-2">
           Real rounds are not uniform. Forty-five minutes of JavaScript is eight concepts with
-          follow-ups. The pool line under each type is read from your data and says honestly when a
-          round would be thin.
+          follow-ups; the same forty-five minutes of DSA is <strong className="font-medium text-ink">two
+          problems</strong>, because writing a solution and defending its complexity is most of a
+          round on its own. System design is <strong className="font-medium text-ink">four phases at
+          every length</strong> — the phases stretch, the count does not. The pool line under each
+          type is read from your data and says honestly when a round would be thin.
         </p>
       </div>
 
