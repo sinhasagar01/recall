@@ -148,7 +148,7 @@ code{font-family:var(--font-mono);font-size:.86em}
 
   <div class="callout">
     <div class="callout__t">One chapter means one button</div>
-    <p style="color:var(--ink-2);font-size:13.5px">Your course has a single chapter, so "practise this chapter" and "practise this course" resolve to the same 21 entries. Two buttons producing an identical session is not a layout problem — it is a missing rule. <strong>The chapter action only appears when the course has more than one chapter</strong>, and the same holds one level down: a chapter with a single lesson does not need both a lesson and a chapter action.</p>
+    <p style="color:var(--ink-2);font-size:13.5px">Your course has a single chapter, so "practise this chapter" and "practise this course" resolve to the same 21 entries. Two buttons producing an identical session is not a layout problem — it is a missing rule. <strong>An action appears only when its session differs from the wider one’s: if two scopes resolve to the same set of entries, only the widest is shown.</strong> A single-chapter course is one case of that. So is a chapter with a single lesson. So is a chapter whose sibling chapters have nothing distilled yet — its entries are the course’s entries, and the course button is the one that stays.</p>
   </div>
 
   <p class="note">Both are buttons now, not links. They start a session — an action, not navigation — and the shipped Button is what every other action in this app uses. The count moves out of the label and beside it, so the button says what it does and the meta says how much.</p>

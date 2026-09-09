@@ -3251,6 +3251,76 @@ the same defect one degree less invisible: a control that exists but does not do
 says still cannot be caught by asserting it is present, and every check we had asserted exactly
 that.
 
+### Absence looks the same on screen whatever produced it
+
+A fourth control was reported missing: *Practise this chapter*, on a course that now has two
+chapters. It had nothing in common with the three above. It was built, it was rendered, and a
+rule suppressed it correctly — one chapter had nothing distilled, which made the other chapter's
+entries identical to the course's, and `practisableScopes` keeps the widest of two scopes over
+the same set. Distil one topic into the empty chapter and both chapter buttons return.
+
+**It was reported identically to the three, because on screen it IS identical to the three.** A
+control that was never built and a control that was correctly collapsed both render nothing,
+occupy no space and throw no error. There is no visual difference, no hover state, no greyed
+affordance — by design, since *absent, not disabled* is this project's own rule.
+
+> **A missing control cannot be triaged by looking at it.** The screen carries no information
+> about why something is not there, so "it's missing" is an observation, never a diagnosis. The
+> code decides which of the two it is, and the code has to be read before the word *defect* is
+> used.
+
+This is why *diagnose before fixing* earns its place here rather than being process for its own
+sake. Fixing this one by looking would have meant deleting or weakening a rule that was working,
+to restore a button that would have produced a session identical to the one beside it — the
+exact defect the rule was written to prevent, reintroduced in the name of a bug report that was
+accurate about the symptom and wrong about everything else.
+
+**And the same report contained the opposite case.** *Practise this lesson* was genuinely never
+built, and it belongs to the three above by their own mechanism: the mock never draws it and
+names it only inside rules that constrain it — "a chapter with one lesson shows only the chapter
+button" — so the obligation existed solely as a negative, exactly like [the interview entry
+point](#a-missing-control-renders-nothing-so-nothing-sees-it). `ScopeLevel` has listed `lesson`
+and `WIDTH` has ranked it below `chapter` since arc 2.1, and the domain test has asserted the
+one-lesson collapse for just as long. **The rule governing the button shipped; the button did
+not**, and every test stayed green because no caller ever passed a lesson scope in. A rule
+compared against two of the three levels it ranks cannot fail on the third.
+
+**Where else this mechanism runs:** any rule whose inputs are supplied by a caller rather than
+enumerated by the rule. `practisableScopes` ranks three levels and receives whatever it is
+handed; `apprenticeshipNav` builds destinations from what it is passed; `groupSources` groups
+what it is given. In each, a level or destination can be absent from every call site while the
+function's own tests exercise it fully — so the coverage question is not "is this branch
+tested", it is **"does anything in the app ever produce this input"**.
+
+### An illustrative sentence is not the rule, even in the file that states the rule
+
+`sources-actions-mock.html` states the collapse rule twice. Line 298, in the rules list:
+
+> if two scopes resolve to the same set, show the widest one
+
+and line 151, as prose under a worked example:
+
+> The chapter action only appears when the course has more than one chapter
+
+The second is the first, restated against one example and flattened in the restating. They agree
+on every shape the panel draws and disagree on the shape that actually shipped — two chapters,
+one of them empty, where the chapter count says *show it* and the id sets say *collapse it*. The
+code follows line 298, so nothing was wrong; but the report arrived as "the collapse rule is
+firing wrongly", because line 151 is what a reader meets first.
+
+**This is a variant of the reference shapes already listed, and it needs no new test.** The test
+is the one already recorded: *change the specifics and ask whether the sentence is still true.*
+Line 298 survives any course, any chapter count, any distribution of entries. Line 151 is false
+the moment a sibling chapter is empty. One is a rule; the other is a caption that reads like one.
+
+> **A demo panel's prose describes its own example. When it is phrased as a general claim it
+> becomes a second, weaker statement of the rule, and whoever reads that panel first will take
+> it as the rule.** Phrase worked examples as *this case*, or phrase them as the rule and let the
+> example follow.
+
+Line 151 now states the rule and lists the single-chapter course, the single-lesson chapter and
+the empty-sibling chapter as three cases of it — including the one that prompted this.
+
 ### The same defect in the tool doing the editing, not the tool doing the checking
 
 `topicMeta` was seeded from the opening topic and never written again, so the room's tag could

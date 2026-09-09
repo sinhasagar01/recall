@@ -41,6 +41,16 @@ import { plural } from '@/lib/domain/plural'
  * conditions someone has to remember. A scope with no entries is dropped
  * entirely: absent, not disabled.
  *
+ * **All three levels are offered to it in one call**, which is what makes that
+ * true. `ScopeLevel` and `WIDTH` have ranked `lesson` below `chapter` since arc
+ * 2.1 and the domain test has asserted the one-lesson collapse for just as
+ * long — but no caller ever passed a lesson, so the rule governing the lesson
+ * action shipped while the action itself did not. Comparing only two of three
+ * levels is how a rule stays green over a case it never sees.
+ *
+ * A lesson is a candidate whether or not its course or chapter is named: an
+ * uncoursed source still produced entries, and there is a session in them.
+ *
  * ── Still no progress bar ───────────────────────────────────────────────────
  * A bar needs a denominator, and the app knows how many lessons you ADDED,
  * never how many the course has.
@@ -63,6 +73,13 @@ export function CourseGroup({ node, now }: { node: CourseNode; now: Date }) {
         level: 'chapter' as const,
         ids: chapter.entryIds,
       })),
+    ...node.chapters.flatMap((chapter) =>
+      chapter.lessons.map(({ view }) => ({
+        key: `lesson:${view.source.id}`,
+        level: 'lesson' as const,
+        ids: view.entries.map((entry) => entry.id),
+      })),
+    ),
   ])
 
   const allEntries = node.chapters.flatMap((chapter) =>
@@ -132,7 +149,12 @@ export function CourseGroup({ node, now }: { node: CourseNode; now: Date }) {
           ) : null}
 
           {chapter.lessons.map(({ view }) => (
-            <SourceRow key={view.source.id} view={view} now={now} />
+            <SourceRow
+              key={view.source.id}
+              view={view}
+              now={now}
+              practisable={visible.has(`lesson:${view.source.id}`)}
+            />
           ))}
         </div>
       ))}

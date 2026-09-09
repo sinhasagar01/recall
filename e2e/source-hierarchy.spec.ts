@@ -207,11 +207,61 @@ test.describe('course, chapter and lesson', () => {
     await expect(group.getByRole('link', { name: /^Practise this course/ })).toBeVisible()
 
     const band = group.getByTestId('chapter-group').filter({ hasText: SECOND_CHAPTER }).first()
+
+    /*
+      The same rule one level DOWN, which is what it means for it to be general.
+      This chapter has exactly one lesson, so "practise this lesson" and
+      "practise this chapter" run over the same single entry. The narrower one
+      goes — absent, not disabled.
+    */
+    await expect(band.getByRole('link', { name: /^Practise this lesson/ })).toHaveCount(0)
+
     await band.getByRole('link', { name: /^Practise this chapter/ }).click()
 
     await expect(page).toHaveURL(/scope=chapter/)
     await expect(page).toHaveURL(new RegExp(encodeURIComponent(SECOND_CHAPTER)))
     // Only that chapter's one entry — not the course's two.
+    await expect(page.getByRole('img', { name: 'Card 1 of 1' })).toBeVisible({ timeout: 30_000 })
+  })
+
+  test('a second lesson in the chapter brings the lesson buttons with it', async ({ page }) => {
+    /*
+      The other side of the collapse, and the case that shows the lesson action
+      exists at all. Two lessons in one chapter, each with its own entry: the
+      chapter's session is both, each lesson's is one, and no two of the three
+      scopes resolve to the same set. So all three actions are on screen.
+    */
+    await signInAs(page, 'extract')
+
+    const second = unique('Function Stack')
+    const sheet = await openAddSheet(page)
+    await sheet.getByLabel(/^Course/).fill(COURSE)
+    await sheet.getByLabel(/^Chapter/).fill(SECOND_CHAPTER)
+    await sheet.getByLabel('Lesson').fill(second)
+    await sheet.getByRole('button', { name: 'Save source', exact: true }).click()
+    await expect(page).toHaveURL(/\/sources\/[0-9a-f-]+$/, { timeout: 30_000 })
+
+    await page.getByRole('link', { name: '+ Distil a topic' }).click()
+    const add = page.getByRole('dialog')
+    await add.getByRole('textbox', { name: 'Topic', exact: true }).fill(unique('Call stack frame'))
+    await add.getByLabel('Definition').fill('One frame per call, popped when the call returns.')
+    await add.getByRole('button', { name: 'Save topic' }).click()
+    await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 30_000 })
+
+    await page.goto('/sources')
+    const group = page.getByTestId('course-group').filter({ hasText: COURSE }).first()
+    const band = group.getByTestId('chapter-group').filter({ hasText: SECOND_CHAPTER }).first()
+
+    const lessons = band.getByRole('link', { name: /^Practise this lesson/ })
+    await expect(lessons).toHaveCount(2)
+    await expect(band.getByRole('link', { name: /^Practise this chapter/ })).toBeVisible()
+
+    /*
+      And it starts THAT lesson's session, not the chapter's — one entry, via the
+      `?scope=source` route arc 6 built and nothing on this page ever called.
+    */
+    await lessons.first().click()
+    await expect(page).toHaveURL(/scope=source/)
     await expect(page.getByRole('img', { name: 'Card 1 of 1' })).toBeVisible({ timeout: 30_000 })
   })
 
