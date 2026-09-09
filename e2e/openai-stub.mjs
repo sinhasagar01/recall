@@ -77,6 +77,35 @@ const FULL = [
 */
 const interviewBody = (system, messages) => {
   const STUB_TOPIC_IDS = topicIds()
+  /*
+    A DSA round's scorecard names no topics, because there are none.
+
+    Not a convenience: the real model is given no material for a DSA round and
+    has no ids to return, so a stub that returned seeded uuids here would be
+    describing our parser rather than the service — the third instance of the
+    error recorded in ARCHITECTURE.md, in the same file that records it. The
+    rows are problems, and a problem is not a topic in the library.
+  */
+  const said = (messages ?? []).map((m) => m.content ?? '').join('\n')
+  if (system.includes('Score this interview transcript') && /```ts|Next problem/.test(said)) {
+    return {
+      content: JSON.stringify({
+        recall: 74, depth: 66, precision: 71, enquiry: 60, overall: 70,
+        verdict: 'Correct, and thin on cost',
+        summary: 'The solution was right. The complexity answer stopped at the shape.',
+        recall_note: 'Knew the approach.',
+        depth_note: 'Went thin on why the sort dominates.',
+        precision_note: 'Exact about the loop.',
+        enquiry_note: 'Asked nothing.',
+        questions: [
+          { topic_id: null, title: 'Merge overlapping intervals', score: 70, note: 'Right, and slower than it needed to be.' },
+          { topic_id: null, title: 'Two-sum in one pass', score: 0, note: 'Not attempted.' },
+        ],
+      }),
+      finish_reason: 'stop',
+    }
+  }
+
   if (system.includes('Score this interview transcript')) {
     /*
       A scorecard whose per-question scores straddle OFFER_BELOW, so the offer
@@ -160,10 +189,26 @@ const interviewBody = (system, messages) => {
     shape the parser wants rather than the shape the vendor returns.
   */
   const last = messages.at(-1)?.content ?? ''
-  const turn = (say, topicId = null) => ({
-    content: JSON.stringify({ say, topic_id: topicId }),
+  /*
+    `phase_done` is in every turn because the schema requires it of every round
+    type — a strict schema cannot make a field conditional, and one schema that
+    always carries it beats two that drift. The room ignores it unless the round
+    is a design round.
+  */
+  const turn = (say, topicId = null, phaseDone = false) => ({
+    content: JSON.stringify({ say, topic_id: topicId, phase_done: phaseDone }),
     finish_reason: 'stop',
   })
+
+  /*
+    The interviewer's own phase advance, chosen by what the spec types — the same
+    way every other scenario here is chosen. It exists for one assertion: the
+    room advances on the model's word as well as on yours, and it advances by
+    exactly one because the model never says WHICH phase comes next.
+  */
+  if (last.includes('PHASE-DONE')) {
+    return turn('Good. That is enough on this — let us move on.', null, true)
+  }
 
   if (system.includes('They asked for a hint')) {
     return turn('Think about what the scope is a reference to.')

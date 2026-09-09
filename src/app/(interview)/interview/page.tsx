@@ -118,24 +118,44 @@ export default async function InterviewPage({ searchParams }: PageProps<'/interv
     — see `poolLine`. Quizzes are counted apart from topics rather than folded
     in: a category of twenty quizzes and one topic is not an eight-concept round.
   */
+  const empty = { topics: 0, weak: 0, quizzes: 0, incidents: 0, adrs: 0, diagrams: 0, exercises: 0 }
+
   const poolFor = (option: RoundType): Pool => {
     if (option === 'behavioural') {
       return {
+        ...empty,
         topics: ledger.filter((item) => item.kind === 'adr').length,
-        weak: 0,
-        quizzes: 0,
         incidents: ledger.filter((item) => item.kind === 'incident').length,
       }
     }
+
+    /*
+      Three ledger kinds, each identified by a column. No topic fallback: a
+      topic's category is free text and nothing marks one as design material, so
+      "design-shaped topics" would be a keyword list over what the user typed,
+      described on screen as a source it is not. Thin is the honest state, and
+      `poolLine` says so on the card before the round is entered.
+    */
+    if (option === 'design') {
+      return {
+        ...empty,
+        adrs: ledger.filter((item) => item.kind === 'adr').length,
+        diagrams: ledger.filter((item) => item.kind === 'diagram').length,
+        exercises: ledger.filter((item) => item.kind === 'scale_exercise').length,
+      }
+    }
+
+    /* DSA draws on nothing: its problems are generated. `poolLine` ignores this. */
+    if (option === 'dsa') return empty
 
     const mine =
       option === 'mixed' ? pool : pool.filter((topic) => topic.category === CATEGORY[option])
 
     return {
+      ...empty,
       topics: mine.filter((topic) => topic.kind === 'topic').length,
       weak: mine.filter((topic) => topic.confidence === 'weak').length,
       quizzes: mine.filter((topic) => topic.kind === 'quiz').length,
-      incidents: 0,
     }
   }
 

@@ -44,14 +44,33 @@ const ROUND_PROMPT: Record<RoundType, string> = {
   javascript: 'Ask about JavaScript, from the topics supplied.',
   react: 'Ask about React, from the topics supplied.',
   typescript: 'Ask about TypeScript, from the topics supplied.',
+  dsa:
+    'Set ONE data-structures-and-algorithms problem at a time, of medium difficulty, stated in two sentences. They write code in an editor and send it with their answer. Once they have written something, ask about complexity, where it comes from, and what breaks — that is where the round is. Never ask them to run it: nothing is executed.',
+  design:
+    'Set ONE system design problem and work through it in four phases: requirements, high-level shape, a deep dive, then scaling it a hundred times. Press on the choices they make. When a phase has been covered properly, say so in your reply and set `phase_done`.',
   behavioural:
     'Ask about the decisions and incidents supplied, which are from their own project ledger. Ask what they did and why, and push on the trade-off.',
   mixed: 'Mix the topics supplied, moving between them the way a real loop does.',
 }
 
-const ROOM_RULES = [
+/**
+ * ── The one rule DSA has to break, and it is the central one ───────────────
+ * *Every question must come from the material supplied* is what makes "nothing
+ * is asked that you have not saved" true, and it has been true for every round
+ * type until now. Your library has no DSA problems in it, so a DSA round
+ * generates them — and the alternative, pretending a problem came from a topic,
+ * is the fake this product refuses.
+ *
+ * So the exception is stated rather than left implicit: in the prompt here, on
+ * the setup card where DSA is chosen, and in the reference's rules. A function
+ * rather than a constant because exactly one line differs, and a second copy of
+ * the other nine would drift.
+ */
+const roomRules = (roundType: RoundType) => [
   'You ask ONE thing at a time and wait.',
-  'Every question must come from the material supplied. Never invent a topic they have not saved.',
+  roundType === 'dsa'
+    ? 'You invent the problems: their library contains none, and this is the only round where that is true. Never claim a problem came from something they saved.'
+    : 'Every question must come from the material supplied. Never invent a topic they have not saved.',
   'A follow-up arrives when an answer leaves an opening — not on a fixed count.',
   'If they ask a clarifying question, ANSWER it and then return to your question. Asking is not a wrong answer and must never be treated as one.',
   'If they ask for a hint, give one that points at the shape of the answer without stating it.',
@@ -60,15 +79,27 @@ const ROOM_RULES = [
   '`topic_id` is the id in brackets of the supplied topic you are asking about, copied exactly.',
   'Use null for topic_id when you are giving a hint or answering a clarifying question rather than asking.',
   'NEVER invent an id. If the exchange is about none of the supplied topics, use null.',
+  ...(roundType === 'design'
+    ? [
+        '`phase_done` is true only when the phase you are in has been covered properly, and false otherwise.',
+        'You do NOT name or number phases. Saying a phase is done is all you decide; moving is not yours.',
+      ]
+    : []),
 ].join('\n')
 
 const TURN_SCHEMA = {
   type: 'object',
   additionalProperties: false,
-  required: ['say', 'topic_id'],
+  required: ['say', 'topic_id', 'phase_done'],
   properties: {
     say: { type: 'string' },
     topic_id: { type: ['string', 'null'] },
+    /*
+      Design rounds only, and required for all of them because a strict schema
+      cannot make a field conditional. Every other type sends false and the room
+      ignores it — cheaper than two schemas that would drift.
+    */
+    phase_done: { type: 'boolean' },
   },
 } as const
 
@@ -175,7 +206,7 @@ export async function nextTurn(
       system: [
         LEVEL_PROMPT[input.level],
         ROUND_PROMPT[input.roundType],
-        ROOM_RULES,
+        roomRules(input.roundType),
         '',
         'The material you may ask about:',
         input.material,

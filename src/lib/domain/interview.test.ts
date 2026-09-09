@@ -279,7 +279,7 @@ describe('a scorecard question that names a topic id which is not one', () => {
 })
 
 describe('what each round type says it has to draw on', () => {
-  const pool = { topics: 21, weak: 9, quizzes: 14, incidents: 0 }
+  const pool = { topics: 21, weak: 9, quizzes: 14, incidents: 0, adrs: 0, diagrams: 0, exercises: 0 }
 
   it('counts topics, weak and quizzes for a concept round', () => {
     const line = poolLine('javascript', pool, 8)
@@ -294,7 +294,7 @@ describe('what each round type says it has to draw on', () => {
       A ledger with three decisions and no incidents is a different round from
       one with both, so one number cannot stand for the pair.
     */
-    const line = poolLine('behavioural', { topics: 2, weak: 0, quizzes: 0, incidents: 1 }, 8)
+    const line = poolLine('behavioural', { topics: 2, weak: 0, quizzes: 0, incidents: 1, adrs: 0, diagrams: 0, exercises: 0 }, 8)
 
     expect(line.lead).toBe('2 decisions')
     expect(line.rest).toBe(', 1 incident')
@@ -312,13 +312,13 @@ describe('what each round type says it has to draw on', () => {
 
   it('cannot be thin before a length is chosen', () => {
     // Thin is a claim about a round you have shaped. There is no round yet.
-    expect(poolLine('javascript', { topics: 1, weak: 0, quizzes: 0, incidents: 0 }, null).thin).toBe(
+    expect(poolLine('javascript', { topics: 1, weak: 0, quizzes: 0, incidents: 0, adrs: 0, diagrams: 0, exercises: 0 }, null).thin).toBe(
       false,
     )
   })
 
   it('omits a count it does not have rather than printing a zero', () => {
-    const line = poolLine('react', { topics: 8, weak: 0, quizzes: 0, incidents: 0 }, 4)
+    const line = poolLine('react', { topics: 8, weak: 0, quizzes: 0, incidents: 0, adrs: 0, diagrams: 0, exercises: 0 }, 4)
 
     expect(line.rest, 'no “· 0 weak · 0 quizzes”').toBe('')
   })

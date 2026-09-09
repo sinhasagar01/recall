@@ -89,6 +89,12 @@ export async function saveRound(input: {
   overBySeconds: number
   scorecard: Scorecard
   topicIds: string[]
+  /*
+    DSA only. The one column in this table that is neither a count nor a score —
+    it is what YOU wrote, which is the line the table draws. A problem statement
+    is generated prose and has no column, like the summary and the notes.
+  */
+  code: string[]
 }): Promise<string> {
   const supabase = await createClient()
 
@@ -96,6 +102,7 @@ export async function saveRound(input: {
     .from('interview_rounds')
     .insert({
       round_type: input.roundType,
+      code: input.code,
       minutes: input.minutes,
       level: input.level,
       asked: input.counts.asked,

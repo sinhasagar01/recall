@@ -94,6 +94,8 @@ export type SpeakResult =
       topicTitle: string | null
       /** Whether you grade it weak — the tag the room shows beside the topic. */
       topicWeak: boolean
+      /** Design rounds only: the interviewer says this phase is done. */
+      phaseDone: boolean
     }
   | { ok: false; reason: string }
 
@@ -160,6 +162,8 @@ export async function speak(input: {
     topicId: found === null ? null : outcome.reply.topicId,
     topicTitle: found?.title ?? null,
     topicWeak: found?.confidence === 'weak',
+    /* The design round's advance signal. False for every other type. */
+    phaseDone: outcome.reply.phaseDone,
   }
 }
 
@@ -180,6 +184,8 @@ export async function finish(input: {
   level: Level
   turns: Turn[]
   elapsedSeconds: number
+  /** DSA only: one solution per problem, in order. Empty for every other type. */
+  code: string[]
 }): Promise<FinishResult> {
   const titles = new Map<string, string>()
   if (input.roundType !== 'behavioural') {
@@ -234,6 +240,7 @@ export async function finish(input: {
     overBySeconds,
     scorecard: result.scorecard,
     topicIds,
+    code: input.code,
   })
 
   return { ok: true, scorecard: result.scorecard, roundId }

@@ -19,8 +19,12 @@
     "verify": "npm run typecheck && npm run test && npm run gen:parity -- --check && npm run test:db && npm run test:e2e"
   },
   "dependencies": {
+    "@codemirror/lang-javascript": "^6.2.5",
+    "@codemirror/state": "^6.7.4",
+    "@codemirror/view": "^6.43.11",
     "@supabase/ssr": "^0.12.5",
     "@supabase/supabase-js": "^2.112.4",
+    "codemirror": "^6.0.2",
     "fflate": "^0.8.3",
     "next": "16.3.3",
     "react": "19.2.8",

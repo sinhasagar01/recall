@@ -130,6 +130,10 @@ describe('the interview scale never leaves the interview', () => {
       composites below: a token the guard does not know about is a token that
       can leave the tree unnoticed.
     */
+    /* The design round's phase strip, added with it. */
+    '--phase-now',
+    '--phase-done',
+    '--phase-glow',
     '--sk-dark',
     '--sk-dark-sweep',
     '--sk-light-sweep',

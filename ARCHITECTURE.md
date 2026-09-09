@@ -3411,6 +3411,129 @@ claim. `expect(...).toHaveCount(n)` over a rendered list is the same shape and i
 `n` is exact — the failure is the *inequality*. Grep for `toBeGreaterThan` beside a derived
 collection and ask what it would still pass with missing.
 
+### A file that has accumulated fixes is expensive to restructure, in proportion to how many
+
+`round.tsx` is **890 lines** at the point arc 7 session three adds two more round shapes to it.
+The instinct is to extract a shared runner and three shape modules; the drawing has three
+distinct rooms, and one component rendering all three is not what anyone would design from
+scratch.
+
+**It was not extracted, and the reason is what the file contains rather than how long it is.**
+Eight fixes live in there, every one of them found in production or by a test that had to be
+written first:
+
+- `useSerial`'s latch, because the concurrency guard was a `disabled` attribute
+- `try`/`finally` around `say` and `end`, because a rejection stranded the room forever
+- `topicMeta` accumulating rather than being seeded once, which shipped broken for a session
+- the abandoned-not-aborted copy, which says what a server action cannot do
+- the quiz save's two presses
+- rewind, and its never-changes-the-score invariant
+- `End the round` never disabled and never awaiting, the escape from a stuck exchange
+- `useRoomKeys` registered **above** the early returns, or the room renders as a crash
+
+> **Restructuring costs roughly the number of fixes the file holds, not the number of lines.**
+> Each one is a behaviour with a reason, most of the reasons are in comments rather than in
+> tests, and a move is a chance for any of them to be dropped silently — which is exactly how
+> they got there.
+
+The cost of the file growing is a longer file. The cost of moving is some subset of eight
+regressions, discovered in production, in a feature nobody was editing. **The second cost is
+almost always higher**, and it stays higher until the behaviours are pinned by tests rather than
+by prose.
+
+**The line count is recorded here so the next person meets the number rather than the instinct.**
+890 lines and eight fixes; if it is 1,400 and eleven when you read this, the arithmetic has moved
+the same way and the answer has not. What changes the answer is not length — it is those
+behaviours acquiring tests that would fail if a restructure dropped them. `useSerial` and
+`useRoomKeys` now have exactly that, which is why they were the two pieces that could safely
+leave.
+
+### A reference has no tests, and the checkable half is the half that is rarely wrong
+
+This is the largest gap in this project's method, and it should be written down as a limitation
+rather than left as a thing that keeps happening. Everything a reference asserts is prose in a
+file nothing runs. Ten reference shapes are recorded above; two screens shipped ignoring their
+drawing; a half-scoping survived two sessions; and a rules line claimed *"no audio is stored or
+sent"* in the same arc that shipped the code sending it. **None of the four was detectable by
+anything that executes.**
+
+**Some claims in a reference genuinely are mechanically checkable.** A type list against the
+`round_type` CHECK. A tone token against the scale. `20 min → 1 problem` against
+`problemCount`. `Three hints` against `HINTS_PER_ROUND`. `four phases` against `PHASES.length`.
+Parsing them out of the HTML and comparing is perhaps thirty lines.
+
+**And it would have caught almost none of it.** Taking the four in turn:
+
+| what went wrong | would a claim-checker have caught it |
+| --- | --- |
+| a screen built ignoring its drawing | **no** — "a 9px dot in the type's tone" is not a claim about a constant |
+| the file still drawing two unbuilt rooms | **only** with an assertion nobody would think to write: the natural check is over the setup CARDS, and the cards were correct — it was the room screens that were stale |
+| "no audio is stored or sent" | **no** — it contradicts another sentence in meaning, not a constant in value |
+| line 151 restating line 298 more loosely | **no** — two prose statements of one rule |
+
+The pattern is not an accident. **A claim is checkable because both sides are enumerable, and
+enumerable things already break loudly** — a missing round type is a constraint violation, a
+missing token renders visibly wrong. The claims that are dangerous are dangerous *because* they
+are judgement: a sentence that is false, a rule that went stale, a drawing of something not
+built, an example read as a spec. All prose, all requiring a reader who knows what the build now
+does.
+
+> **So the standing limitation is recorded rather than papered over: a reference is checked by
+> reading it beside the running build, and by nothing else.** The side-by-side is not a
+> supplement to a test that does not exist; it is the whole of the method, and every one of the
+> four was found that way — three by a person reading, one by having to touch every line of the
+> file to merge it.
+
+**Why the narrow guard is not built anyway, given it is cheap.** It would be called something
+like `reference-parity.test.ts`, and the next person to see it green would reasonably conclude
+the reference is in step with the build. It would be covering the claims least likely to be
+wrong while reporting nothing about the ones that are — which is exactly
+[the proxy failure](#a-guard-protects-a-rule-through-a-proxy-and-is-sound-only-while-the-two-coincide):
+a guard whose green means less than its name suggests. A screenshot harness is rejected for its
+own reasons, which stand: a golden image goes stale on every intentional change and trains
+people to re-bless rather than to look.
+
+**What would change this.** If a reference claim ever causes a production defect that a
+constant-comparison would have caught, write that one assertion, named for that one claim, and
+do not generalise it. One narrow guard that says what it checks is worth more than a suite whose
+name overstates it.
+
+### Settled: a null-guard in a CHECK, and the prediction that is always wrong
+
+Twice now a CHECK clause has been written with a prediction attached — *without this guard the
+clause goes vacuous on NULL* — and twice the perturbation has shown the prediction false. It is
+settled, so it is recorded as an answer rather than found again.
+
+**The pattern.** A CHECK on a nullable field or on an array whose length is NULL when empty:
+
+```sql
+check (x_note is null or length(btrim(x_note)) > 0)     -- the evidence constraint
+check (coalesce(array_length(code, 1), 0) <= asked)     -- the DSA code column
+```
+
+**The prediction, every time:** remove the guard and the clause stops rejecting anything,
+because NULL is not FALSE.
+
+**The answer, every time:** a CHECK passes on NULL exactly as it passes on TRUE, so the row that
+would have been "let through by NULL" is the row the constraint was always meant to accept — an
+absent note, an empty code array. **The vacuous case is the accepted case.** There is no hole,
+and the perturbation correctly reports DID NOT BITE.
+
+**So the clause is redundant today and it stays**, on the same terms both times: it makes the
+line independently NULL-safe rather than borrowing correctness from semantics one edit away from
+changing. It becomes load-bearing the moment someone writes a lower bound there — `>= 1`, or
+`between 1 and 3` — at which point NULL would silently satisfy a clause that is supposed to
+demand something.
+
+> **And the comment has to say all of that, or the next person deletes it as dead code.** A
+> redundant clause with no explanation is indistinguishable from an oversight, and the only thing
+> standing between it and a well-meant cleanup is a sentence saying it is deliberate and naming
+> the edit that would make it matter.
+
+The general rule is unchanged — **perturb every clause** — and what this settles is what a
+zero-failure result means for this specific shape. It is not dead code to delete. It is a claim
+to re-derive, and for a null-guard in a CHECK the re-derivation now has a known answer.
+
 ### Absence looks the same on screen whatever produced it
 
 A fourth control was reported missing: *Practise this chapter*, on a course that now has two
