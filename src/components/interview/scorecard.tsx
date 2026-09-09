@@ -268,6 +268,22 @@ export function Scorecard({
                     <div className="min-w-0 flex-1">
                       <p className="text-body font-medium">{question.title}</p>
                       <p className="mt-0.5 text-meta leading-[1.55] text-ink-2">{question.note}</p>
+                      {/*
+                        Said, not swallowed. A question the model could not tie to
+                        a saved topic still scores — but it cannot appear in the
+                        offers below, because there is no row to mark weak. A
+                        question that vanishes from that list for a reason nobody
+                        can see is worse than one that admits what it does not
+                        know.
+                      */}
+                      {question.topicId === null ? (
+                        <p
+                          data-testid="unattributed"
+                          className="mt-1 font-mono text-[11px] text-ink-3"
+                        >
+                          Couldn’t tell which of your topics this came from, so it isn’t offered below
+                        </p>
+                      ) : null}
                     </div>
                     <div className="h-1.5 w-[120px] flex-none overflow-hidden rounded-full bg-surface-2">
                       <i

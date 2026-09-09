@@ -344,3 +344,47 @@ test.describe('rewind re-asks one question and never changes the score', () => {
     expect(await readRound(roundId!), 'a rewind must not change the stored round').toEqual(before)
   })
 })
+
+test.describe('you can always walk out of the room', () => {
+  test.setTimeout(90_000)
+
+  /*
+    The rule: End the round never waits on a model call and is never disabled
+    while one is in flight. An interviewer you cannot walk out on is a trap, not
+    a simulation.
+
+    What it was: `disabled={busy}` put the native disabled attribute on the one
+    control that is the escape hatch, so the browser did not dispatch the click
+    at all. Not slow, not swallowed — inert, wearing its normal label.
+  */
+  test('End the round works while an answer is still in flight', async ({ page }) => {
+    await signInAs(page, 'extract')
+    await page.goto('/interview?type=javascript&minutes=20&level=staff')
+
+    // SLOW-ANSWER holds the stub's reply for five seconds — see openai-stub.mjs.
+    await page.getByLabel('Your answer').fill('SLOW-ANSWER a live reference to the scope.')
+    await page.getByRole('button', { name: 'Answer' }).click()
+
+    const exit = page.getByTestId('end-round')
+
+    /*
+      Asserted before pressing, because "enabled" and "not disabled" are the same
+      thing to the DOM and only one of them is what broke. A disabled button is
+      why the click never arrived.
+    */
+    await expect(exit, 'the exit must not be disabled by an in-flight reply').toBeEnabled()
+
+    await exit.click()
+
+    /*
+      Out immediately — not after the outstanding reply lands, and not after the
+      scoring call it starts. Leaving and scoring are two acts.
+    */
+    await expect(page.getByTestId('left-room')).toBeVisible({ timeout: 3000 })
+    await expect(page.getByTestId('room')).toHaveCount(0)
+
+    // Abandoned, not aborted, and it says so rather than implying a stop.
+    await expect(page.getByTestId('left-room')).toContainText('cannot be called back')
+    await expect(page.getByTestId('left-room')).toContainText('discarded')
+  })
+})

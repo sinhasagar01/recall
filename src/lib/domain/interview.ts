@@ -208,7 +208,20 @@ export function parseScorecard(text: string, titles: Map<string, string>): Score
       if (typeof entry !== 'object' || entry === null) return []
       const item = entry as Record<string, unknown>
       const score = asScore(item.score)
-      const topicId = typeof item.topic_id === 'string' ? item.topic_id : null
+      /*
+        A uuid or nothing — never "any string".
+
+        Every score here was bounded 0-100 from the first day and this was not,
+        and the asymmetry cost the feature: the real model answers
+        "arrow-function-this" where it was handed `[uuid] Title`, that reached a
+        `uuid[]` column, and EVERY round save in production failed 22P02 from the
+        day interview mode shipped. `interview_rounds` had 0 rows and always had.
+
+        Dropped rather than rejected: a question whose topic could not be
+        identified is still a scored question, and losing the round over an
+        attribution would be the worse trade. The scorecard says so on the row.
+      */
+      const topicId = asUuid(item.topic_id)
       if (score === null) return []
       return [
         {

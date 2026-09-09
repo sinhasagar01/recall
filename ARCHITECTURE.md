@@ -2885,3 +2885,120 @@ file, or the fix can silently degrade back to what it replaced.
 It was not done inside the arc it was guarding, because changing a guard's shape while relying on
 it is how a guard quietly stops guarding. It is the first thing to do in a change of its own,
 red first.
+
+### A stub that answers in the shape the parser wants hides a contract the vendor breaks
+
+`e2e/openai-stub.mjs` returned real seeded uuids for `topic_id`, because that is what
+`parseScorecard` was written to consume. The real model returns slugs:
+
+```
+Saving the round failed: 22P02 · invalid input syntax for type uuid: "arrow-function-this"
+Saving the round failed: 22P02 · invalid input syntax for type uuid: "js-serialization-structuredclone-vs-json"
+```
+
+Those reached a `uuid[]` column and **every round save failed, from the day interview mode
+shipped.** `interview_rounds` sat at 0 rows for two sessions. 175 specs were green throughout,
+and so was a production walk — which deliberately did not complete a round, so the one path
+that would have hit it was the one path not taken.
+
+**The stub could not have caught it, because the stub was written from the parser.** A fixture
+built to satisfy the code it exercises can only ever confirm that code. It is not a second
+opinion; it is the same opinion, restated in JSON.
+
+> **The shape a stub returns must be the shape the vendor actually returns, not the shape our
+> parser hopes for.** Where the vendor's shape is not known, the stub should return the
+> *nastiest plausible* thing the contract permits — a slug where an id is asked for, a string
+> where a number is asked for, a null where a value is promised.
+
+This is a sharper case than "too broad" or "vacuous fixture", both of which are about an
+assertion. Here every assertion was correct and the *input* was flattering. The parse bounded
+every score to 0–100 from the first day and let `topic_id` through as "any string" — and the
+asymmetry is worth naming, because it recurs: **a value that is obviously a number invites
+validation, and a value that is obviously a string does not.** `topic_id` is a string in the
+same sense that a score is a number, and only one of them got checked.
+
+### A shared busy flag that disables the exit is how a UI becomes a trap
+
+The room held one `busy` state. Every control read it, including `End the round` — so while an
+answer was in flight the escape hatch carried the native `disabled` attribute and the browser
+never dispatched the click. It kept its ordinary label while inert, so it read as a button that
+does nothing rather than one that is unavailable.
+
+The diagnosis matters more than the fix, because three explanations were live and only one was
+true: the handler never fired. Not a handler awaiting the in-flight call, not a navigation
+swallowed downstream — **an inert control**. Those three have different fixes and only one of
+them is "stop disabling it".
+
+> **In-flight state may disable the actions. It may never disable the way out.** They are
+> different kinds of control and a single flag cannot tell them apart.
+
+Two further faults sat on the same path, and both are general:
+
+- **`setBusy(false)` on the resolved path only.** No `try`/`finally`, so any rejection stranded
+  the flag at `true` forever with nothing rendered to say why. That is how a production round
+  was lost: `saveRound` threw 22P02, `finish` had no catch, and the room disabled itself
+  permanently. `finally`, not a trailing statement.
+- **Leaving and scoring were one act.** `end()` awaited the scorecard before it let you out, so
+  "leave" inherited model latency. They are now two: pressing leaves the room synchronously —
+  there is no `await` before it — and the scorecard resolves into the screen you land on. The
+  perturbation that proves it is not "does the scorecard arrive" but "does the room disappear
+  *now*".
+
+**Abandoned, not aborted, and the copy says so.** A server action is one round trip with no
+client-reachable abort; there is no `AbortController` anywhere in `src/` and `chat()` passes no
+signal. An in-flight reply finishes on the server and its answer is discarded. Implying a stop
+would be the easier sentence and a false one.
+
+### `disabled ?? loading` means an explicit `false` defeats the loading guard
+
+`components/ui/button.tsx` resolves `disabled={disabled ?? loading}`. Nullish coalescing only
+falls back when `disabled` is `undefined` — so a caller passing a real boolean gets exactly
+that boolean, and `loading` stops guarding anything.
+
+The room's `Answer` button passed `disabled={answer.trim() === ''}` with `loading={busy}`. Type
+one character while a request is in flight and `false ?? true` is `false`: the button is live
+again and a second call can fire over a stale closure. It was masked only because `say()` clears
+the textarea, which re-disables it by the empty check — an accident, not a guard.
+
+Left as it is in `ui/button.tsx`, deliberately: `??` is the right operator for a component whose
+callers must be able to force a control enabled. **The rule belongs with the callers** — a
+caller that passes both `loading` and an explicit `disabled` must include the loading condition
+in the boolean itself, because the component will not do it for them.
+
+### A value whose type is self-evident invites no validation
+
+`parseScorecard` bounds every score: four dimensions and an overall, each refused unless it is
+an integer from 0 to 100. In the same function, over the same untrusted model output, in the
+same loop, `topic_id` was accepted as *any string*. That asymmetry is not carelessness about
+one field — it is a pattern, and it has a mechanism.
+
+**A number does not look like itself.** `86` could be a percentage, a count, an index, an id,
+a timestamp; writing `typeof value === 'number'` and stopping feels obviously insufficient, so
+the range goes in. A string looks like exactly what it is. `typeof value === 'string'` reads as
+a finished thought, because the type and the value are the same shape — and the question *what
+kind of string* never gets asked.
+
+So the fields most likely to go unchecked are the ones whose shape looks least like a
+constraint:
+
+| | what it actually is |
+| --- | --- |
+| ids | a uuid, or a key that exists in a set you hold |
+| slugs | a bounded character class, usually lowercase and hyphenated |
+| names | non-empty after trimming, and length-bounded |
+| urls | a scheme you allow, a host you allow |
+| dates | parseable, and inside a range that makes sense |
+
+Every one of those is `string` to the compiler and a *constrained* string in the domain, and the
+gap between those two is where a value gets in. Interview mode's cost was two sessions of rounds
+that could never save, from a field the parser knew the type of and nothing else.
+
+> **A parser must state what each string IS, not merely that it is a string.** Where the
+> constraint cannot be expressed, say so at the line — an unconstrained string is a decision,
+> not a default.
+
+**The check, which is cheap and worth running on every parser in this repo:** read the parser
+and ask, field by field, *which of these do I only know the type of?* Anything the answer
+includes is either validated or has a comment saying why it is not. `parseExtraction`,
+`parseQuizDraft`, `parseScorecard`, `parseTurn` and `parseRewindScore` all take model output;
+the numbers in all five were bounded from the first day and the strings were not.

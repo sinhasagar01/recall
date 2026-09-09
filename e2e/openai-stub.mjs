@@ -21,6 +21,7 @@
  *   contains "PARTIAL-RUN"  → finish_reason "length", JSON cut mid-object
  *   contains "NOTHING-RUN"  → a valid, empty list
  *   contains "BROKEN-RUN"   → finish_reason "stop", unparseable body
+ *   contains "SLOW-ANSWER"  → the same reply, five seconds later
  *   otherwise               → three concepts, one of which duplicates a seeded topic
  *
  * Interview mode's calls are told apart by the SYSTEM prompt instead, because
@@ -265,8 +266,21 @@ createServer((req, res) => {
     const { content, finish_reason } = INTERVIEW_CALLS.some((marker) => system.includes(marker))
       ? interviewBody(system, parsed.messages ?? [])
       : body(transcript)
-    res.writeHead(200, { 'content-type': 'application/json' })
-    res.end(JSON.stringify({ choices: [{ message: { content }, finish_reason }] }))
+
+    /*
+      A deliberately slow reply, chosen by what the spec types — the same way
+      every other scenario here is chosen.
+
+      It exists for one assertion: `End the round` must work WHILE a reply is in
+      flight. That is not a state a fast stub can produce, and it is the state
+      the control exists for.
+    */
+    const delay = transcript.includes('SLOW-ANSWER') ? 5000 : 0
+
+    setTimeout(() => {
+      res.writeHead(200, { 'content-type': 'application/json' })
+      res.end(JSON.stringify({ choices: [{ message: { content }, finish_reason }] }))
+    }, delay)
   })
 }).listen(PORT, () => {
   console.log(`openai stub listening on ${PORT}`)

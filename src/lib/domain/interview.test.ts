@@ -220,6 +220,56 @@ describe('the interviewer names the topic it is asking about', () => {
   })
 })
 
+describe('a scorecard question that names a topic id which is not one', () => {
+  it('keeps the question and drops the attribution', () => {
+    /*
+      The production failure, at the layer it escaped through. The model answers
+      "arrow-function-this" where it was handed `[uuid] Title`; that string
+      reached a `uuid[]` column and every round save failed 22P02 — silently,
+      from the day interview mode shipped, with `interview_rounds` at 0 rows.
+
+      The scores were validated here from the first day. The ids were not.
+    */
+    const raw = JSON.stringify({
+      recall: { score: 80, note: '' },
+      depth: { score: 60, note: '' },
+      precision: { score: 70, note: '' },
+      enquiry: { score: 75, note: '' },
+      overall: 71,
+      summary: 'ok',
+      questions: [
+        { topic_id: 'arrow-function-this', title: 'Arrow functions', score: 41, note: 'thin' },
+        { topic_id: '65df131a-2375-4fbc-bac6-4484b187654e', title: 'This binding', score: 88, note: 'good' },
+      ],
+    })
+
+    const result = parseScorecard(raw, new Map())
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+
+    expect(result.scorecard.questions, 'the question is kept').toHaveLength(2)
+    expect(result.scorecard.questions[0].score, 'and so is its score').toBe(41)
+    expect(result.scorecard.questions[0].topicId, 'a slug is not an id').toBeNull()
+    expect(result.scorecard.questions[1].topicId).toBe('65df131a-2375-4fbc-bac6-4484b187654e')
+  })
+
+  it('is therefore not offered, which is why the scorecard says so', () => {
+    // offersFrom drops it — so the row has to explain its own absence.
+    const raw = JSON.stringify({
+      recall: { score: 80, note: '' }, depth: { score: 60, note: '' },
+      precision: { score: 70, note: '' }, enquiry: { score: 75, note: '' },
+      overall: 71, summary: '',
+      questions: [{ topic_id: 'not-a-uuid', title: 'X', score: 10, note: '' }],
+    })
+    const result = parseScorecard(raw, new Map())
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(offersFrom(result.scorecard)).toEqual([])
+  })
+})
+
 describe('the offer step, with a question that was re-asked', () => {
   const card = (scores: number[]): Scorecard => ({
     scores: { recall: 70, depth: 70, precision: 70, enquiry: 70 },

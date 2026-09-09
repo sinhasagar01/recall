@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import {
   draftQuizFromFollowUp,
@@ -69,8 +70,26 @@ export function Round({
     { speaker: 'interviewer', text: opening, topicId: openingTopicId, kind: 'question' },
   ])
   const [answer, setAnswer] = useState('')
-  const [busy, setBusy] = useState(false)
+  /*
+    ── `thinking` is not `busy`, and that distinction is the whole fix ────────
+    One shared flag disabled the actions AND the exit, so while an answer was in
+    flight `End the round` carried the native `disabled` attribute and the
+    browser never dispatched the click. It was not slow and it was not swallowed:
+    it was inert, with its normal label on, which reads as a button that does
+    nothing.
+
+    An interviewer you cannot walk out on is a trap, not a simulation. So the
+    exit reads no in-flight state at all.
+  */
+  const [thinking, setThinking] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  /** You pressed End. You are out of the room from that instant. */
+  const [left, setLeft] = useState(false)
+  const [endError, setEndError] = useState<string | null>(null)
+  /** Re-entry guard for `end`, in a ref — a second press must not open a second round. */
+  const ending = useRef(false)
+  /** Whether a reply was still in flight at the moment you pressed. */
+  const [abandoned, setAbandoned] = useState(false)
   const [scorecard, setScorecard] = useState<Scorecard | null>(null)
   /* The row `finish` wrote. Carried so the scorecard can name what it is about. */
   const [roundId, setRoundId] = useState<string | null>(null)
@@ -114,21 +133,27 @@ export function Round({
   const clock = `${Math.floor(Math.abs(remaining) / 60)}:${String(Math.abs(remaining) % 60).padStart(2, '0')}`
 
   const say = async (turn: Turn, intent: 'follow' | 'hint' | 'clarify' | 'ask') => {
-    setBusy(true)
+    setThinking(true)
     setError(null)
     const next = [...turns, turn]
     setTurns(next)
     setAnswer('')
 
-    const result = await speak({ roundType, level, turns: next, intent })
-    setBusy(false)
+    /*
+      `finally`, not a trailing statement. The first version cleared the flag on
+      the resolved path only, so a rejected server action left the room disabled
+      forever with nothing on screen to say why — which is exactly how a round
+      was lost in production when the scorecard insert threw.
+    */
+    try {
+      const result = await speak({ roundType, level, turns: next, intent })
 
-    if (!result.ok) {
-      setError(result.reason)
-      return
-    }
+      if (!result.ok) {
+        setError(result.reason)
+        return
+      }
 
-    setTurns([
+      setTurns([
       ...next,
       {
         speaker: 'interviewer',
@@ -140,22 +165,99 @@ export function Round({
         */
         topicId: result.topicId ?? currentTopicId,
         kind: intent === 'clarify' ? 'clarification-answer' : intent === 'hint' ? 'hint' : 'follow-up',
-      },
-    ])
+        },
+      ])
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'The room did not answer. Try again.')
+    } finally {
+      setThinking(false)
+    }
   }
 
-  const end = async () => {
-    setBusy(true)
-    setError(null)
-    const result = await finish({ roundType, minutes, level, turns, elapsedSeconds: elapsed })
-    setBusy(false)
+  /**
+   * Leave. **Synchronous up to the point you are out.**
+   *
+   * There is no `await` before `setLeft(true)`, so pressing this cannot wait on
+   * anything — not on the scoring call it starts, and certainly not on an answer
+   * already in flight. The scorecard resolves into the screen you land on, or an
+   * error does; either way you are already out of the room.
+   *
+   * Re-entry is guarded by a ref rather than by disabling the control, because a
+   * disabled escape hatch is the bug this function exists to fix.
+   */
+  const end = () => {
+    if (ending.current) return
+    ending.current = true
+    setAbandoned(thinking)
+    setLeft(true)
 
-    if (!result.ok) {
-      setError(result.reason)
-      return
-    }
-    setScorecard(result.scorecard)
-    setRoundId(result.roundId)
+    void (async () => {
+      try {
+        const result = await finish({ roundType, minutes, level, turns, elapsedSeconds: elapsed })
+        if (!result.ok) {
+          setEndError(result.reason)
+          return
+        }
+        setScorecard(result.scorecard)
+        setRoundId(result.roundId)
+      } catch (cause) {
+        setEndError(
+          cause instanceof Error ? cause.message : 'The scorecard did not arrive. Nothing was saved.',
+        )
+      }
+    })()
+  }
+
+  /*
+    ── You are out ───────────────────────────────────────────────────────────
+    Rendered the instant End is pressed, before the scoring call has been made,
+    let alone answered. Leaving and scoring are two acts and only the second one
+    can be slow.
+  */
+  if (left && scorecard === null) {
+    return (
+      <main className="mx-auto max-w-[620px] px-6 py-16" data-testid="left-room">
+        <h1 className="font-display text-[26px] leading-[1.3] font-medium">
+          {endError === null ? 'Scoring what you said' : 'The round ended without a scorecard'}
+        </h1>
+
+        {endError === null ? (
+          <p className="mt-3 text-meta leading-[1.7] text-ink-2">
+            You are out of the room. This takes a few seconds, and the scorecard replaces this
+            page when it arrives.
+          </p>
+        ) : (
+          <p
+            role="alert"
+            className="mt-3 rounded-md border border-flag bg-flag-soft px-4 py-3 text-meta text-flag"
+          >
+            {endError}
+          </p>
+        )}
+
+        {/*
+          Abandoned, not aborted — and it says so rather than implying a stop.
+          A server action is one round trip with no client-reachable abort: there
+          is no AbortController on this path and `chat()` passes no signal. The
+          honest sentence is that the request finishes and its answer is thrown
+          away, which is the same wording the extraction panel uses for the same
+          reason.
+        */}
+        {abandoned ? (
+          <p className="mt-4 max-w-[58ch] border-t border-rule pt-4 font-mono text-[11px] leading-[1.8] text-ink-3">
+            A reply was still on its way when you left. It cannot be called back — the request
+            finishes on the server and its answer is discarded. Leaving stops you waiting for it,
+            not the work.
+          </p>
+        ) : null}
+
+        <p className="mt-6 text-meta">
+          <Link href="/interview" className="text-accent-ink underline">
+            Set up another round
+          </Link>
+        </p>
+      </main>
+    )
   }
 
   if (scorecard) {
@@ -286,9 +388,16 @@ export function Round({
       <div className="mt-3 flex flex-wrap items-center gap-2.5">
         <Button
           variant="primary"
-          loading={busy}
+          loading={thinking}
           loadingLabel="Thinking…"
-          disabled={answer.trim() === ''}
+          /*
+            `thinking` is in here explicitly. Button resolves `disabled ?? loading`,
+            so an explicit `false` — which `answer.trim() !== ''` produces — defeats
+            the loading fallback entirely and leaves the control live mid-request.
+            Typing during a call would re-arm it and fire a second `say` over a
+            stale `turns`.
+          */
+          disabled={thinking || answer.trim() === ''}
           onClick={() =>
             say({ speaker: 'you', text: answer, topicId: currentTopicId, kind: 'answer' }, 'follow')
           }
@@ -302,7 +411,7 @@ export function Round({
           dimension that counts asking FOR you.
         */}
         <Button
-          disabled={busy || answer.trim() === ''}
+          disabled={thinking || answer.trim() === ''}
           onClick={() =>
             say({ speaker: 'you', text: answer, topicId: currentTopicId, kind: 'clarification' }, 'clarify')
           }
@@ -313,7 +422,7 @@ export function Round({
         {hintsLeft > 0 ? (
           <Button
             variant="ghost"
-            disabled={busy}
+            disabled={thinking}
             onClick={() =>
               say({ speaker: 'you', text: 'Can I have a hint?', topicId: currentTopicId, kind: 'hint' }, 'hint')
             }
@@ -322,7 +431,12 @@ export function Round({
           </Button>
         ) : null}
 
-        <Button variant="ghost" disabled={busy} onClick={end} data-testid="end-round">
+        {/*
+          No `disabled`, no `loading`. Not "enabled sooner" — never disabled, by
+          anything. This is the only escape from a stuck exchange, and a stuck
+          exchange is precisely when it is needed.
+        */}
+        <Button variant="ghost" onClick={end} data-testid="end-round">
           {counts.answered >= target ? 'See the scorecard' : 'End the round'}
         </Button>
       </div>
@@ -346,7 +460,7 @@ export function Round({
                 variant="ghost"
                 loading={drafting}
                 loadingLabel="Drafting…"
-                disabled={busy}
+                disabled={thinking || drafting}
                 onClick={startDraft}
                 data-testid="draft-quiz"
               >
