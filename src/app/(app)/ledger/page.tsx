@@ -4,6 +4,7 @@ import { LedgerList } from '@/components/ledger/ledger-list'
 import { StateBlock } from '@/components/ui/state-block'
 import { listLedger } from '@/lib/data/ledger'
 import { listCapabilityOptions } from '@/lib/data/phases'
+import { BackToLibrary } from '@/components/ui/back-to-library'
 
 /**
  * The ledger. One list, newest first.
@@ -56,11 +57,9 @@ export default async function LedgerPage({ searchParams }: PageProps<'/ledger'>)
           body="Record the decisions, PRs, diagrams and incidents your capstone produces. Each one is a title and a link — the thing itself lives where you made it."
           action={<AddItemButton label="+ Add an item" capabilityOptions={capabilityOptions} />}
         />
-        <p className="mt-9 border-t border-rule pt-5 text-meta text-ink-2">
-          <Link href="/library" className="underline hover:text-ink">
-            Back to the library
-          </Link>
-        </p>
+        <div className="mt-9 border-t border-rule pt-5">
+          <BackToLibrary />
+        </div>
       </>
     )
   }
@@ -69,11 +68,9 @@ export default async function LedgerPage({ searchParams }: PageProps<'/ledger'>)
     <>
       {header}
       <LedgerList items={items} capabilityNames={capabilityNames} />
-      <p className="mt-9 border-t border-rule pt-5 text-meta text-ink-2">
-        <Link href="/library" className="underline hover:text-ink">
-          Back to the library
-        </Link>
-      </p>
+      <div className="mt-9 border-t border-rule pt-5">
+        <BackToLibrary />
+      </div>
     </>
   )
 }

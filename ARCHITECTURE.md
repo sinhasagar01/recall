@@ -3345,3 +3345,39 @@ produced them, which is how they get written and the wrong way to consult them. 
 mechanism**: when a rule is added, name the other places the same mechanism runs and say
 explicitly whether it applies there — even, and especially, when the answer is "not yet, because
 nothing there does this".
+
+### A complete search and an incomplete reading are different failures
+
+Twice this project has been wrong about an enumeration produced by **reading** — a list of
+routes remembered rather than derived, a list of groups hand-written rather than walked. Both
+were fixed by replacing the reading with a search.
+
+The seven hand-rolled links to `/library` are a third failure and **not** the same one. The
+search was complete: four greps, twenty hits, every one of the seven among them. What failed
+came after.
+
+Six of them were classified from the grep line without opening the file, written off in the
+report as *"inline prose 'in your library' **probably**"*, and shipped as underlined text beside
+a component built to replace them. They read `Back to the library`, and the label search had
+missed them because it looked for `to library` — the definite article was enough. The href
+search had them anyway. **Nothing was missing from the list; the list was read wrongly.**
+
+> **A match dismissed without opening the file is not classified.** Search decides what to look
+> at; only reading decides what a thing is, and the reading is not optional because the search
+> was thorough.
+
+And the tell was in the report, in my own words:
+
+> **A hedge word in a report is an unresolved item, not a caveat.** "Probably", "presumably",
+> "I think" — each one is a note that the work stopped early, and it is worth grepping a finished
+> report for them before calling it finished.
+
+**The defence is a guard, not more care.** `back-to-library.test.ts` asserts that a bare
+`href="/library"` appears in exactly two files — the control itself and the tab bar — so a
+hand-rolled link fails the build wherever it is written and whatever it is called. A search
+depends on the searcher classifying correctly afterwards; a guard does not, which is the whole
+argument for preferring one.
+
+The seventh was a different defect the same search surfaced: `/weak`'s empty state offered
+**+ Add topic** pointing at bare `/library`, which lands you in the library with no form open —
+the label promising what the destination does not do, exactly as the practice page's did.

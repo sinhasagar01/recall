@@ -84,9 +84,14 @@ export default async function WeakPage() {
           body="Every topic is at okay or better. Keep adding — the gaps show up on their own."
           action={
             <>
+              {/*
+                `?add=1`, not `/library`. It said "+ Add topic" and delivered you
+                to the library with no form open — the same mislabelling the
+                practice page's empty state carried, found by the same search.
+              */}
               <Link
-                href="/library"
-                className="inline-flex cursor-pointer items-center rounded-md border border-accent bg-accent px-3.5 py-2.5 text-label font-medium text-white hover:border-accent-ink hover:bg-accent-ink"
+                href="/library?add=1"
+                className="inline-flex min-h-11 cursor-pointer items-center rounded-md border border-accent bg-accent px-3.5 py-2.5 text-label font-medium text-white hover:border-accent-ink hover:bg-accent-ink"
               >
                 + Add topic
               </Link>

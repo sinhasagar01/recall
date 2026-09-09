@@ -4,6 +4,7 @@ import { StateBlock } from '@/components/ui/state-block'
 import { listPhases } from '@/lib/data/phases'
 import { currentPhaseId, demonstrationOf } from '@/lib/domain/phases'
 import { plural } from '@/lib/domain/plural'
+import { BackToLibrary } from '@/components/ui/back-to-library'
 
 /**
  * The phases you have started, in the order you started them.
@@ -57,11 +58,9 @@ export default async function PhasesPage() {
           body="Add the phase you are in now. A phase is a stretch of weeks and the handful of things you will be able to do at the end of it."
           action={<AddPhaseButton label="+ Add a phase" />}
         />
-        <p className="mt-9 border-t border-rule pt-5 text-meta text-ink-2">
-          <Link href="/library" className="underline hover:text-ink">
-            Back to the library
-          </Link>
-        </p>
+        <div className="mt-9 border-t border-rule pt-5">
+          <BackToLibrary />
+        </div>
       </>
     )
   }
@@ -124,11 +123,9 @@ export default async function PhasesPage() {
         })}
       </div>
 
-      <p className="mt-9 border-t border-rule pt-5 text-meta text-ink-2">
-        <Link href="/library" className="underline hover:text-ink">
-          Back to the library
-        </Link>
-      </p>
+      <div className="mt-9 border-t border-rule pt-5">
+        <BackToLibrary />
+      </div>
     </>
   )
 }

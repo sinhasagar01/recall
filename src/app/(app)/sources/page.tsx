@@ -5,6 +5,7 @@ import { StateBlock } from '@/components/ui/state-block'
 import { listSources } from '@/lib/data/sources'
 import { groupSources, groupedHeadline } from '@/lib/domain/source-grouping'
 import { finishedCopy, finishedCount } from '@/lib/domain/sources'
+import { BackToLibrary } from '@/components/ui/back-to-library'
 
 /**
  * The one number this screen exists to show.
@@ -64,11 +65,9 @@ export default async function SourcesPage() {
           body="Add the video you are watching. Its transcript is scratch you work from — what you distil out of it is the library."
           action={<AddSourceButton label="+ Add a source" siblings={views.map((view) => view.source)} />}
         />
-        <p className="mt-9 border-t border-rule pt-5 text-meta text-ink-2">
-          <Link href="/library" className="underline hover:text-ink">
-            Back to the library
-          </Link>
-        </p>
+        <div className="mt-9 border-t border-rule pt-5">
+          <BackToLibrary />
+        </div>
       </>
     )
   }
@@ -91,11 +90,9 @@ export default async function SourcesPage() {
         {finishedCopy(finishedCount(views), views.length)}
       </p>
 
-      <p className="mt-9 border-t border-rule pt-5 text-meta text-ink-2">
-        <Link href="/library" className="underline hover:text-ink">
-          Back to the library
-        </Link>
-      </p>
+      <div className="mt-9 border-t border-rule pt-5">
+        <BackToLibrary />
+      </div>
     </>
   )
 }
