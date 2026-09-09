@@ -13,6 +13,8 @@ import { Scorecard as ScorecardView } from '@/components/interview/scorecard'
 import { Button } from '@/components/ui/button'
 import { VoltButton } from '@/components/interview/volt-button'
 import { BackToLibrary } from '@/components/ui/back-to-library'
+import { useRoomKeys } from '@/components/interview/use-room-keys'
+import { useSerial } from '@/components/interview/use-serial'
 import { NewInterview } from '@/components/interview/new-interview'
 import {
   HINTS_PER_ROUND,
@@ -153,7 +155,13 @@ export function Round({
   const remaining = minutes * 60 - elapsed
   const clock = `${Math.floor(Math.abs(remaining) / 60)}:${String(Math.abs(remaining) % 60).padStart(2, '0')}`
 
-  const say = async (turn: Turn, intent: 'follow' | 'hint' | 'clarify' | 'ask') => {
+  /*
+    Wrapped by `useSerial`, so the one-at-a-time rule is a property of `say`
+    rather than of every caller remembering to render `disabled={thinking}`.
+    It had to move: `⌘↵` below is a caller with no `disabled` attribute to give
+    it, and the speech result that arc 7 adds next is another.
+  */
+  const say = useSerial(async (turn: Turn, intent: 'follow' | 'hint' | 'clarify' | 'ask') => {
     setThinking(true)
     setError(null)
     const next = [...turns, turn]
@@ -220,7 +228,7 @@ export function Round({
     } finally {
       setThinking(false)
     }
-  }
+  })
 
   /**
    * Leave. **Synchronous up to the point you are out.**
@@ -233,6 +241,30 @@ export function Round({
    * Re-entry is guarded by a ref rather than by disabling the control, because a
    * disabled escape hatch is the bug this function exists to fix.
    */
+  /*
+    One send, two ways to reach it.
+
+    The button and `⌘↵` build the same turn through the same call, so the chord
+    cannot drift from the control it duplicates. It checks only that there is
+    something to send — an empty answer is a content question, not a concurrency
+    one. It deliberately does NOT check `thinking`: that is `say`'s invariant
+    now, held by `useSerial`, and re-checking it here would put the guard back on
+    the callers where it does not belong.
+
+    ── Above the early returns, and that is not a style choice ─────────────────
+    `useRoomKeys` is a hook, and this component returns early for the left-room
+    and scorecard states. Registered below those returns it is called on some
+    renders and not others, which is a different hook count per render — React
+    unmounts the tree and the room renders as "This page couldn't load". Caught
+    by three existing specs going red, not by types.
+  */
+  const sendAnswer = () => {
+    if (answer.trim() === '') return
+    say({ speaker: 'you', text: answer, topicId: currentTopicId, kind: 'answer' }, 'follow')
+  }
+
+  useRoomKeys({ onSend: sendAnswer })
+
   const end = () => {
     if (ending.current) return
     ending.current = true
@@ -634,7 +666,7 @@ export function Round({
           */
           disabled={thinking || answer.trim() === ''}
           onClick={() =>
-            say({ speaker: 'you', text: answer, topicId: currentTopicId, kind: 'answer' }, 'follow')
+            sendAnswer()
           }
         >
           Answer

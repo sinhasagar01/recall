@@ -233,6 +233,30 @@ test.describe('interview mode', () => {
     Ordered after the test that already marks that topic weak, so pressing again
     changes nothing anyone is watching.
   */
+  test('the send hint names a shortcut that works from the answer field', async ({ page }) => {
+    /*
+      The room advertised `⌘↵ to send` with nothing behind it — no key handler
+      anywhere in the tree — and shipped that way to production. Issue #27.
+
+      Asserted from INSIDE the field, with focus in it, because that is the only
+      place it matters: the chord exists so you do not have to leave the box you
+      are typing in. A document-level press would pass over a handler that the
+      typing guard makes unreachable, which is the bug this shape of test caught
+      on the practice screen.
+    */
+    await signInAs(page, 'extract')
+    await page.goto('/interview?type=javascript&minutes=20&level=staff')
+
+    const box = page.getByLabel('Your answer')
+    await box.fill('A live reference to the defining scope.')
+    await box.press('ControlOrMeta+Enter')
+
+    await expect(page.getByTestId('turn-answer')).toBeVisible({ timeout: 30_000 })
+    await expect(page.getByTestId('turn-follow-up')).toBeVisible({ timeout: 30_000 })
+    // And it sends the answer rather than leaving it behind.
+    await expect(box).toHaveValue('')
+  })
+
   test('offers the queue once something has been marked, and not before', async ({ page }) => {
     await signInAs(page, 'extract')
     await page.goto('/interview?type=javascript&minutes=20&level=staff')
