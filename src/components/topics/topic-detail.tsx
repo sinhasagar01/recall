@@ -25,6 +25,7 @@ import {
   type CategoryOption,
 } from '@/lib/domain/library'
 import type { Topic } from '@/lib/domain/types'
+import { BackToLibrary } from '@/components/ui/back-to-library'
 
 export function TopicDetail({
   topic,
@@ -77,12 +78,7 @@ export function TopicDetail({
     <article className="max-w-[760px]">
       <header className="mb-7 border-b border-rule pb-5">
         <div className="mb-3.5">
-          <Link
-            href="/library"
-            className="inline-flex cursor-pointer items-center rounded-md px-2 py-1 text-label text-ink-2 hover:bg-surface-2 hover:text-ink"
-          >
-            ← Library
-          </Link>
+          <BackToLibrary>← Library</BackToLibrary>
         </div>
 
         <h1 className="mb-3 font-display text-detail-title leading-[1.18] font-medium tracking-[-0.025em]">

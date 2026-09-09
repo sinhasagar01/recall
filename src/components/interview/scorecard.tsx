@@ -1,8 +1,10 @@
 'use client'
 
+import Link from 'next/link'
 import { useState } from 'react'
 import { reask, scoreRewind } from '@/app/(interview)/interview/actions'
 import { Button } from '@/components/ui/button'
+import { BackToLibrary } from '@/components/ui/back-to-library'
 import {
   canRewind,
   DIMENSIONS,
@@ -733,6 +735,19 @@ export function Scorecard({
           know.
         </p>
       ) : null}
+
+      {/*
+        The way back. The ROOM deliberately has none — it is a single focused
+        card with nothing to click away to, and `End the round` is its exit — but
+        a scorecard is a page you have finished reading, and finishing it left
+        you nowhere.
+      */}
+      <div className="mt-8 flex flex-wrap items-center gap-2.5">
+        <BackToLibrary />
+        <Link href="/interview" className="text-meta text-accent-ink underline">
+          Set up another round
+        </Link>
+      </div>
 
       <p className="mt-8 border-t border-rule pt-4 text-meta leading-[1.7] text-ink-2">
         The score is about the round. {scorecard.overall} says how you did for {minutes} minutes on{' '}
