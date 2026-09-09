@@ -28,7 +28,7 @@ test.describe('interview mode', () => {
     await signInAs(page, 'extract')
     await page.goto('/interview')
 
-    await expect(page.getByRole('heading', { level: 1, name: 'Set up a round' })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1, name: 'Set up an interview round' })).toBeVisible()
 
     /*
       Read from the library, not hard-coded: the fixture seeds five JavaScript
@@ -39,29 +39,32 @@ test.describe('interview mode', () => {
     await expect(javascript).toContainText('2 weak')
 
     /*
-      Nothing is chosen yet, so there is nothing to cost. The estimate is
-      computed from the length, and saying "≈ 0k tokens" would be a figure
-      invented to fill a gap.
-    */
-    await expect(page.getByTestId('cost-estimate')).toHaveText('the cost estimate needs a length')
-    await expect(page.getByTestId('enter-room'), 'three choices gate the button').toBeDisabled()
+      ── Three defaults, three checks, on arrival ──────────────────────────
+      Every group starts on its first option, so the summary is true before you
+      touch anything and the ticks say these are yours to change. Asserted
+      WITHOUT clicking, because the point is the arrival state — clicking first
+      would test the same thing the click test tests.
 
-    await page.getByTestId('length-45').click()
+      This replaces a gate. `Enter the room` was disabled until all three were
+      chosen; a round cannot be unconfigured now, so there is nothing to gate,
+      and a button that is never disabled is asserted as never disabled.
+    */
+    await expect(page.getByTestId('enter-room'), 'nothing left to gate').toBeEnabled()
+    await expect(page.getByTestId('type-check'), 'the default round shows its check').toHaveCount(1)
+    await expect(page.getByTestId('pill-check'), 'and both pills theirs').toHaveCount(2)
+
+    await expect(page.getByTestId('round-type-javascript')).toHaveAttribute('data-picked', 'true')
+    await expect(page.getByTestId('length-20')).toHaveAttribute('data-picked', 'true')
+    await expect(page.getByTestId('level-friendly')).toHaveAttribute('data-picked', 'true')
 
     // A range, never a figure — how much comes back is what you are paying to find out.
     await expect(page.getByTestId('cost-estimate')).toHaveText(/\d+k–\d+k tokens · \$\d+\.\d\d–\$\d+\.\d\d/)
 
-    /*
-      Three choices, three checks, then one button. Disabled and not absent —
-      the opposite call from DSA and voice, and for the stated reason: this is
-      one click away, and the button is what says so.
-    */
-    await expect(page.getByTestId('enter-room'), 'a length alone is not enough').toBeDisabled()
-    await page.getByTestId('round-type-javascript').click()
-    await page.getByTestId('level-staff').click()
-    await expect(page.getByTestId('type-check'), 'the chosen round shows a check').toBeVisible()
-    await expect(page.getByTestId('pill-check')).toHaveCount(2)
-    await expect(page.getByTestId('enter-room')).toBeEnabled()
+    // And a choice still moves it.
+    await page.getByTestId('length-45').click()
+    await expect(page.getByTestId('length-45')).toHaveAttribute('data-picked', 'true')
+    await expect(page.getByTestId('length-20')).toHaveAttribute('data-picked', 'false')
+    await expect(page.getByTestId('pill-check'), 'still one per group').toHaveCount(2)
 
     // Absent, not disabled: session one ships five types.
     await expect(page.getByTestId('round-type-dsa')).toHaveCount(0)
@@ -216,6 +219,71 @@ test.describe('interview mode', () => {
       await confidenceOf(page, 'Task ordering on the stack'),
       'an unticked offer must not be applied',
     ).toContain('Strong')
+  })
+
+
+  /*
+    ── Inside the serial group, deliberately ────────────────────────────────
+    This presses `mark-weak`, which changes the confidence of a topic the
+    "writes nothing until it is pressed" test asserts starts at Okay. As its own
+    describe it ran in parallel against the same fixture user and raced — it
+    passed alone and failed in the full file, which is the coupling
+    ARCHITECTURE.md records: anything shared between tests is a channel.
+
+    Ordered after the test that already marks that topic weak, so pressing again
+    changes nothing anyone is watching.
+  */
+  test('offers the queue once something has been marked, and not before', async ({ page }) => {
+    await signInAs(page, 'extract')
+    await page.goto('/interview?type=javascript&minutes=20&level=staff')
+    await page.getByLabel('Your answer').fill('A live reference to the defining scope.')
+    await page.getByRole('button', { name: 'Answer' }).click()
+    await expect(page.getByTestId('turn-follow-up')).toBeVisible({ timeout: 30_000 })
+    await page.getByTestId('end-round').click()
+    await expect(page.getByTestId('scorecard')).toBeVisible({ timeout: 30_000 })
+
+    // The general way out is there from the moment the scorecard is.
+    await expect(page.getByTestId('back-to-library')).toBeVisible()
+
+    // And the specific one is not, because nothing has been marked yet.
+    await expect(page.getByTestId('practise-marked')).toHaveCount(0)
+
+    await page.getByTestId('mark-weak').click()
+    await expect(page.getByTestId('offer-done')).toBeVisible({ timeout: 30_000 })
+
+    const practise = page.getByTestId('practise-marked')
+    await expect(practise).toBeVisible()
+    await expect(practise).toHaveAttribute('href', '/practice')
+  })
+
+  test('and offers nothing after Change nothing, because nothing was marked', async ({ page }) => {
+    /*
+      The other half of `marked > 0`, and the half that was missing.
+
+      The first version only asserted the link is absent BEFORE pressing — which
+      the surrounding `done === null` gate already guarantees, so perturbing the
+      condition to `true` changed nothing and the harness correctly reported DID
+      NOT BITE. The condition exists for this path: you read the offers, you
+      disagreed, nothing was marked, and there is nothing to practise.
+    */
+    await signInAs(page, 'extract')
+    await page.goto('/interview?type=javascript&minutes=20&level=staff')
+    await page.getByLabel('Your answer').fill('A live reference.')
+    await page.getByRole('button', { name: 'Answer' }).click()
+    await expect(page.getByTestId('turn-follow-up')).toBeVisible({ timeout: 30_000 })
+    await page.getByTestId('end-round').click()
+    await expect(page.getByTestId('scorecard')).toBeVisible({ timeout: 30_000 })
+
+    await page.getByRole('button', { name: 'Change nothing' }).click()
+    await expect(page.getByTestId('offer-done')).toContainText('Nothing was changed')
+
+    await expect(
+      page.getByTestId('practise-marked'),
+      'nothing was marked, so there is nothing to practise',
+    ).toHaveCount(0)
+
+    // The general way out is still there.
+    await expect(page.getByTestId('back-to-library')).toBeVisible()
   })
 
   test('with no key there is no interview mode at all', async ({ page }) => {
@@ -426,5 +494,75 @@ test.describe('you can always walk out of the room', () => {
     // Abandoned, not aborted, and it says so rather than implying a stop.
     await expect(page.getByTestId('left-room')).toContainText('cannot be called back')
     await expect(page.getByTestId('left-room')).toContainText('discarded')
+  })
+})
+
+test.describe('the room always says which topic it is asking about', () => {
+  test.setTimeout(90_000)
+
+  /*
+    The assertion that would have caught it, and the one that did not exist for
+    three arcs.
+
+    An attribution has gone missing on this screen three times, at three depths:
+    the field was never populated (#25), any string was accepted as an id
+    (22P02), and now a well-formed uuid was accepted without being one of ours.
+    Each time the tag or the row lost its name and nothing failed.
+
+    So this asserts the NAME, on every path — including the one where the model
+    invents an id. The stub does exactly that after a skip: a real uuid, plausible
+    and naming nothing we hold.
+  */
+  test('the tag carries a topic name through answer, hint, clarify and skip', async ({ page }) => {
+    await signInAs(page, 'extract')
+    await page.goto('/interview?type=javascript&minutes=20&level=staff')
+
+    const tag = page.getByTestId('qtag-topic')
+    const named = async (where: string) => {
+      const text = (await tag.innerText()).trim()
+      expect(text, `${where}: the tag lost its topic name`).toMatch(/^JavaScript · .+/)
+      return text
+    }
+
+    const opening = await named('on arrival')
+
+    await page.getByLabel('Your answer').fill('It keeps a live reference to the scope.')
+    await page.getByRole('button', { name: 'Answer' }).click()
+    await expect(page.getByTestId('turn-follow-up')).toBeVisible({ timeout: 30_000 })
+    await named('after an answer')
+
+    await page.getByRole('button', { name: /^Hint/ }).click()
+    await expect(page.getByTestId('turn-hint')).toBeVisible({ timeout: 30_000 })
+    await named('after a hint')
+
+    await page.getByLabel('Your answer').fill('Same invocation, or two calls?')
+    await page.getByRole('button', { name: 'Ask a question' }).click()
+    await expect(page.getByTestId('turn-clarification-answer')).toBeVisible({ timeout: 30_000 })
+    await named('after a clarifying question')
+
+    /*
+      THE path. The model answers with an id that is a uuid and names nothing,
+      so the room must fall back to the topic already under discussion rather
+      than adopting an id it cannot resolve.
+    */
+    /*
+      Waited on the QUESTION changing, not on the skip turn appearing.
+
+      The first version waited for `turn-skip`, which the runner renders
+      optimistically the moment you press — before the reply is even sent. So the
+      assertion ran while the room was still on the old question, read the old
+      topic's name, and passed. It passed under the bug too: verified by putting
+      the defect back and watching it stay green, which is the only reason this
+      comment exists.
+
+      An assertion about what a reply does must wait for the reply.
+    */
+    const before = await page.getByTestId('question').innerText()
+    await page.getByTestId('move-on').click()
+    await expect(page.getByTestId('question')).not.toHaveText(before, { timeout: 30_000 })
+
+    expect(await named('after moving on'), 'an unresolvable id must not replace a known one').toBe(
+      opening,
+    )
   })
 })

@@ -135,10 +135,29 @@ export async function speak(input: {
       ? null
       : ((await readTopicPool()).find((topic) => topic.id === outcome.reply.topicId) ?? null)
 
+  /*
+    ── An id we cannot resolve is not an id ──────────────────────────────────
+    `topicId` was returned raw even when the lookup found nothing, so a
+    well-formed uuid the model invented became the room's current topic with no
+    title behind it — and because it was non-null, the runner's fallback to the
+    topic already under discussion never fired. The tag read "JavaScript" with
+    no name after it.
+
+    This is the third time an attribution has gone missing on this screen, and
+    the three are one class at three depths:
+
+      #25        the field existed and nothing ever populated it     — existence
+      22P02      any string was accepted as an id                    — format
+      this       a uuid was accepted without being one of OURS       — referent
+
+    Each fix taught the code to distrust the id a little further. This is the
+    last of the three, because there is nothing left to check: an id that names
+    a topic we hold is an id, and everything else is null.
+  */
   return {
     ok: true,
     text: outcome.reply.text,
-    topicId: outcome.reply.topicId,
+    topicId: found === null ? null : outcome.reply.topicId,
     topicTitle: found?.title ?? null,
     topicWeak: found?.confidence === 'weak',
   }
