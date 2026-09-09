@@ -168,7 +168,7 @@ test('Space still reveals when the caret is outside the field', async ({ page })
   await page.goto(`/practice?topic=${id}`)
 
   // ⌘↵ is an addition, not a replacement.
-  await page.getByRole('link', { name: 'End session' }).focus()
+  await page.getByRole('link', { name: /End session/ }).focus()
   await page.keyboard.press('Space')
   await expect(page.getByRole('button', { name: /Didn't know it/ })).toBeVisible()
 })

@@ -254,6 +254,20 @@ test.describe('interview mode', () => {
     const practise = page.getByTestId('practise-marked')
     await expect(practise).toBeVisible()
     await expect(practise).toHaveAttribute('href', '/practice')
+
+    /*
+      All three exits in one row, ranked.
+
+      Asserted as an ORDERED list of hrefs rather than three visibility checks,
+      because order is the thing being built: act on what the round found, then
+      go again, then leave. Three `toBeVisible` calls would pass with the row
+      shuffled, which is the guard-too-broad shape recorded in ARCHITECTURE.md.
+    */
+    const hrefs = await page
+      .getByTestId('scorecard-actions')
+      .getByRole('link')
+      .evaluateAll((links) => links.map((link) => link.getAttribute('href')))
+    expect(hrefs).toEqual(['/practice', '/interview', '/library'])
   })
 
   test('and offers nothing after Change nothing, because nothing was marked', async ({ page }) => {
@@ -561,8 +575,27 @@ test.describe('the room always says which topic it is asking about', () => {
     await page.getByTestId('move-on').click()
     await expect(page.getByTestId('question')).not.toHaveText(before, { timeout: 30_000 })
 
-    expect(await named('after moving on'), 'an unresolvable id must not replace a known one').toBe(
-      opening,
-    )
+    /*
+      ── The ordinary case, and the one the room got wrong ────────────────────
+      The interviewer moved to a topic we hold, so the tag must FOLLOW it. The
+      map of titles was seeded from the opening topic and never updated, so the
+      tag could only ever name the topic the round began on — every later one
+      showed as bare "JavaScript".
+    */
+    const afterSkip = await named('after moving on')
+    expect(afterSkip, 'the tag must follow the interviewer to a new topic').not.toBe(opening)
+
+    /*
+      ── And the other case, which is a different bug ─────────────────────────
+      A second skip, where the model invents a well-formed id naming nothing we
+      hold. There is no name to move to, so the tag keeps the one it has rather
+      than adopting an id it cannot resolve.
+    */
+    const second = await page.getByTestId('question').innerText()
+    await page.getByTestId('move-on').click()
+    await expect(page.getByTestId('question')).not.toHaveText(second, { timeout: 30_000 })
+
+    expect(await named('after a skip the model could not attribute'),
+      'an unresolvable id must not replace a known one').toBe(afterSkip)
   })
 })

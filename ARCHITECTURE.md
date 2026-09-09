@@ -221,6 +221,12 @@ yes/no question.
 > **A pass is an exit code and nothing else.** `<command> && echo HARNESS_ALL_GREEN`, with the
 > marker emitted only when the shell says the command succeeded.
 
+**Where else this mechanism runs:** anywhere a script decides a boolean from another program's
+human-readable output. In this repo that is `scripts/perturb.mjs` (this entry), the same file's
+edit-application check, `scripts/gen-library-parity.mts --check`, and `scripts/test-db.sh`, which
+greps `supabase status`. The first two have been bitten; the last two use exit codes already and
+should keep doing so.
+
 **The first fix patched the hole rather than the mechanism**, and that is the part worth
 carrying. After the false bite, the response was to read the failure text more carefully and
 free the port — a fix to that occurrence. The mechanism, `passMarker` as a substring search, was
@@ -3244,3 +3250,218 @@ label promised what the destination did not do**, on the only route out of that 
 the same defect one degree less invisible: a control that exists but does not do what its name
 says still cannot be caught by asserting it is present, and every check we had asserted exactly
 that.
+
+### The same defect in the tool doing the editing, not the tool doing the checking
+
+`topicMeta` was seeded from the opening topic and never written again, so the room's tag could
+name only the topic a round began on. Every later topic showed as bare `JavaScript` — the id
+correct, the lookup correct, and nothing to look up. It shipped to production and was found by
+pressing Move on.
+
+**The line that would have written it was never added.** The edit was applied with:
+
+```py
+s = s.replace("""      setTurns([\n        ...next,""", <the accumulation> + """      setTurns([\n        ...next,""")
+print("room state carries the tags")
+```
+
+The indentation had shifted, the pattern matched nothing, `replace` returned the string
+unchanged, and the script printed its success line because the print was unconditional. Every
+subsequent check agreed: the file compiled, the types were satisfied, the suite was green, and
+the declaration `const [topicMeta, setTopicMeta] = useState(...)` sat there with **one reference
+in the file**.
+
+**This is the harness's own defect, one tool upstream.** Twice today the perturbation harness
+decided a boolean by reading prose rather than a result, and the rule written for it was: *an
+exit code is the answer*. This is the editing side of the same mistake — a script that reports
+what it attempted rather than what it achieved.
+
+> **An edit is applied when the file changed, not when the script says so.** Assert the match
+> count before replacing, assert the text actually differs after, and never print a success line
+> that cannot fail.
+
+**Where else this mechanism runs:** every ad-hoc edit script, every codemod, and every migration
+that rewrites files rather than schema. The rule is not about Python's `str.replace` — it is
+about any operation whose failure mode is *silently doing nothing*, which includes `sed -i` with
+a pattern that does not match, a `jq` filter selecting an absent key, and an `UPDATE … WHERE`
+matching zero rows. Each of those returns success.
+
+`perturb.mjs` already does exactly this, and says so in its own header: *"the file after the edit
+must equal `original.replace(old, new)` and must differ from the original"*, with a missing
+anchor as an **error, never a result**. The discipline existed, in this repo, applied to
+perturbations — and was not applied to the edits that write the code the perturbations check.
+
+Both halves of the assertion earn their place. Writing this fix, the first anchor was wrong
+again — different indentation, same shape — and `assert s.count(old) == 1` stopped it in the
+same second rather than after a deploy.
+
+### A stub written alongside a fix will describe the fix
+
+The test for that bug **passed while the bug was live**, and it passed for a reason worth
+naming.
+
+The stub's Move-on branch returned a **well-formed uuid naming nothing we hold** — the input
+that exercises the fix I had just written, which nulls an id it cannot resolve. The room then
+fell back to the topic already under discussion, a name was present, and the assertion was
+satisfied. The real model does something else entirely on that path: it picks **another real
+topic**, which is the input the room got wrong.
+
+So the stub described the code rather than the service. It was written in the same minutes as
+the fix, from the same mental model, and it encoded that model faithfully.
+
+**Same family as the stub returning uuids where the vendor returns slugs**, and the pair is
+worth holding together: one returned the shape the parser wanted, this returned the shape the
+new branch wanted. Both times the fixture agreed with the code because it was derived from it.
+
+> **A stub written alongside a fix will tend to describe the fix. The check is to ask what the
+> real service returns on that path — not what makes the new code run.**
+
+For a model call that means: what does it actually do here, in the ordinary case, not the edge
+the fix is about? On Move on the ordinary case is a new real topic. The stub now returns that
+first and the invented id second, so both branches are covered — and the two perturbations fail
+on **different assertions**, which is how you can tell they are two rules rather than one.
+
+### A rule recorded against one instrument does not transfer to the next
+
+The rule that would have prevented the `topicMeta` defect was **already written in this repo,
+before the defect existed**, in the header of `scripts/perturb.mjs`:
+
+> *Verification here is exact rather than heuristic: the file after the edit must equal
+> `original.replace(old, new)` and must differ from the original. Anything else throws. A
+> perturbation that cannot be applied is an ERROR, never a result.*
+
+That is precisely the rule the edit script needed. It was three feet away, in a file read many
+times this session, and it did not transfer — because it was written **about perturbations**,
+and the thing that needed it was an edit.
+
+**One mechanism, three instruments.** "Decide a boolean by looking at what a command reported,
+rather than at what it did" runs in three places here, and each had to learn it separately:
+
+| instrument | how it failed | when |
+| --- | --- | --- |
+| the perturbation checker | reported "not applied" for an edit that had applied | arcs 3 and 4 |
+| the test-result reader | read the runner's prose — a false bite, then a false pass | this session, twice |
+| the edit script | printed success for a replace that matched nothing | this session |
+
+The first learned it and wrote it down. The second learned it independently, twice, in opposite
+directions. The third was never asked, and the entry about the first was sitting in the file the
+whole time.
+
+> **The question to ask of any rule already in ARCHITECTURE.md is not "is this written down" but
+> "where else does this same mechanism run".** A rule attached to the instrument it was learned
+> on will be re-learned on every other instrument, at full price.
+
+This is a reading discipline for the document rather than a rule about code, and it is the one
+that would have saved the most time today. The entries here are indexed by the incident that
+produced them, which is how they get written and the wrong way to consult them. **Read them by
+mechanism**: when a rule is added, name the other places the same mechanism runs and say
+explicitly whether it applies there — even, and especially, when the answer is "not yet, because
+nothing there does this".
+
+### A complete search and an incomplete reading are different failures
+
+Twice this project has been wrong about an enumeration produced by **reading** — a list of
+routes remembered rather than derived, a list of groups hand-written rather than walked. Both
+were fixed by replacing the reading with a search.
+
+The seven hand-rolled links to `/library` are a third failure and **not** the same one. The
+search was complete: four greps, twenty hits, every one of the seven among them. What failed
+came after.
+
+Six of them were classified from the grep line without opening the file, written off in the
+report as *"inline prose 'in your library' **probably**"*, and shipped as underlined text beside
+a component built to replace them. They read `Back to the library`, and the label search had
+missed them because it looked for `to library` — the definite article was enough. The href
+search had them anyway. **Nothing was missing from the list; the list was read wrongly.**
+
+> **A match dismissed without opening the file is not classified.** Search decides what to look
+> at; only reading decides what a thing is, and the reading is not optional because the search
+> was thorough.
+
+And the tell was in the report, in my own words:
+
+> **A hedge word in a report is an unresolved item, not a caveat.** "Probably", "presumably",
+> "I think" — each one is a note that the work stopped early, and it is worth grepping a finished
+> report for them before calling it finished.
+
+**The defence is a guard, not more care.** `back-to-library.test.ts` asserts that a bare
+`href="/library"` appears in exactly two files — the control itself and the tab bar — so a
+hand-rolled link fails the build wherever it is written and whatever it is called. A search
+depends on the searcher classifying correctly afterwards; a guard does not, which is the whole
+argument for preferring one.
+
+The seventh was a different defect the same search surfaced: `/weak`'s empty state offered
+**+ Add topic** pointing at bare `/library`, which lands you in the library with no form open —
+the label promising what the destination does not do, exactly as the practice page's did.
+
+### No index. The question goes in the entry, asked by the person who just paid for it
+
+This file is indexed by incident — 132 entries, each named for the thing that went wrong. That
+is right for writing them and wrong for consulting them, which is how a rule sat in
+`scripts/perturb.mjs`'s header all session while the same mechanism failed twice more, three
+feet away.
+
+**Two fixes were available and only one of them survives contact.**
+
+**An index at the top is the wrong one, and this project has the evidence.** It is a
+hand-written list of where to look, over a file that grows every session — the same shape as the
+route list that went stale twice, the `PRIVATE_GROUPS` list that never learned about a new
+group, and the seed clear-down that never learned about a new table. Each rotted silently and
+nothing failed, because **nothing fails when a list of pointers is incomplete.** An index of 132
+entries would be wrong within two arcs and would look authoritative the whole time.
+
+**A mechanism line per entry is cheap and mostly beside the point.** It cannot drift, because it
+lives in the entry and is written in the same edit, and `grep` over it is derived rather than
+maintained. But it only helps a reader who already suspects the connection — and today's failure
+was not "I could not find the rule". It was that I did not recognise an edit script and a
+perturbation checker as one mechanism. Recognising it is the whole difficulty; anyone who has
+done that can already find the entry.
+
+> **So: when an entry is written, it names where else the same mechanism runs and whether the
+> rule applies there — including "nowhere else yet, and here is what would qualify".**
+
+That is done once, by the person who has just finished debugging the thing and understands the
+mechanism better than any later reader will. Its output is prose inside the entry, which a
+reader gets without knowing to look for it. It is not a pointer that can go stale; it is an
+argument that was either made or not.
+
+**The cost, stated:** it does nothing for the 132 entries already here, and I am not retrofitting
+them — a sweep of 132 entries asserting connections I would be inventing at speed is how this
+document would acquire confident wrong claims. The three entries in the harness family have the
+line added, because that family is exactly what failed and the connections there are ones I
+actually traced today. Everything else earns it when it is next touched.
+
+### A perturbation against a prebuilt server tests the build, not the source
+
+`playwright.config.ts` starts the app with `npm run start`, which serves whatever `.next` holds.
+`npm run test:e2e` is `npm run build && playwright test`, so the suite is always honest. A
+perturbation run by hand as `npx playwright test <spec>` is not: the edit sits in source and the
+server keeps serving the last build.
+
+**Both directions are wrong, and the second is the dangerous one.**
+
+- **False `DID NOT BITE`** — perturb after a build that contains the fix. The server still serves
+  the fix, the test passes, and the guard is written off as redundant. This is what happened
+  here: the scorecard's three actions were swapped in source, the spec passed, and the assertion
+  looked vacuous. With `npm run build` first it fails on the exact line, naming the two hrefs
+  that moved.
+- **False `BIT`** — perturb before any build that contains the fix. The test fails because the
+  fix was never compiled, the harness reports the constraint as load-bearing, and **nothing was
+  tested at all.** A green report and a red report are equally uninformative when the artifact
+  under test is stale; only the red one is believed.
+
+> **An e2e perturbation's verify command must build.** `npm run test:e2e -- --grep …`, never
+> `npx playwright test`.
+
+`scripts/perturb.mjs` is not at fault — it runs the `verify` command it is given, and a caller
+passing `npm run test:e2e` has always been correct. The failure is running perturbations by hand,
+outside the tool, where the tool's own rules do not apply. That is [the transfer lesson](#a-rule-recorded-against-one-instrument-does-not-transfer-to-the-next-instrument-by-being-written-down)
+in its cheapest form: not a rule that failed to reach a second instrument, but a rule skipped by
+stepping outside the first one.
+
+**Where else this mechanism runs:** anywhere a test exercises a compiled or copied artifact
+rather than the source that was edited — the Playwright suite via `.next`, and `npm run
+gen:parity -- --check`, which compares a generated `.sql` file against the generator. Editing
+the generator without regenerating is the same stale-artifact shape, and that one is caught
+because `--check` compares and fails. The pgTAP suite reads `supabase/tests/*.sql` directly and
+Vitest reads `src/` directly, so neither can go stale this way.

@@ -13,6 +13,7 @@ import { Scorecard as ScorecardView } from '@/components/interview/scorecard'
 import { Button } from '@/components/ui/button'
 import { VoltButton } from '@/components/interview/volt-button'
 import { BackToLibrary } from '@/components/ui/back-to-library'
+import { NewInterview } from '@/components/interview/new-interview'
 import {
   HINTS_PER_ROUND,
   countRound,
@@ -173,6 +174,25 @@ export function Round({
         return
       }
 
+      /*
+        ── The map has to grow, and for a whole session it did not ────────────
+        `topicMeta` was seeded from the opening topic and never written again, so
+        the tag could name only the topic the round began on. Move on to a second
+        topic and it fell back to bare "JavaScript" — the id correct, the lookup
+        correct, and nothing to look up.
+
+        The edit meant to add this was applied with a replace that silently
+        matched nothing, and the script printed success anyway. See
+        ARCHITECTURE.md: an edit is applied when the file changed, not when the
+        script says so.
+      */
+      if (result.topicId !== null && result.topicTitle !== null) {
+        const id = result.topicId
+        const title = result.topicTitle
+        const weak = result.topicWeak
+        setTopicMeta((current) => ({ ...current, [id]: { title, weak } }))
+      }
+
       setTurns([
       ...next,
       {
@@ -279,11 +299,14 @@ export function Round({
           </p>
         ) : null}
 
+        {/*
+          The same two controls as the scorecard's foot, in the same order and
+          under the same names. There is no "practise what went weak" here
+          because an abandoned round produced no findings to act on.
+        */}
         <div className="mt-6 flex flex-wrap items-center gap-2.5">
+          <NewInterview />
           <BackToLibrary />
-          <Link href="/interview" className="text-meta text-accent-ink underline">
-            Set up another round
-          </Link>
         </div>
       </main>
     )

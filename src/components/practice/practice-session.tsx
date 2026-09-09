@@ -149,20 +149,33 @@ export function PracticeSession({
           ))}
         </div>
         {/*
-          The way out, said plainly.
+          The way out, said plainly — and now saying where it goes.
 
           This was an underlined word at 11.5px after the counter, which is not an
           exit anyone finds when they want one — the screen has no rail, so it is
-          the only way back and it read as decoration. It is now a control, and it
-          names its shortcut the way the rest of the app does.
+          the only way back and it read as decoration. It became a control naming
+          its shortcut, and then read as a screen with no way to the library:
+          `End session` describes what stops, not where you land, so someone
+          scanning for the affordance every other screen has finds nothing.
+
+          ── One control, not two ──────────────────────────────────────────────
+          The obvious fix is a second, `← Library` beside it. There is nowhere
+          for the two to differ: `/practice` with no params builds a queue and
+          renders a session immediately, so "end the session" cannot mean "go to
+          /practice" without starting another one. Two controls to one
+          destination is the duplication the shared control just removed.
+
+          So it is one control naming both halves: what stops, and where you go.
+          It stays an anchor — `a11y.spec.ts` focuses it and presses Space
+          expecting the card to reveal, which a button would swallow.
         */}
         <div className="flex items-center gap-3">
           <span className="font-mono text-[11.5px] text-ink-3">
             {index + 1} / {queue.length}
           </span>
           <BackToLibrary>
-                End session <Kbd>Esc</Kbd>
-              </BackToLibrary>
+            End session · Library <Kbd>Esc</Kbd>
+          </BackToLibrary>
         </div>
       </div>
 
