@@ -3345,6 +3345,72 @@ declared. The tell is a magic number in a class name whose correctness depends o
 declaration somewhere else. `min-h-11`, by contrast, is not this: it encodes a touch-target rule
 that stands on its own, and nothing else has to agree with it.
 
+### A guard protects a rule through a proxy, and is sound only while the two coincide
+
+`back-to-library.test.ts` asserts that a bare `href="/library"` appears in exactly two files. The
+rule it protects is not about that string. It is *the way out of a screen that has no other way
+out* — and `href="/library"` was a sound proxy for it because there was exactly one such
+destination in the app.
+
+Then "Earlier days" appeared: a link to `/today/earlier` that should read as a control, on a
+screen whose exit is the rail. **The proxy did not fail. It stopped meaning the rule**, quietly,
+the moment a second kind of way-out existed, and no test could have noticed because the proxy is
+all a test can see.
+
+The reflex is to widen it — make the guard about *any* bare navigation link rendered as a link.
+That is the move to check before making, and the check is mechanical:
+
+> **Ask what the widened proxy would fire on if the codebase grew, and enumerate the families
+> honestly. If the answer is "mostly false positives", the guard should not be written.** A
+> guard that fires mostly false is one people learn to suppress, and a suppressed guard is worse
+> than an absent one — it looks like coverage.
+
+Here the enumeration answered itself. A guard over plain navigation links would fire on:
+
+1. `practice-line.tsx`'s three number links — a rule from the product review requires exactly
+   this: *if a number here cannot be clicked through to what it counts, it does not belong here.*
+2. every `a[href^="/topic/"]` in the library grid and the weak list — navigation as content
+3. the source workspace breadcrumb, where `sources-hierarchy-mock.html` states outright that
+   every level is a link
+4. the rail's own destinations, already exempted once as `tab-bar.tsx`
+5. ledger item links, whose arc's premise was "links not documents"
+
+Five families, all correct as links. **And the deciding evidence is that `practice-line.tsx`
+contains both shapes** — three inline number links and one link-as-control — correctly, in one
+file, with the distinction reasoned in its doc comment. When a single file holds both sides of
+the question, the question is not decidable from source text, and no static guard is going to
+recover the judgement that put them there.
+
+So the guard stays narrow and stays honest about what it covers. What it does NOT cover is
+recorded here rather than implied by its silence.
+
+### The fourth derived-invariant instance, and the same tell as the third
+
+`wayfinding.spec.ts` derived the app group's routes with a non-recursive `readdirSync`. It read
+one directory level, so `/today/earlier` — a real page on a real route in the group — was
+visited by no walk for four arcs. The list did not declare it missing. It was simply not in it.
+
+That is [the derived-invariant failure](#a-derived-invariant-is-only-as-complete-as-the-list-it-walks)
+a fourth time, after the route list, `PRIVATE_GROUPS`, and the seed clear-down — and it repeats
+the third one's tell exactly:
+
+```ts
+expect(APP_ROUTES.length, 'the route derivation found nothing').toBeGreaterThanOrEqual(6)
+```
+
+> **A count cannot detect an omission.** It can only detect a collapse. Six routes and seven
+> routes both satisfy `>= 6`, so the assertion guarding the derivation was blind to precisely
+> the thing derivations get wrong.
+
+`guarded-routes.test.ts` had the same line — `expect(routes.length).toBeGreaterThan(4)` — and was
+fixed the same way: name the thing that must be there. `APP_ROUTES` is now pinned with
+`toContain('/today/earlier')`, which fails when the recursion is removed. Perturbed to confirm.
+
+**Where else this mechanism runs:** every `length` assertion standing in for a completeness
+claim. `expect(...).toHaveCount(n)` over a rendered list is the same shape and is fine, because
+`n` is exact — the failure is the *inequality*. Grep for `toBeGreaterThan` beside a derived
+collection and ask what it would still pass with missing.
+
 ### Absence looks the same on screen whatever produced it
 
 A fourth control was reported missing: *Practise this chapter*, on a course that now has two
