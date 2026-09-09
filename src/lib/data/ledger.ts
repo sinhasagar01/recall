@@ -1,4 +1,5 @@
 import 'server-only'
+import { fail } from '@/lib/data/fail'
 
 import { cache } from 'react'
 
@@ -15,10 +16,6 @@ import { createClient } from '@/lib/supabase/server'
 
 const COLUMNS =
   'id, user_id, kind, title, link, note, status, capability_id, created_at, updated_at'
-
-function fail(action: string, error: { code?: string; message: string }): never {
-  throw new Error(`${action} failed: ${error.code ?? 'unknown'} · ${error.message}`)
-}
 
 /**
  * The whole ledger, newest first.
@@ -66,15 +63,28 @@ export const ledgerByCapability = cache(
   },
 )
 
-/** How many items, for the rail. A count, not the rows — this runs on every page. */
+/**
+ * How many items, for the rail. A count, not the rows — this runs on every page.
+ *
+ * ── No `head: true`, deliberately ───────────────────────────────────────────
+ * It was a HEAD request, which is the cheaper thing and the wrong one. A HEAD
+ * response has no body, and a PostgREST error's description lives in the body —
+ * so every failure of this read arrived as `{ message: '' }` and was reported as
+ * `Counting your ledger failed: unknown ·` with nothing after it.
+ *
+ * That happened, on a real 401, and the cause can no longer be identified
+ * because the sentence naming it was never transferred. The saving was a body
+ * that is empty on success anyway; the cost was the only channel an error had.
+ * On a read that runs on every page in the group, that trade is never worth it.
+ */
 export const countLedger = cache(async (): Promise<number> => {
   const supabase = await createClient()
 
-  const { count, error } = await supabase
+  const { count, error, status } = await supabase
     .from('project_items')
-    .select('id', { count: 'exact', head: true })
+    .select('id', { count: 'exact' })
 
-  if (error) fail('Counting your ledger', error)
+  if (error) fail('Counting your ledger', error, status)
   return count ?? 0
 })
 

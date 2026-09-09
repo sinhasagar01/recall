@@ -360,11 +360,35 @@ describe('sources in library.md', () => {
       nothing, which is the vacuous-guard failure this project keeps finding.
     */
     const read = readFileSync(join(process.cwd(), 'src/lib/data/sources.ts'), 'utf8')
-    const select = read.slice(
-      read.indexOf('export const SUMMARY_COLUMNS'),
-      read.indexOf('function fail('),
-    )
 
+    /*
+      ── Both anchors, and a bound on the slice ────────────────────────────────
+      This closed on `function fail(` — a helper that had nothing to do with the
+      rule, and which was later hoisted out of this module. `indexOf` then
+      returned -1, `slice(start, -1)` ran to the end of the file, and the
+      assertion silently became "the word transcript appears nowhere in
+      sources.ts", which its prose obviously breaks.
+
+      It failed loudly that time. It fails OPEN just as easily: had the rule been
+      a `toContain`, a slice covering the whole file would have satisfied it from
+      anywhere. Third instance of the coupled-to-location weakness in
+      ARCHITECTURE.md, and the first where the anchor was a piece of code with no
+      relationship to the thing being asserted.
+
+      Now: the constant only, closed on the blank line that ends it, with both
+      ends checked and the slice required to be shorter than the file.
+    */
+    const start = read.indexOf('export const SUMMARY_COLUMNS')
+    const end = read.indexOf('\n\n', start)
+
+    expect(start, 'the SUMMARY_COLUMNS anchor must still resolve').toBeGreaterThan(-1)
+    expect(end, 'and so must its closing anchor').toBeGreaterThan(start)
+
+    const select = read.slice(start, end)
+
+    expect(select.length, 'the slice must be the constant, not the module').toBeLessThan(
+      read.length / 2,
+    )
     expect(select, 'the anchor must still find the column list').toContain('id, user_id')
     expect(select, 'the export read must not select the transcript body').not.toMatch(
       /'[^']*\btranscript\b(?!_words|_deleted_at)[^']*'/,

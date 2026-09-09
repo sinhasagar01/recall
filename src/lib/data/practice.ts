@@ -1,4 +1,5 @@
 import 'server-only'
+import { fail } from '@/lib/data/fail'
 
 import { cache } from 'react'
 
@@ -31,10 +32,6 @@ export interface WeakCursor {
   staleness: string
   createdAt: string
   id: string
-}
-
-function fail(action: string, error: { code?: string; message: string }): never {
-  throw new Error(`${action} failed: ${error.code ?? 'unknown'} · ${error.message}`)
 }
 
 const BUCKETS = [...BUCKET_SEQUENCE]

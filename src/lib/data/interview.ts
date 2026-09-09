@@ -1,3 +1,4 @@
+import { fail } from '@/lib/data/fail'
 import { cache } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { listLedger } from '@/lib/data/ledger'
@@ -14,10 +15,6 @@ import type { ProjectItem } from '@/lib/domain/ledger'
  * reason they always were: no queue module has learned anything, because no queue
  * module is involved.
  */
-
-function fail(action: string, error: { code?: string; message: string }): never {
-  throw new Error(`${action} failed: ${error.code ?? 'unknown'} · ${error.message}`)
-}
 
 /**
  * What a question needs, and nothing else.

@@ -3002,3 +3002,67 @@ and ask, field by field, *which of these do I only know the type of?* Anything t
 includes is either validated or has a comment saying why it is not. `parseExtraction`,
 `parseQuizDraft`, `parseScorecard`, `parseTurn` and `parseRewindScore` all take model output;
 the numbers in all five were bounded from the first day and the strings were not.
+
+### An optimisation that removes a response body removes the error channel with it
+
+`countLedger` counted with `head: true` — an HTTP HEAD, which transfers no body. On a fresh
+sign-in it failed and reported:
+
+```
+Counting your ledger failed: unknown ·
+```
+
+An action name, a separator, and nothing. Reproduced exactly, the same read twice against a
+token the server rejects:
+
+```
+HEAD + count exact    status=401   error={"message":""}          count=null
+GET  + count exact    status=401   error={"code":"PGRST301",
+                                          "message":"No suitable key or wrong key type",
+                                          "details":"None of the keys was able to decode the JWT"}
+```
+
+**A PostgREST error's description lives in the response body.** A HEAD response has no body by
+definition, so there is nothing to parse and the error arrives as `{ message: '' }`. The count
+itself was handled correctly the whole time — `count ?? 0`, failing only `if (error)`. Nothing
+in our code discarded the diagnosis; the request shape did, before our code was reached.
+
+> **A request that carries no payload fails in a way that carries no explanation.** Whenever an
+> optimisation removes a response body — HEAD, `204`, a fire-and-forget write, a count that only
+> needs a header — check what the error path was going to use that body for. Usually: all of it.
+
+**The cost was not the outage.** The page renders on refresh, because the underlying fault was a
+transient 401 and the next request carried an accepted token. The cost is that **which** 401 it
+was can never be established: this repo records two local causes for a freshly-minted token
+being refused — single-use refresh tokens losing a race under the layout's six parallel reads,
+and container clock drift surfacing as `PGRST303 · JWT issued at future` — and the sentence that
+would have named one of them was never transferred. A real auth bug is now unreproducible.
+
+**The same family as two entries above.** A stub returning well-formed uuids because that is
+what the parser wanted; an anon probe whose 404s read as denial; and now an error object that is
+correctly shaped, correctly typed, correctly empty. **An instrument producing well-formed
+nothing is worse than one producing an error**, because nothing about the output says it is not
+an answer.
+
+**Where the trade IS worth taking**, stated so the remaining `head: true` is a decision rather
+than an inconsistency: `readTopicSource`'s sibling count keeps it. That read runs on one detail
+page, beside a read of the source itself that returns a body — so a session or grant failure is
+reported properly by its neighbour and this call is not the only witness. The two counts that
+lost it run on **every page in the `(app)` group**, inside one `Promise.all`, where a failure
+takes the whole group down and its message is all anyone gets.
+
+> **Where a request is the sole reporter of its own failure, it must carry a body. Where it is
+> one of several, the cheaper call is fine.**
+
+`fail` was also ten byte-identical copies, one per data module, all asserting a shape the error
+might not have. Now one module, which reports the HTTP status and says plainly when the server
+sent no description instead of trailing off after a colon.
+
+**And fixing it broke a test, which is the third instance of the slice weakness.**
+`export.test.ts` bounded its assertion with
+`read.slice(read.indexOf('export const SUMMARY_COLUMNS'), read.indexOf('function fail('))` —
+closing on a helper with no relationship to the rule. Hoisting `fail` out of that module made
+the closing `indexOf` return `-1`, `slice(start, -1)` ran to the end of the file, and the
+assertion quietly became a claim about the whole module. It failed loudly this time; with a
+`toContain` instead of a `not.toMatch` it would have failed open and passed from anywhere.
+Both anchors are asserted now, and the slice is required to be shorter than the file.
