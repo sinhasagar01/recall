@@ -38,8 +38,30 @@ test.describe('interview mode', () => {
     await expect(javascript).toContainText('5 topics')
     await expect(javascript).toContainText('2 weak')
 
+    /*
+      Nothing is chosen yet, so there is nothing to cost. The estimate is
+      computed from the length, and saying "≈ 0k tokens" would be a figure
+      invented to fill a gap.
+    */
+    await expect(page.getByTestId('cost-estimate')).toHaveText('the cost estimate needs a length')
+    await expect(page.getByTestId('enter-room'), 'three choices gate the button').toBeDisabled()
+
+    await page.getByTestId('length-45').click()
+
     // A range, never a figure — how much comes back is what you are paying to find out.
     await expect(page.getByTestId('cost-estimate')).toHaveText(/\d+k–\d+k tokens · \$\d+\.\d\d–\$\d+\.\d\d/)
+
+    /*
+      Three choices, three checks, then one button. Disabled and not absent —
+      the opposite call from DSA and voice, and for the stated reason: this is
+      one click away, and the button is what says so.
+    */
+    await expect(page.getByTestId('enter-room'), 'a length alone is not enough').toBeDisabled()
+    await page.getByTestId('round-type-javascript').click()
+    await page.getByTestId('level-staff').click()
+    await expect(page.getByTestId('type-check'), 'the chosen round shows a check').toBeVisible()
+    await expect(page.getByTestId('pill-check')).toHaveCount(2)
+    await expect(page.getByTestId('enter-room')).toBeEnabled()
 
     // Absent, not disabled: session one ships five types.
     await expect(page.getByTestId('round-type-dsa')).toHaveCount(0)
@@ -88,7 +110,13 @@ test.describe('interview mode', () => {
     await expect(page.getByTestId('hints-left')).toContainText('2 hints left', { timeout: 30_000 })
 
     await page.getByTestId('end-round').click()
-    await expect(page.getByTestId('stat-hints')).toContainText('1 hint', { timeout: 30_000 })
+    /*
+      The value, not the value plus its label. The stat strip is the hero's own
+      foot now — a display number over a mono caption — so the count and the word
+      are two elements and reading the container back would assert "1hint used".
+    */
+    await expect(page.getByTestId('stat-hints-value')).toHaveText('1', { timeout: 30_000 })
+    await expect(page.getByTestId('stat-hints')).toContainText('hint used')
   })
 
   test('the scorecard writes nothing until it is pressed', async ({ page }) => {
@@ -117,14 +145,26 @@ test.describe('interview mode', () => {
       await expect(page.getByTestId(`dimension-${dimension}`)).toBeVisible()
     }
     await expect(page.getByTestId('round-score')).toContainText('74')
-    await expect(page.getByTestId('stat-hints')).toContainText('0 hints')
+    await expect(page.getByTestId('stat-hints-value')).toHaveText('0')
+    await expect(page.getByTestId('stat-hints')).toContainText('hints used')
 
     /*
       The round type reads as a person writes it, not as the enum is stored. The
       h1 said "javascript · 20 minutes" until the build was looked at beside the
       reference.
     */
-    await expect(page.getByRole('heading', { level: 1 })).toContainText('JavaScript')
+    /*
+      The rule is unchanged and its home moved. "javascript · 20 minutes" as a
+      raw enum was caught in an h1 by the first side-by-side; the drawing puts
+      the round's name in the hero eyebrow and the VERDICT in the h1, so that is
+      where the assertion looks now. What it protects — a stored enum must never
+      reach the screen — is the same.
+    */
+    await expect(page.getByTestId('scorecard-eyebrow')).toContainText('JavaScript')
+    await expect(
+      page.getByTestId('scorecard-eyebrow'),
+      'the enum must not reach the screen',
+    ).not.toContainText('javascript ')
 
     /*
       The offer arrives with the low-scoring one ticked and the high-scoring one

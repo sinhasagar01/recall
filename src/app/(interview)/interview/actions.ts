@@ -79,8 +79,22 @@ async function materialFor(roundType: RoundType): Promise<{ text: string; ids: s
   }
 }
 
+/**
+ * The reply, and enough about its topic for the room to tag it.
+ *
+ * Title and confidence come back with the turn rather than the room holding the
+ * whole pool: the tag needs two fields about ONE topic, and shipping three
+ * hundred rows to the client so it can look up one of them is the wrong trade.
+ */
 export type SpeakResult =
-  | { ok: true; text: string; topicId: string | null }
+  | {
+      ok: true
+      text: string
+      topicId: string | null
+      topicTitle: string | null
+      /** Whether you grade it weak — the tag the room shows beside the topic. */
+      topicWeak: boolean
+    }
   | { ok: false; reason: string }
 
 export async function speak(input: {
@@ -110,9 +124,24 @@ export async function speak(input: {
     which topic, and whether you grade it weak. Issue #25: the field existed for
     a whole session and nothing filled it.
   */
-  return outcome.ok
-    ? { ok: true, text: outcome.reply.text, topicId: outcome.reply.topicId }
-    : { ok: false, reason: outcome.reason }
+  if (!outcome.ok) return { ok: false, reason: outcome.reason }
+
+  /*
+    `readTopicPool` is cache()d per request, so this is a lookup in a list the
+    action has already read rather than a second query.
+  */
+  const found =
+    outcome.reply.topicId === null
+      ? null
+      : ((await readTopicPool()).find((topic) => topic.id === outcome.reply.topicId) ?? null)
+
+  return {
+    ok: true,
+    text: outcome.reply.text,
+    topicId: outcome.reply.topicId,
+    topicTitle: found?.title ?? null,
+    topicWeak: found?.confidence === 'weak',
+  }
 }
 
 export type FinishResult =

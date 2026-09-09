@@ -265,6 +265,49 @@ console.log(`Nothing-needs-review user reset: ${strongEmail}`)
 /* Sources for every fixture user are cleared above, in one loop. */
 await admin.from('topics').delete().eq('user_id', extractUserId)
 
+/*
+  ── Past rounds, cleared and then seeded ────────────────────────────────────
+  Cleared because they ACCUMULATE otherwise: every run that finishes a round
+  writes one, and nothing ever removed them. Locally that reached 61, which is
+  the arc 4 shape — fixture rows growing until a spec that never mentions them
+  starts failing.
+
+  Seeded because the sparkline is a surface with no fixture. With an empty table
+  it renders one bar and cannot be compared to anything, so nobody would notice
+  it collapse — which it did once already, resolving a percentage against an
+  implicit height. Four rounds with four different scores, oldest first, so the
+  heights differ and a wrong one is visible.
+*/
+await admin.from('interview_rounds').delete().eq('user_id', extractUserId)
+
+const pastRound = (overall: number, ago: number) => ({
+  user_id: extractUserId,
+  round_type: 'javascript',
+  minutes: 20,
+  level: 'staff',
+  asked: 4,
+  answered: 4,
+  follow_ups_offered: 6,
+  follow_ups_held: 4,
+  questions_asked: 1,
+  hints_used: 1,
+  elapsed_seconds: 1180,
+  over_by_seconds: 0,
+  recall: overall + 8,
+  depth: overall - 12,
+  precision: overall + 3,
+  enquiry: overall,
+  overall,
+  created_at: daysAgo(ago),
+})
+
+const { error: roundsError } = await admin
+  .from('interview_rounds')
+  .insert([pastRound(52, 22), pastRound(48, 16), pastRound(61, 11), pastRound(65, 6)])
+
+if (roundsError) throw new Error(`Seeding past rounds: ${roundsError.message}`)
+console.log('Interview rounds seeded: 4 past JavaScript rounds (52, 48, 61, 65)')
+
 const { error: extractError } = await admin.from('topics').insert([
   {
     user_id: extractUserId,

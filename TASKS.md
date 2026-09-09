@@ -1662,6 +1662,42 @@ Corrected to *"Keep this follow-up as a quiz?"*, offered on any follow-up rather
 failure the room is not allowed to detect. The correction is written back into the reference,
 as session one's *"never resumed"* correction was.
 
+### Two tests for reading a drawing, found by building one screen against it
+
+Both came out of the setup side-by-side, and both generalise past this arc.
+
+**A reference's numbers are illustrative; its rules are binding.** The drawing shows
+`≈ 26k–40k tokens · $0.06–$0.11` and `21 topics · 9 weak · 14 quizzes`. The build shows
+`≈ 77k–120k · $0.17–$0.28` and `5 topics · 2 weak`. Neither is a defect: those are examples of
+data. But *"a range, never a figure"* and *"count topics, weak and quizzes separately"* are
+claims the drawing is making, and missing either of those is a defect — as one of them was.
+
+The distinction is not always obvious in the moment, and there is a one-line test for it:
+
+> **Ask whether the drawing would still be right if the number were different.** If it would,
+> the number is an example. If it would not, the number is the rule wearing a number's clothes.
+
+`26k` passes that test — any range would do. `21 topics · 9 weak · 14 quizzes` fails it: change
+the values and the line is still right, but delete the third count and the drawing is now saying
+something else. The *shape* of the number is binding even where its value is not.
+
+**A sentence that could have been written without knowing whose library it is about is not a
+summary.** The start card's sub-line read *"The ones you grade weak come first."* True, fluent,
+and identical for every user and every round — which is exactly why it survived four passes of
+reading. The drawing says *"Nine of your JavaScript topics read weak; the queue draws from those
+first."*
+
+This is sharper than any row in the guard table because it needs no instrument. It is a
+question you ask of a sentence:
+
+> **Could this sentence have been written before the data was read?** If yes, it is decoration
+> in the shape of a summary, and it will read as correct to everyone who checks it — including
+> the person who wrote it.
+
+The failure mode is specifically that it *reads* as a summary. A missing element is visible; a
+missing *specificity* is not, because the generic sentence occupies the same space and the same
+grammar as the real one.
+
 ---
 
 ## A fourth check for whoever writes the seventh reference

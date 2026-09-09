@@ -1,11 +1,12 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { Round } from '@/components/interview/round'
-import { Setup, type Pool } from '@/components/interview/setup'
+import { Setup } from '@/components/interview/setup'
 import { hasKey } from '@/lib/ai/client'
 import { pastRounds, readLedgerPool, readTopicPool } from '@/lib/data/interview'
 import {
   LENGTHS,
+  type Pool,
   LEVELS,
   ROUND_TYPES,
   type Length,
@@ -38,12 +39,22 @@ export default async function InterviewPage({ searchParams }: PageProps<'/interv
   const roundType = (ROUND_TYPES as readonly string[]).includes(String(type))
     ? (type as RoundType)
     : null
-  const length = (LENGTHS as readonly number[]).includes(Number(minutes))
+  /*
+    Two readings of the same params, and they are not the same question.
+
+    The ROOM needs a length and a level to run, so an absent one takes a default.
+    SETUP must be able to say "nothing chosen yet" — defaulting there would
+    pre-select two of the three gates and make the disabled button a fiction.
+  */
+  const chosenLength = (LENGTHS as readonly number[]).includes(Number(minutes))
     ? (Number(minutes) as Length)
-    : 45
-  const who = (LEVELS as readonly string[]).includes(String(level))
+    : null
+  const chosenLevel = (LEVELS as readonly string[]).includes(String(level))
     ? (level as Level)
-    : ('staff' as Level)
+    : null
+
+  const length = chosenLength ?? 45
+  const who = chosenLevel ?? ('staff' as Level)
 
   if (roundType !== null) {
     const opening = await speak({ roundType, level: who, turns: [], intent: 'ask' })
@@ -79,7 +90,10 @@ export default async function InterviewPage({ searchParams }: PageProps<'/interv
         level={who}
         opening={opening.text}
         openingTopicId={opening.topicId}
-        past={history.map((round) => round.overall)}
+        openingTopicTitle={opening.topicTitle}
+        openingTopicWeak={opening.topicWeak}
+        /* The date rides along — the sparkline labels its columns with it. */
+        past={history}
         poolSize={poolSize}
       />
     )
@@ -87,19 +101,37 @@ export default async function InterviewPage({ searchParams }: PageProps<'/interv
 
   const [pool, ledger] = await Promise.all([readTopicPool(), readLedgerPool()])
 
+  /*
+    Counted per shape, because the three kinds of round draw on different things
+    — see `poolLine`. Quizzes are counted apart from topics rather than folded
+    in: a category of twenty quizzes and one topic is not an eight-concept round.
+  */
   const poolFor = (option: RoundType): Pool => {
-    if (option === 'behavioural') return { topics: ledger.length, weak: 0 }
-    if (option === 'mixed') return { topics: pool.length, weak: pool.filter((t) => t.confidence === 'weak').length }
-    const category = CATEGORY[option]
-    const mine = pool.filter((topic) => topic.category === category)
-    return { topics: mine.length, weak: mine.filter((topic) => topic.confidence === 'weak').length }
+    if (option === 'behavioural') {
+      return {
+        topics: ledger.filter((item) => item.kind === 'adr').length,
+        weak: 0,
+        quizzes: 0,
+        incidents: ledger.filter((item) => item.kind === 'incident').length,
+      }
+    }
+
+    const mine =
+      option === 'mixed' ? pool : pool.filter((topic) => topic.category === CATEGORY[option])
+
+    return {
+      topics: mine.filter((topic) => topic.kind === 'topic').length,
+      weak: mine.filter((topic) => topic.confidence === 'weak').length,
+      quizzes: mine.filter((topic) => topic.kind === 'quiz').length,
+      incidents: 0,
+    }
   }
 
   return (
     <Setup
       pools={Object.fromEntries(ROUND_TYPES.map((option) => [option, poolFor(option)])) as Record<RoundType, Pool>}
-      minutes={length}
-      level={who}
+      minutes={chosenLength}
+      level={chosenLevel}
     />
   )
 }

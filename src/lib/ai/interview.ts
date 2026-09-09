@@ -90,8 +90,10 @@ const SCORING_PROMPT = [
   'precision  — were the answers exact, or true-but-vague enough to be unfalsifiable?',
   'enquiry    — did they ask clarifying questions, and were they load-bearing? Asking counts FOR them.',
   '',
-  'Also give an overall 0-100, a one-or-two-sentence summary of where they were strong and where',
-  'they went thin, a note per dimension, and a per-question result with its topic_id and a score.',
+  'Also give an overall 0-100; a `verdict` of at most eight words naming the single shape of the',
+  'round ("Strong on mechanism, thin on consequence"); a one-or-two-sentence `summary` saying where',
+  'they were strong and where they went thin; a note per dimension; and a per-question result with',
+  'its topic_id and a score.',
   '',
   'Score what was SAID. Do not consider who was asking or how hard they pushed.',
   'Do not count anything — how many questions there were, how many hints were used, how many',
@@ -101,7 +103,7 @@ const SCORING_PROMPT = [
 const SCORECARD_SCHEMA = {
   type: 'object',
   additionalProperties: false,
-  required: ['recall', 'depth', 'precision', 'enquiry', 'overall', 'summary', 'questions'],
+  required: ['recall', 'depth', 'precision', 'enquiry', 'overall', 'verdict', 'summary', 'questions'],
   properties: {
     ...Object.fromEntries(
       ['recall', 'depth', 'precision', 'enquiry'].map((dimension) => [
@@ -115,6 +117,7 @@ const SCORECARD_SCHEMA = {
       ]),
     ),
     overall: { type: 'integer' },
+    verdict: { type: 'string' },
     summary: { type: 'string' },
     questions: {
       type: 'array',

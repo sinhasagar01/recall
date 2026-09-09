@@ -6,27 +6,46 @@ import { Button } from '@/components/ui/button'
 import {
   canRewind,
   DIMENSIONS,
+  METER_SEGMENTS,
+  meterSegments,
+  ROUND_LABEL,
+  scoreTone,
+  sparkLabel,
   offersFrom,
   scoreBand,
   type RewindResult,
+  type Dimension,
   type Length,
+  type Level,
   type RoundCounts,
   type RoundType,
   type Scorecard,
 } from '@/lib/domain/interview'
 import { plural } from '@/lib/domain/plural'
 
-/*
-  The round's name as a person writes it. The stored value is a lowercase enum,
-  and rendering it raw put "javascript · 20 minutes" in an h1 — caught by looking
-  at the page beside the reference, which says "JavaScript · 45 minutes".
-*/
-const ROUND_LABEL: Record<RoundType, string> = {
-  javascript: 'JavaScript',
-  react: 'React',
-  typescript: 'TypeScript',
-  behavioural: 'Behavioural',
-  mixed: 'Mixed',
+/**
+ * One complete class string per dimension, so Tailwind's scanner sees a name it
+ * can emit. Presentational, so it stays here rather than in `lib/domain` — that
+ * file holds rules and no Tailwind.
+ */
+const HUE: Record<Dimension, string> = {
+  recall: '[--h:var(--mint)] [--h2:var(--emerald)]',
+  depth: '[--h:var(--rose)] [--h2:var(--pink)]',
+  precision: '[--h:var(--volt)] [--h2:var(--indigo)]',
+  enquiry: '[--h:var(--teal)] [--h2:var(--teal-2)]',
+}
+
+/** The 0–100 scale in three bands: emerald, violet, rose. */
+const TONE = {
+  hi: { bar: '[background:var(--g-hi)]', ink: 'text-[var(--mint)]' },
+  mid: { bar: '[background:var(--g-mid)]', ink: 'text-[var(--volt)]' },
+  lo: { bar: '[background:var(--g-lo)]', ink: 'text-[var(--rose)]' },
+}
+
+const LEVEL_WORDS: Record<Level, string> = {
+  friendly: 'friendly senior',
+  staff: 'staff, terse',
+  skeptical: 'skeptical principal',
 }
 
 /**
@@ -67,6 +86,7 @@ export function Scorecard({
   counts,
   roundType,
   minutes,
+  level,
   elapsedSeconds,
   past,
   poolSize,
@@ -78,9 +98,16 @@ export function Scorecard({
   counts: RoundCounts
   roundType: RoundType
   minutes: Length
+  /** Named in the eyebrow — the round is "JavaScript · 45 minutes · staff, terse". */
+  level: Level
   elapsedSeconds: number
-  /** This round type's previous scores, oldest first. Numbers only — see below. */
-  past: number[]
+  /**
+   * This round type's previous rounds, oldest first.
+   *
+   * The date comes with the score because the sparkline labels its columns —
+   * `pastRounds` already selects `created_at` and the page was discarding it.
+   */
+  past: { overall: number; created_at: string }[]
   /** How many topics the pool held, so the round can say what it did NOT ask. */
   poolSize: number
   /** Questions kept as quizzes during the round. Titles only — the rows are real. */
@@ -168,6 +195,14 @@ export function Scorecard({
     rewound: offersFrom(scorecard, rewound)[index]?.rewound ?? false,
   }))
 
+  /*
+    Past rounds plus this one. `created_at` for the current round is stamped
+    here rather than read back — the row was just written and re-reading it to
+    label a column would be a query for a date we already know.
+  */
+  const today = new Date()
+  const rounds = [...past, { overall: scorecard.overall, created_at: today.toISOString() }]
+
   const ticked = offers.filter((offer) => offer.ticked)
   const overBy = Math.max(0, elapsedSeconds - minutes * 60)
 
@@ -185,66 +220,180 @@ export function Scorecard({
 
   return (
     <main
-      className="mx-auto max-w-[840px] px-6 py-8"
+      className="mx-auto max-w-[1020px] px-[26px] pt-7 pb-20"
       data-testid="scorecard"
       data-round-id={roundId ?? undefined}
     >
-      <div className="flex flex-wrap items-center gap-6 rounded-xl border border-rule bg-surface p-6">
-        <div
-          data-testid="round-score"
-          className="grid size-[104px] flex-none place-items-center rounded-full border-4 border-[var(--volt)] text-[var(--volt-ink)]"
-        >
-          <span className="font-display text-[32px] font-medium">{scorecard.overall}</span>
+      {/*
+        ── The hero, and what it is NOT ───────────────────────────────────────
+        No SVG and no conic gradient. A ring built from `conic-gradient` rendered
+        as a black disc twice before; the figure here is a 116px numeral with a
+        gradient clipped to its glyphs, over a twenty-segment meter. Both are
+        ordinary boxes.
+      */}
+      <div className="relative overflow-hidden rounded-[22px] text-[var(--sc-ink)] [background:var(--sc-hero),var(--sc-base)] [box-shadow:var(--sc-shadow)]">
+        {/* Two decorative layers, as elements — the repo uses no ::before utilities. */}
+        <span aria-hidden="true" className="pointer-events-none absolute inset-0 [background:var(--sc-sheen)]" />
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute -top-[140px] -right-[90px] size-[420px] rounded-full [background:var(--sc-blob)]"
+        />
+
+        <div className="relative z-[1] px-[34px] pt-[30px] pb-[26px]">
+          <div className="flex flex-wrap items-center gap-3.5">
+            <span
+              data-testid="scorecard-eyebrow"
+              className="font-mono text-[10px] tracking-[0.17em] text-[var(--sc-eyebrow)] uppercase"
+            >
+              {ROUND_LABEL[roundType]} <em className="text-[var(--sc-ink-3)] not-italic">·</em>{' '}
+              {minutes} minutes <em className="text-[var(--sc-ink-3)] not-italic">·</em>{' '}
+              {LEVEL_WORDS[level]} <em className="text-[var(--sc-ink-3)] not-italic">·</em>{' '}
+              {sparkLabel(today.toISOString(), today) === 'today'
+                ? `${today.getDate()} ${today.toLocaleString('en-GB', { month: 'short' })}`
+                : ''}
+            </span>
+            <span className="ml-auto inline-flex items-center gap-2 rounded-full border border-[var(--band-line)] bg-[var(--band-soft)] px-[13px] py-[5px] font-mono text-[10px] tracking-[0.14em] text-[var(--band)] uppercase">
+              ◆ {scoreBand(scorecard.overall)}
+            </span>
+          </div>
+
+          <div className="mt-6 flex flex-wrap items-end gap-5">
+            <span className="flex flex-none items-end gap-2.5">
+              <span
+                data-testid="round-score"
+                className="bg-clip-text font-display text-[84px] leading-[0.82] font-semibold tracking-[-0.05em] text-transparent [background-image:var(--sc-num)] [filter:var(--sc-num-glow)] [-webkit-background-clip:text] md:text-[116px]"
+              >
+                {scorecard.overall}
+              </span>
+              <span className="pb-3.5 font-mono text-[12.5px] tracking-[0.06em] text-[var(--sc-ink-3)]">
+                / 100
+              </span>
+            </span>
+
+            <div className="min-w-[250px] flex-1 pb-1.5">
+              <h1 className="font-display text-[26px] leading-[1.24] font-medium tracking-[-0.022em] text-white">
+                {scorecard.verdict}
+              </h1>
+              {scorecard.summary ? (
+                <p className="mt-2 max-w-[44ch] text-[14px] leading-[1.62] text-[var(--sc-ink-2)]">
+                  {scorecard.summary}
+                </p>
+              ) : null}
+            </div>
+          </div>
+
+          {/* Twenty segments, one per five points. The number beside it is the accessible value. */}
+          <div className="mt-[26px] flex gap-[3px]" aria-hidden="true">
+            {meterSegments(scorecard.overall).map((segment, index) => (
+              <i
+                key={index}
+                data-lit={segment.on}
+                className={`h-[9px] flex-1 rounded-[2px] ${
+                  !segment.on
+                    ? 'bg-[var(--sc-track)]'
+                    : index < METER_SEGMENTS / 2
+                      ? '[background:var(--meter-lo)]'
+                      : '[background:var(--meter-hi)]'
+                } ${segment.tip ? '[box-shadow:var(--meter-tip)]' : ''}`}
+              />
+            ))}
+          </div>
+          <div className="mt-2.5 flex justify-between font-mono text-[9.5px] tracking-[0.08em] text-[var(--sc-ink-3)]">
+            <span>0</span>
+            <span>
+              <b className="font-medium text-[var(--sc-ink-2)]">{scorecard.overall}</b> this round
+            </span>
+            <span>100</span>
+          </div>
         </div>
 
-        <div className="min-w-0 flex-1">
-          <p className="font-mono text-[11px] text-[var(--volt-ink)]">{scoreBand(scorecard.overall)}</p>
-          <h1 className="mt-1 font-display text-[24px] font-medium">
-            {ROUND_LABEL[roundType]} · {minutes} minutes
-          </h1>
-          <p className="mt-1.5 text-meta leading-[1.6] text-ink-2">{scorecard.summary}</p>
-
-          {/* Counted, not judged. */}
-          <p className="mt-3 flex flex-wrap gap-x-4 gap-y-1 font-mono text-[11px] text-ink-3">
-            <span data-testid="stat-answered">
-              {counts.answered}/{counts.asked} answered
-            </span>
-            <span>
-              {counts.followUpsHeld}/{counts.followUpsOffered} follow-ups held
-            </span>
-            <span>{plural(counts.questionsAsked, 'question')} asked</span>
-            <span data-testid="stat-hints">{plural(counts.hintsUsed, 'hint')} used</span>
-            {/* The clock's teeth: advisory during the round, recorded after it. */}
-            {overBy > 0 ? (
-              <span data-testid="stat-over">{Math.round(overBy / 60)} min over</span>
-            ) : null}
-          </p>
+        {/*
+          Counted, never judged — and the card's own foot rather than a line of
+          prose under it. These come from `countRound` over the transcript; the
+          four dimensions below come from the model. They sit apart so a wrong
+          count is a visible disagreement rather than a silently different number.
+        */}
+        <div className="relative z-[1] flex flex-wrap border-t border-[var(--sc-stats-line)] bg-[var(--sc-stats-bg)] backdrop-blur-[14px]">
+          {[
+            { key: 'stat-answered', value: `${counts.answered}/${counts.asked}`, label: 'answered' },
+            {
+              key: 'stat-follow-ups',
+              value: `${counts.followUpsHeld}/${counts.followUpsOffered}`,
+              label: 'follow-ups held',
+            },
+            { key: 'stat-questions', value: String(counts.questionsAsked), label: 'questions asked' },
+            {
+              key: 'stat-hints',
+              value: String(counts.hintsUsed),
+              label: counts.hintsUsed === 1 ? 'hint used' : 'hints used',
+            },
+            ...(past.length > 0
+              ? [
+                  {
+                    key: 'versus-last',
+                    value: `${scorecard.overall - past[past.length - 1].overall >= 0 ? '+' : ''}${scorecard.overall - past[past.length - 1].overall}`,
+                    label: `vs last ${ROUND_LABEL[roundType]}`,
+                    up: scorecard.overall - past[past.length - 1].overall >= 0,
+                  },
+                ]
+              : []),
+            ...(overBy > 0
+              ? [{ key: 'stat-over', value: `${Math.round(overBy / 60)}`, label: 'min over' }]
+              : []),
+          ].map((stat) => (
+            <div
+              key={stat.key}
+              data-testid={stat.key}
+              className="flex-1 border-r border-[var(--sc-stat-rule)] px-[18px] py-4 last:border-r-0"
+            >
+              <b
+                data-testid={`${stat.key}-value`}
+                className={`block font-display text-[24px] leading-[1.1] font-medium tracking-[-0.015em] ${
+                  'up' in stat ? (stat.up ? 'text-[var(--emerald-2)]' : 'text-[var(--coral)]') : 'text-white'
+                }`}
+              >
+                {stat.value}
+              </b>
+              <span className="mt-[7px] block font-mono text-[9px] tracking-[0.13em] text-[var(--sc-stat-ink)] uppercase">
+                {stat.label}
+              </span>
+            </div>
+          ))}
         </div>
       </div>
 
       <h2 className="mt-8 mb-3 font-mono text-mono font-medium tracking-[0.16em] text-ink-3 uppercase">
         Where the score came from
       </h2>
-      <div className="grid gap-3 sm:grid-cols-2" data-testid="dimensions">
+      {/*
+        A fixed hue per dimension, in every round you ever run — Depth is always
+        rose and Recall always emerald. That is what makes a scorecard readable
+        at a glance rather than needing to be read: the shape of the four bars
+        means something before the numbers do.
+      */}
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(206px,1fr))] gap-3.5" data-testid="dimensions">
         {DIMENSIONS.map((dimension) => (
           <div
             key={dimension}
             data-testid={`dimension-${dimension}`}
-            className="rounded-lg border border-rule bg-surface p-4"
+            className={`${HUE[dimension]} relative overflow-hidden rounded-[14px] border border-rule bg-surface px-[19px] py-[17px] shadow-[0_1px_2px_rgba(18,19,26,0.05)]`}
           >
-            <div className="flex items-baseline justify-between">
-              <span className="text-label font-medium capitalize">{dimension}</span>
-              <span className="font-display text-[20px] font-medium">
-                {scorecard.scores[dimension]}
-              </span>
+            <span aria-hidden="true" className="absolute inset-x-0 top-0 h-[3px] bg-[var(--h)]" />
+            <div className="font-mono text-[9.5px] tracking-[0.13em] text-ink-3 uppercase">
+              {dimension}
             </div>
-            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-2">
+            <div className="mt-[9px] mb-3 font-display text-[34px] leading-none font-semibold text-[var(--h)]">
+              {scorecard.scores[dimension]}
+            </div>
+            <div className="h-2 overflow-hidden rounded-[5px] border border-rule bg-surface-2">
               <i
-                className="block h-full rounded-full bg-[var(--volt)]"
+                className="block h-full rounded-[5px] [background:linear-gradient(90deg,var(--h2),var(--h))]"
                 style={{ width: `${scorecard.scores[dimension]}%` }}
               />
             </div>
-            <p className="mt-2 text-meta leading-[1.55] text-ink-2">{scorecard.notes[dimension]}</p>
+            <p className="mt-[11px] text-[12.5px] leading-[1.5] text-ink-2">
+              {scorecard.notes[dimension]}
+            </p>
           </div>
         ))}
       </div>
@@ -254,7 +403,7 @@ export function Scorecard({
           <h2 className="mt-8 mb-3 font-mono text-mono font-medium tracking-[0.16em] text-ink-3 uppercase">
             Question by question
           </h2>
-          <ul className="list-none rounded-lg border border-rule bg-surface px-4">
+          <ul className="list-none overflow-hidden rounded-[14px] border border-rule bg-surface shadow-[0_1px_2px_rgba(18,19,26,0.05)]">
             {scorecard.questions.map((question, index) => {
               const again = rewinds.find((result) => result.questionIndex === index)
 
@@ -262,9 +411,9 @@ export function Scorecard({
                 <li
                   key={index}
                   data-testid="question-row"
-                  className="border-b border-rule py-3.5 last:border-b-0"
+                  className="border-b border-rule px-[19px] py-[15px] last:border-b-0 hover:bg-surface-2"
                 >
-                  <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-4">
                     <div className="min-w-0 flex-1">
                       <p className="text-body font-medium">{question.title}</p>
                       <p className="mt-0.5 text-meta leading-[1.55] text-ink-2">{question.note}</p>
@@ -285,13 +434,21 @@ export function Scorecard({
                         </p>
                       ) : null}
                     </div>
-                    <div className="h-1.5 w-[120px] flex-none overflow-hidden rounded-full bg-surface-2">
+                    {/*
+                      The bar's band and the Rewind button read the SAME
+                      thresholds — `scoreTone` is built from `scoreBand`'s 70 and
+                      `OFFER_BELOW`. So a rose bar always has a Rewind beside it
+                      because they are one rule, not two numbers that agree.
+                    */}
+                    <div className="h-[9px] w-[150px] flex-none overflow-hidden rounded-[5px] border border-rule bg-surface-2">
                       <i
-                        className="block h-full rounded-full bg-[var(--volt)]"
+                        className={`block h-full rounded-[5px] ${TONE[scoreTone(question.score)].bar}`}
                         style={{ width: `${question.score}%` }}
                       />
                     </div>
-                    <span className="w-8 flex-none text-right font-display text-[18px] font-medium">
+                    <span
+                      className={`w-[34px] flex-none text-right font-mono text-[13px] font-semibold ${TONE[scoreTone(question.score)].ink}`}
+                    >
                       {question.score}
                     </span>
 
@@ -504,28 +661,64 @@ export function Scorecard({
 
             Your own scores. No benchmark, no percentile, nobody else.
           */}
-          <div
-            data-testid="sparkline"
-            className="flex items-end gap-2 rounded-lg border border-rule bg-surface p-4"
-          >
-            {[...past, scorecard.overall].map((value, index, all) => (
-              <div key={index} className="flex flex-1 flex-col items-center gap-1.5">
-                <i
-                  className={`block w-full rounded-t ${
-                    index === all.length - 1 ? 'bg-[var(--volt)]' : 'bg-[var(--volt-soft)]'
-                  }`}
-                  style={{ height: `${Math.max(4, value)}px` }}
-                />
-                <span className="font-mono text-[10px] text-ink-3">{value}</span>
-              </div>
-            ))}
-          </div>
-          {past.length > 0 ? (
-            <p className="mt-2 font-mono text-[11px] text-ink-3" data-testid="versus-last">
-              {scorecard.overall - past[past.length - 1] >= 0 ? '+' : ''}
-              {scorecard.overall - past[past.length - 1]} vs last {ROUND_LABEL[roundType]}
+          {/*
+            ── Each column resolves against a definite height ─────────────────
+            The column is a flex child of a 104px row, so it has one. The BAR's
+            own height is the percentage, and the fill inside it is `h-full` of
+            that. Nothing resolves a percentage against an implicit height, which
+            is what collapsed the previous version to nothing — and the version
+            before that clamped to `Math.max(4, value)` PIXELS, which made a
+            4-point round and a 40-point round almost the same bar.
+          */}
+          <div className="rounded-lg border border-rule bg-surface p-4">
+            <div data-testid="sparkline" className="flex h-[104px] items-stretch gap-2.5">
+              {rounds.map((round, index) => {
+                const now = index === rounds.length - 1
+                return (
+                  <div
+                    key={index}
+                    className="flex min-w-0 flex-1 flex-col justify-end gap-1.5"
+                  >
+                    <span
+                      className={`text-center font-mono text-[11px] leading-none ${
+                        now ? 'font-semibold text-[var(--mint)]' : 'text-ink-3'
+                      }`}
+                    >
+                      {round.overall}
+                    </span>
+                    <div
+                      data-testid="spark-bar"
+                      className="relative w-full overflow-hidden rounded-t-[5px] rounded-b-[2px] border border-rule bg-surface-2"
+                      style={{ height: `${Math.max(1, round.overall)}%` }}
+                    >
+                      <i
+                        className={`absolute inset-x-0 bottom-0 h-full rounded-t-[4px] rounded-b-[1px] ${
+                          now ? '[background:var(--spark-now)]' : '[background:var(--spark-bar)]'
+                        }`}
+                      />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            <div className="mt-2.5 flex gap-2.5 border-t border-rule pt-2.5">
+              {rounds.map((round, index) => (
+                <span
+                  key={index}
+                  className="min-w-0 flex-1 text-center font-mono text-[9.5px] text-ink-3"
+                >
+                  {sparkLabel(round.created_at, today)}
+                </span>
+              ))}
+            </div>
+
+            <p className="mt-3 text-meta text-ink-3">
+              {plural(rounds.length, 'round')}, your own scores only. No benchmark, no percentile,
+              nobody else. Bar height is the score out of 100, so a short bar is a low round rather
+              than an old one.
             </p>
-          ) : null}
+          </div>
         </>
       ) : null}
 

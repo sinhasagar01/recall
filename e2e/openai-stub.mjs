@@ -90,7 +90,9 @@ const interviewBody = (system, messages) => {
         precision: { score: 79, note: 'Mostly exact.' },
         enquiry: { score: 80, note: 'Both clarifying questions were load-bearing.' },
         overall: 74,
-        summary: 'Strong on mechanism, thin under follow-up.',
+        verdict: 'Strong on mechanism, thin on consequence',
+        summary:
+          'You knew what things were, and went shallow the moment a follow-up asked what follows from them.',
         /*
           Index 2 and 4 deliberately — the seed makes those `okay` and `strong`,
           NOT weak.

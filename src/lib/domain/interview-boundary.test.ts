@@ -119,7 +119,28 @@ describe('the interview scale never leaves the interview', () => {
    * words precisely because `rose`, `teal`, `band` and `gold` are ordinary
    * English and would match prose.
    */
-  const SCALE = ['--volt', '--gold', '--mint', '--rose', '--teal'] as const
+  const SCALE = [
+    '--volt',
+    '--gold',
+    '--mint',
+    '--rose',
+    '--teal',
+    /*
+      The composites the three screens draw with. Added when the screens were
+      built to the reference: a Tailwind arbitrary value cannot contain spaces,
+      so every gradient and shadow stack is a token — and a token the guard does
+      not know about is a token that can leave the tree unnoticed.
+
+      Counted against the source first, as always: all four were zero outside
+      this block. `--indigo`, `--blue` and `--slate` are NOT listed — they are
+      ordinary hues rather than scale positions, and a blue outside the interview
+      is not a 0–100 claim about anything.
+    */
+    '--mesh',
+    '--sc-',
+    '--meter-',
+    '--spark-',
+  ] as const
 
   /** Where the scale is allowed to be named. */
   const ALLOWED = [/^app\/\(interview\)\//, /^components\/interview\//]

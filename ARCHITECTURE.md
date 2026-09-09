@@ -3066,3 +3066,54 @@ the closing `indexOf` return `-1`, `slice(start, -1)` ran to the end of the file
 assertion quietly became a claim about the whole module. It failed loudly this time; with a
 `toContain` instead of a `not.toMatch` it would have failed open and passed from anywhere.
 Both anchors are asserted now, and the slice is required to be shorter than the file.
+
+### A screen that only renders correctly with data nobody seeds is untested
+
+`interview_rounds` reached **61 rows** locally. The seed clears topics, phases, ledger items and
+days for each fixture user, and never cleared rounds — so every run that finished one left it
+behind. Third instance of the same shape: **a seed clears what it created, and a later arc adds
+a table it does not know about.** Sources were the first, days the second.
+
+What is new is how it surfaced. The first two arrived as failing specs — a count that drifted, a
+unique key that collided. This arrived as a **screenshot**: a sparkline of six identical bars,
+every column labelled *today*, noticed only because the screen was being held up against its
+drawing. No assertion could have found it, because every assertion passed.
+
+**And the sharper half.** There were no seeded past rounds at all. The sparkline therefore
+rendered from whatever junk had accumulated, and in a clean database it renders one bar —
+which looks fine. It had already collapsed to nothing once, resolving a percentage against an
+implicit height, and it would have collapsed again without a single test going red.
+
+> **A screen that only renders correctly with data nobody seeds is untested, however many specs
+> pass.** The specs are exercising a shape the fixture cannot produce.
+
+The check is not "is there a spec for this screen" but **"what does this screen look like with
+the fixture, and is that the shape it is supposed to have?"** A sparkline needs several rounds
+with *different* scores or its whole job — comparison — is invisible. The fixture now seeds
+four, 52 / 48 / 61 / 65, dated back, so the heights differ and a wrong one is visible.
+
+**The rule for a seed, stated so the fourth instance does not happen:** a migration that adds a
+user-owned table adds a line to the seed's clear-down in the same change. And a surface whose
+correctness is a *shape* — a chart, a meter, a sparkline, a distribution — needs fixture data
+with spread, not merely fixture data.
+
+### Moving a guard to where the thing it protects now lives is not weakening it
+
+The scorecard's `h1` was asserted to contain `JavaScript`, guarding a real defect: the round
+type reached the screen as the stored enum, `javascript · 20 minutes`, caught by the first
+side-by-side. Building the hero to its drawing moved the round's name into the eyebrow and put
+the model's verdict in the `h1`, so that assertion failed — correctly, and for a reason that had
+nothing to do with the rule.
+
+The temptation at that moment is to soften it, because the quickest green is a looser matcher.
+
+> **The test of a relocated guard is whether the rule can still fail.** Not whether the
+> assertion still passes — whether there is a change to the code that would break it.
+
+The rule here was never *"the h1 says JavaScript"*. It was **"a stored enum must never reach the
+screen"**, and that is now checked on the eyebrow, where the name lives, with a negative on the
+lowercase form added — so the guard is strictly stronger than the one it replaced. Render the
+enum in either place and it goes red.
+
+The failure mode this avoids is the one the guard table already records twice: an assertion
+pointed at where a value *used* to be, passing while reading nothing.
