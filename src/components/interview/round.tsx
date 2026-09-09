@@ -173,6 +173,25 @@ export function Round({
         return
       }
 
+      /*
+        ── The map has to grow, and for a whole session it did not ────────────
+        `topicMeta` was seeded from the opening topic and never written again, so
+        the tag could name only the topic the round began on. Move on to a second
+        topic and it fell back to bare "JavaScript" — the id correct, the lookup
+        correct, and nothing to look up.
+
+        The edit meant to add this was applied with a replace that silently
+        matched nothing, and the script printed success anyway. See
+        ARCHITECTURE.md: an edit is applied when the file changed, not when the
+        script says so.
+      */
+      if (result.topicId !== null && result.topicTitle !== null) {
+        const id = result.topicId
+        const title = result.topicTitle
+        const weak = result.topicWeak
+        setTopicMeta((current) => ({ ...current, [id]: { title, weak } }))
+      }
+
       setTurns([
       ...next,
       {

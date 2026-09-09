@@ -183,7 +183,23 @@ const interviewBody = (system, messages) => {
       shape the parser wants is how the previous two attribution bugs survived.
     */
     if (last.includes('Move on.')) {
-      return turn('Different tack — what does the event loop do with a microtask?', '3f1c9a52-7b40-4e19-9d6a-0c1e5f8a2b77')
+      /*
+        ── Two skips, two shapes, and the FIRST is what the model really does ──
+        Moving on makes the interviewer pick a new topic, and the ordinary case
+        is that it picks a real one — an id we hold, for a topic that is not the
+        one the round opened on. That is the case the room got wrong, and the
+        first version of this stub never produced it: it returned an invented id,
+        which is the input that exercises the FIX rather than the input that
+        exercises the bug.
+
+        So the first skip names a seeded topic, and the second keeps the invented
+        one — a uuid naming nothing we hold, which `asUuid` cannot catch because
+        the only thing wrong with it is that it is not ours.
+      */
+      const secondSkip = (messages.filter((m) => String(m.content).includes('Move on.')).length) > 1
+      return secondSkip
+        ? turn('And once more — what does the event loop do with a microtask?', '3f1c9a52-7b40-4e19-9d6a-0c1e5f8a2b77')
+        : turn('Different tack — how does the stack order two queued callbacks?', STUB_TOPIC_IDS[4] ?? null)
     }
     return turn('Walk me through what a closure actually captures.', STUB_TOPIC_IDS[2] ?? null)
   }

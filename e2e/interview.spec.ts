@@ -561,8 +561,27 @@ test.describe('the room always says which topic it is asking about', () => {
     await page.getByTestId('move-on').click()
     await expect(page.getByTestId('question')).not.toHaveText(before, { timeout: 30_000 })
 
-    expect(await named('after moving on'), 'an unresolvable id must not replace a known one').toBe(
-      opening,
-    )
+    /*
+      ── The ordinary case, and the one the room got wrong ────────────────────
+      The interviewer moved to a topic we hold, so the tag must FOLLOW it. The
+      map of titles was seeded from the opening topic and never updated, so the
+      tag could only ever name the topic the round began on — every later one
+      showed as bare "JavaScript".
+    */
+    const afterSkip = await named('after moving on')
+    expect(afterSkip, 'the tag must follow the interviewer to a new topic').not.toBe(opening)
+
+    /*
+      ── And the other case, which is a different bug ─────────────────────────
+      A second skip, where the model invents a well-formed id naming nothing we
+      hold. There is no name to move to, so the tag keeps the one it has rather
+      than adopting an id it cannot resolve.
+    */
+    const second = await page.getByTestId('question').innerText()
+    await page.getByTestId('move-on').click()
+    await expect(page.getByTestId('question')).not.toHaveText(second, { timeout: 30_000 })
+
+    expect(await named('after a skip the model could not attribute'),
+      'an unresolvable id must not replace a known one').toBe(afterSkip)
   })
 })

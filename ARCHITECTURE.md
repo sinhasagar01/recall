@@ -3244,3 +3244,104 @@ label promised what the destination did not do**, on the only route out of that 
 the same defect one degree less invisible: a control that exists but does not do what its name
 says still cannot be caught by asserting it is present, and every check we had asserted exactly
 that.
+
+### The same defect in the tool doing the editing, not the tool doing the checking
+
+`topicMeta` was seeded from the opening topic and never written again, so the room's tag could
+name only the topic a round began on. Every later topic showed as bare `JavaScript` — the id
+correct, the lookup correct, and nothing to look up. It shipped to production and was found by
+pressing Move on.
+
+**The line that would have written it was never added.** The edit was applied with:
+
+```py
+s = s.replace("""      setTurns([\n        ...next,""", <the accumulation> + """      setTurns([\n        ...next,""")
+print("room state carries the tags")
+```
+
+The indentation had shifted, the pattern matched nothing, `replace` returned the string
+unchanged, and the script printed its success line because the print was unconditional. Every
+subsequent check agreed: the file compiled, the types were satisfied, the suite was green, and
+the declaration `const [topicMeta, setTopicMeta] = useState(...)` sat there with **one reference
+in the file**.
+
+**This is the harness's own defect, one tool upstream.** Twice today the perturbation harness
+decided a boolean by reading prose rather than a result, and the rule written for it was: *an
+exit code is the answer*. This is the editing side of the same mistake — a script that reports
+what it attempted rather than what it achieved.
+
+> **An edit is applied when the file changed, not when the script says so.** Assert the match
+> count before replacing, assert the text actually differs after, and never print a success line
+> that cannot fail.
+
+`perturb.mjs` already does exactly this, and says so in its own header: *"the file after the edit
+must equal `original.replace(old, new)` and must differ from the original"*, with a missing
+anchor as an **error, never a result**. The discipline existed, in this repo, applied to
+perturbations — and was not applied to the edits that write the code the perturbations check.
+
+Both halves of the assertion earn their place. Writing this fix, the first anchor was wrong
+again — different indentation, same shape — and `assert s.count(old) == 1` stopped it in the
+same second rather than after a deploy.
+
+### A stub written alongside a fix will describe the fix
+
+The test for that bug **passed while the bug was live**, and it passed for a reason worth
+naming.
+
+The stub's Move-on branch returned a **well-formed uuid naming nothing we hold** — the input
+that exercises the fix I had just written, which nulls an id it cannot resolve. The room then
+fell back to the topic already under discussion, a name was present, and the assertion was
+satisfied. The real model does something else entirely on that path: it picks **another real
+topic**, which is the input the room got wrong.
+
+So the stub described the code rather than the service. It was written in the same minutes as
+the fix, from the same mental model, and it encoded that model faithfully.
+
+**Same family as the stub returning uuids where the vendor returns slugs**, and the pair is
+worth holding together: one returned the shape the parser wanted, this returned the shape the
+new branch wanted. Both times the fixture agreed with the code because it was derived from it.
+
+> **A stub written alongside a fix will tend to describe the fix. The check is to ask what the
+> real service returns on that path — not what makes the new code run.**
+
+For a model call that means: what does it actually do here, in the ordinary case, not the edge
+the fix is about? On Move on the ordinary case is a new real topic. The stub now returns that
+first and the invented id second, so both branches are covered — and the two perturbations fail
+on **different assertions**, which is how you can tell they are two rules rather than one.
+
+### A rule recorded against one instrument does not transfer to the next
+
+The rule that would have prevented the `topicMeta` defect was **already written in this repo,
+before the defect existed**, in the header of `scripts/perturb.mjs`:
+
+> *Verification here is exact rather than heuristic: the file after the edit must equal
+> `original.replace(old, new)` and must differ from the original. Anything else throws. A
+> perturbation that cannot be applied is an ERROR, never a result.*
+
+That is precisely the rule the edit script needed. It was three feet away, in a file read many
+times this session, and it did not transfer — because it was written **about perturbations**,
+and the thing that needed it was an edit.
+
+**One mechanism, three instruments.** "Decide a boolean by looking at what a command reported,
+rather than at what it did" runs in three places here, and each had to learn it separately:
+
+| instrument | how it failed | when |
+| --- | --- | --- |
+| the perturbation checker | reported "not applied" for an edit that had applied | arcs 3 and 4 |
+| the test-result reader | read the runner's prose — a false bite, then a false pass | this session, twice |
+| the edit script | printed success for a replace that matched nothing | this session |
+
+The first learned it and wrote it down. The second learned it independently, twice, in opposite
+directions. The third was never asked, and the entry about the first was sitting in the file the
+whole time.
+
+> **The question to ask of any rule already in ARCHITECTURE.md is not "is this written down" but
+> "where else does this same mechanism run".** A rule attached to the instrument it was learned
+> on will be re-learned on every other instrument, at full price.
+
+This is a reading discipline for the document rather than a rule about code, and it is the one
+that would have saved the most time today. The entries here are indexed by the incident that
+produced them, which is how they get written and the wrong way to consult them. **Read them by
+mechanism**: when a rule is added, name the other places the same mechanism runs and say
+explicitly whether it applies there — even, and especially, when the answer is "not yet, because
+nothing there does this".
