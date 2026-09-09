@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { ChangePassword } from '@/components/topics/change-password'
 import { ExportButton } from '@/components/topics/export-button'
 import { RegisterSection } from '@/components/ui/register'
+import { BackToLibrary } from '@/components/ui/back-to-library'
 
 /*
   Two things. Nothing else.
@@ -56,9 +57,7 @@ export default function SettingsPage() {
           The way back. Every route in the (app) group offers one — e2e/wayfinding.spec.ts
           asserts it — and this page has no rail on mobile to fall back on.
         */}
-        <Link href="/library" className="text-label text-accent-ink underline">
-          ← Library
-        </Link>
+        <BackToLibrary />
       </div>
     </>
   )

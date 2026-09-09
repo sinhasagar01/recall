@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import { VoltButton } from '@/components/interview/volt-button'
+import { BackToLibrary } from '@/components/ui/back-to-library'
 import {
   LENGTHS,
   LEVELS,
@@ -138,6 +139,15 @@ export function Setup({
 
   return (
     <main className="mx-auto max-w-[1020px] px-[26px] pt-7 pb-20">
+      {/*
+        The interview group has no rail, so this page had no way back to the
+        library at all — the same absence the room has by design and this page
+        has by omission.
+      */}
+      <div className="mb-5">
+        <BackToLibrary>← Library</BackToLibrary>
+      </div>
+
       <h1 className="font-display text-[29px] font-medium tracking-[-0.022em]">Set up a round</h1>
       <p className="mt-1.5 max-w-[62ch] text-ink-2">
         Every question comes from your own library. Nothing is asked that you have not saved.

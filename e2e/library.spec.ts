@@ -192,3 +192,41 @@ test('the library is one grid — no "Recently learned" section remains', async 
   const grids = page.locator('main div[class*="grid-cols-1"]')
   await expect(grids).toHaveCount(1)
 })
+
+/*
+  The heading names where you are, and the line under it says only what nothing
+  else on the screen says.
+
+  It read "My knowledge" — a phrase about the product rather than a place — over
+  "63 topics · 47 need review", where 63 was every row and 24 of them were
+  quizzes. The chips directly below said "All 63 · Topics 39 · Quizzes 24".
+*/
+test.describe('the library header tells the truth', () => {
+  test.use({ viewport: { width: 1280, height: 900 } })
+
+  test('names the screen and does not restate the chips', async ({ page }) => {
+    await signInAs(page, 'few')
+
+    /*
+      Asserted by NAME rather than by reading the h1's text, so a heading that
+      says something else fails here rather than passing a looser check.
+    */
+    await expect(page.getByRole('heading', { level: 1, name: 'Library' })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1 })).not.toContainText('My knowledge')
+
+    const subtitle = page.getByTestId('library-subtitle')
+    await expect(subtitle).toContainText('Last practiced')
+
+    /*
+      The two duplicated counts are gone. A mixed library is never called
+      "topics", and the totals live on the chips where clicking them works.
+    */
+    await expect(subtitle, 'a mixed library is not "topics"').not.toContainText('topics')
+    await expect(subtitle, 'the Weak chip carries the review count').not.toContainText('need review')
+
+    // And the chips still carry them, with the right nouns.
+    const chips = page.getByRole('group', { name: 'Type' })
+    await expect(chips).toContainText('Topics')
+    await expect(chips).toContainText('Quizzes')
+  })
+})

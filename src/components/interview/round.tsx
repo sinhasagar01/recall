@@ -12,6 +12,7 @@ import {
 import { Scorecard as ScorecardView } from '@/components/interview/scorecard'
 import { Button } from '@/components/ui/button'
 import { VoltButton } from '@/components/interview/volt-button'
+import { BackToLibrary } from '@/components/ui/back-to-library'
 import {
   HINTS_PER_ROUND,
   countRound,
@@ -278,11 +279,12 @@ export function Round({
           </p>
         ) : null}
 
-        <p className="mt-6 text-meta">
-          <Link href="/interview" className="text-accent-ink underline">
+        <div className="mt-6 flex flex-wrap items-center gap-2.5">
+          <BackToLibrary />
+          <Link href="/interview" className="text-meta text-accent-ink underline">
             Set up another round
           </Link>
-        </p>
+        </div>
       </main>
     )
   }

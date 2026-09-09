@@ -14,7 +14,7 @@ export default function LibraryError({
     <>
       <div className="mb-[22px]">
         <h1 className="font-display text-page-title font-medium tracking-[-0.022em]">
-          My knowledge
+          Library
         </h1>
       </div>
 

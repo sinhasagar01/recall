@@ -18,6 +18,7 @@ import {
   confidenceOptionsFromCounts,
   difficultyOptionsFromCounts,
   formatRelativeTime,
+  librarySubtitle,
   libraryStatsFromCounts,
 } from '@/lib/domain/library'
 import { libraryCounts } from '@/lib/domain/library-counts'
@@ -303,20 +304,28 @@ export function LibraryView({
     setAdding(true)
   }
 
-  const subtitle = () => {
-    if (counts.total === 0) return 'Nothing saved yet'
-    if (isFiltered) return `${counts.matching} of ${counts.total} topics match`
-    return `${counts.total} ${counts.total === 1 ? 'topic' : 'topics'} · ${counts.needsReview} need review · last practiced ${formatRelativeTime(stats.lastPracticedAt, at)}`
-  }
 
   return (
     <>
       <div className="mb-[22px] flex items-start justify-between gap-5">
         <div>
+          {/*
+            "Library", matching the rail and the tab. A heading names where you
+            are; "My knowledge" is a phrase about the product, and it left the
+            one screen you are always on unable to say which screen it was.
+          */}
           <h1 className="font-display text-[24px] font-medium tracking-[-0.022em] md:text-page-title">
-            My knowledge
+            Library
           </h1>
-          <p className="mt-1 font-mono text-[11.5px] text-ink-3">{subtitle()}</p>
+          <p className="mt-1 font-mono text-[11.5px] text-ink-3" data-testid="library-subtitle">
+            {librarySubtitle({
+              total: counts.total,
+              matching: counts.matching,
+              isFiltered,
+              lastPracticedAt: stats.lastPracticedAt,
+              at,
+            })}
+          </p>
         </div>
 
         {/*

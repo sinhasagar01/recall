@@ -81,6 +81,26 @@ test.describe('every route in the app group can reach the library', () => {
     }
   })
 
+  /*
+    The same rule, past the (app) group.
+
+    It only ever walked (app), so /practice and /interview — the two groups with
+    no rail, and therefore the two that need it most — were never checked. Both
+    shipped with no way back: practice had one in five empty states and none in
+    a session, and interview had none anywhere.
+  */
+  test('the rail-less groups offer one too', async ({ page }) => {
+    await signInAs(page, 'few')
+
+    const railLess = DESTINATIONS.filter((route) => !APP_ROUTES.includes(route))
+    expect(railLess, 'the derivation must reach past (app)').toEqual(['/interview', '/practice'])
+
+    for (const route of railLess) {
+      await page.goto(route)
+      await expect(page.getByTestId('back-to-library').first()).toBeVisible()
+    }
+  })
+
   test('a topic offers a visible way back', async ({ page }) => {
     // `few` owns exactly two topics on every run; the general-purpose user is
     // cleared to zero by the seed and would have nothing to open.
@@ -278,6 +298,37 @@ test.describe('every destination can be reached without typing a URL', () => {
       await link.click()
       await expect(page).toHaveURL(new RegExp(`${route}(\\?|$)`))
     }
+  })
+})
+
+test.describe('the rail offers the action the drawing puts in it', () => {
+  test.use({ viewport: { width: 1280, height: 900 } })
+
+  /*
+    design-reference.html:439 draws a full-width `+ Add topic` below the rail's
+    nav. The build never had it: phase 3 created the layout with a comment saying
+    it belonged to "Phase 4/5", phase 5 built the nav and rewrote the file, and
+    the comment recording the obligation went with it.
+
+    Asserted from a page that is NOT the library, because the library's own
+    header has a second one and a check that cannot tell them apart would pass on
+    the wrong button.
+  */
+  test('+ Add topic is in the rail, from every page in the group', async ({ page }) => {
+    await signInAs(page, 'few')
+    await page.goto('/phases')
+
+    const rail = page.getByRole('complementary')
+    const add = rail.getByRole('link', { name: '+ Add topic' })
+
+    await expect(add).toBeVisible()
+    await expect(add, 'it opens the form rather than merely landing on the library').toHaveAttribute(
+      'href',
+      '/library?add=1',
+    )
+
+    await add.click()
+    await expect(page).toHaveURL(/\/library\?add=1/)
   })
 })
 

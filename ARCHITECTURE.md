@@ -3177,3 +3177,49 @@ figure against the thing it claims to be progress through.
 Both of these would have been caught by a walk on any earlier session. Neither was, because the
 walks were navigating to a page and reading it, and this needed a round played end to end — the
 figures only disagree once there are enough turns for them to disagree about.
+
+### A missing control renders nothing, so nothing sees it
+
+Three controls have shipped absent while their drawing had them: the rail's `+ Add topic`, the
+interview entry point, and the room's `Move on`. They share a cause, and it is about process
+rather than about any guard.
+
+**A wrong control is visible. A missing one is not** — it renders nothing, occupies no space,
+and throws no error. No test fails, because a test asserts what is there. No type fails, because
+absence type-checks. No review catches it, because reviews read a diff and a diff shows what was
+written. The **only** artefact that lists what ought to exist is the drawing.
+
+All three obligations lived somewhere that was not the drawing and not a task:
+
+| | where the obligation lived | what destroyed it |
+| --- | --- | --- |
+| rail `+ Add topic` | a comment in `layout.tsx` | phase 5 rewrote that file |
+| interview entry point | a plan sentence stating only the negative | nothing — it was never a positive |
+| `Move on` | the drawing | the plan summarised it away |
+
+**The first is the sharpest, because it looks like diligence.** Phase 3 wrote, in the file it
+was creating:
+
+> The mock's rail also holds the nav with counts and the "+ Add topic" button — those are
+> Phase 4/5, and inventing them now would mean building the library UI this phase said not to
+> build.
+
+That is a correct decision, correctly reasoned, and recorded in the worst possible place. Phase
+5 built the nav with counts, rewrote `layout.tsx`, and the comment went with it. **A comment
+defers work to the file, and the file is what the later arc rewrites — so the note is destroyed
+by the act it was waiting for.**
+
+> **An obligation deferred to a later arc belongs in TASKS.md, never in a code comment.** A
+> comment is a note to whoever reads that file; a deferral is a note to whoever plans the next
+> arc, and those are not the same person or the same moment.
+
+It survived from phase 3 to arc 7 — six arcs — **by being invisible rather than by being
+remembered**. Nobody decided to keep deferring it. There was nothing left to decide about.
+
+**A smaller instance of the same class, from the same search.** The practice page's *"Not enough
+to practice yet"* state offered `+ Add a topic`, pointing at `/library` — which lands you in the
+library with no form open. Nothing was missing here; it was built, it rendered, it worked. **The
+label promised what the destination did not do**, on the only route out of that state. That is
+the same defect one degree less invisible: a control that exists but does not do what its name
+says still cannot be caught by asserting it is present, and every check we had asserted exactly
+that.

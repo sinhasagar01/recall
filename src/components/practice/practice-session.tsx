@@ -16,6 +16,7 @@ import { CONFIDENCE_LABEL, GRADE_TO_CONFIDENCE, gradeQuiz, type Grade } from '@/
 import { topicPath } from '@/lib/domain/library'
 import { sessionSummary, sessionTally, type GradedResult } from '@/lib/domain/practice-session'
 import type { Topic } from '@/lib/domain/types'
+import { BackToLibrary } from '@/components/ui/back-to-library'
 
 const GRADES = [
   { grade: 'didnt-know', label: "Didn't know it", hint: 'comes back first' },
@@ -159,12 +160,9 @@ export function PracticeSession({
           <span className="font-mono text-[11.5px] text-ink-3">
             {index + 1} / {queue.length}
           </span>
-          <Link
-            href="/library"
-            className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-rule-strong bg-surface px-3 py-1.5 text-label font-medium text-ink-2 hover:border-ink-3 hover:text-ink"
-          >
-            End session <Kbd>Esc</Kbd>
-          </Link>
+          <BackToLibrary>
+                End session <Kbd>Esc</Kbd>
+              </BackToLibrary>
         </div>
       </div>
 
@@ -364,12 +362,7 @@ function Complete({ results, count }: { results: GradedResult[]; count: number }
         >
           Practice {count} more
         </Link>
-        <Link
-          href="/library"
-          className="inline-flex cursor-pointer items-center rounded-md border border-transparent px-[18px] py-3 text-body font-medium text-ink-2 hover:bg-surface-2 hover:text-ink"
-        >
-          Back to library
-        </Link>
+        <BackToLibrary />
       </div>
     </div>
   )

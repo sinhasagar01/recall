@@ -7,6 +7,7 @@ import { railCounts } from '@/lib/data/library'
 import { practiceQueue } from '@/lib/data/practice'
 import { getTopic, signedImageUrl } from '@/lib/data/topics'
 import type { Topic } from '@/lib/domain/types'
+import { BackToLibrary } from '@/components/ui/back-to-library'
 import {
   canPracticeBelowMinimum,
   meetsPracticeMinimum,
@@ -158,12 +159,24 @@ export default async function PracticePage({ searchParams }: PageProps<'/practic
         body={`You have ${total} ${total === 1 ? 'topic' : 'topics'} saved. Practice starts at ${PRACTICE_MINIMUM} — below that it's just re-reading the same card.`}
         action={
           <>
+            {/*
+              `?add=1`, not `/library`. It said "+ Add a topic" and delivered you
+              to the library with no form open — the label promised the thing the
+              destination did not do. The FAB and the N shortcut both use this
+              parameter; this is the third caller, not a new mechanism.
+            */}
             <Link
-              href="/library"
-              className="inline-flex cursor-pointer items-center rounded-md border border-accent bg-accent px-[18px] py-3 text-body font-medium text-white hover:border-accent-ink hover:bg-accent-ink"
+              href="/library?add=1"
+              className="inline-flex min-h-11 cursor-pointer items-center rounded-md border border-accent bg-accent px-[18px] py-3 text-body font-medium text-white hover:border-accent-ink hover:bg-accent-ink"
             >
               + Add a topic
             </Link>
+            {/*
+              And a plain way back, because the one above is an action rather
+              than a destination. This state was the only route in the group
+              whose sole /library link was labelled something else.
+            */}
+            <BackToLibrary />
             {/*
               A hard floor that cannot be overridden is the kind of thing that
               makes a personal tool annoying.
@@ -213,13 +226,3 @@ async function imageUrls(queue: Topic[]): Promise<Record<string, string>> {
   return Object.fromEntries(entries.filter(([, url]) => url !== null) as [string, string][])
 }
 
-function BackToLibrary() {
-  return (
-    <Link
-      href="/library"
-      className="inline-flex cursor-pointer items-center rounded-md border border-rule-strong bg-surface px-3.5 py-2.5 text-label font-medium text-ink hover:border-ink-3"
-    >
-      Back to library
-    </Link>
-  )
-}
