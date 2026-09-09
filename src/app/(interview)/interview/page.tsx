@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { Round } from '@/components/interview/round'
 import { Setup } from '@/components/interview/setup'
+import { ANSWER_MODES, type AnswerMode } from '@/lib/domain/voice'
 import { hasKey } from '@/lib/ai/client'
 import { pastRounds, readLedgerPool, readTopicPool } from '@/lib/data/interview'
 import {
@@ -35,7 +36,7 @@ const CATEGORY: Record<string, string> = {
 export default async function InterviewPage({ searchParams }: PageProps<'/interview'>) {
   if (!hasKey()) notFound()
 
-  const { type, minutes, level } = await searchParams
+  const { type, minutes, level, mode } = await searchParams
   const roundType = (ROUND_TYPES as readonly string[]).includes(String(type))
     ? (type as RoundType)
     : null
@@ -49,6 +50,16 @@ export default async function InterviewPage({ searchParams }: PageProps<'/interv
   const chosenLength = (LENGTHS as readonly number[]).includes(Number(minutes))
     ? (Number(minutes) as Length)
     : null
+  /*
+    Validated like the other three, and defaulting to typing for the same reason
+    the setup screen does: a default cannot ask for anything, and voice raises a
+    microphone prompt. An unknown value is typing rather than an error — a
+    mistyped query string should start a round, not refuse one.
+  */
+  const answerMode = (ANSWER_MODES as readonly string[]).includes(String(mode))
+    ? (mode as AnswerMode)
+    : ANSWER_MODES[0]
+
   const chosenLevel = (LEVELS as readonly string[]).includes(String(level))
     ? (level as Level)
     : null
@@ -85,6 +96,7 @@ export default async function InterviewPage({ searchParams }: PageProps<'/interv
 
     return (
       <Round
+        mode={answerMode}
         roundType={roundType}
         minutes={length}
         level={who}

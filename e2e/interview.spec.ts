@@ -39,7 +39,7 @@ test.describe('interview mode', () => {
     await expect(javascript).toContainText('2 weak')
 
     /*
-      ── Three defaults, three checks, on arrival ──────────────────────────
+      ── Four defaults, four checks, on arrival ────────────────────────────
       Every group starts on its first option, so the summary is true before you
       touch anything and the ticks say these are yours to change. Asserted
       WITHOUT clicking, because the point is the arrival state — clicking first
@@ -48,14 +48,22 @@ test.describe('interview mode', () => {
       This replaces a gate. `Enter the room` was disabled until all three were
       chosen; a round cannot be unconfigured now, so there is nothing to gate,
       and a button that is never disabled is asserted as never disabled.
+
+      Three groups became four when voice arrived, and the count moved with it —
+      which is the point of counting rather than naming: a group that shipped
+      without a default would fail this without anyone adding an assertion.
     */
     await expect(page.getByTestId('enter-room'), 'nothing left to gate').toBeEnabled()
     await expect(page.getByTestId('type-check'), 'the default round shows its check').toHaveCount(1)
-    await expect(page.getByTestId('pill-check'), 'and both pills theirs').toHaveCount(2)
+    await expect(
+      page.getByTestId('pill-check'),
+      'and the three pill groups theirs — length, interviewer, how you answer',
+    ).toHaveCount(3)
 
     await expect(page.getByTestId('round-type-javascript')).toHaveAttribute('data-picked', 'true')
     await expect(page.getByTestId('length-20')).toHaveAttribute('data-picked', 'true')
     await expect(page.getByTestId('level-friendly')).toHaveAttribute('data-picked', 'true')
+    await expect(page.getByTestId('mode-typing')).toHaveAttribute('data-picked', 'true')
 
     // A range, never a figure — how much comes back is what you are paying to find out.
     await expect(page.getByTestId('cost-estimate')).toHaveText(/\d+k–\d+k tokens · \$\d+\.\d\d–\$\d+\.\d\d/)
@@ -64,7 +72,7 @@ test.describe('interview mode', () => {
     await page.getByTestId('length-45').click()
     await expect(page.getByTestId('length-45')).toHaveAttribute('data-picked', 'true')
     await expect(page.getByTestId('length-20')).toHaveAttribute('data-picked', 'false')
-    await expect(page.getByTestId('pill-check'), 'still one per group').toHaveCount(2)
+    await expect(page.getByTestId('pill-check'), 'still one per group').toHaveCount(3)
 
     // Absent, not disabled: session one ships five types.
     await expect(page.getByTestId('round-type-dsa')).toHaveCount(0)
@@ -233,6 +241,95 @@ test.describe('interview mode', () => {
     Ordered after the test that already marks that topic weak, so pressing again
     changes nothing anyone is watching.
   */
+  test('how you answer defaults to typing, and the round carries the choice', async ({ page }) => {
+    /*
+      The fourth group. Typing is the default because a default cannot ask for
+      anything — choosing voice raises a microphone permission prompt, and a
+      default that opens an OS dialog before you have chosen anything is not a
+      default.
+    */
+    await signInAs(page, 'extract')
+    await page.goto('/interview')
+
+    await expect(page.getByTestId('answer-mode')).toBeVisible()
+    await expect(page.getByTestId('mode-typing')).toHaveAttribute('data-picked', 'true')
+    await expect(page.getByTestId('mode-voice')).toHaveAttribute('data-picked', 'false')
+
+    // What leaves, named where the choice is made — not in a settings page.
+    await expect(page.getByTestId('voice-privacy')).toContainText('speech service')
+
+    await page.getByTestId('mode-voice').click()
+    await page.getByRole('button', { name: 'Enter the room' }).click()
+
+    await expect(page).toHaveURL(/mode=voice/)
+    await expect(page.getByTestId('mic')).toBeVisible({ timeout: 30_000 })
+
+    /*
+      And the box still works. Voice is a second way in, never a replacement —
+      a recogniser that mishears one word should cost a correction, not the
+      answer.
+    */
+    await page.getByLabel('Your answer').fill('A live reference to the defining scope.')
+    /*
+      `exact`, because the microphone beside it is called "Speak your answer" —
+      which is the right label and the reason the send button needs naming
+      precisely rather than by substring.
+    */
+    await page.getByRole('button', { name: 'Answer', exact: true }).click()
+    await expect(page.getByTestId('turn-follow-up')).toBeVisible({ timeout: 30_000 })
+  })
+
+  test('a browser with no speech engine is told so, and is not offered voice', async ({
+    page,
+  }) => {
+    /*
+      The constructor is DELETED from the page, which is a real condition rather
+      than a simulated service — the distinction ARCHITECTURE.md records after
+      shipping two stubs derived from our own parser. Nothing here pretends to
+      recognise speech; it asserts what our code does when the API is absent.
+    */
+    await page.addInitScript(() => {
+      // @ts-expect-error — removing a global the types do not know about.
+      delete window.SpeechRecognition
+      // @ts-expect-error — same.
+      delete window.webkitSpeechRecognition
+    })
+
+    await signInAs(page, 'extract')
+    await page.goto('/interview')
+
+    await expect(page.getByTestId('no-voice')).toContainText('this browser does not have')
+    await expect(page.getByTestId('mode-voice')).toHaveCount(0)
+    // Absent, not disabled: no click would ever make it work.
+    await expect(page.getByTestId('mode-typing')).toHaveAttribute('data-picked', 'true')
+
+    /*
+      And the privacy line goes with the option. It describes a thing that
+      cannot happen here, and a warning about an impossibility is noise.
+    */
+    await expect(page.getByTestId('voice-privacy')).toHaveCount(0)
+  })
+
+  test('a deep link asking for voice on a browser without it starts a typing round', async ({
+    page,
+  }) => {
+    // The only way to select an option that is not rendered. It must not leave
+    // the room showing a microphone that cannot work.
+    await page.addInitScript(() => {
+      // @ts-expect-error — removing a global the types do not know about.
+      delete window.SpeechRecognition
+      // @ts-expect-error — same.
+      delete window.webkitSpeechRecognition
+    })
+
+    await signInAs(page, 'extract')
+    await page.goto('/interview?type=javascript&minutes=20&level=staff&mode=voice')
+
+    await expect(page.getByTestId('question')).toBeVisible({ timeout: 30_000 })
+    await expect(page.getByTestId('mic')).toHaveCount(0)
+    await expect(page.getByLabel('Your answer')).toBeVisible()
+  })
+
   test('the send hint names a shortcut that works from the answer field', async ({ page }) => {
     /*
       The room advertised `⌘↵ to send` with nothing behind it — no key handler
