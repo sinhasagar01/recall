@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recall — DSA and System design rounds</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;450;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#E9EAF0;--surface:#FFFFFF;--surface-2:#F5F5FA;--surface-3:#EDEEF4;
+  --ink:#12131A;--ink-2:#53555F;--ink-3:#83858F;--rule:#E1E1E9;--rule-strong:#C9C9D4;
+  --volt:#4F46E5;--volt-2:#6D63EF;--volt-ink:#3730A3;--volt-soft:#EEF0FE;
+  --gold:#B45309;--gold-ink:#92400E;--gold-soft:#FEF3E2;
+  --mint:#047857;--mint-ink:#065F46;--mint-soft:#E7F6F0;
+  --rose:#BE185D;--rose-ink:#9D174D;--rose-soft:#FDF0F5;
+  --teal:#0F766E;--teal-soft:#E6F4F2;
+  --mesh:radial-gradient(135% 120% at 0% 0%,#2E2178 0%,rgba(46,33,120,0) 56%),
+         radial-gradient(110% 130% at 100% 0%,#63308A 0%,rgba(99,48,138,0) 52%),
+         radial-gradient(130% 150% at 78% 130%,#0D6169 0%,rgba(13,97,105,0) 56%),#0E0F16;
+  --font-display:"Newsreader",Georgia,serif;--font-body:"IBM Plex Sans",system-ui,sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:14.5px;line-height:1.55;-webkit-font-smoothing:antialiased}
+code{font-family:var(--font-mono);font-size:.86em}
+.chrome{position:sticky;top:0;z-index:60;display:flex;gap:6px;align-items:center;padding:9px 16px;background:var(--surface);border-bottom:1px solid var(--rule);flex-wrap:wrap}
+.chrome__label{font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin-right:6px}
+.tab{font-family:var(--font-mono);font-size:11.5px;padding:5px 9px;border:1px solid transparent;border-radius:6px;background:none;color:var(--ink-2);cursor:pointer}
+.tab[aria-selected="true"]{background:var(--volt-soft);color:var(--volt-ink);border-color:var(--volt)}
+.screen{display:none}.screen[data-active]{display:block}
+.wrap{max-width:1000px;margin:0 auto;padding:28px 26px 80px}
+.page-title{font-family:var(--font-display);font-size:29px;font-weight:500;letter-spacing:-.022em}
+.eyebrow{font-family:var(--font-mono);font-size:10.5px;font-weight:500;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3)}
+.meta{font-family:var(--font-mono);font-size:11.5px;color:var(--ink-3)}
+.rule{display:flex;align-items:center;gap:12px;margin:28px 0 12px}
+.rule::after{content:"";flex:1;height:1px;background:var(--rule)}
+.note{max-width:70ch;color:var(--ink-2);font-size:13.5px;margin-top:24px;padding-top:16px;border-top:1px solid var(--rule)}
+.callout{background:linear-gradient(135deg,#F6F7FE,#fff);border:1px solid rgba(79,70,229,.3);border-left:3px solid var(--volt);border-radius:14px;padding:15px 19px;margin:20px 0;max-width:74ch}
+.callout__t{font-weight:600;color:var(--volt-ink);margin-bottom:4px}
+.btn{font-family:var(--font-body);font-size:13.5px;font-weight:500;display:inline-flex;align-items:center;gap:7px;padding:10px 15px;border-radius:6px;border:1px solid var(--rule-strong);background:var(--surface);color:var(--ink);cursor:pointer}
+.btn--volt{background:linear-gradient(135deg,var(--volt),var(--volt-2));border-color:var(--volt);color:#fff;font-weight:600}
+.btn--sm{padding:6px 11px;font-size:12.5px}
+.tag{font-family:var(--font-mono);font-size:10.5px;padding:3px 9px;border-radius:100px;border:1px solid var(--rule);background:var(--surface-2);color:var(--ink-2)}
+.tag--volt{border-color:var(--volt);color:var(--volt-ink);background:var(--volt-soft)}
+.tag--gold{border-color:var(--gold);color:var(--gold-ink);background:var(--gold-soft)}
+.tag--rose{border-color:var(--rose);color:var(--rose-ink);background:var(--rose-soft)}
+
+/* setup cards */
+.types{display:grid;grid-template-columns:repeat(auto-fill,minmax(224px,1fr));gap:12px;margin-top:16px}
+.type{position:relative;display:flex;flex-direction:column;text-align:left;border:1px solid var(--rule);border-radius:10px;background:var(--surface);padding:17px 18px 15px}
+.type__check{position:absolute;top:14px;right:14px;width:20px;height:20px;border-radius:50%;background:var(--tone);color:#fff;display:none;place-items:center;font-size:11px}
+.type[aria-pressed="true"]{border-color:var(--tone);box-shadow:inset 0 0 0 1px var(--tone)}
+.type[aria-pressed="true"] .type__check{display:grid}
+.type[aria-pressed="true"] .type__dot{width:26px}
+.type__dot{width:9px;height:9px;border-radius:3px;background:var(--tone);margin-bottom:12px}
+.type__n{font-family:var(--font-display);font-size:19px;font-weight:500;line-height:1.2}
+.type__s{font-size:12.5px;margin-top:5px;color:var(--ink-2);line-height:1.5}
+.type__pool{font-family:var(--font-mono);font-size:10.5px;color:var(--ink-3);margin-top:14px;padding-top:12px;border-top:1px solid var(--rule)}
+.type__pool b{color:var(--tone);font-weight:600}
+.type--thin .type__pool{color:var(--rose)}
+.t-js{--tone:#0F766E}.t-react{--tone:#1D4ED8}.t-ts{--tone:#4F46E5}
+.t-dsa{--tone:#7E22CE}.t-design{--tone:#047857}.t-behav{--tone:#BE185D}.t-mixed{--tone:#334155}
+
+/* room */
+.room{background:var(--bg);padding:22px 22px 60px}
+.room__in{position:relative;max-width:880px;margin:0 auto;background:var(--surface);border:1px solid var(--rule);border-radius:20px;padding:26px 30px 30px;box-shadow:0 4px 22px rgba(18,19,26,.07);overflow:hidden}
+.room__in::before{content:"";position:absolute;inset:0 0 auto 0;height:4px;background:linear-gradient(90deg,#4F46E5,#7E22CE 55%,#0F766E)}
+.rbar{display:flex;align-items:center;justify-content:space-between;gap:14px;padding-bottom:15px;border-bottom:1px solid var(--rule);flex-wrap:wrap}
+.pips{display:flex;gap:4px}
+.pip{width:20px;height:5px;border-radius:3px;background:var(--rule)}
+.pip--done{background:var(--ink-3)}.pip--now{background:linear-gradient(90deg,#818CF8,#4F46E5);width:28px}
+.clock{font-family:var(--font-mono);font-size:13.5px;color:var(--ink-2);display:flex;align-items:center;gap:8px}
+.clock i{width:7px;height:7px;border-radius:50%;background:var(--mint)}
+.clock--low{color:var(--rose)}.clock--low i{background:var(--rose)}
+.qtag{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:22px}
+.q{font-family:var(--font-display);font-size:26px;font-weight:500;letter-spacing:-.022em;line-height:1.28;margin:13px 0 6px}
+.follow{border-radius:14px;background:linear-gradient(135deg,#EEF0FE 0%,#E7E9FD 55%,#E6F4F2 100%);border:1px solid rgba(79,70,229,.34);border-left:3px solid var(--volt);padding:16px 19px;margin:16px 0;color:var(--volt-ink);font-size:15.5px;line-height:1.66}
+.follow__l{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;margin-bottom:6px;display:flex;align-items:center;gap:8px;opacity:.85}
+.follow__n{background:linear-gradient(135deg,var(--volt),var(--volt-2));color:#fff;border-radius:100px;padding:2px 8px;font-size:9px}
+.ta{width:100%;font-family:var(--font-body);font-size:15px;color:var(--ink);background:var(--surface);border:1px solid var(--rule-strong);border-radius:10px;padding:13px 15px;line-height:1.7;min-height:110px;resize:vertical}
+.rfoot{display:flex;gap:10px;align-items:center;margin-top:15px;flex-wrap:wrap}
+.rfoot .meta{margin-left:auto}
+
+/* editor */
+.ed{border:1px solid var(--rule-strong);border-radius:14px;overflow:hidden;background:var(--surface);margin-top:14px;box-shadow:0 2px 12px rgba(18,19,26,.06)}
+.ed__bar{display:flex;align-items:center;gap:10px;padding:9px 14px;background:var(--surface-2);border-bottom:1px solid var(--rule);font-family:var(--font-mono);font-size:11px;color:var(--ink-3)}
+.ed__bar .meta{margin-left:auto}
+.ed__b{display:flex;font-family:var(--font-mono);font-size:12.5px;line-height:1.8}
+.ed__ln{padding:14px 0 14px 14px;text-align:right;min-width:38px;user-select:none;color:var(--rule-strong)}
+.ed__code{padding:14px 16px 14px 12px;flex:1;overflow-x:auto;white-space:pre;color:var(--ink)}
+.tk{color:var(--volt-ink)}.ts{color:var(--mint-ink)}.tc{color:var(--ink-3);font-style:italic}.tf{color:var(--gold-ink)}
+
+/* phases */
+.phases{display:flex;gap:8px;margin:18px 0 6px;flex-wrap:wrap}
+.phz{flex:1;min-width:150px;border:1px solid var(--rule);border-radius:12px;background:var(--surface-2);padding:12px 14px}
+.phz--done{border-color:rgba(4,120,87,.4);background:linear-gradient(135deg,#E7F6F0,#DCF2EA)}
+.phz--now{border-color:var(--volt);box-shadow:0 0 0 1px var(--volt),0 4px 14px rgba(79,70,229,.16);background:linear-gradient(135deg,#EEF0FE,#fff)}
+.phz__k{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+.phz--done .phz__k{color:var(--mint-ink)}.phz--now .phz__k{color:var(--volt-ink)}
+.phz__t{font-size:13.5px;margin-top:6px}
+.phz__m{font-family:var(--font-mono);font-size:10px;color:var(--ink-3);margin-top:5px}
+
+.panel{background:var(--surface);border:1px solid var(--rule);border-radius:12px}
+.panel__b{padding:17px}
+.ruleset{background:var(--surface);border:1px solid var(--rule);border-radius:14px;padding:4px 22px;margin-top:14px}
+.ruleset li{list-style:none;padding:13px 0;border-bottom:1px solid var(--rule);font-size:13.5px;color:var(--ink-2)}
+.ruleset li:last-child{border-bottom:none}
+.ruleset strong{color:var(--ink);font-weight:500;display:block;margin-bottom:2px}
+</style></head><body>
+
+<div class="chrome"><span class="chrome__label">Screen</span>
+<button class="tab" data-go="setup" aria-selected="true">Setup · seven types</button>
+<button class="tab" data-go="dsa">DSA round</button>
+<button class="tab" data-go="design">System design round</button>
+<button class="tab" data-go="states">Every state</button>
+<button class="tab" data-go="rules">The rules</button></div>
+
+<!-- SETUP -->
+<section class="screen" data-screen="setup" data-active><div class="wrap">
+<h1 class="page-title">Set up an interview round</h1>
+<p style="color:var(--ink-2);max-width:62ch;margin-top:6px">Two types join the five. Nothing else on this screen changes.</p>
+
+<div class="rule"><span class="eyebrow">Round</span></div>
+<div class="types">
+  <button class="type t-js" aria-pressed="true"><span class="type__check">✓</span><span class="type__dot"></span>
+    <span class="type__n">JavaScript</span><span class="type__s">Concepts, escalating follow-ups</span>
+    <span class="type__pool"><b>21 topics</b> · 9 weak · 14 quizzes</span></button>
+  <button class="type t-react"><span class="type__check">✓</span><span class="type__dot"></span>
+    <span class="type__n">React</span><span class="type__s">Concepts, escalating follow-ups</span>
+    <span class="type__pool"><b>8 topics</b> · 4 weak</span></button>
+  <button class="type t-ts"><span class="type__check">✓</span><span class="type__dot"></span>
+    <span class="type__n">TypeScript</span><span class="type__s">Concepts, escalating follow-ups</span>
+    <span class="type__pool"><b>8 topics</b> · 1 weak</span></button>
+  <button class="type t-dsa"><span class="type__check">✓</span><span class="type__dot"></span>
+    <span class="type__n">DSA</span><span class="type__s">Write code, then complexity and edges</span>
+    <span class="type__pool"><b>2 problems</b> · your code is kept</span></button>
+  <button class="type t-design"><span class="type__check">✓</span><span class="type__dot"></span>
+    <span class="type__n">System design</span><span class="type__s">One problem, four phases</span>
+    <span class="type__pool"><b>6 topics</b> · 0 ADRs · 0 diagrams</span></button>
+  <button class="type t-behav type--thin"><span class="type__check">✓</span><span class="type__dot"></span>
+    <span class="type__n">Behavioural</span><span class="type__s">Drawn from your ledger</span>
+    <span class="type__pool">0 decisions, 0 incidents — nothing to draw on</span></button>
+  <button class="type t-mixed"><span class="type__check">✓</span><span class="type__dot"></span>
+    <span class="type__n">Mixed</span><span class="type__s">A real loop, every shape you have</span>
+    <span class="type__pool"><b>63 topics</b> · 47 weak</span></button>
+</div>
+
+<div class="rule"><span class="eyebrow">Length, when DSA is chosen</span></div>
+<div class="panel"><div class="panel__b" style="color:var(--ink-2);font-size:13.5px;max-width:64ch">
+  20 min → <b>1 problem</b> · 45 min → <b>2</b> · 60 min → <b>2</b> · 90 min → <b>3</b>.
+  The pill's sub-line says problems rather than concepts, because that is the unit of this round.
+  System design says <b>four phases</b> at every length; the phases stretch, the count does not.
+</div></div>
+
+<div class="callout"><div class="callout__t">The pool line tells the truth about a thin round</div>
+<p style="color:var(--ink-2);font-size:13.5px">System design draws on ADRs and diagrams from the ledger, and falls back to design-shaped topics when there are none. With an empty ledger it says so — <code>0 ADRs · 0 diagrams</code> — the same honesty the Behavioural card already carries. A round that can run on topics alone is not thin; a round with nothing at all is, and the card is where you find out rather than after entering.</p></div>
+
+<p class="note">Seven cards wrap to three rows on a desktop and one column on a phone. Nothing else on this screen changes — three other groups, four defaults, four checks, one enabled button.</p>
+</div></section>
+
+<!-- DSA -->
+<section class="screen" data-screen="dsa"><div class="room"><div class="room__in">
+<div class="rbar">
+  <div class="pips"><i class="pip pip--done"></i><i class="pip pip--now"></i></div>
+  <span class="tag">Staff, terse</span><span class="tag tag--gold">3 hints left</span>
+  <span class="clock"><i></i>22:47 · problem 2 of 2</span>
+</div>
+
+<div class="qtag"><span class="tag">DSA · arrays</span><span class="tag tag--volt">medium</span></div>
+<h1 class="q">Merge all overlapping intervals and return the result.</h1>
+<p class="meta">Write it, then I will ask about complexity and what breaks.</p>
+
+<div class="ed">
+  <div class="ed__bar"><span>solution.ts</span><span class="meta">CodeMirror 6 · TypeScript · no autocomplete, no type checking, nothing runs</span></div>
+  <div class="ed__b">
+    <div class="ed__ln">1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10<br>11<br>12</div>
+    <div class="ed__code"><span class="tk">function</span> <span class="tf">merge</span>(intervals: number[][]) {
+  <span class="tc">// sort by start</span>
+  <span class="tk">const</span> sorted = [...intervals].<span class="tf">sort</span>((a, b) =&gt; a[<span class="ts">0</span>] - b[<span class="ts">0</span>]);
+  <span class="tk">const</span> out: number[][] = [];
+
+  <span class="tk">for</span> (<span class="tk">const</span> [start, end] <span class="tk">of</span> sorted) {
+    <span class="tk">const</span> last = out[out.length - <span class="ts">1</span>];
+    <span class="tk">if</span> (last &amp;&amp; start &lt;= last[<span class="ts">1</span>]) last[<span class="ts">1</span>] = Math.<span class="tf">max</span>(last[<span class="ts">1</span>], end);
+    <span class="tk">else</span> out.<span class="tf">push</span>([start, end]);
+  }
+  <span class="tk">return</span> out;
+}</div>
+  </div>
+</div>
+
+<div class="follow"><span class="follow__l"><span class="follow__n">follow-up</span> after the code</span>
+  That works. What is the complexity, and where does it come from? Then: if the input arrives already sorted, can you do better — and what would you need guaranteed?</div>
+
+<textarea class="ta" style="min-height:88px" placeholder="Complexity, and why…"></textarea>
+
+<div class="rfoot">
+  <button class="btn btn--volt">Answer</button>
+  <button class="btn">Ask a question</button>
+  <button class="btn btn--sm">Hint · 3 left</button>
+  <button class="btn btn--sm">Next problem</button>
+  <button class="btn btn--sm">End the round</button>
+  <span class="meta">⌘↵ to send · your code is kept, the conversation is not</span>
+</div>
+
+<p class="meta" style="margin-top:22px;padding-top:16px;border-top:1px solid var(--rule);max-width:64ch;line-height:1.7">
+Nothing is executed. There is no runner and no test harness — the model reads the code as text, the way an interviewer reads a whiteboard. No autocomplete and no type checking either: an interview editor should not be smarter than a whiteboard.
+</p>
+</div></div></section>
+
+<!-- DESIGN -->
+<section class="screen" data-screen="design"><div class="room"><div class="room__in">
+<div class="rbar">
+  <span class="meta">System design · 60 minutes</span>
+  <span class="tag">Skeptical principal</span>
+  <span class="clock clock--low"><i></i>08:12</span>
+</div>
+
+<div class="phases">
+  <div class="phz phz--done"><div class="phz__k">✓ Phase 1</div><div class="phz__t">Requirements</div><div class="phz__m">0–10 min</div></div>
+  <div class="phz phz--done"><div class="phz__k">✓ Phase 2</div><div class="phz__t">High-level shape</div><div class="phz__m">10–25</div></div>
+  <div class="phz phz--now"><div class="phz__k">Phase 3 · now</div><div class="phz__t">Permissions &amp; audit</div><div class="phz__m">25–45</div></div>
+  <div class="phz"><div class="phz__k">Phase 4</div><div class="phz__t">Scale it 100×</div><div class="phz__m">45–60</div></div>
+</div>
+
+<div class="qtag" style="margin-top:20px"><span class="tag">System design</span><span class="tag tag--volt">from your topics on state boundaries</span></div>
+<h1 class="q" style="font-size:24px">Design a collaborative task app for 50 teams.</h1>
+
+<div class="follow"><span class="follow__l"><span class="follow__n">follow-up</span> pressing the choice</span>
+  You put the audit log behind the same transaction. Defend that against a team that says an audit write must never be able to fail a user action — what breaks first, and at what size?</div>
+
+<textarea class="ta" placeholder="…"></textarea>
+
+<div class="rfoot">
+  <button class="btn btn--volt">Answer</button>
+  <button class="btn">Ask a question</button>
+  <button class="btn btn--sm">Hint · 2 left</button>
+  <button class="btn btn--sm">Move to scale</button>
+  <button class="btn btn--sm">End the round</button>
+  <span class="meta">⌘↵ to send</span>
+</div>
+
+<div class="callout"><div class="callout__t">Phased, not counted</div>
+<p style="color:var(--ink-2);font-size:13.5px">Sixty minutes of design is four movements, not eleven questions. The phase strip is the progress — there are no pips, because a pip per question would count a shape that has no questions. Advancing is either yours (<em>Move to scale</em>) or the interviewer's when a phase is done; the minute ranges are a guide the clock does not enforce, exactly as the advisory clock does not end a round.</p></div>
+
+<p class="meta" style="margin-top:6px;max-width:64ch;line-height:1.7">
+With ADRs in your ledger the tag reads <em>drawn from ADR-002</em> and the round asks you to defend a decision you actually made. With an empty ledger it draws design-shaped topics instead and says so — the round still runs, on weaker material, and the tag does not claim a source it does not have.
+</p>
+</div></div></section>
+
+<!-- STATES -->
+<section class="screen" data-screen="states"><div class="wrap">
+<h1 class="page-title">Every state</h1>
+
+<div class="rule"><span class="eyebrow">DSA · before you write anything</span></div>
+<div class="panel"><div class="panel__b">
+  <div class="ed" style="margin-top:0"><div class="ed__bar"><span>solution.ts</span><span class="meta">empty</span></div>
+  <div class="ed__b"><div class="ed__ln">1</div><div class="ed__code" style="color:var(--ink-3)">// write your solution here</div></div></div>
+  <p class="meta" style="margin-top:11px">Answer is disabled while the editor is empty and the box is empty — there is nothing to send. The editor carries a placeholder comment rather than a grey overlay, because an overlay is one more thing to dismiss.</p>
+</div></div>
+
+<div class="rule"><span class="eyebrow">DSA · moving on without writing</span></div>
+<div class="panel"><div class="panel__b" style="color:var(--ink-2);font-size:13.5px;max-width:62ch">
+  <em>Next problem</em> works with an empty editor, and the scorecard records the problem as unanswered rather than scored zero — the same rule <em>Move on</em> already follows for a concept.
+</div></div>
+
+<div class="rule"><span class="eyebrow">Design · a phase you leave early</span></div>
+<div class="panel"><div class="panel__b" style="color:var(--ink-2);font-size:13.5px;max-width:62ch">
+  Phases advance forward only. There is no back — a design round is a conversation and you cannot un-say the requirements. The strip shows what is done, and the scorecard names any phase you never reached.
+</div></div>
+
+<div class="rule"><span class="eyebrow">The scorecard, for both</span></div>
+<div class="panel"><div class="panel__b" style="color:var(--ink-2);font-size:13.5px;max-width:64ch">
+  Unchanged, with two additions. A DSA round's <em>question by question</em> rows are problems, and each carries the code you wrote, collapsed, expandable. A design round's rows are the four phases. Everything else — the four dimensions, the offer step, the sparkline — is exactly as it is for a concept round.
+</div></div>
+
+<p class="note">The offer step still offers topics. A DSA problem is not a topic in your library, so a problem you fumbled offers nothing to mark weak — and the row says so, in the same words an unattributable question already uses.</p>
+</div></section>
+
+<!-- RULES -->
+<section class="screen" data-screen="rules"><div class="wrap">
+<h1 class="page-title">The rules</h1>
+<p style="color:var(--ink-2);max-width:66ch;margin-top:6px">This file draws only what this arc builds: two round types added to the five that ship. Everything else on every screen is unchanged and is specified by interview-reference.html.</p>
+
+<div class="rule"><span class="eyebrow">DSA</span></div>
+<ul class="ruleset">
+  <li><strong>CodeMirror 6, and nothing smarter than a whiteboard</strong>No autocomplete, no type checking, no linting. An interview editor that helps you is not testing you.</li>
+  <li><strong>Nothing is executed</strong>No runner, no test harness, no sandbox. The model reads the code as text.</li>
+  <li><strong>Problems are generated, not drawn from your library</strong>The only round type that is. Say so on the card: your library has no DSA problems in it, and pretending otherwise would be the fake this product refuses. The pool line reads <em>N problems · your code is kept</em>.</li>
+  <li><strong>Your code persists; the conversation does not</strong>A new column, and the session-one <code>hasnt_column('code')</code> assertion is marked SESSION ONE ONLY — removing it is part of this arc's work, not a regression in it.</li>
+  <li><strong>The follow-up is the point, as ever</strong>Working code is the start. Complexity, where it comes from, and what breaks is where the round is.</li>
+</ul>
+
+<div class="rule"><span class="eyebrow">System design</span></div>
+<ul class="ruleset">
+  <li><strong>Four phases at every length</strong>The phases stretch; the count does not. Twenty minutes is a rushed design round, not a two-phase one.</li>
+  <li><strong>Phased, not counted</strong>No pips. A pip per question counts a shape with no questions.</li>
+  <li><strong>Forward only</strong>A design round is a conversation and you cannot un-say the requirements.</li>
+  <li><strong>ADRs first, topics as a fallback, and it says which</strong>With ledger ADRs it asks you to defend a decision you made. Without them it draws design-shaped topics and the tag does not claim a source it does not have.</li>
+</ul>
+
+<div class="rule"><span class="eyebrow">Both</span></div>
+<ul class="ruleset">
+  <li><strong>Every other rule is inherited</strong>Interviewer level is a prompt not a multiplier; clarifying questions count for you; three hints; the advisory clock; End the round always works; the round is never resumed; the scorecard offers and never writes.</li>
+  <li><strong>The scorecard changes only its rows</strong>Problems for DSA, phases for design. Four dimensions, the offer step, the sparkline: unchanged.</li>
+  <li><strong>A problem offers nothing to mark weak</strong>It is not a topic in your library, and the row says so rather than omitting itself.</li>
+</ul>
+
+<div class="rule"><span class="eyebrow">Not built</span></div>
+<ul class="ruleset">
+  <li><strong>No execution of any kind</strong>Not now, not stubbed, not behind a flag.</li>
+  <li><strong>No machine coding round</strong>A build you did elsewhere is a ledger item with a repo link and a deployed URL — that decision stands.</li>
+  <li><strong>No diagram tool</strong>A design round is spoken and typed. A canvas is a different product.</li>
+</ul>
+</div></section>
+
+<script>
+const s=document.querySelectorAll('[data-screen]');
+document.querySelector('.chrome').addEventListener('click',e=>{const b=e.target.closest('[data-go]');if(!b)return;
+document.querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-selected',t===b));
+s.forEach(x=>x.toggleAttribute('data-active',x.dataset.screen===b.dataset.go));window.scrollTo(0,0);});
+</script></body></html>

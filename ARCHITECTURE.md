@@ -3411,6 +3411,43 @@ claim. `expect(...).toHaveCount(n)` over a rendered list is the same shape and i
 `n` is exact — the failure is the *inequality*. Grep for `toBeGreaterThan` beside a derived
 collection and ask what it would still pass with missing.
 
+### A file that has accumulated fixes is expensive to restructure, in proportion to how many
+
+`round.tsx` is **890 lines** at the point arc 7 session three adds two more round shapes to it.
+The instinct is to extract a shared runner and three shape modules; the drawing has three
+distinct rooms, and one component rendering all three is not what anyone would design from
+scratch.
+
+**It was not extracted, and the reason is what the file contains rather than how long it is.**
+Eight fixes live in there, every one of them found in production or by a test that had to be
+written first:
+
+- `useSerial`'s latch, because the concurrency guard was a `disabled` attribute
+- `try`/`finally` around `say` and `end`, because a rejection stranded the room forever
+- `topicMeta` accumulating rather than being seeded once, which shipped broken for a session
+- the abandoned-not-aborted copy, which says what a server action cannot do
+- the quiz save's two presses
+- rewind, and its never-changes-the-score invariant
+- `End the round` never disabled and never awaiting, the escape from a stuck exchange
+- `useRoomKeys` registered **above** the early returns, or the room renders as a crash
+
+> **Restructuring costs roughly the number of fixes the file holds, not the number of lines.**
+> Each one is a behaviour with a reason, most of the reasons are in comments rather than in
+> tests, and a move is a chance for any of them to be dropped silently — which is exactly how
+> they got there.
+
+The cost of the file growing is a longer file. The cost of moving is some subset of eight
+regressions, discovered in production, in a feature nobody was editing. **The second cost is
+almost always higher**, and it stays higher until the behaviours are pinned by tests rather than
+by prose.
+
+**The line count is recorded here so the next person meets the number rather than the instinct.**
+890 lines and eight fixes; if it is 1,400 and eleven when you read this, the arithmetic has moved
+the same way and the answer has not. What changes the answer is not length — it is those
+behaviours acquiring tests that would fail if a restructure dropped them. `useSerial` and
+`useRoomKeys` now have exactly that, which is why they were the two pieces that could safely
+leave.
+
 ### Absence looks the same on screen whatever produced it
 
 A fourth control was reported missing: *Practise this chapter*, on a course that now has two

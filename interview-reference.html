@@ -99,6 +99,8 @@ code{font-family:var(--font-mono);font-size:.86em}
 .t-js{--tone:#0F766E}
 .t-react{--tone:#1D4ED8}
 .t-ts{--tone:#4F46E5}
+.t-dsa{--tone:#7E22CE}
+.t-design{--tone:#047857}
 .t-behav{--tone:#BE185D}
 .t-mixed{--tone:#334155}
 .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
@@ -369,7 +371,7 @@ code{font-family:var(--font-mono);font-size:.86em}
 <section class="screen" data-screen="setup" data-active>
 <div class="wrap">
   <h1 class="page-title">Set up an interview round</h1>
-  <p style="color:var(--ink-2);max-width:62ch;margin-top:6px">Every question comes from your own library. Nothing is asked that you have not saved.</p>
+  <p style="color:var(--ink-2);max-width:62ch;margin-top:6px">Every question comes from your own library. Nothing is asked that you have not saved — with one exception, and the card that makes it says so.</p>
 
   <div class="rule"><span class="eyebrow">Round</span></div>
   <div class="types">
@@ -394,6 +396,20 @@ code{font-family:var(--font-mono);font-size:.86em}
       <span class="type__s">Concepts, escalating follow-ups</span>
       <span class="type__pool"><b>8 topics</b> · 1 weak</span>
     </button>
+    <button class="type t-dsa">
+      <span class="type__check">✓</span>
+      <span class="type__dot"></span>
+      <span class="type__n">DSA</span>
+      <span class="type__s">Write code, then complexity and edges</span>
+      <span class="type__pool"><b>2 problems</b> · generated, not from your library · your code is kept</span>
+    </button>
+    <button class="type t-design type--thin">
+      <span class="type__check">✓</span>
+      <span class="type__dot"></span>
+      <span class="type__n">System design</span>
+      <span class="type__s">One problem, four phases</span>
+      <span class="type__pool">0 ADRs, 0 diagrams — nothing to draw on</span>
+    </button>
     <button class="type t-behav type--thin">
       <span class="type__check">✓</span>
       <span class="type__dot"></span>
@@ -405,10 +421,24 @@ code{font-family:var(--font-mono);font-size:.86em}
       <span class="type__check">✓</span>
       <span class="type__dot"></span>
       <span class="type__n">Mixed</span>
-      <span class="type__s">A real loop, all three shapes</span>
+      <span class="type__s">A real loop, every shape you have</span>
       <span class="type__pool"><b>everything</b> above</span>
     </button>
   </div>
+
+  <div class="panel" style="margin-top:14px"><div class="panel__b" style="color:var(--ink-2);font-size:13.5px;max-width:64ch">
+    <strong style="color:var(--ink);font-weight:500">Length, when DSA is chosen.</strong>
+    20 min → <b>1 problem</b> · 45 min → <b>2</b> · 60 min → <b>2</b> · 90 min → <b>3</b>.
+    The pill's sub-line says problems rather than concepts, because that is the unit of this round.
+    System design says <b>four phases</b> at every length; the phases stretch, the count does not.
+  </div></div>
+
+  <div class="callout"><div class="callout__t">DSA is the one exception, and the card is where you meet it</div>
+  <p style="color:var(--ink-2);font-size:13.5px">Every other type draws on what you saved. Your library has no DSA problems in it, so they are generated — and pretending otherwise would be the fake this product refuses. The page's sub-line says an exception exists; the DSA card says this is it, because that is where someone choosing DSA is looking.</p></div>
+
+  <div class="callout"><div class="callout__t">System design draws on the ledger, and is thin without it</div>
+  <p style="color:var(--ink-2);font-size:13.5px">ADRs, diagrams and scale exercises — three ledger kinds, each identified by a column. With none of them the card says <code>0 ADRs, 0 diagrams — nothing to draw on</code>, the same honesty the Behavioural card carries.
+  <br><br><strong style="color:var(--ink);font-weight:500">There is no fallback to "design-shaped topics".</strong> A topic's category is free text and nothing marks one as design material, so identifying them would mean running a keyword list over what you typed and then calling the result <em>drawn from your topics on state boundaries</em>. That is a claim about content the app cannot check, on the one screen whose whole job is telling the truth about what a round can draw on. Thin is the honest state, and you find out here rather than after entering.</p></div>
 
   <div class="rule"><span class="eyebrow">Length</span></div>
   <div class="row">
@@ -520,10 +550,10 @@ code{font-family:var(--font-mono);font-size:.86em}
 <section class="screen" data-screen="dsa">
 <div class="room"><div class="room__in" style="max-width:880px">
   <div class="rbar">
-    <div class="pips"><i class="pip pip--ok"></i><i class="pip pip--now"></i><i class="pip"></i></div>
+    <div class="pips"><i class="pip pip--ok"></i><i class="pip pip--now"></i></div>
     <span class="tag tag--who">Staff, terse</span>
     <span class="tag tag--gold">3 hints left</span>
-    <span class="clock"><i></i>22:47 · problem 2 of 3</span>
+    <span class="clock"><i></i>22:47 · problem 2 of 2</span>
   </div>
 
   <div class="qtag"><span class="tag">DSA · arrays</span><span class="tag tag--volt">medium</span></div>
@@ -531,7 +561,7 @@ code{font-family:var(--font-mono);font-size:.86em}
   <p class="meta">Write it, then I will ask about complexity and what breaks.</p>
 
   <div class="ed">
-    <div class="ed__bar"><span>solution.ts</span><span class="meta">CodeMirror 6 · TypeScript · no autocomplete, no type checking</span></div>
+    <div class="ed__bar"><span>solution.ts</span><span class="meta">CodeMirror 6 · TypeScript · no autocomplete, no type checking, nothing runs</span></div>
     <div class="ed__b">
       <div class="ed__ln">1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10<br>11<br>12</div>
       <div class="ed__code"><span class="tk">function</span> <span class="tf">merge</span>(intervals: number[][]) {
@@ -561,11 +591,18 @@ code{font-family:var(--font-mono);font-size:.86em}
     <button class="btn">Ask a question</button>
     <button class="btn btn--ghost">Hint · 3 left</button>
     <button class="btn btn--ghost">Next problem</button>
-    <span class="meta">your code is kept · the conversation is not</span>
+    <button class="btn btn--ghost">End the round</button>
+    <span class="meta">⌘↵ to send · your code is kept, the conversation is not</span>
   </div>
 
   <p class="meta" style="margin-top:22px;padding-top:16px;border-top:1px solid var(--rule);max-width:64ch;line-height:1.7">
-    No autocomplete and no type checking — an interview editor should not be smarter than a whiteboard. Nothing is executed: there is no runner, no test harness, and the model reads the code as text. Your code is the one thing from a round that persists, because you wrote it.
+    No autocomplete and no type checking — an interview editor should not be smarter than a whiteboard. Nothing is executed: there is no runner, no test harness, no sandbox, and the model reads the code as text, the way an interviewer reads a whiteboard. Your code is the one thing from a round that persists, because you wrote it; the problem statement is generated, so it is not yours and is not kept.
+  </p>
+
+  <p class="meta" style="margin-top:16px;max-width:64ch;line-height:1.7">
+    <strong style="color:var(--ink);font-weight:500">Before you write anything:</strong> the editor holds a placeholder comment rather than a grey overlay, because an overlay is one more thing to dismiss. <em>Answer</em> is disabled only while the editor and the box are <em>both</em> empty — there is nothing to send.
+    <br><br>
+    <strong style="color:var(--ink);font-weight:500">Moving on without writing:</strong> <em>Next problem</em> works with an empty editor, and the scorecard records that problem as unanswered rather than scored zero — the rule <em>Move on</em> already follows for a concept.
   </p>
 </div></div>
 </section>
@@ -582,7 +619,7 @@ code{font-family:var(--font-mono);font-size:.86em}
   <div class="phases">
     <div class="phz phz--done"><div class="phz__k">✓ Phase 1</div><div class="phz__t">Requirements</div><div class="phz__m">0–10 min</div></div>
     <div class="phz phz--done"><div class="phz__k">✓ Phase 2</div><div class="phz__t">High-level shape</div><div class="phz__m">10–25</div></div>
-    <div class="phz phz--now"><div class="phz__k">Phase 3 · now</div><div class="phz__t">Permissions &amp; audit</div><div class="phz__m">25–45</div></div>
+    <div class="phz phz--now"><div class="phz__k">Phase 3 · now</div><div class="phz__t">Deep dive</div><div class="phz__m">25–45</div></div>
     <div class="phz"><div class="phz__k">Phase 4</div><div class="phz__t">Scale it 100×</div><div class="phz__m">45–60</div></div>
   </div>
 
@@ -599,12 +636,23 @@ code{font-family:var(--font-mono);font-size:.86em}
   <div class="rfoot">
     <button class="btn btn--volt">Answer</button>
     <button class="btn">Ask a question</button>
+    <button class="btn btn--ghost">Hint · 2 left</button>
     <button class="btn btn--ghost">Move to scale</button>
+    <button class="btn btn--ghost">End the round</button>
     <span class="meta">⌘↵ to send</span>
   </div>
 
   <p class="meta" style="margin-top:22px;padding-top:16px;border-top:1px solid var(--rule);max-width:64ch;line-height:1.7">
-    The round your library is uniquely good at — it has read ADR-001 and is asking you to defend the decision you actually made, in the words you wrote. Phased rather than counted: sixty minutes of design is four movements, not eleven questions. The clock turns rose under ten minutes, the one alarm in the room.
+    The round your library is uniquely good at — it has read ADR-001 and is asking you to defend the decision you actually made, in the words you wrote. The clock turns rose under ten minutes, the one alarm in the room.
+  </p>
+
+  <div class="callout"><div class="callout__t">Phased, not counted</div>
+  <p style="color:var(--ink-2);font-size:13.5px">Sixty minutes of design is four movements, not eleven questions. The phase strip is the progress — <strong>there are no pips</strong>, because a pip per question would count a shape that has no questions. The four phases are the same four at every length; the minute ranges stretch and are a guide the clock does not enforce, exactly as the advisory clock does not end a round.</p></div>
+
+  <p class="meta" style="margin-top:16px;max-width:64ch;line-height:1.7">
+    <strong style="color:var(--ink);font-weight:500">Who advances, and how the room knows.</strong> Either you press <em>Move to scale</em>, or the interviewer reports the phase finished. The model never names a phase — it says only that this one is done, and the room advances by one. Naming would let it skip or go back, which is the same reason it may never invent a topic id.
+    <br><br>
+    <strong style="color:var(--ink);font-weight:500">Forward only, and what that costs.</strong> There is no back: a design round is a conversation and you cannot un-say the requirements. When the interviewer advances and you were not finished, the advance arrives <em>as a turn</em> — its own sentence, in the transcript — rather than as a strip that repaints beside you. And the strip is a record, not a gate: nothing stops you answering about permissions after it says scale, and the scorer scores what was said. The scorecard names any phase you never reached.
   </p>
 </div></div>
 </section>
@@ -788,9 +836,9 @@ code{font-family:var(--font-mono);font-size:.86em}
   <div class="rule"><span class="eyebrow">Shape</span></div>
   <ul class="ruleset">
     <li><strong>Type plus duration sets the structure</strong>Never a minutes-per-question slider. Concepts are N questions with follow-ups; design is four phases; DSA is 1–3 problems.</li>
-    <li><strong>Five types</strong>JavaScript, React, TypeScript, Behavioural, Mixed. Machine coding is out — it needs a mini-IDE, and a build you did elsewhere is a ledger item with a repo link and a deployed URL.</li>
-    <li><strong>DSA and System design are absent, not disabled</strong>Neither is built. A disabled control says "this exists and is one click away", which would be a lie about a feature that does not exist — so there is no control at all. The rule is about what a control's presence promises, and it stands on its own now that nothing on this screen is disabled.</li>
-    <li><strong>Every question comes from your library, weighted toward weak</strong>The pool line under each type is read from your data and says honestly when a round would be thin.</li>
+    <li><strong>Seven types</strong>JavaScript, React, TypeScript, DSA, System design, Behavioural, Mixed. Machine coding is still out — it needs a mini-IDE, and a build you did elsewhere is a ledger item with a repo link and a deployed URL.</li>
+    <li><strong>Absent, not disabled</strong>A disabled control says "this exists and is one click away", which would be a lie about a feature that does not exist — so there is no control at all. It governed DSA and System design until they were built; it still governs machine coding, the diagram tool, and any option this browser cannot run.</li>
+    <li><strong>Every question comes from your library, weighted toward weak — except DSA</strong>The pool line under each type is read from your data and says honestly when a round would be thin. DSA is the one exception, because your library has no problems in it, and its card says so where you choose it rather than only in the sub-line at the top.</li>
     <li><strong>Follow-ups arrive when an answer leaves an opening</strong>Not on a fixed count. They are the point of the round.</li>
     <li><strong>Four groups, four defaults, four checks</strong>Round, length, interviewer and how you answer each default to their first option and each shows a check on arrival, so the summary is true before you touch it and the ticks say these are yours to change. <em>Enter the room</em> is never disabled: a round cannot be unconfigured, so there is nothing for a gate to prevent.</li>
     <li><strong>An option this browser cannot run is not offered, and the group says why</strong>Voice needs speech recognition, which not every browser has. It is not a disabled pill — disabled promises a click that would work, and no click will give Firefox a speech engine. It is not silence either: a feature the product has and you cannot see is indistinguishable from one it does not have. The pill is replaced, in its own place, by a line naming what is missing and what has it. Detected by asking whether the constructor exists, never by reading the user agent.</li>
@@ -807,7 +855,26 @@ code{font-family:var(--font-mono);font-size:.86em}
     <li><strong>Three hints, each visible on the scorecard</strong>A hint is a real interview move; asking for the answer is not. The cost is transparency, never a hidden penalty — the row shows "1 hint" beside the score it earned.</li>
     <li><strong>A follow-up can become a quiz, during the round</strong>Press, look at the drafted distractors, press again. Two presses and no navigation — the room is forbidden from telling you that you got it wrong, and a thing you have not looked at is not a thing you chose. Saved to your library, linked to the topic the follow-up came from. The only thing in a round that feeds the library rather than the scorecard.</li>
     <li><strong>Rewind re-asks one question and never changes the score</strong>Immediately, while it is fresh. It produces its own small result. A score you can retry until it improves is not a score.</li>
-    <li><strong>Voice is Chrome-only and always has a typed fallback</strong>Recognition runs in the browser; no audio is stored or sent, only text. You edit the transcript before sending, so a mis-hearing costs a correction rather than a wrong answer.</li>
+    <li><strong>Voice always has a typed fallback, and says where the audio goes</strong>You edit the transcript before sending, so a mis-hearing costs a correction rather than a wrong answer. It is <em>not</em> true that nothing is sent: Chrome's recognition sends what you say to its own speech service, which is not the model this round already uses, and the group says so where you choose it and again while the microphone is open.</li>
+  </ul>
+
+  <div class="rule"><span class="eyebrow">DSA</span></div>
+  <ul class="ruleset">
+    <li><strong>CodeMirror 6, and nothing smarter than a whiteboard</strong>No autocomplete, no type checking, no linting. An interview editor that helps you is not testing you.</li>
+    <li><strong>Nothing is executed</strong>No runner, no test harness, no sandbox — not now, not stubbed, not behind a flag. The model reads the code as text.</li>
+    <li><strong>Problems are generated, not drawn from your library</strong>The only round type that is, and the card says so where you choose it.</li>
+    <li><strong>Your code persists; the conversation does not</strong>One column, one solution per problem in the order they were asked. The problem statement is not stored — it is generated prose, and this table keeps numbers and the things you wrote.</li>
+    <li><strong>The follow-up is still the point</strong>Working code is the start. Complexity, where it comes from, and what breaks is where the round is.</li>
+    <li><strong>A problem is not a topic, so it offers nothing to mark weak</strong>The row says so — but not in the words an unattributable question uses. That row says the topic could not be told; here there is no topic to tell, and the offer block is absent entirely because there is nothing to offer.</li>
+  </ul>
+
+  <div class="rule"><span class="eyebrow">System design</span></div>
+  <ul class="ruleset">
+    <li><strong>Four phases at every length</strong>The phases stretch; the count does not. Twenty minutes is a rushed design round, not a two-phase one.</li>
+    <li><strong>Phased, not counted</strong>No pips. A pip per question counts a shape that has no questions.</li>
+    <li><strong>Forward only</strong>A design round is a conversation and you cannot un-say the requirements. The strip is a record of where the conversation is, not a gate on what you may say.</li>
+    <li><strong>Either of you advances, and the model never names the phase</strong>It reports only that this phase is done; the room moves by one. Naming would let it skip or go back — the same reason it may never invent a topic id.</li>
+    <li><strong>The ledger first, and thin when there is none</strong>ADRs, diagrams and scale exercises, each identified by a column. There is no fallback to "design-shaped topics": category is free text, nothing marks a topic as design material, and a keyword list over what you typed would be a claim the app cannot check.</li>
   </ul>
 
   <div class="rule"><span class="eyebrow">Scoring</span></div>
@@ -816,6 +883,7 @@ code{font-family:var(--font-mono);font-size:.86em}
     <li><strong>Four dimensions, because one number hides the finding</strong>Recall 86 and Depth 58 is the whole story — you know what things are and go thin when asked for a consequence. A single score averages that away.</li>
     <li><strong>Comparison is to your own past rounds only</strong>No benchmark, no percentile, no other people.</li>
     <li><strong>It says what it did not ask</strong>Without that line, 74 reads as a verdict on your JavaScript rather than on eight questions.</li>
+    <li><strong>Only the rows change for the two new types</strong>DSA rows are problems, each carrying the code you wrote, collapsed and expandable. Design rows are the four phases, and a phase you never reached is named. The four dimensions, the offer step and the sparkline are exactly as they are for a concept round — and none of it reaches the schema, because per-question detail is model prose that is rendered once and never stored.</li>
   </ul>
 
   <div class="rule"><span class="eyebrow">What persists</span></div>
