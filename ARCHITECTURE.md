@@ -3534,6 +3534,52 @@ The general rule is unchanged — **perturb every clause** — and what this set
 zero-failure result means for this specific shape. It is not dead code to delete. It is a claim
 to re-derive, and for a null-guard in a CHECK the re-derivation now has a known answer.
 
+### An assertion that passed, for work that was never written
+
+Three times in one session, an ad-hoc edit script did this:
+
+```py
+for old, new in pairs:
+    assert s.count(old) == 1     # checked
+    s = s.replace(old, new)      # applied, in memory
+p.write_text(s)                  # written — at the END
+print('applied')
+```
+
+When a later pattern failed, the process died with the earlier — correct — edits
+still unwritten. **The assertion had passed and the edit had not happened**, and
+the printed line said otherwise.
+
+This is the [same defect as the harness](#the-same-defect-in-the-tool-doing-the-editing-not-the-tool-doing-the-checking),
+one turn of the screw further on. There, a `replace` matched nothing and a
+unconditional `print` claimed success. Here the matching is checked properly —
+the fix that was made last time — and the *write* is what goes missing.
+
+**The escalation is the point.** The first two instances produced a false
+reading: a screenshot of a build that did not contain the change, corrected
+within the same turn. The third shipped a visible defect — eight pips on a
+two-problem round — through a green suite, a passing type check and a
+successful deploy, and it was found by looking at the screen. A tool that
+sometimes lies about what it did will eventually lie at the worst moment, and
+the distance between the first symptom and the shipped one was about two hours.
+
+> **Either every edit is written as it succeeds, or nothing is written at all.**
+> Batching the write behind assertions that have already passed is the single
+> arrangement that can report success for work that never happened.
+
+`scripts/edit.mjs` takes the second option, because a half-edited file is worse
+than an untouched one: every pattern is checked against the ORIGINAL text, and
+only once all of them match does anything reach disk. A failure names the
+pattern and its match count, writes nothing, and exits non-zero. It also fails
+when the text is unchanged after a full pass, which is the belt to the braces —
+the symptom the harness entry is about.
+
+**Where else this mechanism runs:** anything that validates a batch and then
+commits it in one step at the end — a migration runner, a bulk API write, a
+multi-file codemod. The question is not whether the validation is good. It is
+what the state is when step four of six throws, and whether anything printed
+before then is still true.
+
 ### Absence looks the same on screen whatever produced it
 
 A fourth control was reported missing: *Practise this chapter*, on a course that now has two

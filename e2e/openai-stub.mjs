@@ -210,6 +210,50 @@ const interviewBody = (system, messages) => {
     return turn('Good. That is enough on this — let us move on.', null, true)
   }
 
+  /*
+    A DSA round opens with a PROBLEM, not a concept question.
+
+    Without this the stub answered a DSA round with "Walk me through what a
+    closure actually captures" under a DSA tag — a fixture describing the code's
+    generic turn path rather than what the service would do when its system
+    prompt says *set one data-structures problem at a time*. Third instance of
+    the same error in this file, and the first found by looking at a screen
+    rather than by a test.
+
+    `topic_id` is null throughout, because a DSA round supplies no material and
+    the model has no ids to return. That is the shape the vendor answers with,
+    not the shape our parser hopes for.
+  */
+  if (system.includes('Set ONE data-structures')) {
+    if (system.includes('Ask the next question')) {
+      return turn('Second one: given a sorted array and a target, return the two indices that sum to it.')
+    }
+    if (system.includes('They asked for a hint')) {
+      return turn('What does sorting cost you, and what does it buy you afterwards?')
+    }
+    if (system.includes('They asked a clarifying question')) {
+      return turn('Assume the intervals are unsorted and may touch at the endpoints.')
+    }
+    if (last.includes('```ts')) {
+      return turn('That works. What is the complexity, and where does it come from? And if the input arrived already sorted, could you do better?')
+    }
+    return turn('Merge all overlapping intervals and return the result. Write it, then I will ask about complexity and what breaks.')
+  }
+
+  /*
+    And a design round opens on its first phase, asking for requirements rather
+    than for a definition. Same reason.
+  */
+  if (system.includes('Set ONE system design problem')) {
+    if (system.includes('Ask the next question')) {
+      return turn('Good. Now the shape: what are the main services, and where does state live?')
+    }
+    if (system.includes('They asked for a hint')) {
+      return turn('Start from who reads and who writes, and how often.')
+    }
+    return turn('Design a collaborative task app for fifty teams. Start with requirements: what must it do, and what can it refuse to do?')
+  }
+
   if (system.includes('They asked for a hint')) {
     return turn('Think about what the scope is a reference to.')
   }

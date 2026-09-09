@@ -213,7 +213,20 @@ export function Setup({
         <Rule>Round</Rule>
         <div className="grid grid-cols-[repeat(auto-fill,minmax(224px,1fr))] gap-3">
           {ROUND_TYPES.map((option) => {
-            const line = poolLine(option, pools[option], questions)
+            /*
+              The card's OWN unit, not the selected type's. `questions` is
+              computed for whatever is currently picked, so passing it here made
+              the DSA card read "4 problems" at twenty minutes — the JavaScript
+              count wearing the DSA noun. Found on production by reading the
+              card, not by any test.
+            */
+            const unit =
+              option === 'dsa'
+                ? problemCount(minutes)
+                : option === 'design'
+                  ? null
+                  : questionCount(minutes)
+            const line = poolLine(option, pools[option], unit)
             const picked = type === option
 
             return (
@@ -276,7 +289,14 @@ export function Setup({
                     {line.lead}
                   </b>
                   {line.rest}
-                  {line.thin ? ` — thin for ${minutes} min` : ''}
+                  {/*
+                    The generic suffix, for a pool that is merely too small for
+                    this length. A design round with an empty ledger is not thin
+                    for twenty minutes — it is thin at every length — and its
+                    line already ends "nothing to draw on", so appending this
+                    produced two endings arguing.
+                  */}
+                  {line.thin && option !== 'design' ? ` — thin for ${minutes} min` : ''}
                 </span>
               </label>
             )
