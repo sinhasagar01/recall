@@ -3448,6 +3448,56 @@ behaviours acquiring tests that would fail if a restructure dropped them. `useSe
 `useRoomKeys` now have exactly that, which is why they were the two pieces that could safely
 leave.
 
+### A reference has no tests, and the checkable half is the half that is rarely wrong
+
+This is the largest gap in this project's method, and it should be written down as a limitation
+rather than left as a thing that keeps happening. Everything a reference asserts is prose in a
+file nothing runs. Ten reference shapes are recorded above; two screens shipped ignoring their
+drawing; a half-scoping survived two sessions; and a rules line claimed *"no audio is stored or
+sent"* in the same arc that shipped the code sending it. **None of the four was detectable by
+anything that executes.**
+
+**Some claims in a reference genuinely are mechanically checkable.** A type list against the
+`round_type` CHECK. A tone token against the scale. `20 min → 1 problem` against
+`problemCount`. `Three hints` against `HINTS_PER_ROUND`. `four phases` against `PHASES.length`.
+Parsing them out of the HTML and comparing is perhaps thirty lines.
+
+**And it would have caught almost none of it.** Taking the four in turn:
+
+| what went wrong | would a claim-checker have caught it |
+| --- | --- |
+| a screen built ignoring its drawing | **no** — "a 9px dot in the type's tone" is not a claim about a constant |
+| the file still drawing two unbuilt rooms | **only** with an assertion nobody would think to write: the natural check is over the setup CARDS, and the cards were correct — it was the room screens that were stale |
+| "no audio is stored or sent" | **no** — it contradicts another sentence in meaning, not a constant in value |
+| line 151 restating line 298 more loosely | **no** — two prose statements of one rule |
+
+The pattern is not an accident. **A claim is checkable because both sides are enumerable, and
+enumerable things already break loudly** — a missing round type is a constraint violation, a
+missing token renders visibly wrong. The claims that are dangerous are dangerous *because* they
+are judgement: a sentence that is false, a rule that went stale, a drawing of something not
+built, an example read as a spec. All prose, all requiring a reader who knows what the build now
+does.
+
+> **So the standing limitation is recorded rather than papered over: a reference is checked by
+> reading it beside the running build, and by nothing else.** The side-by-side is not a
+> supplement to a test that does not exist; it is the whole of the method, and every one of the
+> four was found that way — three by a person reading, one by having to touch every line of the
+> file to merge it.
+
+**Why the narrow guard is not built anyway, given it is cheap.** It would be called something
+like `reference-parity.test.ts`, and the next person to see it green would reasonably conclude
+the reference is in step with the build. It would be covering the claims least likely to be
+wrong while reporting nothing about the ones that are — which is exactly
+[the proxy failure](#a-guard-protects-a-rule-through-a-proxy-and-is-sound-only-while-the-two-coincide):
+a guard whose green means less than its name suggests. A screenshot harness is rejected for its
+own reasons, which stand: a golden image goes stale on every intentional change and trains
+people to re-bless rather than to look.
+
+**What would change this.** If a reference claim ever causes a production defect that a
+constant-comparison would have caught, write that one assertion, named for that one claim, and
+do not generalise it. One narrow guard that says what it checks is worth more than a suite whose
+name overstates it.
+
 ### Absence looks the same on screen whatever produced it
 
 A fourth control was reported missing: *Practise this chapter*, on a course that now has two
