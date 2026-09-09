@@ -1,4 +1,5 @@
 import { LibraryView } from '@/components/topics/library-view'
+import { hasKey } from '@/lib/ai/client'
 import { listLibrary, railCounts } from '@/lib/data/library'
 import { countLedger } from '@/lib/data/ledger'
 import { readRecentDayCounts } from '@/lib/data/today'
@@ -94,6 +95,8 @@ export default async function LibraryPage({
         phases: `${phases.demonstrated} / ${phases.total}`,
         ledger: String(ledger),
         sources: String(sources),
+        // Read on the server, exactly as the rail does — the sheet is its mobile twin.
+        interview: hasKey(),
       }}
     />
   )

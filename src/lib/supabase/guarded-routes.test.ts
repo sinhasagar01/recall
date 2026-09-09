@@ -22,8 +22,34 @@ import { GUARDED } from '@/lib/supabase/middleware'
 
 const APP = join(process.cwd(), 'src', 'app')
 
-/** The route groups whose contents are private. `(auth)` is deliberately not one. */
-const PRIVATE_GROUPS = ['(app)', '(practice)']
+/**
+ * Groups a signed-out person may see. Everything else is private.
+ *
+ * ── Why this is inverted ────────────────────────────────────────────────────
+ * This was `PRIVATE_GROUPS = ['(app)', '(practice)']` — a hand-written list of
+ * where to look, guarding against a hand-written list of what to check. Arc 7
+ * added `(interview)` and the invariant did not notice, because a group it was
+ * never told about contributes no routes and therefore no failures. The suite
+ * stayed green and simply tested less, which is the exact failure this file's
+ * own header describes and was written to prevent, one level up.
+ *
+ * It is the second instance of arc 5's `/today/earlier` finding: a derived
+ * invariant is only as complete as the list it walks.
+ *
+ * So the default is inverted. A new route group is private — and covered —
+ * unless it is named here, which makes escaping this check a deliberate act
+ * with a reason attached rather than the automatic consequence of `mkdir`.
+ */
+const PUBLIC_GROUPS = ['(auth)']
+
+/** Every group that is not public, read off the tree rather than remembered. */
+const PRIVATE_GROUPS = readdirSync(APP, { withFileTypes: true })
+  .filter(
+    (entry) =>
+      entry.isDirectory() && entry.name.startsWith('(') && !PUBLIC_GROUPS.includes(entry.name),
+  )
+  .map((entry) => entry.name)
+  .sort()
 
 /**
  * Private, but guarded by itself rather than by the proxy — with the reason.
@@ -50,8 +76,34 @@ describe('the proxy guards every private route', () => {
   it('has an entry for each route in the private groups', () => {
     const routes = PRIVATE_GROUPS.flatMap(routesIn)
 
-    // Guard the guard: an empty read would make the assertion below vacuous.
-    expect(routes.length).toBeGreaterThan(4)
+    /*
+      Guard the guard — and this is the clause that had to change, not just the
+      derivation above it.
+
+      `routes.length > 4` was cleared by `(app)` and `(practice)` alone, so it
+      went on passing while a whole group was invisible: the threshold measured
+      that SOMETHING was found, never that everything was. A count cannot detect
+      a missing group, because the group that is missing contributes nothing to
+      the count.
+
+      What replaces it is per-group: every private group must contribute at
+      least one route. A group that derives to nothing is now a failure with the
+      group's name in it, whatever the total happens to be.
+
+      Stated precisely, because the two halves do different work: the inverted
+      default above is what makes `(interview)` visible at all, and this clause
+      is what stops a group being walked and yielding nothing. Neither alone is
+      enough, and the count was never either.
+    */
+    expect(PRIVATE_GROUPS, 'the group derivation found nothing').not.toEqual([])
+    expect(PRIVATE_GROUPS, 'the sign-in screens are public and must stay out').not.toContain(
+      '(auth)',
+    )
+    for (const group of PRIVATE_GROUPS) {
+      expect(routesIn(group), `${group} contributed no routes — it is not being checked`).not.toEqual(
+        [],
+      )
+    }
 
     expect(
       routes.filter((route) => !GUARDED.includes(route) && !SELF_GUARDED.includes(route)),

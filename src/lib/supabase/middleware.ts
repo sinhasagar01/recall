@@ -10,6 +10,23 @@ import { NextResponse, type NextRequest } from 'next/server'
  * returns nothing — but it renders a server component with no session and answers
  * **500 instead of redirecting to sign-in**. That is how `/sources` shipped, and
  * `/export` had been in the same state before it.
+ *
+ * `/interview` made it three, and it is the one where the mechanism was finally
+ * read off production rather than reasoned about. Signed out, the route reached
+ * its own server component and threw:
+ *
+ *     Error: Reading your library failed: 42501 · permission denied for table topics
+ *     Error: Loading your ledger failed: 42501 · permission denied for table project_items
+ *
+ * Both pool reads, racing inside one `Promise.all`, so either could report first.
+ * Note *which* gate refused: `42501` is the GRANT, not RLS. Every table grants to
+ * `authenticated` only, so an anon request is denied before a policy is ever
+ * consulted — loudly, which is the behaviour the same-migration GRANT rule exists
+ * to buy. Locally the identical request returns `200 []`, because Supabase's
+ * default ACLs cover it there; that gap is why this is not a local discovery.
+ *
+ * The redirect is therefore not what makes these routes safe. It is what stops a
+ * signed-out person meeting a stack trace where a sign-in form belongs.
  */
 export const GUARDED = [
   '/library',
@@ -21,6 +38,7 @@ export const GUARDED = [
   '/phases',
   '/ledger',
   '/today',
+  '/interview',
 ]
 
 /** Routes a signed-in user has no reason to see. */

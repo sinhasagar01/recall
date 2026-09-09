@@ -190,3 +190,118 @@ test.describe('the rail stays put', () => {
     await expect(page.getByRole('link', { name: 'Library' }).last()).toBeInViewport()
   })
 })
+
+/*
+  ── The other direction: a way IN ───────────────────────────────────────────
+
+  Everything above asserts that a route you are already on offers a way back.
+  Nothing asserted that anything offered a way *in*, and arc 7 shipped the
+  consequence: `/interview` existed, was guarded by a key check, rendered
+  correctly and was reachable only by typing the URL. The suite was green, the
+  production walk passed — because the walk navigated straight to the address —
+  and the feature was invisible to the person it was built for.
+
+  The plan said "no entry point anywhere when there is no key". That sentence is
+  satisfied completely by a route that answers `notFound()`, so nothing was ever
+  false. A requirement stated only as a negative does not say what exists in the
+  positive case, and no test derived from it can.
+
+  So this asserts the positive: from a cold start, every private destination can
+  be reached by clicking.
+*/
+
+const APP_DIR = join(process.cwd(), 'src', 'app')
+
+/**
+ * Groups a signed-out person may see. Everything else must be reachable.
+ *
+ * Note the direction, because it is the whole point of writing it this way: a
+ * NEW route group is covered by default and has to be named here to escape.
+ * `guarded-routes.test.ts` had the opposite default — a hand-written list of
+ * private groups — and `(interview)` slipped past it by simply existing.
+ */
+const PUBLIC_GROUPS = ['(auth)']
+
+/**
+ * Every static page route behind sign-in, across every group.
+ *
+ * Same mechanical rule as APP_ROUTES above — a directory with its own page.tsx —
+ * but walked across the route groups rather than inside one, which is what
+ * `/practice` and `/interview` need to be seen at all.
+ */
+const DESTINATIONS = readdirSync(APP_DIR, { withFileTypes: true })
+  .filter(
+    (entry) =>
+      entry.isDirectory() && entry.name.startsWith('(') && !PUBLIC_GROUPS.includes(entry.name),
+  )
+  .flatMap((group) =>
+    readdirSync(join(APP_DIR, group.name), { withFileTypes: true })
+      .filter((entry) => entry.isDirectory() && !entry.name.startsWith('['))
+      .filter((entry) => existsSync(join(APP_DIR, group.name, entry.name, 'page.tsx')))
+      .map((entry) => `/${entry.name}`),
+  )
+  .sort()
+
+test.describe('every destination can be reached without typing a URL', () => {
+  test.use({ viewport: { width: 1280, height: 900 } })
+
+  test('the desktop rail offers a way in to each of them', async ({ page }) => {
+    /*
+      Guard the guard, and specifically against the shape that let this defect
+      through: a derivation that walks one group would find eight of these and
+      report a clean run while the ninth was unreachable.
+    */
+    expect(DESTINATIONS.length, 'the destination derivation found too little').toBeGreaterThanOrEqual(9)
+    expect(DESTINATIONS, 'the walk must cross route groups').toContain('/practice')
+    expect(DESTINATIONS, 'the route this test exists for').toContain('/interview')
+
+    await signInAs(page, 'few')
+
+    // The cold start is the root, not a route: whatever the app opens on.
+    await page.goto('/')
+    await expect(page).toHaveURL(/\/library/)
+
+    const landing = async () => {
+      // Back by history, never by the address bar — typing is the thing on trial.
+      while (new URL(page.url()).pathname !== '/library') await page.goBack()
+    }
+
+    for (const route of DESTINATIONS) {
+      await landing()
+
+      const link = page.locator(`a[href="${route}"]:visible`).first()
+      await expect(
+        link,
+        `nothing you can click leads to ${route} — it exists but cannot be found`,
+      ).toBeVisible()
+
+      await link.click()
+      await expect(page).toHaveURL(new RegExp(`${route}(\\?|$)`))
+    }
+  })
+})
+
+test.describe('the More sheet is the same list on a phone', () => {
+  test.use({ viewport: { width: 390, height: 844 } })
+
+  /*
+    The rail is display:none below the breakpoint, so on a phone the sheet is the
+    ONLY way in to this group. Both surfaces render `apprenticeshipNav()` now,
+    which is why they cannot drift again — but "cannot drift" is a claim about
+    one function, and this is the claim about the screen.
+  */
+  test('offers Interview, and clicking it opens the round setup', async ({ page }) => {
+    await signInAs(page, 'few')
+    await page.goto('/')
+
+    await expect(page.getByRole('complementary'), 'the rail must be gone here').toBeHidden()
+
+    await page.getByRole('button', { name: 'More' }).click()
+    const link = page.getByRole('link', { name: 'Interview' })
+    await expect(link).toBeVisible()
+
+    await link.click()
+    await expect(page).toHaveURL(/\/interview/)
+    await expect(page.getByRole('heading', { level: 1, name: 'Set up a round' })).toBeVisible()
+  })
+})

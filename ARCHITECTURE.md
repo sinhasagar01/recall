@@ -180,6 +180,49 @@ The narrower point still stands too: the harness that checks the tests was the l
 code in the loop, and it was wrong for two arcs without anyone noticing, because its failure
 mode was to report the reassuring answer.
 
+── A third failure mode: BIT for a reason that is not the guard ───────────────
+
+Arc 7 added one, and it is the worst of the three.
+
+Proving the new way-in assertion needed `prepare: npm run build` and a Playwright `verify`.
+The harness reported:
+
+```
+no entry point anywhere — the state arc 7 actually shipped BIT
+    Error: http://localhost:3000 is already used, make sure that nothing is running on the port/url
+1 perturbations, 1 bit, 0 did not.
+```
+
+The perturbation applied — exactly, byte for byte, every check the harness makes satisfied. The
+verify command exited non-zero. **And nothing was tested:** Playwright refused to start because a
+dev server held the port, so not one assertion ran.
+
+**A false bite is worse than a false pass, and the asymmetry is the point.** A false pass — "0
+failed" from a broken instrument — leaves you where you were: you believe a clause is redundant
+and go and look. A false bite leaves you **further back than you started**. You believe a guard
+works when nothing tested it, and then you write that belief into a commit message, where it
+outlives the run.
+
+The harness's exactness is all on one side of the operation. It proves the **edit** applied and
+never that the **verification** ran. `passMarker` says what "did not bite" looks like; nothing
+says what "ran at all" looks like, so a runner that never started is indistinguishable from a
+runner that started and failed.
+
+> **An exit code from a runner that never started is not a result.** The harness must confirm
+> the test command executed, not merely that the edit applied.
+
+Same family as *"could not measure wearing the costume of a result"* — **third instance**, after
+the checker that could not tell "no effect" from "could not measure", and "slow" that was a
+rendering-feedback problem wearing a performance costume. Each time the instrument produced the
+shape of an answer about something it never looked at.
+
+**The prescribed fix, recorded rather than built:** a `ranMarker` alongside `passMarker` — a
+string the runner emits *before* its first assertion — so a startup failure throws instead of
+becoming a data point. That is the rule the harness already applies to a missing anchor and to
+an edit that reaches the file but not the installed object; this is the same rule pointed at the
+verify step. Until it exists, the only thing that caught this was reading the failure text, and
+reading is not a control.
+
 ### Anything shared between tests in a file is a coupling
 
 An assertion has one job: **fail for its own reason, alone.** Anything a test shares with
@@ -2604,3 +2647,84 @@ one namespace and every feature seeded into it draws from the same pool of title
 **When seeding for a new feature onto a shared fixture, grep the other specs and stubs for the
 titles first.** They are as much a shared resource as the row count, and unlike the row count
 nothing declares them.
+
+### A derived invariant is only as complete as the list it walks
+
+`guarded-routes.test.ts` exists because a hand-written list of routes rots: `/sources` shipped
+missing from `GUARDED` and answered a 500 to signed-out requests. The fix was to derive the
+route list from the tree instead of remembering it — and that fix worked exactly as intended for
+two arcs.
+
+It derived the routes from a **hand-written list of route groups**:
+
+```ts
+const PRIVATE_GROUPS = ['(app)', '(practice)']
+```
+
+Arc 7 added `(interview)`. The invariant did not notice, `/interview` shipped unguarded, and
+signed out it answered the same 500 `/sources` had — the defect this file was written to make
+impossible, recurring underneath the mechanism that prevents it.
+
+**A hand-written list of *where to look* is the same defect as a hand-written list of *what to
+check*.** Deriving one level does not make a check derived; it moves the hand-written part
+somewhere less visible, where it reads as infrastructure rather than as a list someone has to
+maintain. This is the second instance — arc 5 recorded the first, that `APP_ROUTES` walks only
+one level inside `(app)`, so a nested static route like `/today/earlier` escapes it.
+
+Two things had to change, and only fixing one would have left the hole:
+
+**The default is inverted.** `PUBLIC_GROUPS = ['(auth)']` names the exceptions and everything
+else is derived. A new route group is now covered unless someone deliberately excludes it, so
+escaping the check is an act with a reason attached rather than the automatic consequence of
+`mkdir`. Fail-closed, where the old shape was fail-open.
+
+**The guard-the-guard clause could not survive.** It read `expect(routes.length).toBeGreaterThan(4)`,
+and `(app)` and `(practice)` cleared it alone — so it went on passing while a whole group was
+invisible. **A count cannot detect a missing group, because the group that is missing
+contributes nothing to the count.** A threshold measures that *something* was found; it never
+measures that *everything* was. It is replaced by a per-group assertion — every private group
+must contribute at least one route, naming the group when it does not — which fails as
+`(interview) contributed no routes`.
+
+Both were perturbed. Marking `(interview)` public, walking a directory that is not a route group,
+and blanking one group's routes each produce a distinct named failure; so does dropping
+`/interview` from `GUARDED`.
+
+**Still outstanding, named here so it is not rediscovered a third time:** `APP_ROUTES` in
+`wayfinding.spec.ts` still walks one level, so `/today/earlier` remains uncovered by the
+way-back invariant. The new way-in derivation in the same file crosses groups but has the same
+depth limit.
+
+### Invert the list: name the exceptions, cover everything else
+
+The general fix for the two entries above, stated once so it does not have to be rediscovered
+as a third instance.
+
+Both failures have the same shape. A guard walks a **hand-written list of where to look** —
+`PRIVATE_GROUPS = ['(app)', '(practice)']`, or a derivation that descends one level — and
+everything outside that list is silently uncovered. Nothing fails, because the thing not being
+checked contributes no failures. The suite stays green and tests less, which is the one failure
+mode a test suite cannot report on itself.
+
+> **When a guard walks a hand-written list of where to look, invert it: the list names the
+> exceptions, and everything else is covered by default.**
+
+`PUBLIC_GROUPS = ['(auth)']` is that inversion. The set of things that must be guarded is open
+and grows by `mkdir`; the set of things that legitimately escape is small, closed, and worth
+arguing about. Listing the second is a claim with a reason attached. Listing the first is a
+chore that someone will forget, and the forgetting is invisible.
+
+The direction is the whole of it. Under the old default a new route group was uncovered until
+someone remembered it; under the new one it is covered until someone deliberately excuses it.
+Fail-closed, where it was fail-open.
+
+**And the guard-the-guard has to be inverted with it, or the hole survives the fix.**
+`expect(routes.length).toBeGreaterThan(4)` could not have caught this, ever: **a missing group
+contributes nothing to the count.** A threshold measures that *something* was found; it never
+measures that *everything* was — so it is satisfied by the same evidence whether one group is
+missing or none is. What replaces it has to be per-item: every private group must contribute at
+least one route, naming the group when it does not.
+
+> **A count cannot detect an omission, because what is omitted is not in the count.** A
+> guard-the-guard written as a threshold is measuring the wrong thing whenever the risk is a
+> whole category going unwalked.
