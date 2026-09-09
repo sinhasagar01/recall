@@ -3117,3 +3117,63 @@ enum in either place and it goes red.
 
 The failure mode this avoids is the one the guard table already records twice: an assertion
 pointed at where a value *used* to be, passing while reading nothing.
+
+### A constraint refuses a shape; a test asserts the cases you imagined
+
+`interview_rounds_counts_reconcile` was written in arc 7 session one, against a defect in the
+*drawing*: the reference's hero claimed **11 of 14 follow-ups held** over a question list whose
+ceiling was 9 — not a wrong number but an unreachable one. The constraint exists so a figure
+counting cannot produce can never reach a row.
+
+**The first impossible number it refused was ours**, in code that did not exist when it was
+written. `countRound.answered` counted every turn of kind `answer`, including answers to
+follow-ups, while `asked` counted questions. A real round — one question, three follow-ups, four
+answers — produced `answered = 4, asked = 1`:
+
+```
+23514 · violates check constraint "interview_rounds_counts_reconcile"
+```
+
+650 unit tests, 549 pgTAP assertions and 180 Playwright specs were green. Every one of them
+passed before the fix and every one after, because none of them asserted this: the confusion was
+between two counters neither test had reason to compare.
+
+> **A test asserts the cases you imagined. A constraint refuses a shape.** Making a defect
+> structurally unrepresentable protects against instances of the same confusion nobody has
+> thought of yet — including ones written years later, by someone who never read the reason.
+
+This is the sharpest available argument for the project's existing preference for a mechanism
+over a guard, and it is stronger than the usual form of that argument. The usual form is "a
+mechanism cannot be forgotten". This is: **a mechanism catches the case you could not have
+enumerated, because it constrains the output rather than checking the inputs you thought of.**
+
+The constraint was authored against someone else's arithmetic error and caught our own. That is
+not luck — it is what "unrepresentable" means. The corollary for writing them: a CHECK is worth
+its cost when it can state a relationship *between* fields, because relationships are exactly
+what unit tests over one function at a time do not see.
+
+### A number that contradicts itself is visible, and a green suite is not looking
+
+Two symptoms were on screen before that insert failed, and both were plainly readable:
+
+- the room's tag said **`follow-up 3 of 2`**
+- the progress said **`3 of 4 answered`** after a single question
+
+Either one, read once, names the bug. Nothing read them. 650 tests were green and none of them
+was looking at the screen.
+
+The side-by-side discipline was written as *comparison against a drawing* — does the build match
+the reference. That framing is too narrow, and this is the third correction to it. It already
+grew to cover *anything whose correct value is only knowable by someone who knows what they just
+did*. It now also covers this:
+
+> **A figure that contradicts another figure on the same screen is visible to anyone looking,
+> with or without a reference.** "3 of 2" needs no drawing to be wrong.
+
+The check costs nothing and needs no artefact: **read every number on the screen against every
+other number on the screen.** Totals against parts, counters against their ceilings, a progress
+figure against the thing it claims to be progress through.
+
+Both of these would have been caught by a walk on any earlier session. Neither was, because the
+walks were navigating to a page and reading it, and this needed a round played end to end — the
+figures only disagree once there are enough turns for them to disagree about.

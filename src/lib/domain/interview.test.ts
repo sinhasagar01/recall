@@ -476,6 +476,84 @@ describe('a drafted quiz, before you have looked at it', () => {
   })
 })
 
+describe('the counts can always be written to the row', () => {
+  /*
+    ── The assertion that was missing, and what it cost ──────────────────────
+    `answered` counted every turn of kind `answer`, including answers to
+    follow-ups, while `asked` counted questions. A real round — one question,
+    three follow-ups, four answers — produced `answered = 4, asked = 1` and the
+    insert was refused:
+
+        23514 · violates check constraint "interview_rounds_counts_reconcile"
+
+    Every unit test passed. The CHECK caught it in production, on the walk that
+    existed to confirm a row could land at all. It was written after the
+    reference claimed 11 of 14 follow-ups held over a list whose ceiling was 9 —
+    to stop an impossible figure reaching a row — and the first one it stopped
+    was ours.
+
+    So the constraint is restated here, in the domain, where it can fail before
+    a request is made.
+  */
+  const reconciles = (turns: Turn[]) => {
+    const counts = countRound(turns)
+    expect(counts.answered, 'answered between 0 and asked').toBeLessThanOrEqual(counts.asked)
+    expect(counts.answered).toBeGreaterThanOrEqual(0)
+    expect(counts.followUpsHeld, 'held between 0 and offered').toBeLessThanOrEqual(
+      counts.followUpsOffered,
+    )
+    return counts
+  }
+
+  it('counts a question answered once, however many follow-ups it takes', () => {
+    const counts = reconciles([
+      them('question'),
+      you('answer'),
+      them('follow-up'),
+      you('answer'),
+      them('follow-up'),
+      you('answer'),
+      them('follow-up'),
+      you('answer'),
+    ])
+
+    expect(counts.asked).toBe(1)
+    expect(counts.answered, 'one question, answered').toBe(1)
+    expect(counts.followUpsOffered).toBe(3)
+    expect(counts.followUpsHeld, 'and three follow-ups held').toBe(3)
+  })
+
+  it('holds for a question left unanswered', () => {
+    const counts = reconciles([them('question'), you('skip'), them('question'), you('answer')])
+
+    expect(counts.asked).toBe(2)
+    expect(counts.answered, 'moving on is not answering').toBe(1)
+  })
+
+  it('holds for every shape a round can take', () => {
+    /*
+      The transcripts a real round produces, each run through the constraint.
+      Not exhaustive — enough that a change to the counting has to survive more
+      than the one case someone had in mind.
+    */
+    reconciles([])
+    reconciles([them('question')])
+    reconciles([them('question'), you('clarification'), them('clarification-answer')])
+    reconciles([them('question'), you('hint'), them('hint'), you('answer')])
+    reconciles([them('question'), you('answer'), them('follow-up')])
+    reconciles([
+      them('question'),
+      you('answer'),
+      them('follow-up'),
+      you('clarification'),
+      them('clarification-answer'),
+      you('answer'),
+      them('question'),
+      you('answer'),
+    ])
+  })
+})
+
 describe('the hero meter', () => {
   const lit = (overall: number) => meterSegments(overall).filter((s) => s.on).length
 
@@ -538,6 +616,15 @@ describe('the room says which follow-up you are on', () => {
 
   it('says nothing before the first follow-up', () => {
     expect(followUpTag('staff', [q(), you('answer')])).toBeNull()
+  })
+
+  it('drops the total once the ceiling is passed, rather than printing 3 of 2', () => {
+    /*
+      "Follow up twice" is an instruction to the model, not a constraint on it,
+      and a third arrives. `follow-up 3 of 2` is a figure that cannot be true —
+      the same shape as the reference's 11 of 14.
+    */
+    expect(followUpTag('staff', [q(), f(), f(), f()])).toBe('follow-up 3')
   })
 
   it('gives no total where the interviewer has no ceiling', () => {
