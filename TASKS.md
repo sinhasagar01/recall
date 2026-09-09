@@ -2186,3 +2186,35 @@ of.
 - **Nothing AI-written is ever stored as a topic field.** Not `definition`, not
   `mental_model`, not a `note`. If a suggestion is worth keeping, it is worth retyping —
   and retyping is the point.
+
+## Voice: what a person has to check, because nothing else can
+
+Speech recognition has no automated coverage and will not get any. Chrome's engine
+does not run through `getUserMedia`, so the fake-audio flags do not reach it, and a
+fake `window.SpeechRecognition` would emit exactly the events our reducer expects —
+the third instance of a stub derived from the consumer rather than the service. See
+ARCHITECTURE.md.
+
+**What IS asserted:** the reducer, over hand-written event sequences; the capability
+gate, with the constructor deleted from `window`; the mode parameter round-tripping
+from setup into the room; and the answer box staying typable with voice selected.
+
+**What is NOT asserted:** that speech is recognised at all, that a transcript is
+accurate, that the permission prompt behaves, or that the microphone actually stops.
+
+So these are done by hand, in Chrome, after each deploy that touches voice:
+
+- [ ] **It hears you.** Press *Speak your answer*, grant the permission, say one
+      sentence, and confirm it appears in the box.
+- [ ] **It does not eat what you said.** Say three sentences with pauses between
+      them. All three must still be there — a collapse to the last clause is the
+      `settled`/`pending` split failing.
+- [ ] **You can still type.** Dictate a sentence, then fix a word by hand before
+      sending. The box must stay editable and the correction must survive.
+- [ ] **The microphone stops.** Press `End the round` while it is listening and
+      confirm the browser's own recording indicator goes out.
+- [ ] **A refusal is survivable.** Deny the permission. The room must say something
+      true, name typing as the way through, and still work by typing.
+- [ ] **Firefox is told why.** Open the setup screen in Firefox: the Voice pill is
+      absent, the line says the browser has no speech recognition, and the privacy
+      sentence is gone with the option it describes.

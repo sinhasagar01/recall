@@ -13,6 +13,10 @@ import { Scorecard as ScorecardView } from '@/components/interview/scorecard'
 import { Button } from '@/components/ui/button'
 import { VoltButton } from '@/components/interview/volt-button'
 import { BackToLibrary } from '@/components/ui/back-to-library'
+import { useRoomKeys } from '@/components/interview/use-room-keys'
+import { useSpeech } from '@/components/interview/use-speech'
+import type { AnswerMode } from '@/lib/domain/voice'
+import { useSerial } from '@/components/interview/use-serial'
 import { NewInterview } from '@/components/interview/new-interview'
 import {
   HINTS_PER_ROUND,
@@ -54,6 +58,7 @@ export function Round({
   roundType,
   minutes,
   level,
+  mode,
   opening,
   openingTopicId,
   openingTopicTitle,
@@ -64,6 +69,8 @@ export function Round({
   roundType: RoundType
   minutes: Length
   level: Level
+  /** Typing or voice, chosen on the setup screen. Voice is dictation only. */
+  mode: AnswerMode
   /** The first question, asked on the server so the room opens with something in it. */
   opening: string
   /** Which topic that first question is about. Null if the model named none. */
@@ -153,7 +160,13 @@ export function Round({
   const remaining = minutes * 60 - elapsed
   const clock = `${Math.floor(Math.abs(remaining) / 60)}:${String(Math.abs(remaining) % 60).padStart(2, '0')}`
 
-  const say = async (turn: Turn, intent: 'follow' | 'hint' | 'clarify' | 'ask') => {
+  /*
+    Wrapped by `useSerial`, so the one-at-a-time rule is a property of `say`
+    rather than of every caller remembering to render `disabled={thinking}`.
+    It had to move: `⌘↵` below is a caller with no `disabled` attribute to give
+    it, and the speech result that arc 7 adds next is another.
+  */
+  const say = useSerial(async (turn: Turn, intent: 'follow' | 'hint' | 'clarify' | 'ask') => {
     setThinking(true)
     setError(null)
     const next = [...turns, turn]
@@ -220,7 +233,7 @@ export function Round({
     } finally {
       setThinking(false)
     }
-  }
+  })
 
   /**
    * Leave. **Synchronous up to the point you are out.**
@@ -233,6 +246,54 @@ export function Round({
    * Re-entry is guarded by a ref rather than by disabling the control, because a
    * disabled escape hatch is the bug this function exists to fix.
    */
+  /*
+    Dictation writes into the same box typing does.
+
+    `spoken` is appended to whatever was already typed rather than replacing it,
+    so the two are not modes that fight: start a sentence, dictate the rest, then
+    fix a word by hand. `typedBefore` is captured when listening starts — without
+    it every result would re-append to a box that already contains the previous
+    result.
+  */
+  const typedBefore = useRef('')
+  const speech = useSpeech({
+    onTranscript: (spoken) => {
+      const base = typedBefore.current
+      setAnswer(base === '' ? spoken : `${base} ${spoken}`)
+    },
+  })
+
+  const listen = () => {
+    typedBefore.current = answer.trim()
+    speech.start()
+  }
+
+  /*
+    One send, two ways to reach it.
+
+    The button and `⌘↵` build the same turn through the same call, so the chord
+    cannot drift from the control it duplicates. It checks only that there is
+    something to send — an empty answer is a content question, not a concurrency
+    one. It deliberately does NOT check `thinking`: that is `say`'s invariant
+    now, held by `useSerial`, and re-checking it here would put the guard back on
+    the callers where it does not belong.
+
+    ── Above the early returns, and that is not a style choice ─────────────────
+    `useRoomKeys` is a hook, and this component returns early for the left-room
+    and scorecard states. Registered below those returns it is called on some
+    renders and not others, which is a different hook count per render — React
+    unmounts the tree and the room renders as "This page couldn't load". Caught
+    by three existing specs going red, not by types.
+  */
+  const sendAnswer = () => {
+    if (answer.trim() === '') return
+    /* Sending ends the answer, so it ends the dictation of it. */
+    speech.stop()
+    say({ speaker: 'you', text: answer, topicId: currentTopicId, kind: 'answer' }, 'follow')
+  }
+
+  useRoomKeys({ onSend: sendAnswer })
+
   const end = () => {
     if (ending.current) return
     ending.current = true
@@ -634,7 +695,7 @@ export function Round({
           */
           disabled={thinking || answer.trim() === ''}
           onClick={() =>
-            say({ speaker: 'you', text: answer, topicId: currentTopicId, kind: 'answer' }, 'follow')
+            sendAnswer()
           }
         >
           Answer
@@ -689,8 +750,82 @@ export function Round({
           {counts.answered >= target ? 'See the scorecard' : 'End the round'}
         </Button>
 
+        {/*
+          The microphone, and only in a round that chose voice.
+
+          A toggle rather than hold-to-talk: an answer is thirty to ninety
+          seconds, and holding a key down for that long is not something to ask
+          of anyone, on a phone least of all.
+
+          `Answer` stays exactly where it is and the box stays typable. Voice
+          never removes the way that works — it is a second way in, and a
+          recogniser that mishears one word should cost a correction rather than
+          the answer.
+        */}
+        {/*
+          `supported` as well as `mode`, because the room can be reached without
+          the setup screen: `/interview?type=…&mode=voice` renders the room
+          directly, so the browser check the fourth group does never runs. The
+          same rule applies here as there — not a disabled microphone, and not
+          silence about why one was asked for and is missing.
+        */}
+        {mode === 'voice' && speech.supported === false ? (
+          <span data-testid="no-voice-room" className="font-mono text-[10.5px] text-ink-3">
+            This browser has no speech recognition — type your answer.
+          </span>
+        ) : null}
+
+        {mode === 'voice' && speech.supported === true ? (
+          <Button
+            variant="ghost"
+            onClick={speech.listening ? speech.stop : listen}
+            aria-pressed={speech.listening}
+            data-testid="mic"
+          >
+            {speech.listening ? (
+              <>
+                <span
+                  aria-hidden="true"
+                  className="mr-2 inline-block size-2 animate-pulse rounded-full bg-flag align-middle"
+                />
+                Stop listening
+              </>
+            ) : (
+              'Speak your answer'
+            )}
+          </Button>
+        ) : null}
+
         <span className="ml-auto font-mono text-[11.5px] text-ink-3">⌘↵ to send</span>
       </div>
+
+      {/*
+        Said again, at the second of the two moments.
+
+        The setup screen names what leaves where the choice is made; this names
+        it while it is actually leaving. The extract panel needs only one because
+        consenting and sending are the same press there — you read the line and
+        click Extract. Here they are minutes apart, and a sentence read on a
+        previous screen is not consent to a microphone that is open now.
+      */}
+      {mode === 'voice' && speech.listening ? (
+        <p
+          data-testid="listening-privacy"
+          className="mt-3 font-mono text-[10.5px] leading-[1.7] text-ink-3"
+        >
+          Listening — what you say is going to your browser&rsquo;s speech service.
+        </p>
+      ) : null}
+
+      {speech.state.problem !== null ? (
+        <p
+          role="alert"
+          data-testid="voice-error"
+          className="mt-3 rounded-md border border-flag bg-flag-soft px-4 py-3 text-meta text-flag"
+        >
+          {speech.state.problem}
+        </p>
+      ) : null}
 
       {/*
         The only thing in a round that feeds the LIBRARY rather than the

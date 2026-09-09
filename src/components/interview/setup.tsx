@@ -1,9 +1,10 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState, useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import { VoltButton } from '@/components/interview/volt-button'
 import { BackToLibrary } from '@/components/ui/back-to-library'
+import { ANSWER_MODES, speechSupported, type AnswerMode } from '@/lib/domain/voice'
 import {
   LENGTHS,
   LEVELS,
@@ -138,6 +139,27 @@ export function Setup({
   const [type, setType] = useState<RoundType>(ROUND_TYPES[0])
   const [minutes, setMinutes] = useState<Length>(initialMinutes ?? LENGTHS[0])
   const [level, setLevel] = useState<Level>(initialLevel ?? LEVELS[0])
+  const [mode, setMode] = useState<AnswerMode>(ANSWER_MODES[0])
+
+  /*
+    Whether this browser can hear you, asked after mount because the server
+    cannot know. `null` until then, never `false`: a default of `false` renders
+    "your browser cannot do this" to everyone for one frame, and that sentence is
+    wrong more often than it is right. The slot is empty for that frame instead.
+  */
+  const [canHear, setCanHear] = useState<boolean | null>(null)
+  useEffect(() => {
+    setCanHear(speechSupported(window as unknown as Record<string, unknown>))
+  }, [])
+
+  /*
+    If the browser turns out not to support it, the choice cannot stand. This
+    only fires for a deep link carrying `mode=voice` — nothing on screen can
+    select an option that is not rendered.
+  */
+  useEffect(() => {
+    if (canHear === false) setMode('typing')
+  }, [canHear])
 
   const questions = questionCount(minutes)
   const cost = estimateRoundCost(minutes)
@@ -145,7 +167,7 @@ export function Setup({
 
   const enter = () => {
     startEntering(() => {
-      router.push(`/interview?type=${type}&minutes=${minutes}&level=${level}`)
+      router.push(`/interview?type=${type}&minutes=${minutes}&level=${level}&mode=${mode}`)
     })
   }
 
@@ -282,13 +304,84 @@ export function Setup({
         </div>
       </fieldset>
 
+      {/* ── How you answer ───────────────────────────────────────────────── */}
+      <fieldset data-testid="answer-mode">
+        <legend className="sr-only">How you answer</legend>
+        <Rule>How you answer</Rule>
+        <div className="flex flex-wrap gap-2">
+          <Pill
+            name="mode"
+            testid="mode-typing"
+            picked={mode === 'typing'}
+            onPick={() => setMode('typing')}
+            title="Typing"
+            sub="works everywhere"
+          />
+          {/*
+            The fourth group is the only one with an option the browser can
+            refuse. The rule, from the reference: an option this browser cannot
+            run is not offered, and the group says why.
+
+            Not a disabled pill — disabled promises a click that would work, and
+            no click will give Firefox a speech engine. Not silence either: a
+            feature the product has and you cannot see is indistinguishable from
+            one it does not have, which is the whole of the absence entry in
+            ARCHITECTURE.md. So the pill is replaced, in its own place, by the
+            sentence naming what is missing and what has it.
+          */}
+          {canHear === true ? (
+            <Pill
+              name="mode"
+              testid="mode-voice"
+              picked={mode === 'voice'}
+              onPick={() => setMode('voice')}
+              title="Voice"
+              sub="you speak, it types"
+            />
+          ) : null}
+          {canHear === false ? (
+            <p
+              data-testid="no-voice"
+              className="max-w-[42ch] self-center font-mono text-[10.5px] leading-[1.7] text-ink-3"
+            >
+              Voice needs speech recognition, which this browser does not have. Chrome and Edge
+              do.
+            </p>
+          ) : null}
+        </div>
+
+        {/*
+          What leaves, named where the choice is made.
+
+          The same promise the extract panel makes about a transcript, adapted
+          rather than copied: that payload is bounded and priced, so it can say
+          "sends the transcript · 1,851 words · about $0.02–$0.04". This one is
+          neither — there is no word count until afterwards and no bill at all —
+          so it names the recipient instead, and says plainly that it is not the
+          model you already agreed to for this round. The room says it again
+          while the microphone is open, because consenting and sending are two
+          different moments here.
+        */}
+        {canHear === true ? (
+          <p
+            data-testid="voice-privacy"
+            className="mt-2.5 max-w-[62ch] border-l-2 border-rule-strong pl-[11px] font-mono text-[10.5px] leading-[1.7] text-ink-2"
+          >
+            Voice sends what you say to your browser&rsquo;s speech service — Google&rsquo;s, in
+            Chrome — which is not the model this round already uses. Typing sends nothing but the
+            answer you press send on.
+          </p>
+        ) : null}
+      </fieldset>
+
       {/* ── The start card ────────────────────────────────────────────────── */}
       <div
         data-testid="start-card"
         className="relative mt-5 overflow-hidden rounded-[22px] px-[30px] pt-7 pb-[26px] text-[var(--mesh-ink)] [background:var(--mesh)] [box-shadow:var(--mesh-shadow)]"
       >
         <p className="font-mono text-[10px] tracking-[0.16em] text-[var(--mesh-key)] uppercase">
-          {TYPE[type].name} · {minutes} minutes · {LEVEL_LABEL[level].name.toLowerCase()}
+          {TYPE[type].name} · {minutes} minutes · {LEVEL_LABEL[level].name.toLowerCase()} ·{' '}
+          {mode}
         </p>
         <p className="mt-2 mb-[5px] font-display text-[28px] font-medium tracking-[-0.02em] text-white">
           {plural(questions, 'concept')}, weighted toward weak

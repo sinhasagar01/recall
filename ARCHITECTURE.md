@@ -3251,6 +3251,63 @@ the same defect one degree less invisible: a control that exists but does not do
 says still cannot be caught by asserting it is present, and every check we had asserted exactly
 that.
 
+### Voice is dictation, and dropping the speaking half is a decision, not a cut
+
+The reference drew one pill: **"Voice — it speaks, you speak · Chrome"**. Only half of it
+ships, and the half that does not was removed on its merits rather than deferred for room.
+
+**What voice is for here is that speaking an answer is a different skill from typing one.** No
+backspace, you hear your own filler, and you have to commit to a sentence before you know how it
+ends. That is what a real interview tests and what a textarea cannot simulate — the whole reason
+the feature is worth building.
+
+**Hearing the question is not that.** You read it faster than any synthesiser reads it aloud, at
+your own pace, and you can re-read a clause — which speech takes away. Text-to-speech makes the
+round slower and less re-readable and adds no skill to practise. The argument for it is
+immersion, and the room is not immersive: there is a clock on screen, a hint counter and a
+`Move on` button. A synthetic voice reading text you can already see is theatre with a state
+machine attached — cancel-on-interrupt, speak-once-per-turn across re-renders, stop on unmount,
+a first-utterance gesture requirement, and voice quality that varies per OS with no way to
+normalise.
+
+**This contradicts the drawing and no shipped decision stood on the other side**, so the
+precedence rule did not settle it: it arbitrates between a drawing and a recorded decision, and
+here there was only the drawing. That makes it a new decision, which is why it was put as a
+question before any code rather than resolved while building. **The reference was corrected in
+the same commit** — the pill now reads *"you speak, it types"*, which is what ships.
+
+### A fake proves what its author derived it from, and this is the third time
+
+Twice this project has shipped a stub that described our own code rather than the service:
+
+| | what the stub returned | what the vendor returns |
+| --- | --- | --- |
+| the scorecard | `topic_id` as a uuid | a slug — `"arrow-function-this"` |
+| the turn branch | plain text, then JSON, both shaped like `parseTurn` | whatever the model emits |
+
+Both were written **in the same minutes as the code they were testing**, by the person holding
+the parser in their head. That is the whole mechanism. Nobody set out to write a fixture from
+the consumer; the consumer was simply the only description of the payload in the room at the
+time, so it is what got copied. The first cost every interview round ever saved — `22P02` on
+insert, `0` rows in production — and no test could see it, because 175 specs asked the stub.
+
+> **The test is not whether a fake is realistic. It is whether it was derived from the service
+> or from the consumer — and if nobody has read the service's real output, it was derived from
+> the consumer whatever its author intended.** A fixture written from what our parser expects can
+> only ever confirm that our parser accepts it.
+
+**Which is why speech recognition gets no fake at all.** A `window.SpeechRecognition` injected by
+`addInitScript` would emit exactly the `result` events our reducer wants, in exactly our order,
+with exactly our confidence shape — a third instance of the same error, written the same way, in
+the same minutes. Nobody here has read what Chrome's engine actually emits for a hesitant
+forty-second answer with a false start in it.
+
+So the recogniser is not simulated. What is asserted is the reducer over hand-written event
+sequences (which proves the reducer, and is described as proving only that), and the capability
+gate with the constructor **deleted from `window`** — removing a global tests a real condition
+rather than simulating a service. What is not asserted is stated out loud, in TASKS.md, as a list
+of things a person has to do by hand.
+
 ### Absence looks the same on screen whatever produced it
 
 A fourth control was reported missing: *Practise this chapter*, on a course that now has two
