@@ -22,6 +22,18 @@ import { useFocusTrap } from '@/components/ui/use-focus-trap'
  *
  * The footer's bottom padding clears the iOS home indicator. It is pinned to the
  * bottom edge now, so it is the first thing that would sit under it.
+ *
+ * ── It arrives rather than appearing ────────────────────────────────────────
+ * It had no animation of any kind: in the DOM one frame, painted the next. On
+ * the bottom sheet, which covers most of a phone, that reads as the page having
+ * been replaced rather than as a panel opening.
+ *
+ * The animation lives HERE rather than at the More sheet's call site, so all
+ * five sheets inherit it — a side panel slides from the right, a bottom sheet
+ * rises from the bottom, and the scrim fades over the same interval so the two
+ * read as one movement. Keyframes rather than a transition, because this mounts
+ * only when open and there is no prior state to transition from. See
+ * globals.css for why the resting state is the keyframes' end.
  */
 export function Sheet({
   open,
@@ -57,7 +69,7 @@ export function Sheet({
   return (
     <Scrim
       onClose={onClose}
-      className={`fixed inset-0 z-60 flex bg-ink/34 ${
+      className={`fixed inset-0 z-60 flex bg-ink/34 [animation:scrim-in_180ms_ease-out] ${
         placement === 'bottom' ? 'items-end justify-center' : 'justify-end'
       }`}
     >
@@ -69,8 +81,8 @@ export function Sheet({
         tabIndex={-1}
         className={
           placement === 'bottom'
-            ? 'flex max-h-[80vh] w-full flex-col rounded-t-lg bg-surface shadow-pop md:mb-6 md:w-[min(460px,100%)] md:rounded-lg'
-            : 'flex h-full w-full flex-col bg-surface shadow-pop md:w-[min(560px,100%)] md:border-l md:border-rule'
+            ? 'flex max-h-[80vh] w-full flex-col rounded-t-lg bg-surface shadow-pop [animation:sheet-up_260ms_cubic-bezier(0.22,1,0.36,1)] md:mb-6 md:w-[min(460px,100%)] md:rounded-lg'
+            : 'flex h-full w-full flex-col bg-surface shadow-pop [animation:sheet-in_260ms_cubic-bezier(0.22,1,0.36,1)] md:w-[min(560px,100%)] md:border-l md:border-rule'
         }
       >
         <div className="flex shrink-0 items-center justify-between gap-4 px-5 pt-5 pb-[22px] md:px-[30px] md:pt-[26px]">
