@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import { LinkButton } from '@/components/ui/link-button'
 
 /**
  * "Start a new interview" — the way back to setup, wherever a round has ended.
@@ -29,12 +29,8 @@ import Link from 'next/link'
  */
 export function NewInterview() {
   return (
-    <Link
-      href="/interview"
-      data-testid="new-interview"
-      className="inline-flex min-h-11 cursor-pointer items-center rounded-md border border-rule-strong bg-surface px-3.5 py-2.5 text-label font-medium text-ink hover:border-ink-3"
-    >
+    <LinkButton href="/interview" data-testid="new-interview">
       Start a new interview
-    </Link>
+    </LinkButton>
   )
 }

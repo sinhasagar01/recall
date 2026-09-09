@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { LinkButton } from '@/components/ui/link-button'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, useTransition } from 'react'
 import { IntentionRow } from '@/components/today/intention-row'
@@ -147,12 +148,19 @@ function TodayBoard({
           <h1 className="font-display text-page-title font-medium tracking-[-0.022em]">Today</h1>
           <p className="mt-1.5 font-mono text-[11.5px] text-ink-3">{dayLabel(today)}</p>
         </div>
-        <Link
-          href="/today/earlier"
-          className="flex-none pt-3 font-mono text-mono text-accent-ink underline hover:text-ink"
-        >
+        {/*
+          A control, not an underlined word. It is a destination change the
+          reader chooses, which is what every other one in this app looks like —
+          and it was the last plain-link exit left after the six on Phases,
+          Ledger and Sources were converted.
+
+          `LinkButton` rather than its own class string: two components already
+          carried a copy of that string, and a third by copy-paste is how the
+          six came to disagree in the first place.
+        */}
+        <LinkButton href="/today/earlier" className="flex-none">
           Earlier days
-        </Link>
+        </LinkButton>
       </div>
 
       {error ? (

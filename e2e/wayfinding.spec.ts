@@ -34,15 +34,29 @@ import { signInAs } from './auth-state'
  * (a route handler answering a file, with no page) and `topic` (dynamic only —
  * covered by its own test below), with no exception list to maintain.
  */
-const APP_ROUTES = readdirSync(join(process.cwd(), 'src', 'app', '(app)'), {
-  withFileTypes: true,
-})
-  .filter((entry) => entry.isDirectory() && !entry.name.startsWith('['))
-  .filter((entry) =>
-    existsSync(join(process.cwd(), 'src', 'app', '(app)', entry.name, 'page.tsx')),
-  )
-  .map((entry) => `/${entry.name}`)
-  .sort()
+/*
+  Every page in the group, at any depth.
+
+  This read one level and stopped, so `/today/earlier` — a real page with a real
+  route — was never walked. Nothing declared it missing; it simply was not in the
+  list, which is the failure mode of every derived list that derives too little.
+
+  Dynamic segments are excluded because a `[id]` route needs a real id to visit
+  and the topic case has its own test above.
+*/
+function pagesUnder(dir: string, prefix: string): string[] {
+  const routes: string[] = []
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (!entry.isDirectory() || entry.name.startsWith('[') || entry.name.startsWith('(')) continue
+    const here = join(dir, entry.name)
+    const route = `${prefix}/${entry.name}`
+    if (existsSync(join(here, 'page.tsx'))) routes.push(route)
+    routes.push(...pagesUnder(here, route))
+  }
+  return routes
+}
+
+const APP_ROUTES = pagesUnder(join(process.cwd(), 'src', 'app', '(app)'), '').sort()
 
 /** Visible, not merely present: the mobile tab bar is in the DOM at desktop width. */
 async function visibleLibraryLinks(page: Page): Promise<string[]> {
@@ -69,6 +83,15 @@ test.describe('every route in the app group can reach the library', () => {
     expect(APP_ROUTES).toContain('/ledger')
     expect(APP_ROUTES, 'export answers a file, not a page').not.toContain('/export')
     expect(APP_ROUTES, 'topic is dynamic and has its own test').not.toContain('/topic')
+    /*
+      And it reaches past the first level. This derivation read one directory
+      deep for four arcs, so `/today/earlier` was a page in this group that no
+      walk ever visited — not declared missing, simply not in the list. Named
+      explicitly rather than counted, because a count is what let it hide.
+    */
+    expect(APP_ROUTES, 'the derivation stops at the first level again').toContain(
+      '/today/earlier',
+    )
 
     await signInAs(page, 'few')
 
