@@ -117,7 +117,28 @@ export interface Quiz extends TopicShared {
  * That is the point: adding this discriminant turned every place that assumed one
  * shape into an error the compiler finds, rather than a null someone remembers.
  */
+import type { EvidenceColumn } from '@/lib/domain/evidence'
+
 export type Topic = TopicRecord | Quiz
+
+/**
+ * A topic as the PRACTICE QUEUE knows it: everything except evidence.
+ *
+ * Not a convenience type. `practice_ordered_page` does not select the nine
+ * evidence columns and must not — `evidence-boundary.test.ts` fails on their
+ * mere mention in a queue module, and separately asserts they are absent from
+ * the practice and weak SQL. So a queue row genuinely does not have them, and a
+ * type saying otherwise is describing a query nobody is allowed to write.
+ *
+ * It used to say otherwise. `practice.ts` cast the rows to `TopicRow`, so every
+ * topic the queue produced carried nine fields typed `string | null` and holding
+ * `undefined`. Nothing read them, so nothing failed — see issue #24, where the
+ * defect is the cast rather than the column count.
+ *
+ * Distributed over the union deliberately: `Omit<Topic, …>` on a union collapses
+ * the discriminant and loses the `kind` narrowing that makes a quiz a quiz.
+ */
+export type QueueTopic = Omit<TopicRecord, EvidenceColumn> | Omit<Quiz, EvidenceColumn>
 
 export function isQuiz(topic: Topic): topic is Quiz {
   return topic.kind === 'quiz'

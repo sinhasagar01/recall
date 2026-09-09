@@ -4,7 +4,7 @@ import { StateBlock } from '@/components/ui/state-block'
 import { railCounts } from '@/lib/data/library'
 import { weakPage, type WeakCursor } from '@/lib/data/practice'
 import { STALE_WINDOW_DAYS } from '@/lib/domain/confidence'
-import type { Topic } from '@/lib/domain/types'
+import type { QueueTopic, Topic } from '@/lib/domain/types'
 import { practiceWeakLabel } from '@/lib/domain/practice-selection'
 
 /*
@@ -174,7 +174,7 @@ function StaleSection({
   total,
   readAt,
 }: {
-  topics: Topic[]
+  topics: QueueTopic[]
   cursor: WeakCursor | null
   total: number
   readAt: string

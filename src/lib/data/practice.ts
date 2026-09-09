@@ -3,12 +3,12 @@ import { fail } from '@/lib/data/fail'
 
 import { cache } from 'react'
 
-import { toTopic, type TopicRow } from '@/lib/data/topic-mapping'
+import { toQueueTopic, type QueueRow } from '@/lib/data/topic-mapping'
 import { STALE_WINDOW_DAYS } from '@/lib/domain/confidence'
 import { REVIEW_CONFIDENCES, SETTLED_CONFIDENCES } from '@/lib/domain/library-counts'
 import { SERVER_PAGE_SIZE } from '@/lib/domain/library-paging'
 import { BUCKET_SEQUENCE, PRACTICE_SESSION_SIZE } from '@/lib/domain/practice-selection'
-import type { Confidence, Kind, Topic } from '@/lib/domain/types'
+import type { Confidence, Kind, QueueTopic } from '@/lib/domain/types'
 import { createClient } from '@/lib/supabase/server'
 
 /**
@@ -25,7 +25,7 @@ import { createClient } from '@/lib/supabase/server'
  */
 
 /** The rows come back with their sort key, which is what the cursor is made of. */
-type OrderedRow = TopicRow & { bucket: number; staleness: string }
+type OrderedRow = QueueRow & { bucket: number; staleness: string }
 
 export interface WeakCursor {
   bucket: number
@@ -43,6 +43,32 @@ function staleCutoff(readAt: string): string {
   return new Date(Date.parse(readAt) - STALE_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString()
 }
 
+/**
+ * `weak_counts` returns jsonb, so the generated type is `Json` and something has
+ * to narrow it. A cast is the wrong something.
+ *
+ * The recorded jsonb rule is that a column the database cannot see the inside of
+ * is one the application has to see the inside of twice — and a `as unknown as`
+ * sees it zero times. This is the second look: three numbers, checked, with a
+ * readable failure naming the key rather than an `undefined` surfacing as `NaN`
+ * in a rail badge three screens away.
+ */
+function parseCounts(raw: unknown): { total: number; neverPracticed: number; stale: number } {
+  const shape = raw as Record<string, unknown> | null
+  const read = (key: 'total' | 'neverPracticed' | 'stale'): number => {
+    const value = shape?.[key]
+    if (typeof value !== 'number' || !Number.isFinite(value)) {
+      throw new Error(
+        `Counting your weak topics returned no usable \`${key}\`. ` +
+          'weak_counts and this reader have diverged.',
+      )
+    }
+    return value
+  }
+
+  return { total: read('total'), neverPracticed: read('neverPracticed'), stale: read('stale') }
+}
+
 function cursorOf(rows: OrderedRow[]): WeakCursor | null {
   const last = rows.at(-1)
   if (!last) return null
@@ -55,12 +81,12 @@ function cursorOf(rows: OrderedRow[]): WeakCursor | null {
 }
 
 export interface WeakPage {
-  topics: Topic[]
+  topics: QueueTopic[]
   nextCursor: WeakCursor | null
   total: number
   neverPracticed: number
   /** Settled topics that have gone quiet — see issue #13 and `isStale`. */
-  stale: Topic[]
+  stale: QueueTopic[]
   staleTotal: number
   staleCursor: WeakCursor | null
   /** Relative times are relative to the read, never to render. */
@@ -113,20 +139,21 @@ export const weakPage = cache(async (cursor: WeakCursor | null = null): Promise<
   if (stalePage.error) fail('Loading your settled topics', stalePage.error)
   if (counts.error) fail('Counting your weak topics', counts.error)
 
-  const rows = page.data as unknown as OrderedRow[]
-  const staleRows = stalePage.data as unknown as OrderedRow[]
-  const summary = counts.data as unknown as {
-    total: number
-    neverPracticed: number
-    stale: number
-  }
+  /*
+    No `as unknown as`. The rows are what the function returns, and the type
+    now says so — see issue #24: the cast asserted nine evidence columns that
+    `practice_ordered_page` has never selected and is forbidden to.
+  */
+  const rows: OrderedRow[] = page.data ?? []
+  const staleRows: OrderedRow[] = stalePage.data ?? []
+  const summary = parseCounts(counts.data)
 
   return {
-    topics: rows.map(toTopic),
+    topics: rows.map(toQueueTopic),
     nextCursor: rows.length === SERVER_PAGE_SIZE ? cursorOf(rows) : null,
     total: summary.total,
     neverPracticed: summary.neverPracticed,
-    stale: staleRows.map(toTopic),
+    stale: staleRows.map(toQueueTopic),
     staleTotal: summary.stale,
     staleCursor: staleRows.length === SERVER_PAGE_SIZE ? cursorOf(staleRows) : null,
     readAt,
@@ -163,7 +190,7 @@ export async function practiceQueue({
   weakOnly?: boolean
   kinds?: Kind[]
   ids?: string[]
-}): Promise<Topic[]> {
+}): Promise<QueueTopic[]> {
   const supabase = await createClient()
 
   const { data, error } = await supabase.rpc('practice_ordered_page', {
@@ -177,5 +204,9 @@ export async function practiceQueue({
 
   if (error) fail('Building your practice session', error)
 
-  return (data as unknown as OrderedRow[]).map(toTopic)
+  /*
+    The other half of issue #24, and the same cast. This is the line the issue
+    named; the paged read above had two more of it.
+  */
+  return (data ?? []).map(toQueueTopic)
 }

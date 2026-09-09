@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { ConfidenceMeter } from '@/components/ui/confidence-meter'
 import type { WeakCursor } from '@/lib/data/practice'
 import { lastPracticedLabel, topicPath } from '@/lib/domain/library'
-import type { Topic } from '@/lib/domain/types'
+import type { QueueTopic, Topic } from '@/lib/domain/types'
 
 /**
  * The weak list, with its own pagination.
@@ -23,7 +23,7 @@ export function WeakList({
   readAt,
   scope = 'weak',
 }: {
-  initial: Topic[]
+  initial: QueueTopic[]
   initialCursor: WeakCursor | null
   total: number
   readAt: string
