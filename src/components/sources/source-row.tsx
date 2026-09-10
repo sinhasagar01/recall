@@ -77,9 +77,26 @@ export function SourceRow({
 
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-rule py-[13px] pr-[18px] pl-[34px] first:border-t-0 hover:bg-surface-2">
+      {/*
+        ── Below `md` the progress line takes its own row ────────────────────
+        It is `shrink-0` and about fifty characters — "7 topics · 14 quizzes ·
+        18 never practised · 1 weak" — so it claimed its full width first and the
+        name block got what was left. "Execution Context", seventeen characters,
+        wrapped to two lines with its meta wrapping a word per line beside it,
+        and the span itself clipped at the card edge mid-word. Issue #28.
+
+        **Wrapped rather than truncated, and that is the choice.** Both halves
+        are content being read: the name is what you scan the list for, the
+        counts are what you decide on. Truncating either destroys information to
+        fit the other, and neither is decoration that can afford an ellipsis.
+        Wrapping costs one row of height on a phone and nothing else.
+
+        Above `md` it stays exactly as it was — one line, `shrink-0`, no
+        truncation, because there the width was never the problem.
+      */}
       <Link
         href={`/sources/${source.id}`}
-        className="flex w-full min-w-0 items-center gap-4 md:w-auto md:flex-1"
+        className="flex w-full min-w-0 flex-wrap items-center gap-x-4 gap-y-1.5 md:w-auto md:flex-1 md:flex-nowrap"
       >
         {/*
         The meter LEADS the row — both mocks put it first, and the trailing
@@ -112,7 +129,7 @@ export function SourceRow({
           was corrected.
         */
           <span
-            className={`shrink-0 font-mono text-[11.5px] ${stale ? 'text-flag' : 'text-ink-3'}`}
+            className={`w-full shrink-0 font-mono text-[11.5px] md:w-auto ${stale ? 'text-flag' : 'text-ink-3'}`}
           >
             {stale
               ? `Nothing · ${Math.floor(
@@ -121,7 +138,7 @@ export function SourceRow({
               : 'Nothing distilled'}
           </span>
         ) : (
-          <span className="shrink-0 font-mono text-[11.5px] text-ink-3">
+          <span className="w-full shrink-0 font-mono text-[11.5px] text-ink-3 md:w-auto">
             {sourceProgressCopy(progress)}
           </span>
         )}
