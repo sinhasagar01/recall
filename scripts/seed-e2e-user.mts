@@ -67,6 +67,54 @@ if (listError) {
   process.exit(1)
 }
 
+/*
+  ── Throwaway accounts, swept before anything else ─────────────────────────
+  `journey.spec.ts` signs up through the form — which is the thing it tests, so
+  it cannot reuse a cached fixture session — and creates a fresh
+  `journey-<stamp>@recall.test` account on every run. Nothing removed them.
+  Issue #21.
+
+  ── Why this belongs in the seed and not in an afterEach ───────────────────
+  An `afterEach` in the spec leaks on a mid-test failure, which is precisely how
+  the accumulation started: the runs that die halfway are the ones that never
+  reach their own cleanup. A sweep at the START of the next run has no such
+  hole — whatever the previous run did or failed to do, this collects it.
+
+  ── And it is a different KIND of clear-down from the one below ────────────
+  The loop over `FIXTURE_USER_IDS` deletes per table, and that list has already
+  gone stale once: sources were added and only one user's were cleared. Every
+  such list needs maintaining when a table arrives.
+
+  This one cannot. Every user-owned table references `auth.users (id) on delete
+  cascade` — all seven of them — so deleting the account removes everything it
+  owns, including tables that do not exist yet. It is the clear-down learning
+  about USERS rather than about tables, and it is strictly the more durable
+  shape. The per-table loop cannot be replaced by it only because fixture users
+  must survive; throwaway ones must not.
+
+  ── The failure mode the issue says it does not have ──────────────────────
+  It has one, and it is far away and will point somewhere else. `listUsers`
+  above takes `perPage: 1000`, as does `e2e/fixture-invariants.ts`. Past a
+  thousand accounts the page truncates, a fixture's id goes missing from the
+  map, and the error reads "Fixture user "main" does not exist. Run: npm run
+  seed:e2e" — which is true of nothing. Sixty-six accounts today.
+*/
+const throwaway = existing.users.filter(
+  (user) => user.email?.startsWith('journey-') && user.email.endsWith('@recall.test'),
+)
+
+for (const user of throwaway) {
+  const { error } = await admin.auth.admin.deleteUser(user.id)
+  if (error) {
+    console.error(`Could not remove a leftover journey account: ${error.message}`)
+    process.exit(1)
+  }
+}
+
+if (throwaway.length > 0) {
+  console.log(`Leftover journey accounts removed: ${throwaway.length}`)
+}
+
 async function upsertUser(userEmail: string, userPassword: string): Promise<string> {
   const found = existing.users.find((user) => user.email === userEmail)
 
