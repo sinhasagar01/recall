@@ -6,7 +6,7 @@ import { topicIdsForChapter, topicIdsForCourse } from '@/lib/data/sources'
 import { railCounts } from '@/lib/data/library'
 import { practiceQueue } from '@/lib/data/practice'
 import { getTopic, signedImageUrl } from '@/lib/data/topics'
-import type { Topic } from '@/lib/domain/types'
+import type { QueueTopic, Topic } from '@/lib/domain/types'
 import { BackToLibrary } from '@/components/ui/back-to-library'
 import {
   canPracticeBelowMinimum,
@@ -217,7 +217,7 @@ export default async function PracticePage({ searchParams }: PageProps<'/practic
   Signed on the server, for the whole queue at once. Signing during the reveal
   would leave a hole in the layout at the exact moment attention is on the answer.
 */
-async function imageUrls(queue: Topic[]): Promise<Record<string, string>> {
+async function imageUrls(queue: QueueTopic[]): Promise<Record<string, string>> {
   const entries = await Promise.all(
     queue
       .filter((topic) => topic.mental_model_image_path !== null)

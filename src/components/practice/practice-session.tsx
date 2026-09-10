@@ -15,7 +15,7 @@ import { answerQuiz, gradeTopic } from '@/app/(practice)/practice/actions'
 import { CONFIDENCE_LABEL, GRADE_TO_CONFIDENCE, gradeQuiz, type Grade } from '@/lib/domain/confidence'
 import { topicPath } from '@/lib/domain/library'
 import { sessionSummary, sessionTally, type GradedResult } from '@/lib/domain/practice-session'
-import type { Topic } from '@/lib/domain/types'
+import type { QueueTopic, Topic } from '@/lib/domain/types'
 import { BackToLibrary } from '@/components/ui/back-to-library'
 
 const GRADES = [
@@ -37,7 +37,7 @@ export function PracticeSession({
   imageUrls,
   seed,
 }: {
-  queue: Topic[]
+  queue: QueueTopic[]
   imageUrls: Record<string, string>
   /** The read timestamp. Shuffles a quiz's options, stably for the session. */
   seed: string

@@ -8,7 +8,7 @@ import { ConfidenceMeter } from '@/components/ui/confidence-meter'
 import { MentalModel } from '@/components/ui/register'
 import { CONFIDENCE_LABEL, gradeQuiz } from '@/lib/domain/confidence'
 import { seededShuffle } from '@/lib/domain/practice-selection'
-import type { Quiz } from '@/lib/domain/types'
+import type { QueueTopic, Quiz } from '@/lib/domain/types'
 
 /**
  * Answering a quiz. Select, then Check.
@@ -38,7 +38,7 @@ export function QuizCard({
   isLast,
   isSaving,
 }: {
-  quiz: Quiz
+  quiz: Extract<QueueTopic, { kind: 'quiz' }>
   /** The read timestamp, so the order is stable for the question and varies between. */
   seed: string
   /** The chosen index. Whether it was right is decided on the server. */

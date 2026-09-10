@@ -10,10 +10,10 @@ import {
 export { needsReview }
 import { categoryOf } from '@/lib/domain/category-suggest'
 import { filterTopics } from '@/lib/domain/search-filter'
-import type { Confidence, Difficulty, Topic } from '@/lib/domain/types'
+import type { Confidence, Difficulty, QueueTopic, Topic } from '@/lib/domain/types'
 
 /** The card's path line: "React · rendering". */
-export function topicPath(topic: Topic): string {
+export function topicPath(topic: QueueTopic): string {
   const category = categoryOf(topic)
   const firstTag = topic.tags[0]
   const base = firstTag ? `${category} · ${firstTag}` : category
@@ -304,7 +304,7 @@ export function difficultyOptions(topics: Topic[], now: Date): CategoryOption[] 
  * It lives here rather than in the row because deciding which of the two applies
  * is a comparison, and comparisons do not go in components.
  */
-export function lastPracticedLabel(topic: Topic, now: Date): string {
+export function lastPracticedLabel(topic: QueueTopic, now: Date): string {
   if (topic.last_practiced_at === null) return 'never practiced'
   return `last practiced ${formatRelativeTime(topic.last_practiced_at, now)}`
 }

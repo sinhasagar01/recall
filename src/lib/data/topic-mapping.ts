@@ -1,5 +1,6 @@
+import type { EvidenceColumn } from '@/lib/domain/evidence'
 import type { Database } from '@/lib/database.types'
-import type { Confidence, Difficulty, Quiz, Topic, TopicRecord } from '@/lib/domain/types'
+import type { Confidence, Difficulty, QueueTopic, Quiz, Topic, TopicRecord } from '@/lib/domain/types'
 
 /**
  * Four columns are omitted deliberately, for two different reasons.
@@ -60,6 +61,15 @@ export type TopicRow = Omit<
   Database['public']['Tables']['topics']['Row'],
   'search_text' | 'source_id' | 'capability_id' | 'parent_topic_id'
 >
+
+/**
+ * What `practice_ordered_page` actually returns: a topic row without evidence.
+ *
+ * Derived from `TopicRow` rather than restated, so a column added to `topics`
+ * still fails the build in exactly one place. The nine that come off are the
+ * ones the queue is forbidden to select — see `QueueTopic` in the domain types.
+ */
+export type QueueRow = Omit<TopicRow, EvidenceColumn>
 
 /*
   ── The boundary rule ───────────────────────────────────────────────────────
@@ -128,6 +138,59 @@ function narrow<T extends string>(
  * guarantees the row satisfies exactly one arm; if it does not, the schema and the
  * domain have diverged and that is worth a crash rather than a half-built object.
  */
+/**
+ * The same mapping for a row the queue produced, which has no evidence on it.
+ *
+ * Separate from `toTopic` rather than generic over its input, because the two
+ * differ in their OUTPUT type and nothing else — and a generic that threads the
+ * presence of nine columns through a discriminated union costs more to read
+ * than the eight lines it saves.
+ *
+ * No cast. That is the point of issue #24: the previous version reached the same
+ * result through `as unknown as TopicRow`, which is the one construct that can
+ * assert nine columns exist when the SQL never selected them.
+ */
+export function toQueueTopic(row: QueueRow): QueueTopic {
+  const shared = {
+    ...row,
+    confidence: narrow(CONFIDENCES, row.confidence, 'confidence', row.id),
+    difficulty: narrow(DIFFICULTIES, row.difficulty, 'difficulty', row.id),
+  }
+
+  if (row.kind === 'quiz') {
+    if (row.options === null || row.correct_option === null) {
+      throw new Error(
+        `Quiz ${row.id} is missing options or correct_option. ` +
+          'topics_shape_is_consistent should have made this unreachable.',
+      )
+    }
+
+    return {
+      ...shared,
+      kind: 'quiz',
+      definition: null,
+      mental_model_image_path: null,
+      options: row.options,
+      correct_option: row.correct_option,
+    }
+  }
+
+  if (row.definition === null) {
+    throw new Error(
+      `Topic ${row.id} has no definition. ` +
+        'topics_shape_is_consistent should have made this unreachable.',
+    )
+  }
+
+  return {
+    ...shared,
+    kind: 'topic',
+    definition: row.definition,
+    options: null,
+    correct_option: null,
+  }
+}
+
 export function toTopic(row: TopicRow): Topic {
   const shared = {
     ...row,

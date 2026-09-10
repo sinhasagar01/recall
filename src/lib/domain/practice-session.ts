@@ -1,5 +1,5 @@
 import { needsReview } from '@/lib/domain/confidence'
-import type { Confidence, Topic } from '@/lib/domain/types'
+import type { Confidence, QueueTopic, Topic } from '@/lib/domain/types'
 
 /**
  * One answered card. A skip produces no result at all, so it cannot appear here.
@@ -12,7 +12,12 @@ import type { Confidence, Topic } from '@/lib/domain/types'
  * shapes rather than branching.
  */
 export interface GradedResult {
-  topic: Topic
+  /*
+    `QueueTopic`, because these come from the practice queue and the queue's SQL
+    does not select evidence. A full `Topic` is still assignable — it has more
+    fields, not fewer — so nothing that had one has to change.
+  */
+  topic: QueueTopic
   confidence: Confidence
 }
 
@@ -36,8 +41,8 @@ export function sessionTally(results: GradedResult[]): Tally {
 export function sessionSummary(results: GradedResult[]): string {
   if (results.length === 0) return 'Nothing was graded this time.'
 
-  const out: Topic[] = []
-  const into: Topic[] = []
+  const out: QueueTopic[] = []
+  const into: QueueTopic[] = []
 
   for (const { topic, confidence } of results) {
     const before = needsReview(topic)
@@ -61,7 +66,7 @@ export function sessionSummary(results: GradedResult[]): string {
  * which only topics moved still says "topics". "Cards" is the fallback because it
  * is what the library already calls both shapes on screen.
  */
-function named(moved: Topic[]): string {
+function named(moved: QueueTopic[]): string {
   const kinds = new Set(moved.map((topic) => topic.kind))
   const one = kinds.size > 1 ? 'card' : kinds.has('quiz') ? 'quiz' : 'topic'
   const many = one === 'quiz' ? 'quizzes' : `${one}s`
