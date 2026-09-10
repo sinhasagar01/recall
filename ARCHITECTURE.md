@@ -3580,6 +3580,59 @@ multi-file codemod. The question is not whether the validation is good. It is
 what the state is when step four of six throws, and whether anything printed
 before then is still true.
 
+### Removing a cast is answered by a type, never by an invented value
+
+`practice.ts` cast its rows to `TopicRow`, asserting nine evidence columns that
+`practice_ordered_page` has never selected. Every topic the queue produced
+carried nine fields typed `string | null` and holding `undefined`.
+
+The cheap fix is obvious and wrong: fill them with `null` in the mapper and the
+object satisfies `Topic` again. It compiles, it needs no downstream change, and
+it is worse than what it replaces.
+
+> **`undefined` was a missing statement. `null` is a false one.** On a topic that
+> does have a rebuild recorded, `rebuild_at: null` asserts there is none — the
+> queue would be answering a question it was never allowed to ask, and answering
+> it wrongly. The cast hid a mismatch behind a type; filling it hides the same
+> mismatch behind data, where no type checker can reach it at all.
+
+**The general form: when a cast comes out, what replaces it is a type describing
+what the call actually returns — never a value invented to satisfy the type that
+turned out to be wrong.** If the honest type is narrower, the narrowing ripples,
+and the ripple is the point: it is the list of places that believed the lie.
+
+Here the ripple was three files and six signatures, and every one only widened —
+a full `Topic` has more fields than a `QueueTopic`, so it stayed assignable and
+no existing caller changed. That is the common case and worth expecting: code
+reading a subset keeps working when the type stops promising the superset.
+
+**Where else this mechanism runs:** every `as unknown as` in `lib/data`. Each one
+is a claim about a shape nobody checked, and the repair is the same each time —
+find what the call returns and say that. The `weak_counts` cast was fixed in the
+same commit and needed the other answer, a parser, because narrowing `Json` is a
+run-time question rather than a compile-time one.
+
+### An issue body is the world at filing time
+
+Issue #24 said `practice_ordered_page` returns 17 columns. It returns 20 — the
+extraction migration redefined the function and added four — and the diagnosis
+quoted the number instead of deriving it. The nine evidence columns had not
+moved, so the conclusion held and the arithmetic in it did not.
+
+**Second time this week that a number true when written was false when read.**
+The first was the reference's stat strip. Both were correct records of a moment,
+read later as descriptions of the present.
+
+> **An issue body is evidence about when it was filed, not about now.** A
+> diagnosis re-derives every number in it from the code, and says so when the
+> number has moved — silently using the new one is how the issue stays wrong for
+> the next reader.
+
+The cheap version of this: any figure in a written record that could be produced
+by running something should be produced by running it, at the moment it is used.
+The expensive version is that the record itself should be corrected, which is
+why the issue was updated rather than just worked around.
+
 ### Absence looks the same on screen whatever produced it
 
 A fourth control was reported missing: *Practise this chapter*, on a course that now has two
