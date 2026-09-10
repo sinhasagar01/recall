@@ -28,8 +28,20 @@ import { createClient } from '@/lib/supabase/server'
 /** Big enough that a normal library is one round trip, small enough to be a page. */
 const PAGE = 1000
 
+/*
+  ── `last_recall` is in, and that was not a foregone conclusion ─────────────
+  Issue #20 planned to leave the export question for later. `export-columns.test.ts`
+  refused to let it be left: the file promises "every column, not a summary", and
+  a column on the domain `Topic` that is absent here breaks the promise silently.
+
+  So the choice was include it or write an exception into a guard whose whole
+  point is that there are none. Included, on the reading that this file is your
+  own library handed back to you — the personal-content worry is about sharing,
+  and an export you asked for of your own data is not sharing. An export that
+  quietly drops a field the topic page shows you is the worse failure.
+*/
 const COLUMNS =
-  'id, user_id, title, definition, mental_model, mental_model_image_path, category, tags, difficulty, confidence, practice_count, last_practiced_at, created_at, updated_at, kind, options, correct_option, extracted, rebuild_at, rebuild_note, rebuild_url, challenge_at, challenge_note, challenge_url, production_at, production_note, production_url'
+  'id, user_id, title, definition, mental_model, mental_model_image_path, category, tags, difficulty, confidence, practice_count, last_practiced_at, created_at, updated_at, kind, options, correct_option, extracted, rebuild_at, rebuild_note, rebuild_url, challenge_at, challenge_note, challenge_url, production_at, production_note, production_url, last_recall, last_recall_at'
 
 /**
  * Every topic the caller owns, newest first — the library's own order, so the

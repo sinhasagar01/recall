@@ -26,6 +26,7 @@ import {
 } from '@/lib/domain/library'
 import type { Topic } from '@/lib/domain/types'
 import { BackToLibrary } from '@/components/ui/back-to-library'
+import { FROM_MEMORY, isRecalled, NOTHING_FROM_MEMORY } from '@/lib/domain/recall'
 
 export function TopicDetail({
   topic,
@@ -199,6 +200,41 @@ export function TopicDetail({
             {formatShortDate(topic.last_practiced_at)}
           </Stat>
         </div>
+
+        {/*
+          ── What you wrote, under what it produced ──────────────────────────
+          This section has been called "Recall history" since phase 3 and has
+          contained three scalars and no history. Issue #20.
+
+          Set as a QUOTATION rather than a register, and that is deliberate.
+          Definition and Mental model are claims about the topic, refined at
+          leisure, in the page's own voice. This is a snapshot of what you could
+          produce under time pressure with the answer hidden — often wrong, and
+          interesting because it is wrong. It is not a claim about the topic; it
+          is a record of a moment, so it is indented, quieter, dated, and in your
+          voice rather than the page's.
+
+          Its own date, never `last_practiced_at`. Every graded practice moves
+          that one; this moves only when something was actually typed, so the two
+          diverge the first time someone reveals without writing — and a date
+          from one practice beside text from another is a page that lies while
+          both columns are correct.
+        */}
+        {isRecalled(topic.last_recall) ? (
+          <figure className="mt-4 border-l-2 border-rule-strong pl-4" data-testid="from-memory">
+            <figcaption className="font-mono text-mono font-medium tracking-[0.16em] text-ink-3 uppercase">
+              {FROM_MEMORY}
+              {topic.last_recall_at ? ` · ${formatShortDate(topic.last_recall_at)}` : ''}
+            </figcaption>
+            <blockquote className="mt-2 text-body leading-[1.7] whitespace-pre-wrap text-ink-2">
+              {topic.last_recall}
+            </blockquote>
+          </figure>
+        ) : (
+          <p className="mt-4 font-mono text-[11.5px] text-ink-3" data-testid="no-memory">
+            {NOTHING_FROM_MEMORY}
+          </p>
+        )}
       </RegisterSection>
 
       {deleteError ? (

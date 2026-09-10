@@ -330,6 +330,8 @@ export type Database = {
           id: string
           kind: string
           last_practiced_at: string | null
+          last_recall: string | null
+          last_recall_at: string | null
           mental_model: string | null
           mental_model_image_path: string | null
           options: string[] | null
@@ -363,6 +365,8 @@ export type Database = {
           id?: string
           kind?: string
           last_practiced_at?: string | null
+          last_recall?: string | null
+          last_recall_at?: string | null
           mental_model?: string | null
           mental_model_image_path?: string | null
           options?: string[] | null
@@ -396,6 +400,8 @@ export type Database = {
           id?: string
           kind?: string
           last_practiced_at?: string | null
+          last_recall?: string | null
+          last_recall_at?: string | null
           mental_model?: string | null
           mental_model_image_path?: string | null
           options?: string[] | null

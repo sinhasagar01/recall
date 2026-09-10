@@ -29,6 +29,8 @@ const row: TopicRow = {
   production_at: null,
   production_note: null,
   production_url: null,
+  last_recall: null,
+  last_recall_at: null,
 }
 
 describe('toTopic', () => {

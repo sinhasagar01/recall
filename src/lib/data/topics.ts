@@ -7,6 +7,7 @@ import { toTopic } from '@/lib/data/topic-mapping'
 import { evidenceColumns, type EvidenceKind } from '@/lib/domain/evidence'
 import type { Confidence, Difficulty, Topic } from '@/lib/domain/types'
 import { createClient } from '@/lib/supabase/server'
+import type { TopicPracticeUpdate } from '@/lib/domain/confidence'
 
 /**
  * The ONLY module that reads or writes topics. Everything above it works in
@@ -223,10 +224,7 @@ export async function deleteTopicRow(id: string): Promise<void> {
 }
 
 /** Writes one graded answer. The update itself is computed by the domain layer. */
-export async function recordPractice(
-  id: string,
-  update: { confidence: Confidence; practice_count: number; last_practiced_at: string },
-): Promise<void> {
+export async function recordPractice(id: string, update: TopicPracticeUpdate): Promise<void> {
   const supabase = await createClient()
 
   const { error } = await supabase.from('topics').update(update).eq('id', id)
