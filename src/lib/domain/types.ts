@@ -49,6 +49,24 @@ interface TopicShared {
    */
   extracted: boolean
 
+  /**
+   * What you wrote from memory in the practice card, most recent only, and when.
+   *
+   * ON the domain type, unlike `source_id`, `capability_id` and
+   * `parent_topic_id` — it is content, like `definition` and `mental_model`,
+   * and the detail page renders it. The protection those omissions bought is
+   * still wanted, and it is bought a layer down instead: `QueueTopic` omits
+   * both, so the practice path cannot name what it must not order by. See
+   * `topic-mapping.ts`.
+   *
+   * Two fields, not one with a borrowed date. `last_practiced_at` is written by
+   * every graded practice; these two are written only when something was
+   * actually typed, so the moments diverge — and a date from one practice beside
+   * text from another is a page that lies while both columns are correct.
+   */
+  last_recall: string | null
+  last_recall_at: string | null
+
   /*
     ── Evidence ──────────────────────────────────────────────────────────────
     Three markers, each absent or present with a date, a required note and an
@@ -138,7 +156,9 @@ export type Topic = TopicRecord | Quiz
  * Distributed over the union deliberately: `Omit<Topic, …>` on a union collapses
  * the discriminant and loses the `kind` narrowing that makes a quiz a quiz.
  */
-export type QueueTopic = Omit<TopicRecord, EvidenceColumn> | Omit<Quiz, EvidenceColumn>
+export type QueueTopic =
+  | Omit<TopicRecord, EvidenceColumn | 'last_recall' | 'last_recall_at'>
+  | Omit<Quiz, EvidenceColumn | 'last_recall' | 'last_recall_at'>
 
 export function isQuiz(topic: Topic): topic is Quiz {
   return topic.kind === 'quiz'

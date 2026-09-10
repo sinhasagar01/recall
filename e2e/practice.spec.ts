@@ -188,3 +188,91 @@ test('Escape leaves a practice session, and the exit says so', async ({ page }) 
   await page.keyboard.press('Escape')
   await expect(page).toHaveURL(/\/library/)
 })
+
+test.describe('what you wrote from memory', () => {
+  test.describe.configure({ mode: 'serial' })
+  test.setTimeout(90_000)
+
+  const TOPIC = `From memory ${Date.now()}`
+
+  test('is kept, and shown on the topic under Recall history', async ({ page }) => {
+    await signInAs(page, 'extract')
+
+    await page.getByRole('button', { name: /Add (topic|your first topic)/ }).first().click()
+    const add = page.getByRole('dialog')
+    await add.getByRole('textbox', { name: 'Topic', exact: true }).fill(TOPIC)
+    await add.getByLabel('Definition').fill('A live reference to the defining scope, not a copy.')
+    await add.getByRole('button', { name: 'Save topic' }).click()
+    await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 30_000 })
+
+    await page.getByRole('link', { name: new RegExp(TOPIC) }).click()
+    await expect(page).toHaveURL(/\/topic\//)
+    const id = page.url().split('/topic/')[1]
+
+    // Nothing yet, and it says so rather than rendering an empty box.
+    await expect(page.getByTestId('no-memory')).toBeVisible()
+    await expect(page.getByTestId('from-memory')).toHaveCount(0)
+
+    await page.goto(`/practice?topic=${id}`)
+    await page.getByLabel('Write what you remember').fill('something about the scope staying alive')
+    await page.getByRole('button', { name: /Explain it|Reveal/ }).first().click().catch(() => {})
+    await page.keyboard.press('ControlOrMeta+Enter')
+    await page.getByRole('button', { name: /Didn't know it/ }).click()
+    /*
+      Wait for the session to finish before navigating. The click returns before
+      the server action does, and reading the topic page in between races the
+      write — which fails as "nothing was stored" rather than as a race.
+    */
+    await expect(page.getByRole('heading', { name: 'Session complete' })).toBeVisible({
+      timeout: 30_000,
+    })
+
+    await page.goto(`/topic/${id}`)
+    const quoted = page.getByTestId('from-memory')
+    await expect(quoted).toBeVisible()
+    await expect(quoted).toContainText('something about the scope staying alive')
+    // Its own label and its own date, inside the section already named for it.
+    await expect(quoted).toContainText('From memory')
+  })
+
+  test('an empty attempt is the absence of an explanation, not a new one', async ({ page }) => {
+    /*
+      The behaviour a reasonable implementation gets wrong by default.
+
+      Revealing without typing reaches the SAME write a real attempt does, so
+      unless the empty value is dropped before the update, grading after a blank
+      textarea overwrites what you wrote last time with ''. Driven by actually
+      sending the empty value — reveal, grade, nothing typed — rather than by
+      asserting the domain rule a second time.
+    */
+    await signInAs(page, 'extract')
+
+    await page.getByRole('link', { name: new RegExp(TOPIC) }).click()
+    await expect(page).toHaveURL(/\/topic\//)
+    const id = page.url().split('/topic/')[1]
+
+    const before = await page.getByTestId('from-memory').textContent()
+
+    await page.goto(`/practice?topic=${id}`)
+    /*
+      Click into the box and type nothing — which is what "revealed without
+      typing" actually is. Asserting the value without focusing left the chord
+      firing at the document, and the card never revealed.
+    */
+    const box = page.getByLabel('Write what you remember')
+    await expect(box).toHaveValue('')
+    await box.click()
+    await page.keyboard.press('ControlOrMeta+Enter')
+    await page.getByRole('button', { name: /Didn't know it/ }).click()
+    await expect(page.getByRole('heading', { name: 'Session complete' })).toBeVisible({
+      timeout: 30_000,
+    })
+
+    await page.goto(`/topic/${id}`)
+    await expect(page.getByTestId('from-memory')).toBeVisible()
+    await expect(
+      page.getByTestId('from-memory'),
+      'grading with an empty box overwrote what was written before',
+    ).toHaveText(before ?? '')
+  })
+})

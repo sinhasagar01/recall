@@ -1,5 +1,5 @@
 begin;
-select plan(69);
+select plan(73);
 
 -- ---------------------------------------------------------------------------
 -- Local helpers.
@@ -91,6 +91,16 @@ select columns_are('public'::name, 'topics'::name, ARRAY[
   -- capability_id this one IS on the domain Topic, so every read must return it —
   -- a filter over a column half the reads omit is a filter that lies.
   'extracted',
+  -- Issue #20. What you wrote from memory in the practice card, and WHEN you
+  -- wrote it. Overwritten each time, never appended to.
+  --
+  -- Two columns rather than one. A single text field would take its date from
+  -- `last_practiced_at`, which is written in the same UPDATE — correct exactly
+  -- while the two are always written together, and false the moment an empty
+  -- attempt stops overwriting a stored one. Then the date belongs to a later
+  -- practice than the text beside it and nothing anywhere is wrong except the
+  -- pairing. See ARCHITECTURE.md.
+  'last_recall', 'last_recall_at',
   -- Arc 2. Nullable, ON DELETE SET NULL, and deliberately absent from the domain
   -- Topic — see supabase/tests/sources_test.sql and topic-mapping.ts.
   'source_id',
@@ -418,6 +428,35 @@ select is(
   (select parent_topic_id from public.topics where id = '00000000-0000-0000-0000-000000000c02'),
   null::uuid,
   'and drops the line rather than leaving it dangling');
+
+-- ===========================================================================
+-- Issue #20 — what you wrote from memory
+-- ===========================================================================
+select col_type_is('public'::name, 'topics'::name, 'last_recall'::name, 'text',
+  'the words you wrote, not a document');
+
+select col_type_is('public'::name, 'topics'::name, 'last_recall_at'::name, 'timestamptz',
+  'and when — its own column, not borrowed from last_practiced_at');
+
+select col_is_null('public'::name, 'topics'::name, 'last_recall'::name,
+  'a topic you have never practised has written nothing');
+
+/*
+  Deliberately NO constraint coupling the two, and no length CHECK.
+
+  Both would be the one way a grade could be lost to an attempt: the text is
+  written in the same UPDATE that moves confidence, so a constraint the prose
+  could violate would take the practice down with it. The text has no invariant
+  worth a constraint — it is whatever you managed to remember.
+
+  Asserted by writing the awkward pair and expecting it to be accepted, so the
+  absence is a decision on the record rather than an omission.
+*/
+select lives_ok(
+  $q$update public.topics set last_recall = repeat('a', 20000), last_recall_at = now()
+      where title = 'Closures'$q$,
+  'a very long attempt is stored, because a rejected one would cost a grade'
+);
 
 select tests_logout();
 

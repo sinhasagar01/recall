@@ -80,7 +80,16 @@ export function PracticeSession({
     if (isSaving) return
     setError(null)
     startSaving(async () => {
-      const result = await gradeTopic(topic.id, chosen)
+      /*
+        What was written from memory goes with the grade, in the same write.
+
+        `answer` is sent as-is: whether an empty one counts is decided in the
+        domain, not here, because "an empty attempt is the absence of an
+        explanation rather than a new one" is a rule about recall attempts and
+        not about this textarea. A second surface that collects one gets the
+        same behaviour without knowing it exists.
+      */
+      const result = await gradeTopic(topic.id, chosen, answer)
       if (result.error !== null) {
         setError(result.error)
         return

@@ -3633,6 +3633,38 @@ by running something should be produced by running it, at the moment it is used.
 The expensive version is that the record itself should be corrected, which is
 why the issue was updated rather than just worked around.
 
+### A field that borrows its neighbour's timestamp is correct only while they are written together
+
+Issue #20 was planned as **one** nullable column: the text you wrote from memory. Its date would
+come from `last_practiced_at`, which is written in the same UPDATE and would therefore be the
+same instant. That is true, and it is true only while every graded practice writes both.
+
+The feature's own rule breaks it. *An empty attempt is the absence of an explanation, not a new
+one*, so revealing without typing must not overwrite what you wrote last time — which makes the
+attempt **conditional** while `last_practiced_at` stays unconditional. From the first blank
+practice onward the date belongs to a later moment than the text beside it, and the page says
+*"this is what you said last time"* about something you said two times ago.
+
+> **The tell is that nothing breaks.** The date is a real date. The text is real text. Both
+> columns are individually correct and the pairing between them is false — so there is no
+> constraint that could catch it, no type that could express it, and no test that fails. The page
+> is simply wrong in a way nothing can observe.
+
+**Two columns, eight bytes, and the failure mode is gone by construction.** `recallWrite` returns
+both or neither and cannot produce one without the other; the type carries them together.
+
+**Caught in planning, by following the rule through rather than by anything that could have
+failed.** The skip question — *does revealing without typing clear the stored attempt* — is what
+surfaced it: answering it "no" is what decouples the two writes, and the decoupling is only
+visible if you then ask what the date means. Nothing downstream would have raised it. The first
+symptom would have been a date on a screen, months later, that nobody could prove wrong.
+
+**Where else this mechanism runs:** any field displayed beside a timestamp it does not own.
+`practice_count` and `last_practiced_at` are safe because both are unconditional. `extracted` has
+no date. The question to ask of any new nullable column is not "does it need its own timestamp"
+but **"is there a path on which this is written and the timestamp beside it is not"** — and
+"only when non-empty", "only on success", and "only if changed" are all that path.
+
 ### Absence looks the same on screen whatever produced it
 
 A fourth control was reported missing: *Practise this chapter*, on a course that now has two

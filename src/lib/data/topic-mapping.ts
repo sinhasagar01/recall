@@ -69,7 +69,23 @@ export type TopicRow = Omit<
  * still fails the build in exactly one place. The nine that come off are the
  * ones the queue is forbidden to select — see `QueueTopic` in the domain types.
  */
-export type QueueRow = Omit<TopicRow, EvidenceColumn>
+/**
+ * What the queue may not see, and why each of them.
+ *
+ * **Evidence**, because the queue ordering by it would be two confidence systems
+ * — the rule `evidence-boundary.test.ts` exists for.
+ *
+ * **`last_recall`**, because it is exactly what a future "you wrote nothing last
+ * time, show it sooner" ordering would reach for, and that orders the queue by
+ * something other than confidence. Same hazard as the parent link, arriving as
+ * content rather than as a foreign key — which is why the `Omit` on `TopicRow`
+ * was the wrong lever for it. This column IS on the domain `Topic`, because the
+ * detail page renders it and `getTopic` selects `*`; it is the QUEUE that must
+ * not have it, and this is the layer that says so.
+ */
+type QueueBlind = EvidenceColumn | 'last_recall' | 'last_recall_at'
+
+export type QueueRow = Omit<TopicRow, QueueBlind>
 
 /*
   ── The boundary rule ───────────────────────────────────────────────────────

@@ -15,7 +15,15 @@ export type GradeResult = { error: string | null }
   path that could. Skipping advances the queue in the browser and never reaches
   the server at all.
 */
-export async function gradeTopic(id: string, grade: Grade): Promise<GradeResult> {
+export async function gradeTopic(
+  id: string,
+  grade: Grade,
+  /*
+    What was written from memory before revealing, if anything. Optional so the
+    signature stays honest about the one caller that has a textarea to read.
+  */
+  recalled?: string,
+): Promise<GradeResult> {
   try {
     const topic = await getTopic(id)
     if (topic === null) return { error: 'That topic is no longer in your library.' }
@@ -28,7 +36,14 @@ export async function gradeTopic(id: string, grade: Grade): Promise<GradeResult>
     if (topic.kind !== 'topic') return { error: 'A quiz is answered, not graded.' }
 
     // The rule itself lives in the domain layer and was tested in phase 2.
-    const update = practiceUpdateFor(topic, { kind: 'graded', grade }, new Date())
+    /*
+      One write, not two: `recordPractice` is a single UPDATE and the attempt is
+      two more keys in the same object. So there is no ordering question and no
+      partial state — and the reason there is no CHECK on either column is that a
+      constraint the prose could violate would be the one way a grade could be
+      lost to an attempt.
+    */
+    const update = practiceUpdateFor(topic, { kind: 'graded', grade }, new Date(), recalled)
     if (update === null) return { error: null }
 
     await recordPractice(id, update)

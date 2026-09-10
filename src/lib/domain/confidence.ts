@@ -1,4 +1,5 @@
 import type { Confidence, Topic } from '@/lib/domain/types'
+import { recallWrite, type RecallWrite } from '@/lib/domain/recall'
 
 /**
  * The single definition of "never practiced", used by BOTH the practice-selection
@@ -60,7 +61,7 @@ export type PracticeOutcome =
   | { kind: 'answered'; correct: boolean }
   | { kind: 'skipped' }
 
-export interface TopicPracticeUpdate {
+export interface TopicPracticeUpdate extends Partial<RecallWrite> {
   confidence: Confidence
   practice_count: number
   last_practiced_at: string
@@ -77,7 +78,17 @@ export function practiceUpdateFor(
   topic: Pick<Topic, 'practice_count'>,
   outcome: PracticeOutcome,
   now: Date,
+  /*
+    What was written from memory this time, if anything. Optional so every
+    existing caller and test is unchanged — a quiz has no textarea to read.
+  */
+  recalled?: string | null,
 ): TopicPracticeUpdate | null {
+  /*
+    A skip writes NOTHING, which is why it also cannot clear a stored attempt:
+    this return is before any update object exists. Issue #20's skip question
+    was already answered by this line.
+  */
   if (outcome.kind === 'skipped') return null
 
   return {
@@ -85,6 +96,16 @@ export function practiceUpdateFor(
       outcome.kind === 'graded' ? GRADE_TO_CONFIDENCE[outcome.grade] : gradeQuiz(outcome.correct),
     practice_count: topic.practice_count + 1,
     last_practiced_at: now.toISOString(),
+    /*
+      Spread, so an empty attempt contributes no keys at all rather than two
+      nulls. The difference is the whole of issue #20's rule: an update carrying
+      `last_recall: null` CLEARS what you wrote last time, and revealing without
+      typing is not a reason to lose it.
+
+      Both fields or neither — `recallWrite` cannot produce one without the
+      other, which is what stops the date drifting away from the text.
+    */
+    ...(recallWrite(recalled, now) ?? {}),
   }
 }
 
