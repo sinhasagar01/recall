@@ -28,7 +28,7 @@ import type { Confidence, Difficulty, Kind, Topic } from '@/lib/domain/types'
 /** How long typing settles before server mode asks the database. */
 const SEARCH_DEBOUNCE_MS = 250
 
-const GRID = 'grid grid-cols-1 gap-3 md:grid-cols-[repeat(auto-fill,minmax(292px,1fr))]'
+const GRID = 'grid grid-cols-1 gap-6 md:grid-cols-[repeat(auto-fill,minmax(292px,1fr))]'
 const QUICK_FILTERS: QuickFilter[] = [
   'never-practiced',
   'needs-review',
