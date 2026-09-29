@@ -52,3 +52,4 @@ next-env.d.ts
 
 # Written by scripts/perturb.mjs while a file is edited; removed on restore.
 .perturb-rescue.json
+.claude/

@@ -157,7 +157,7 @@ export default async function AppLayout({ children }: LayoutProps<'/'>) {
       </aside>
 
       {/* pb-24 leaves room for the tab bar, which is fixed over the content. */}
-      <main className="max-w-[1080px] px-5 pt-6 pb-24 md:px-[34px] md:pt-[30px] md:pb-15">
+      <main className="max-w-[1920px] px-5 pt-6 pb-24 md:px-[34px] md:pt-[30px] md:pb-15">
         {children}
       </main>
 
