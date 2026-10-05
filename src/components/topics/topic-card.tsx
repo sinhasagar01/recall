@@ -11,14 +11,34 @@ import { hasEvidence } from '@/lib/domain/evidence'
   is the honest element for something that navigates, and it gets middle-click,
   open-in-new-tab and the browser's own affordances for free.
 */
-export function TopicCard({ topic, timestamp }: { topic: Topic; timestamp?: string }) {
+export function TopicCard({ topic, timestamp, selected, selectionMode = false, onSelect }: {
+  topic: Topic
+  timestamp?: string
+  /** Present only while the library is in selection mode. */
+  selected?: boolean
+  selectionMode?: boolean
+  onSelect?: () => void
+}) {
   return (
-    <Link
-      href={`/topic/${topic.id}`}
-      className={`flex flex-col gap-[9px] rounded-lg border border-rule bg-surface p-5 shadow-card hover:border-rule-strong ${
-        topic.kind === 'quiz' ? 'border-l-[3px] border-l-accent' : ''
-      }`}
-    >
+    <div className="relative">
+      {selectionMode ? (
+        <label className="absolute top-2.5 right-2.5 z-10 flex size-7 cursor-pointer items-center justify-center rounded-md border border-rule-strong bg-surface shadow-card">
+          <input
+            type="checkbox"
+            aria-label={`Select “${topic.title}”`}
+            checked={selected}
+            onChange={onSelect}
+            disabled={!onSelect}
+            className="size-4 accent-accent"
+          />
+        </label>
+      ) : null}
+      <Link
+        href={`/topic/${topic.id}`}
+        className={`flex flex-col gap-[9px] rounded-lg border border-rule bg-surface p-5 shadow-card hover:border-rule-strong ${
+          topic.kind === 'quiz' ? 'border-l-[3px] border-l-accent' : ''
+        }`}
+      >
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="font-display text-card-title leading-[1.28] font-medium tracking-[-0.01em]">
@@ -76,7 +96,8 @@ export function TopicCard({ topic, timestamp }: { topic: Topic; timestamp?: stri
                 </span>
               )}
       </div>
-    </Link>
+      </Link>
+    </div>
   )
 }
 

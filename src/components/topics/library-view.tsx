@@ -8,9 +8,10 @@ import { MoreSheet } from '@/components/topics/more-sheet'
 import { TopicCard } from '@/components/topics/topic-card'
 import { TopicSheet } from '@/components/topics/topic-sheet'
 import { Button } from '@/components/ui/button'
+import { Modal } from '@/components/ui/modal'
 import { StateBlock } from '@/components/ui/state-block'
 import { Toast } from '@/components/ui/toast'
-import { loadMoreTopics } from '@/app/(app)/library/actions'
+import { deleteLibraryItems, loadMoreTopics } from '@/app/(app)/library/actions'
 import { SEARCH_INPUT_ID } from '@/components/topics/global-keys'
 import type { Cursor, LibraryData } from '@/lib/data/library'
 import {
@@ -120,6 +121,13 @@ export function LibraryView({
   const [adding, setAdding] = useState(false)
   const [prefillTitle, setPrefillTitle] = useState('')
   const [saved, setSaved] = useState<string | null>(null)
+  const [selecting, setSelecting] = useState(false)
+  const [allSelected, setAllSelected] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [deleteNotice, setDeleteNotice] = useState<string | null>(null)
+  const [isDeleting, startDeleting] = useTransition()
 
   const at = new Date(data.readAt)
   const params = new URLSearchParams(searchParams.toString())
@@ -304,6 +312,46 @@ export function LibraryView({
     setAdding(true)
   }
 
+  const selectedCount = allSelected ? counts.total : selectedIds.length
+
+  const beginSelection = () => {
+    setSelecting(true)
+    setAllSelected(false)
+    setSelectedIds([])
+    setDeleteError(null)
+  }
+
+  const cancelSelection = () => {
+    setSelecting(false)
+    setAllSelected(false)
+    setSelectedIds([])
+  }
+
+  const toggleSelected = (id: string) => {
+    setSelectedIds((current) =>
+      current.includes(id) ? current.filter((existing) => existing !== id) : [...current, id],
+    )
+  }
+
+  const confirmBulkDelete = () => {
+    startDeleting(async () => {
+      const result = await deleteLibraryItems(
+        allSelected ? { scope: 'all' } : { scope: 'selected', ids: selectedIds },
+      )
+
+      if (result.error) {
+        setDeleteError(`${result.error} The remaining entries were kept — try again.`)
+        setConfirmingDelete(false)
+        return
+      }
+
+      setConfirmingDelete(false)
+      cancelSelection()
+      setDeleteNotice(result.deleted === 1 ? 'Deleted 1 library entry' : `Deleted ${result.deleted} library entries`)
+      router.refresh()
+    })
+  }
+
 
   return (
     <>
@@ -377,6 +425,44 @@ export function LibraryView({
             kindCounts={kindCounts}
           />
 
+          <div className="mb-5 flex flex-wrap items-center gap-2.5 rounded-md border border-rule bg-surface-2 px-3 py-2.5">
+            {selecting ? (
+              <>
+                <span className="mr-auto text-meta text-ink-2" aria-live="polite">
+                  {selectedCount === 0 ? 'Choose entries to delete' : `${selectedCount} selected`}
+                </span>
+                {allSelected ? (
+                  <span className="font-mono text-[11.5px] text-ink-3">Every library entry is selected</span>
+                ) : (
+                  <Button onClick={() => setAllSelected(true)}>
+                    Select all {counts.total}
+                  </Button>
+                )}
+                <Button onClick={cancelSelection}>Cancel</Button>
+                <Button
+                  variant="danger"
+                  disabled={selectedCount === 0}
+                  onClick={() => setConfirmingDelete(true)}
+                >
+                  Delete selected
+                </Button>
+              </>
+            ) : (
+              <>
+                <span className="mr-auto text-meta text-ink-2">Remove more than one topic or quiz at once.</span>
+                <Button variant="danger-quiet" onClick={beginSelection}>
+                  Select entries
+                </Button>
+              </>
+            )}
+          </div>
+
+          {deleteError ? (
+            <p role="alert" className="mb-5 rounded-md border border-flag bg-flag-soft px-4 py-3 text-meta text-flag">
+              {deleteError}
+            </p>
+          ) : null}
+
           {rows.length === 0 ? (
             /*
               Distinct from the empty library: there ARE topics, this search has
@@ -429,6 +515,9 @@ export function LibraryView({
                   <TopicCard
                     key={topic.id}
                     topic={topic}
+                    selected={allSelected || selectedIds.includes(topic.id)}
+                    selectionMode={selecting}
+                    onSelect={selecting && !allSelected ? () => toggleSelected(topic.id) : undefined}
                     timestamp={
                       recentIds.has(topic.id)
                         ? formatRelativeTime(topic.created_at, at)
@@ -468,7 +557,24 @@ export function LibraryView({
         initialKind={params.get('kind') === 'quiz' ? 'quiz' : 'topic'}
       />
 
+      <Modal
+        open={confirmingDelete}
+        onClose={() => setConfirmingDelete(false)}
+        title={allSelected ? `Delete all ${counts.total} library entries?` : `Delete ${selectedCount} selected entries?`}
+        footer={
+          <>
+            <Button onClick={() => setConfirmingDelete(false)}>Keep entries</Button>
+            <Button variant="danger" onClick={confirmBulkDelete} loading={isDeleting} loadingLabel="Deleting…">
+              Delete selected
+            </Button>
+          </>
+        }
+      >
+        This removes the selected topics and quizzes, along with any attached diagrams and practice results. It can&apos;t be undone.
+      </Modal>
+
       {saved ? <Toast message={`Saved — ${saved}`} /> : null}
+      {deleteNotice ? <Toast message={deleteNotice} /> : null}
     </>
   )
 }

@@ -2,7 +2,13 @@
 
 import { revalidatePath } from 'next/cache'
 import { listLibrary, type Cursor } from '@/lib/data/library'
-import { insertTopic, setMentalModelImagePath } from '@/lib/data/topics'
+import {
+  deleteTopicRows,
+  insertTopic,
+  removeMentalModelImages,
+  setMentalModelImagePath,
+  topicsForDeletion,
+} from '@/lib/data/topics'
 import { parseTopicForm } from '@/lib/domain/topic-form'
 import { readTopicForm } from '@/lib/data/topic-form-data'
 import type { TopicFilters } from '@/lib/domain/search-filter'
@@ -11,6 +17,41 @@ import type { Topic } from '@/lib/domain/types'
 export type SaveTopicResult =
   | { error: string; title?: undefined; id?: undefined; userId?: undefined }
   | { error: null; title: string; id: string; userId: string }
+
+export type DeleteLibraryItemsInput =
+  | { scope: 'all' }
+  | { scope: 'selected'; ids: string[] }
+
+/**
+ * Deletes either every entry in the caller's library or an explicit selection.
+ * RLS remains the authority boundary: arbitrary ids from a forged client simply
+ * do not appear in `topicsForDeletion` and cannot be removed.
+ */
+export async function deleteLibraryItems(
+  input: DeleteLibraryItemsInput,
+): Promise<{ error: string | null; deleted: number }> {
+  try {
+    const targets = await topicsForDeletion(input.scope === 'all' ? null : input.ids)
+    if (targets.length === 0) return { error: null, deleted: 0 }
+
+    /*
+      Same ordering as the single-entry action: objects first, then rows. If
+      storage rejects the removal, the records remain and the operation is safe
+      to retry. The query above is intentionally limited to this destructive
+      operation; no library page receives an unbounded read.
+    */
+    await removeMentalModelImages(targets.flatMap((topic) => (topic.imagePath ? [topic.imagePath] : [])))
+    await deleteTopicRows(targets.map((topic) => topic.id))
+
+    revalidatePath('/library')
+    return { error: null, deleted: targets.length }
+  } catch (cause) {
+    return {
+      error: cause instanceof Error ? cause.message : 'The selected library entries could not be deleted.',
+      deleted: 0,
+    }
+  }
+}
 
 /**
  * Step three of insert -> upload -> patch.

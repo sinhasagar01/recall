@@ -216,11 +216,40 @@ export async function updateTopic(id: string, input: TopicEdit): Promise<Topic> 
  * The caller owns that order. See (app)/topic/[id]/actions.ts.
  */
 export async function deleteTopicRow(id: string): Promise<void> {
+  await deleteTopicRows([id])
+}
+
+/**
+ * Deletes exactly the supplied rows.
+ *
+ * Image objects deliberately remain the caller's responsibility: storage must be
+ * cleaned first, while the rows still tell us which objects belong to them.
+ */
+export async function deleteTopicRows(ids: string[]): Promise<void> {
+  if (ids.length === 0) return
+
   const supabase = await createClient()
 
-  const { error } = await supabase.from('topics').delete().eq('id', id)
+  const { error } = await supabase.from('topics').delete().in('id', ids)
 
-  if (error) fail('Deleting the topic', error)
+  if (error) fail('Deleting the selected library entries', error)
+}
+
+/**
+ * The rows a destructive library operation needs before it can delete them.
+ * This is purpose-built for cleanup, not a general unbounded library reader.
+ */
+export async function topicsForDeletion(ids: string[] | null): Promise<{ id: string; imagePath: string | null }[]> {
+  if (ids !== null && ids.length === 0) return []
+
+  const supabase = await createClient()
+  let query = supabase.from('topics').select('id, mental_model_image_path')
+  if (ids !== null) query = query.in('id', ids)
+
+  const { data, error } = await query
+  if (error) fail('Preparing the selected library entries for deletion', error)
+
+  return (data ?? []).map((topic) => ({ id: topic.id, imagePath: topic.mental_model_image_path }))
 }
 
 /** Writes one graded answer. The update itself is computed by the domain layer. */
@@ -283,9 +312,16 @@ export async function signedImageUrl(path: string | null): Promise<string | null
  * trigger can, because storage.protect_objects_delete forbids it.
  */
 export async function removeMentalModelImage(path: string): Promise<void> {
+  await removeMentalModelImages([path])
+}
+
+/** Removes a known set of topic-owned objects before their rows are removed. */
+export async function removeMentalModelImages(paths: string[]): Promise<void> {
+  if (paths.length === 0) return
+
   const supabase = await createClient()
-  const { error } = await supabase.storage.from(BUCKET).remove([path])
-  if (error) fail('Removing the image', error)
+  const { error } = await supabase.storage.from(BUCKET).remove(paths)
+  if (error) fail('Removing the selected images', error)
 }
 
 /**

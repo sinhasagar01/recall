@@ -98,6 +98,40 @@ test('a save that fails surfaces the reason instead of failing silently', async 
   await expect(page.getByRole('dialog', { name: 'Add topic' })).toBeVisible()
 })
 
+test('selected topics and quizzes can be deleted from the library', async ({ page }) => {
+  await signIn(page, EMAIL)
+  const first = uniqueTitle('Delete selected topic')
+  const second = uniqueTitle('Delete selected quiz')
+
+  await openAddSheet(page)
+  await page.getByRole('textbox', { name: 'Topic', exact: true }).fill(first)
+  await page.getByLabel('Definition').fill('A temporary entry for bulk deletion.')
+  await page.getByRole('button', { name: 'Save topic' }).click()
+  await expect(page.getByRole('heading', { name: first })).toBeVisible()
+
+  await openAddSheet(page)
+  await page.getByRole('radio', { name: 'Quiz' }).check()
+  await page.getByRole('textbox', { name: 'Question', exact: true }).fill(second)
+  await page.getByRole('textbox', { name: 'Option 1' }).fill('One')
+  await page.getByRole('textbox', { name: 'Option 2' }).fill('Two')
+  await page.getByLabel(/Why/).fill('So this temporary quiz passes validation.')
+  await page.getByRole('button', { name: 'Save quiz' }).click()
+  await expect(page.getByRole('heading', { name: second })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Select entries' }).click()
+  await page.getByRole('checkbox', { name: `Select “${first}”` }).check()
+  await page.getByRole('checkbox', { name: `Select “${second}”` }).check()
+  await page.getByRole('button', { name: 'Delete selected' }).click()
+
+  const dialog = page.getByRole('dialog', { name: 'Delete 2 selected entries?' })
+  await expect(dialog).toBeVisible()
+  await dialog.getByRole('button', { name: 'Delete selected' }).click()
+
+  await expect(page.getByRole('heading', { name: first })).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: second })).toHaveCount(0)
+  await expect(page.getByText('Deleted 2 library entries')).toBeVisible()
+})
+
 
 /*
   One list, newest first.
