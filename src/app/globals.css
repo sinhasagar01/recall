@@ -37,12 +37,7 @@
   --color-flag: #b4325c;
   --color-flag-soft: #fbebf1;
 
-  /*
-    The only green in the product, and it exists for exactly one thing: the correct
-    option after a quiz is checked. Confidence "strong" is accent, not green — a
-    quiz answer is right or wrong in a way a self-assessed grade is not, and that
-    difference is what the colour marks. From quiz-reference.html.
-  */
+  /* Correct quiz answers, evidence, and a finished (strong) library card. */
   --color-ok: #1b6b4f;
   --color-ok-soft: #e6f2ec;
 

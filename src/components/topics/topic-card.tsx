@@ -19,8 +19,11 @@ export function TopicCard({ topic, timestamp, selected, selectionMode = false, o
   selectionMode?: boolean
   onSelect?: () => void
 }) {
+  const complete = topic.confidence === 'strong'
+  const secondaryText = complete ? 'text-ink-2' : 'text-ink-3'
+
   return (
-    <div className="relative">
+    <div className="relative h-full">
       {selectionMode ? (
         <label className="absolute top-2.5 right-2.5 z-10 flex size-7 cursor-pointer items-center justify-center rounded-md border border-rule-strong bg-surface shadow-card">
           <input
@@ -35,67 +38,76 @@ export function TopicCard({ topic, timestamp, selected, selectionMode = false, o
       ) : null}
       <Link
         href={`/topic/${topic.id}`}
-        className={`flex flex-col gap-[9px] rounded-lg border border-rule bg-surface p-5 shadow-card hover:border-rule-strong ${
+        className={`flex h-full min-h-[236px] flex-col gap-[9px] rounded-lg border p-5 shadow-card ${
+          complete
+            ? 'border-ok/45 bg-ok-soft hover:border-ok'
+            : 'border-rule bg-surface hover:border-rule-strong'
+        } ${
           topic.kind === 'quiz' ? 'border-l-[3px] border-l-accent' : ''
         }`}
       >
-      <div className="flex items-start justify-between gap-3">
         <div>
-          <h3 className="font-display text-card-title leading-[1.28] font-medium tracking-[-0.01em]">
-            {topic.title}
-          </h3>
-          <p className="font-mono text-mono-sm text-ink-3">{topicPath(topic)}</p>
+          <div className="flex items-start gap-3">
+            {/* Reserve two lines, so one short title cannot shrink its card. */}
+            <h3 className="min-h-[49px] min-w-0 flex-1 line-clamp-2 font-display text-card-title leading-[1.28] font-medium tracking-[-0.01em]">
+              {topic.title}
+            </h3>
+            {topic.kind === 'quiz' ? <QuizBadge /> : null}
+          </div>
+          <p className={`truncate font-mono text-mono-sm ${secondaryText}`}>{topicPath(topic)}</p>
         </div>
-        {topic.kind === 'quiz' ? <QuizBadge /> : null}
-        {timestamp ? (
-          <span className="shrink-0 font-mono text-[11.5px] text-ink-3">{timestamp}</span>
-        ) : null}
-      </div>
 
-      {/*
-        A quiz has no excerpt — its question is the title and there is nothing
-        beneath it to preview. Omitted rather than rendered empty: `definition` is
-        null on the quiz arm, so this would have been a blank <p> that looked almost
-        right. `tsc` cannot see that; e2e/quiz.spec.ts asserts the element is absent.
-      */}
-      {topic.kind === 'topic' ? (
-        <p className="line-clamp-2 text-option leading-[1.6] text-ink-2">{topic.definition}</p>
-      ) : null}
+        {/* A dedicated, reserved row keeps time out of the title's layout. */}
+        <p className={`min-h-[17px] font-mono text-[11.5px] ${secondaryText}`}>
+          {timestamp ? `Saved ${timestamp}` : <span aria-hidden="true">&nbsp;</span>}
+        </p>
 
-      <div className="mt-[3px] flex items-center justify-between gap-2.5 border-t border-rule pt-[11px]">
-        <ConfidenceMeter confidence={topic.confidence} showLabel />
-        {/* The strongest reason to open a card. */}
         {/*
-          A quiz's Why lives in mental_model, so the unguarded version showed a quiz
-          "Model ✓". The reference shows a practice count there instead, and omits it
-          entirely before the first practice.
+          A quiz has no excerpt, but it reserves the topic excerpt's space so every
+          library card shares one stable height and the footer aligns across a row.
         */}
-        {/*
-          The right slot holds ONE element.
+        {topic.kind === 'topic' ? (
+          <p className="min-h-[47px] line-clamp-2 text-option leading-[1.6] text-ink-2">{topic.definition}</p>
+        ) : (
+          <div className="min-h-[47px]" aria-hidden="true" />
+        )}
 
-          The evidence squares take it when a topic has any, and Model ✓ is the
-          fallback when it has none — never both, and never three things in the
-          foot. An early draft of evidence-reference.html drew cards with no
-          Model ✓ at all; that was an oversight in the drawing rather than a
-          decision to delete a shipped element, and the reference now says so.
+        <div className={`mt-auto flex items-center justify-between gap-2.5 border-t pt-[11px] ${
+          complete ? 'border-ok/45' : 'border-rule'
+        }`}>
+          <ConfidenceMeter confidence={topic.confidence} showLabel />
+          {/* The strongest reason to open a card. */}
+          {/*
+            A quiz's Why lives in mental_model, so the unguarded version showed a quiz
+            "Model ✓". The reference shows a practice count there instead, and omits it
+            entirely before the first practice.
+          */}
+          {/*
+            The right slot holds ONE element.
 
-          A quiz keeps its practice count and never gets squares: the constraint
-          refuses it evidence, so there is nothing to draw.
-        */}
-        {topic.kind === 'quiz'
-          ? topic.practice_count > 0 && (
-              <span className="font-mono text-[11.5px] text-ink-3">
-                Practiced {topic.practice_count}×
-              </span>
-            )
-          : hasEvidence(topic)
-            ? <EvidenceBar topic={topic} />
-            : topic.mental_model && (
-                <span className="font-mono text-[10px] tracking-[0.1em] text-accent uppercase">
-                  Model ✓
+            The evidence squares take it when a topic has any, and Model ✓ is the
+            fallback when it has none — never both, and never three things in the
+            foot. An early draft of evidence-reference.html drew cards with no
+            Model ✓ at all; that was an oversight in the drawing rather than a
+            decision to delete a shipped element, and the reference now says so.
+
+            A quiz keeps its practice count and never gets squares: the constraint
+            refuses it evidence, so there is nothing to draw.
+          */}
+          {topic.kind === 'quiz'
+            ? topic.practice_count > 0 && (
+                <span className={`font-mono text-[11.5px] ${secondaryText}`}>
+                  Practiced {topic.practice_count}×
                 </span>
-              )}
-      </div>
+              )
+            : hasEvidence(topic)
+              ? <EvidenceBar topic={topic} />
+              : topic.mental_model && (
+                  <span className="font-mono text-[10px] tracking-[0.1em] text-accent uppercase">
+                    Model ✓
+                  </span>
+                )}
+        </div>
       </Link>
     </div>
   )
@@ -104,14 +116,14 @@ export function TopicCard({ topic, timestamp, selected, selectionMode = false, o
 /** Matches the card's geometry exactly, so nothing shifts when data lands. */
 export function TopicCardSkeleton({ widths }: { widths: [string, string] }) {
   return (
-    <div className="flex flex-col gap-[9px] rounded-lg border border-rule bg-surface p-5 shadow-card">
+    <div className="flex min-h-[236px] flex-col gap-[9px] rounded-lg border border-rule bg-surface p-5 shadow-card">
       <div>
         <div className="animate-skeleton h-[18px] rounded-sm bg-surface-3" style={{ width: widths[0] }} />
         <div className="animate-skeleton mt-[9px] h-[11px] w-[38%] rounded-sm bg-surface-3" />
       </div>
-      <div className="animate-skeleton mt-3 h-[11px] w-full rounded-sm bg-surface-3" />
-      <div className="animate-skeleton mt-[7px] h-[11px] rounded-sm bg-surface-3" style={{ width: widths[1] }} />
-      <div className="animate-skeleton mt-4 h-[13px] w-[84px] rounded-sm bg-surface-3" />
+      <div className="animate-skeleton mt-3 h-[11px] w-[42%] rounded-sm bg-surface-3" />
+      <div className="animate-skeleton mt-2 h-[11px] rounded-sm bg-surface-3" style={{ width: widths[1] }} />
+      <div className="mt-auto animate-skeleton h-[13px] w-[84px] rounded-sm bg-surface-3" />
     </div>
   )
 }

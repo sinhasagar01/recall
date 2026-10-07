@@ -31,21 +31,16 @@ theme config. Do not hardcode hex values in components.
 | `--accent-ink` | `#2E2A9E` | text on accent-soft, primary hover |
 | `--flag` | `#B4325C` | weak confidence, destructive, errors |
 | `--flag-soft` | `#FBEBF1` | error banners and panels |
-| `--ok` | `#1B6B4F` | a quiz's correct option, and nothing else |
-| `--ok-soft` | `#E6F2EC` | the panel behind it |
+| `--ok` | `#1B6B4F` | a quiz's correct option, evidence, a completed card border |
+| `--ok-soft` | `#E6F2EC` | the panel behind it and a completed card |
 
 `--flag` is the only alarm color. Never use it for anything that isn't weak
 confidence, a destructive action, or an error.
 
-`--ok` is the only green in the product, and it exists for one reason: the thing it
-marks is **binary** — a quiz's answer is right or it is not, and a piece of evidence
-is recorded or it is not. Everywhere else the app deliberately refuses to grade —
-confidence is drawn in ink and accent, never red/amber/green, because "the library
-should not scold its owner on every card". These are the two places where the app knows a
-fact rather than holding an opinion, so they are the two places a green is honest. Using it anywhere
-else re-introduces the scolding this palette was built to avoid. **Never for
-confidence**, which is a judgement rather than a fact, and the one thing this palette
-refuses to colour-code.
+`--ok` stays deliberately narrow. It marks a quiz answer that is right, recorded
+evidence, and the quiet completed treatment behind a library card whose confidence is
+strong. Confidence itself remains encoded by tick count and accent, not a traffic-light
+scale; the green surface is a library-level "completed for now" cue, never a grade.
 
 `--flag` has one further case, and it is deliberately narrow: **a stale source's yield
 label** — "Nothing · 15 days" on a source that has produced nothing in a fortnight. The
