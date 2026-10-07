@@ -1,10 +1,11 @@
 import Link from 'next/link'
 import { PracticeSession } from '@/components/practice/practice-session'
+import { PracticeTypeTabs } from '@/components/practice/practice-type-tabs'
 import { StateBlock } from '@/components/ui/state-block'
 import { topicIdsForSource } from '@/lib/data/extraction'
 import { topicIdsForChapter, topicIdsForCourse } from '@/lib/data/sources'
 import { railCounts } from '@/lib/data/library'
-import { practiceQueue } from '@/lib/data/practice'
+import { practiceKindCount, practiceQueue } from '@/lib/data/practice'
 import { getTopic, signedImageUrl } from '@/lib/data/topics'
 import type { QueueTopic, Topic } from '@/lib/domain/types'
 import { BackToLibrary } from '@/components/ui/back-to-library'
@@ -17,7 +18,8 @@ import {
 /*
   Three ways in, distinguished by the URL:
 
-    /practice              auto-selected session — the 3-topic floor applies
+    /practice              choose whether to practice topics or quizzes
+    /practice?scope=topic  topics only
     /practice?topic=<id>   "Practice this" from a topic. One topic, deliberately
                            chosen, so the floor does not apply: the floor exists to
                            stop an auto-selected session from being re-reading the
@@ -41,12 +43,8 @@ import {
                            columns in an English sentence. The fix was the
                            sentence, not an exception — this screen has no
                            business naming that concept in either register.
-    /practice?scope=quiz   quizzes only. Same shape as ?scope=weak: a chosen set,
-                           the same PRACTICE_SESSION_SIZE cap, the same waived
-                           floor. Note this is the SEPARATION, not the rule — the
-                           default session above already mixes both shapes, and
-                           excluding quizzes from it would leave a quiz you are
-                           weak at waiting for you to come looking.
+    /practice?scope=quiz   quizzes only. Same session cap as topics, but the
+                           answer mode stays separate from free recall.
 */
 export default async function PracticePage({ searchParams }: PageProps<'/practice'>) {
   const { topic: topicId, all, scope, id, course, chapter } = await searchParams
@@ -59,6 +57,11 @@ export default async function PracticePage({ searchParams }: PageProps<'/practic
   const readAt = new Date().toISOString()
 
   const chosen = typeof topicId === 'string' ? await getTopic(topicId) : null
+
+  /* The main Practice destination is a mode choice, not a mixed session. */
+  if (typeof topicId !== 'string' && scope === undefined && all !== '1') {
+    return <PracticeTypeTabs />
+  }
 
   if (typeof topicId === 'string') {
     if (chosen === null) {
@@ -149,7 +152,7 @@ export default async function PracticePage({ searchParams }: PageProps<'/practic
   }
 
   const overridden = all === '1'
-  const { total } = await railCounts()
+  const total = scope === 'topic' ? await practiceKindCount('topic') : (await railCounts()).total
 
   if (!meetsPracticeMinimum(total) && !overridden) {
     return (
@@ -197,7 +200,8 @@ export default async function PracticePage({ searchParams }: PageProps<'/practic
 
   // Seeded from the read, not from a clock or Math.random — same property the
   // injected seededShuffle had, now satisfied by the query's md5 tie-break.
-  const queue = await practiceQueue({ seed: readAt })
+  // Topic mode and the legacy `?all=1` override remain topic-only sessions.
+  const queue = await practiceQueue({ seed: readAt, kinds: ['topic'] })
 
   if (queue.length === 0) {
     return (
@@ -225,4 +229,3 @@ async function imageUrls(queue: QueueTopic[]): Promise<Record<string, string>> {
   )
   return Object.fromEntries(entries.filter(([, url]) => url !== null) as [string, string][])
 }
-
