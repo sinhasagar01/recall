@@ -25,12 +25,9 @@ const GRADES = [
 ] as const satisfies readonly { grade: Grade; label: string; hint: string }[]
 
 /**
- * A session holds both shapes.
- *
- * One queue, one progress bar, one completion screen; the card in the middle is
- * chosen by `kind`. Everything around it — ordering, the cap, what counts as
- * weak, the summary — is shared, because confidence is one system and a quiz that
- * could not appear in the default session would be a permanent leak.
+ * A session receives one practice mode at a time. The topic and quiz cards still
+ * share progress, ordering and confidence bookkeeping, but never appear together
+ * in a session because their answer interactions are intentionally different.
  */
 export function PracticeSession({
   queue,

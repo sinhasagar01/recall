@@ -170,10 +170,8 @@ export const weakPage = cache(async (cursor: WeakCursor | null = null): Promise<
  * `weakOnly` is the `?scope=weak` entry point, which now takes the same
  * PRACTICE_SESSION_SIZE cap as every other session.
  *
- * `kinds` is `?scope=quiz`. Left undefined the query returns both shapes, which
- * is what the default session is meant to do — see DESIGN.md: a quiz that could
- * not appear in the default session would be a permanent leak wearing
- * separation's clothes.
+ * `kinds` is the practice-mode boundary. The topic and quiz sessions share the
+ * same ordering rule but never mix their two answer modes in one queue.
  *
  * `ids` restricts the queue to a chosen SET. It is deliberately generic: arc 6's
  * `?scope=source` resolves a source to topic ids elsewhere and hands them in, so
@@ -209,4 +207,13 @@ export async function practiceQueue({
     named; the paged read above had two more of it.
   */
   return (data ?? []).map(toQueueTopic)
+}
+
+/** The minimum-session gate counts the selected practice mode, never the other one. */
+export async function practiceKindCount(kind: Kind): Promise<number> {
+  const supabase = await createClient()
+  const { count, error } = await supabase.from('topics').select('id', { count: 'exact', head: true }).eq('kind', kind)
+
+  if (error) fail(`Counting your ${kind === 'topic' ? 'topics' : 'quizzes'} for practice`, error)
+  return count ?? 0
 }

@@ -114,19 +114,20 @@ test('the typed answer is never persisted', async ({ page }) => {
   await expect(page.getByText(secret)).toHaveCount(0)
 })
 
-test('a library below the minimum offers the override, which starts a session anyway', async ({
-  page,
-}) => {
+test('Practice opens a topic-or-quiz choice, and topic practice retains its minimum', async ({ page }) => {
   await signIn(page, FEW_EMAIL)
 
   await page.goto('/practice')
 
+  await expect(page.getByRole('heading', { name: 'Choose a practice type' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Practice topics' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Practice quizzes' })).toBeVisible()
+
+  await page.getByRole('link', { name: 'Practice topics' }).click()
+
   await expect(page.getByRole('heading', { name: 'Not enough to practice yet' })).toBeVisible()
   await expect(page.getByText('You have 2 topics saved')).toBeVisible()
-
-  // A hard floor with no override is what makes a personal tool annoying.
   await page.getByRole('link', { name: 'Practice the 2 anyway' }).click()
-
   await expect(page.getByRole('button', { name: 'Reveal answer' })).toBeVisible()
 })
 
@@ -151,7 +152,7 @@ test('a deliberate single-topic session is not subject to the floor', async ({ p
 */
 test('Escape leaves a practice session, and the exit says so', async ({ page }) => {
   await signInAs(page, 'main')
-  await page.goto('/practice')
+  await page.goto('/practice?scope=topic')
 
   /*
     Wait for the session, NOT for a topic card.
