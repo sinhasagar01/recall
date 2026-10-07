@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
+import { LinkButton } from '@/components/ui/link-button'
 import { Select, type SelectOption } from '@/components/ui/select'
 import type { Kind } from '@/lib/domain/types'
 
@@ -39,6 +40,9 @@ export function PracticeSetup({
 
   return (
     <section className="max-w-[680px]">
+      <LinkButton href="/practice" className="mb-6">
+        ← Back to practice types
+      </LinkButton>
       <p className="font-mono text-[11.5px] tracking-[0.12em] text-ink-3 uppercase">Practice</p>
       <h1 className="mt-2 font-display text-page-title font-medium tracking-[-0.022em]">
         Set up your {kind === 'topic' ? 'topic' : 'quiz'} practice

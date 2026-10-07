@@ -6,8 +6,6 @@ import { cache } from 'react'
 import { toQueueTopic, type QueueRow } from '@/lib/data/topic-mapping'
 import { UNCATEGORIZED } from '@/lib/domain/category-suggest'
 import { categoryOptionsFromCounts } from '@/lib/domain/library'
-import type { LibraryCounts } from '@/lib/domain/library-counts'
-import { RECENT_WINDOW_DAYS } from '@/lib/domain/search-filter'
 import { STALE_WINDOW_DAYS } from '@/lib/domain/confidence'
 import { REVIEW_CONFIDENCES, SETTLED_CONFIDENCES } from '@/lib/domain/library-counts'
 import { SERVER_PAGE_SIZE } from '@/lib/domain/library-paging'
@@ -240,30 +238,24 @@ export async function practiceSetup(kind: Kind): Promise<{
   categories: Array<{ value: string; label: string; count: number; needsPractice: number }>
 }> {
   const supabase = await createClient()
-  const base = {
-    p_now: new Date().toISOString(),
-    p_recent_window_days: RECENT_WINDOW_DAYS,
-    p_kinds: [kind],
+  const { data, error } = await supabase.rpc('practice_setup_counts', { p_kind: kind })
+  if (error) fail('Counting your practice material', error)
+
+  const counts = data as unknown as {
+    total: number
+    needsPractice: number
+    byCategory: Array<{ category: string; count: number; needsPractice: number }>
   }
-
-  const [all, review] = await Promise.all([
-    supabase.rpc('library_counts', base),
-    supabase.rpc('library_counts', { ...base, p_quick: ['needs-review'] }),
-  ])
-
-  if (all.error) fail('Counting your practice material', all.error)
-  if (review.error) fail('Counting what needs practice', review.error)
-
-  const allCounts = all.data as unknown as LibraryCounts
-  const reviewCounts = review.data as unknown as LibraryCounts
-  const reviewByCategory = new Map(reviewCounts.byCategory.map(({ category, count }) => [category, count]))
+  const reviewByCategory = new Map(
+    counts.byCategory.map(({ category, needsPractice }) => [category, needsPractice]),
+  )
 
   return {
-    total: allCounts.total,
-    needsPractice: reviewCounts.matching,
-    categories: categoryOptionsFromCounts(allCounts.byCategory, allCounts.total).map((option) => ({
+    total: counts.total,
+    needsPractice: counts.needsPractice,
+    categories: categoryOptionsFromCounts(counts.byCategory, counts.total).map((option) => ({
       ...option,
-      needsPractice: option.value === 'all' ? reviewCounts.matching : (reviewByCategory.get(option.value) ?? 0),
+      needsPractice: option.value === 'all' ? counts.needsPractice : (reviewByCategory.get(option.value) ?? 0),
     })),
   }
 }

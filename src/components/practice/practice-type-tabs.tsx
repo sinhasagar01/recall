@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { BackToLibrary } from '@/components/ui/back-to-library'
 
 /**
  * The practice destination begins with a choice rather than silently composing
@@ -8,6 +9,7 @@ import Link from 'next/link'
 export function PracticeTypeTabs() {
   return (
     <section className="max-w-[680px]">
+      <BackToLibrary className="mb-6">← Back to library</BackToLibrary>
       <p className="font-mono text-[11.5px] tracking-[0.12em] text-ink-3 uppercase">Practice</p>
       <h1 className="mt-2 font-display text-page-title font-medium tracking-[-0.022em]">
         Choose a practice type
