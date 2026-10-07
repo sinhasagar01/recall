@@ -1,6 +1,5 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
 import { recordPractice } from '@/lib/data/topics'
 import { practiceUpdateFor, type Grade } from '@/lib/domain/confidence'
 import { getTopic } from '@/lib/data/topics'
@@ -49,13 +48,11 @@ export async function gradeTopic(
     await recordPractice(id, update)
 
     /*
-      Neither of these is /practice, so nothing re-renders mid-session. They mark
-      the library and this topic's page stale, so arriving there after the session
-      shows the new confidence and the corrected rail counts without anyone having
-      to reload during practice.
+      Do not call revalidatePath from a live session. In this Next version a
+      server-action revalidation refreshes the active route too, remounting the
+      session at card one. Library and detail reads are dynamic, so navigation
+      after the session already observes this committed grade.
     */
-    revalidatePath('/library')
-    revalidatePath(`/topic/${id}`)
 
     return { error: null }
   } catch (cause) {
@@ -86,9 +83,6 @@ export async function answerQuiz(id: string, picked: number): Promise<GradeResul
     if (update === null) return { error: null }
 
     await recordPractice(id, update)
-
-    revalidatePath('/library')
-    revalidatePath(`/topic/${id}`)
 
     return { error: null }
   } catch (cause) {

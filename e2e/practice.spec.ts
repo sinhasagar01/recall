@@ -150,7 +150,7 @@ test('a deliberate single-topic session is not subject to the floor', async ({ p
   the way out the only way out, and it used to be an underlined word at 11.5px
   after the counter.
 */
-test('Escape leaves a practice session, and the exit says so', async ({ page }) => {
+test('Escape ends a practice session and shows its summary', async ({ page }) => {
   await signInAs(page, 'main')
   await page.goto('/practice?scope=topic')
 
@@ -171,23 +171,11 @@ test('Escape leaves a practice session, and the exit says so', async ({ page }) 
   */
   await expect(page.getByRole('img', { name: /^Card 1 of/ })).toBeVisible()
 
-  // The control names its own shortcut.
-  await expect(page.getByRole('link', { name: /End session/ })).toBeVisible()
-
-  /*
-    And it names its destination.
-
-    The href was always `/library` — this screen has no rail, so that control is
-    the only way out and it always went to the right place. What it did not do
-    was SAY so: a person scanning for the affordance every other screen has
-    reads "End session" and concludes there is no way to the library. So the
-    accessible name is the consequence here, not a proxy for one; the effect was
-    already correct and the name was the whole defect.
-  */
-  await expect(page.getByTestId('back-to-library')).toContainText(/library/i)
+  await expect(page.getByRole('button', { name: /End session/ })).toBeVisible()
 
   await page.keyboard.press('Escape')
-  await expect(page).toHaveURL(/\/library/)
+  await expect(page.getByRole('heading', { name: 'Session complete' })).toBeVisible()
+  await expect(page.getByTestId('back-to-library')).toBeVisible()
 })
 
 test.describe('what you wrote from memory', () => {

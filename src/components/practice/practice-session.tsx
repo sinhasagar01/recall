@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 import { useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
 import { usePracticeKeys } from '@/components/practice/use-practice-keys'
 import { Button } from '@/components/ui/button'
 import { Chip } from '@/components/ui/chip'
@@ -123,8 +122,7 @@ export function PracticeSession({
     actions.ts. It advances the queue and writes nothing, which is the rule.
   */
   const skip = () => advance()
-
-  const router = useRouter()
+  const finish = () => setIndex(queue.length)
 
   const isQuizCard = !done && topic.kind === 'quiz'
 
@@ -134,12 +132,12 @@ export function PracticeSession({
     onReveal: !done && !revealed && !isQuizCard ? () => setRevealed(true) : undefined,
     onGrade:
       !done && revealed && !isSaving && !isQuizCard ? (i) => grade(GRADES[i].grade) : undefined,
-    // Unconditional: leaving is always available. Grades already saved on
-    // selection, so nothing is lost by going.
-    onExit: () => router.push('/library'),
+    onExit: finish,
   })
 
   if (done) return <Complete results={results} count={queue.length} />
+
+  const resultsById = new Map(results.map((result) => [result.topic.id, result]))
 
   return (
     <div>
@@ -149,7 +147,7 @@ export function PracticeSession({
             <i
               key={item.id}
               className={`h-[3px] w-[19px] rounded-[2px] ${
-                position < index ? 'bg-ink' : position === index ? 'bg-accent' : 'bg-rule-strong'
+                progressTone(resultsById.get(item.id)?.confidence, position === index)
               }`}
             />
           ))}
@@ -179,9 +177,9 @@ export function PracticeSession({
           <span className="font-mono text-[11.5px] text-ink-3">
             {index + 1} / {queue.length}
           </span>
-          <BackToLibrary>
-            End session · Library <Kbd>Esc</Kbd>
-          </BackToLibrary>
+          <Button variant="ghost" onClick={finish}>
+            End session <Kbd>Esc</Kbd>
+          </Button>
         </div>
       </div>
 
@@ -346,6 +344,9 @@ export function PracticeSession({
 
 function Complete({ results, count }: { results: GradedResult[]; count: number }) {
   const tally = sessionTally(results)
+  const kind = results[0]?.topic.kind
+  const right = results.filter((result) => result.confidence === 'strong').length
+  const wrong = results.filter((result) => result.confidence === 'weak').length
 
   return (
     <div className="py-15 text-center">
@@ -355,6 +356,12 @@ function Complete({ results, count }: { results: GradedResult[]; count: number }
 
       <h1 className="mb-2 font-display text-[27px] font-medium">Session complete</h1>
       <p className="mx-auto mb-[26px] max-w-[44ch] text-ink-2">{sessionSummary(results)}</p>
+
+      <p className="mb-6 font-mono text-[11.5px] text-ink-3">
+        {kind === 'quiz'
+          ? `${right} right · ${wrong} wrong`
+          : `${tally.strong} knew it · ${tally.okay} partly knew it · ${tally.weak} didn’t know it`}
+      </p>
 
       {/*
         Labelled by confidence — Weak / Okay / Strong — rather than by the grade
@@ -385,4 +392,12 @@ function Complete({ results, count }: { results: GradedResult[]; count: number }
       </div>
     </div>
   )
+}
+
+/** Completed cards retain their outcome; the active card is the only blue dash. */
+function progressTone(confidence: GradedResult['confidence'] | undefined, active: boolean): string {
+  if (confidence === 'strong') return 'bg-ok'
+  if (confidence === 'weak') return 'bg-flag'
+  if (confidence === 'okay') return 'bg-ink'
+  return active ? 'bg-accent' : 'bg-rule-strong'
 }
