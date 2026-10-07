@@ -1,11 +1,12 @@
 import Link from 'next/link'
 import { PracticeSession } from '@/components/practice/practice-session'
 import { PracticeTypeTabs } from '@/components/practice/practice-type-tabs'
+import { PracticeSetup } from '@/components/practice/practice-setup'
 import { StateBlock } from '@/components/ui/state-block'
 import { topicIdsForSource } from '@/lib/data/extraction'
 import { topicIdsForChapter, topicIdsForCourse } from '@/lib/data/sources'
 import { railCounts } from '@/lib/data/library'
-import { practiceKindCount, practiceQueue } from '@/lib/data/practice'
+import { practiceKindCount, practiceQueue, practiceSetup } from '@/lib/data/practice'
 import { getTopic, signedImageUrl } from '@/lib/data/topics'
 import type { QueueTopic, Topic } from '@/lib/domain/types'
 import { BackToLibrary } from '@/components/ui/back-to-library'
@@ -47,7 +48,7 @@ import {
                            answer mode stays separate from free recall.
 */
 export default async function PracticePage({ searchParams }: PageProps<'/practice'>) {
-  const { topic: topicId, all, scope, id, course, chapter } = await searchParams
+  const { topic: topicId, all, scope, id, course, chapter, focus, category } = await searchParams
 
   /*
     The queue is built by the query now, not by reading the library and ordering it
@@ -61,6 +62,14 @@ export default async function PracticePage({ searchParams }: PageProps<'/practic
   /* The main Practice destination is a mode choice, not a mixed session. */
   if (typeof topicId !== 'string' && scope === undefined && all !== '1') {
     return <PracticeTypeTabs />
+  }
+
+  const selectedKind = scope === 'topic' || scope === 'quiz' ? scope : null
+  const selectedFocus = focus === 'needs-practice' ? 'needs-practice' : focus === 'all' ? 'all' : null
+
+  if (selectedKind !== null && selectedFocus === null) {
+    const setup = await practiceSetup(selectedKind)
+    return <PracticeSetup kind={selectedKind} {...setup} />
   }
 
   if (typeof topicId === 'string') {
@@ -135,7 +144,12 @@ export default async function PracticePage({ searchParams }: PageProps<'/practic
   }
 
   if (scope === 'quiz') {
-    const quizzes = await practiceQueue({ seed: readAt, kinds: ['quiz'] })
+    const quizzes = await practiceQueue({
+      seed: readAt,
+      kinds: ['quiz'],
+      weakOnly: selectedFocus === 'needs-practice',
+      category: typeof category === 'string' ? category : undefined,
+    })
 
     if (quizzes.length === 0) {
       return (
@@ -151,7 +165,7 @@ export default async function PracticePage({ searchParams }: PageProps<'/practic
     return <PracticeSession queue={quizzes} imageUrls={{}} seed={readAt} />
   }
 
-  const overridden = all === '1'
+  const overridden = all === '1' || selectedFocus !== null
   const total = scope === 'topic' ? await practiceKindCount('topic') : (await railCounts()).total
 
   if (!meetsPracticeMinimum(total) && !overridden) {
@@ -201,7 +215,12 @@ export default async function PracticePage({ searchParams }: PageProps<'/practic
   // Seeded from the read, not from a clock or Math.random — same property the
   // injected seededShuffle had, now satisfied by the query's md5 tie-break.
   // Topic mode and the legacy `?all=1` override remain topic-only sessions.
-  const queue = await practiceQueue({ seed: readAt, kinds: ['topic'] })
+  const queue = await practiceQueue({
+    seed: readAt,
+    kinds: ['topic'],
+    weakOnly: selectedFocus === 'needs-practice',
+    category: typeof category === 'string' ? category : undefined,
+  })
 
   if (queue.length === 0) {
     return (

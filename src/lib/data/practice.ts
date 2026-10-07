@@ -4,6 +4,10 @@ import { fail } from '@/lib/data/fail'
 import { cache } from 'react'
 
 import { toQueueTopic, type QueueRow } from '@/lib/data/topic-mapping'
+import { UNCATEGORIZED } from '@/lib/domain/category-suggest'
+import { categoryOptionsFromCounts } from '@/lib/domain/library'
+import type { LibraryCounts } from '@/lib/domain/library-counts'
+import { RECENT_WINDOW_DAYS } from '@/lib/domain/search-filter'
 import { STALE_WINDOW_DAYS } from '@/lib/domain/confidence'
 import { REVIEW_CONFIDENCES, SETTLED_CONFIDENCES } from '@/lib/domain/library-counts'
 import { SERVER_PAGE_SIZE } from '@/lib/domain/library-paging'
@@ -183,19 +187,39 @@ export async function practiceQueue({
   weakOnly = false,
   kinds,
   ids,
+  category,
 }: {
   seed: string
   weakOnly?: boolean
   kinds?: Kind[]
   ids?: string[]
+  category?: string
 }): Promise<QueueTopic[]> {
   const supabase = await createClient()
+
+  /*
+    `p_ids` is the queue's existing, deliberately generic chosen-set boundary.
+    A category selection is another chosen set, so resolve it here instead of
+    teaching the ordering RPC another UI concept or changing its long-lived API.
+    The session ordering and cap still happen inside the RPC after this filter.
+  */
+  let selectedIds = ids
+  if (category !== undefined) {
+    let categories = supabase.from('topics').select('id')
+    if (kinds !== undefined) categories = categories.in('kind', kinds)
+    categories =
+      category === UNCATEGORIZED ? categories.is('category', null) : categories.eq('category', category)
+
+    const { data, error } = await categories
+    if (error) fail('Finding your category for practice', error)
+    selectedIds = data.map(({ id }) => id)
+  }
 
   const { data, error } = await supabase.rpc('practice_ordered_page', {
     p_bucket_order: BUCKETS,
     p_confidences: weakOnly ? REVIEW : undefined,
     p_kinds: kinds,
-    p_ids: ids,
+    p_ids: selectedIds,
     p_seed: seed,
     p_limit: PRACTICE_SESSION_SIZE,
   })
@@ -207,6 +231,41 @@ export async function practiceQueue({
     named; the paged read above had two more of it.
   */
   return (data ?? []).map(toQueueTopic)
+}
+
+/** The counts that make the practice setup truthful before a session starts. */
+export async function practiceSetup(kind: Kind): Promise<{
+  total: number
+  needsPractice: number
+  categories: Array<{ value: string; label: string; count: number; needsPractice: number }>
+}> {
+  const supabase = await createClient()
+  const base = {
+    p_now: new Date().toISOString(),
+    p_recent_window_days: RECENT_WINDOW_DAYS,
+    p_kinds: [kind],
+  }
+
+  const [all, review] = await Promise.all([
+    supabase.rpc('library_counts', base),
+    supabase.rpc('library_counts', { ...base, p_quick: ['needs-review'] }),
+  ])
+
+  if (all.error) fail('Counting your practice material', all.error)
+  if (review.error) fail('Counting what needs practice', review.error)
+
+  const allCounts = all.data as unknown as LibraryCounts
+  const reviewCounts = review.data as unknown as LibraryCounts
+  const reviewByCategory = new Map(reviewCounts.byCategory.map(({ category, count }) => [category, count]))
+
+  return {
+    total: allCounts.total,
+    needsPractice: reviewCounts.matching,
+    categories: categoryOptionsFromCounts(allCounts.byCategory, allCounts.total).map((option) => ({
+      ...option,
+      needsPractice: option.value === 'all' ? reviewCounts.matching : (reviewByCategory.get(option.value) ?? 0),
+    })),
+  }
 }
 
 /** The minimum-session gate counts the selected practice mode, never the other one. */
