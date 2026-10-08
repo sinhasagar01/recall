@@ -4,6 +4,7 @@ import { chat, hasKey } from '@/lib/ai/client'
 import {
   MAX_OUTPUT_TOKENS,
   parseExtraction,
+  type ExtractionKind,
   type ParseResult,
 } from '@/lib/domain/extraction'
 
@@ -71,29 +72,48 @@ const CONCEPT_SCHEMA = {
   },
 } as const
 
-/**
- * Transcription of teaching, not invention.
- *
- * The one line that matters is the instruction NOT to author. These courses give
- * a mental model; extracting the instructor's is the same act as extracting the
- * definition — someone else's words, attributed to the source. Writing one that
- * the video did not contain is the thing this whole arc is on the far side of a
- * line from, so the prompt says so and the field is nullable rather than
- * required-and-filled.
- */
-const SYSTEM_PROMPT = [
+const TOPIC_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['concepts'],
+  properties: {
+    concepts: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['title', 'definition', 'mental_model', 'when_not_to_use', 'timestamp'],
+        properties: {
+          title: { type: 'string' },
+          definition: { type: 'string' },
+          mental_model: { type: ['string', 'null'] },
+          when_not_to_use: { type: ['string', 'null'] },
+          timestamp: { type: ['string', 'null'] },
+        },
+      },
+    },
+  },
+} as const
+
+const TOPIC_PROMPT = [
   'You extract what a video taught, from its transcript. You are transcribing teaching, not inventing it.',
   '',
-  'For every distinct concept the transcript teaches, return: a title; a definition in the instructor\'s terms;',
+  'For every distinct concept the transcript teaches, return a title; a definition in the instructor\'s terms;',
   'the mental model, analogy or intuition the INSTRUCTOR gave for it; a "when not to use it" if the video offers',
-  'one; the approximate timestamp; and two or three questions with one correct answer and plausible distractors.',
+  'one; and the approximate timestamp. Do not return quiz questions.',
   '',
   'Rules:',
-  '- If the video gave no mental model for a concept, return null. Do NOT write one. A model you invent is one',
-  '  the learner has never had, and it is worse than nothing because it reads exactly like one they were taught.',
-  '- Same for "when not to use it": null unless the video offers it.',
+  '- If the video gave no mental model or "when not to use it", return null. Do NOT write one.',
   '- Skip housekeeping — roadmaps, introductions, sign-offs, and anything that is not a concept.',
-  '- Distractors must be wrong but tempting: things a learner would plausibly believe.',
+].join('\n')
+
+const QUIZ_PROMPT = [
+  'You extract quiz questions from a video transcript. Use only what the instructor taught; do not invent facts.',
+  '',
+  'Return one concept object for each quiz. Set title to the quiz question and definition to its short explanation.',
+  'For every object, return exactly one question in questions, with the same question text, 2–4 options, and one',
+  'correct option. Distractors must be plausible but wrong. Set mental_model and when_not_to_use to null unless',
+  'the transcript explicitly gives them. Skip introductions, roadmaps, and sign-offs.',
 ].join('\n')
 
 export type ExtractOutcome =
@@ -109,14 +129,15 @@ export { hasKey }
  */
 export async function extractConcepts(
   transcript: string,
+  kind: ExtractionKind,
   fetchImpl: typeof fetch = fetch,
 ): Promise<ExtractOutcome> {
   const outcome = await chat(
     {
-      system: SYSTEM_PROMPT,
+      system: kind === 'topics' ? TOPIC_PROMPT : QUIZ_PROMPT,
       messages: [{ role: 'user', content: transcript }],
       maxOutputTokens: MAX_OUTPUT_TOKENS,
-      schema: { name: 'concepts', schema: CONCEPT_SCHEMA },
+      schema: { name: kind === 'topics' ? 'topics' : 'quizzes', schema: kind === 'topics' ? TOPIC_SCHEMA : CONCEPT_SCHEMA },
       whatWasLost: 'Nothing was saved; try again, or distil by hand.',
     },
     fetchImpl,
@@ -126,4 +147,3 @@ export async function extractConcepts(
 
   return { ok: true, result: parseExtraction(outcome.content, outcome.finishReason) }
 }
-

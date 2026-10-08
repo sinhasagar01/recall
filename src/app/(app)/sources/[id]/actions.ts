@@ -11,6 +11,7 @@ import {
   markDuplicates,
   normaliseTitle,
   type CoverageEntry,
+  type ExtractionKind,
   type ExtractedConcept,
   type ReviewedConcept,
 } from '@/lib/domain/extraction'
@@ -29,6 +30,10 @@ export type ExtractResult =
   | { ok: true; reviewed: ReviewedConcept[]; partial: boolean; dropped: string[] }
   | { ok: false; reason: string }
 
+function isExtractionKind(value: unknown): value is ExtractionKind {
+  return value === 'topics' || value === 'quizzes'
+}
+
 /**
  * Takes an ID, not a transcript.
  *
@@ -37,13 +42,14 @@ export type ExtractResult =
  * 1 MB server-action body limit, and the only thing that leaves this origin is
  * the request to the vendor.
  */
-export async function extract(sourceId: string): Promise<ExtractResult> {
+export async function extract(sourceId: string, kind: ExtractionKind): Promise<ExtractResult> {
+  if (!isExtractionKind(kind)) return { ok: false, reason: 'Choose what to extract first.' }
   const source = await readTranscript(sourceId)
   if (source === null) {
     return { ok: false, reason: 'There is no transcript on this source to extract from.' }
   }
 
-  const outcome = await extractConcepts(source.transcript)
+  const outcome = await extractConcepts(source.transcript, kind)
   if (!outcome.ok) return { ok: false, reason: outcome.reason }
   if (!outcome.result.ok) return { ok: false, reason: outcome.result.reason }
 
@@ -74,7 +80,9 @@ export async function saveExtraction(
   reviewed: ReviewedConcept[],
   partial: boolean,
   pass: number,
+  kind: ExtractionKind,
 ): Promise<{ error: string | null; saved?: { topics: number; quizzes: number } }> {
+  if (!isExtractionKind(kind)) return { error: 'Choose what to extract first.' }
   const kept = reviewed.filter((entry) => entry.keep).map((entry) => entry.concept)
 
   const coverage: CoverageEntry[] = reviewed.map((entry) => ({
@@ -93,7 +101,7 @@ export async function saveExtraction(
   }))
 
   try {
-    const saved = await saveExtracted(sourceId, kept as ExtractedConcept[], coverage)
+    const saved = await saveExtracted(sourceId, kept as ExtractedConcept[], coverage, kind)
 
     revalidatePath(`/sources/${sourceId}`)
     revalidatePath('/sources')

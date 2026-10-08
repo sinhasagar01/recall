@@ -15,6 +15,9 @@ export interface ExtractedQuestion {
   correctOption: number
 }
 
+/** The two deliberately separate transcript reads a learner can request. */
+export type ExtractionKind = 'topics' | 'quizzes'
+
 /** One concept the video taught, in the shape this app already stores. */
 export interface ExtractedConcept {
   title: string
