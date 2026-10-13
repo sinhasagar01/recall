@@ -275,6 +275,7 @@ export type Database = {
           duration_seconds: number | null
           id: string
           lesson: string
+          learning_lesson: Json | null
           transcript: string | null
           transcript_deleted_at: string | null
           transcript_words: number | null
@@ -290,6 +291,7 @@ export type Database = {
           duration_seconds?: number | null
           id?: string
           lesson: string
+          learning_lesson?: Json | null
           transcript?: string | null
           transcript_deleted_at?: string | null
           transcript_words?: number | null
@@ -305,6 +307,7 @@ export type Database = {
           duration_seconds?: number | null
           id?: string
           lesson?: string
+          learning_lesson?: Json | null
           transcript?: string | null
           transcript_deleted_at?: string | null
           transcript_words?: number | null

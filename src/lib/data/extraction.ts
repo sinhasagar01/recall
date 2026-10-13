@@ -1,11 +1,13 @@
 import { fail } from '@/lib/data/fail'
 import { cache } from 'react'
+import type { Database } from '@/lib/database.types'
 import { createClient } from '@/lib/supabase/server'
 import {
   coverageToRows,
   mergeCoverage,
   parseCoverage,
   type CoverageEntry,
+  type ExtractionKind,
   type ExtractedConcept,
 } from '@/lib/domain/extraction'
 
@@ -99,38 +101,41 @@ export async function saveExtracted(
   sourceId: string,
   concepts: ExtractedConcept[],
   coverage: CoverageEntry[],
+  kind: ExtractionKind,
 ): Promise<{ topics: number; quizzes: number }> {
   const supabase = await createClient()
 
-  const rows = concepts.flatMap((concept) => [
-    {
-      title: concept.title,
-      definition: concept.definition,
-      mental_model: concept.mentalModel,
-      category: null,
-      tags: [] as string[],
-      kind: 'topic' as const,
-      source_id: sourceId,
-      capability_id: null,
-      options: null,
-      correct_option: null,
-      extracted: true,
-    },
-    ...concept.questions.map((question) => ({
-      title: question.question,
-      definition: null,
-      /* A quiz's `mental_model` is its explanation — one field, one register. */
-      mental_model: concept.definition,
-      category: null,
-      tags: [] as string[],
-      kind: 'quiz' as const,
-      source_id: sourceId,
-      capability_id: null,
-      options: question.options,
-      correct_option: question.correctOption,
-      extracted: true,
-    })),
-  ])
+  const rows: Database['public']['Tables']['topics']['Insert'][] =
+    kind === 'topics'
+      ? concepts.map((concept) => ({
+          title: concept.title,
+          definition: concept.definition,
+          mental_model: concept.mentalModel,
+          category: null,
+          tags: [] as string[],
+          kind: 'topic' as const,
+          source_id: sourceId,
+          capability_id: null,
+          options: null,
+          correct_option: null,
+          extracted: true,
+        }))
+      : concepts.flatMap((concept) =>
+          concept.questions.map((question) => ({
+            title: question.question,
+            definition: null,
+            /* A quiz's `mental_model` is its explanation — one field, one register. */
+            mental_model: concept.definition,
+            category: null,
+            tags: [] as string[],
+            kind: 'quiz' as const,
+            source_id: sourceId,
+            capability_id: null,
+            options: question.options,
+            correct_option: question.correctOption,
+            extracted: true,
+          })),
+        )
 
   if (rows.length > 0) {
     const { error } = await supabase.from('topics').insert(rows)

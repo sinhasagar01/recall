@@ -50,7 +50,7 @@ describe('the Apprenticeship group', () => {
     */
     const withoutKey = hrefs(false)
 
-    expect(withoutKey).toEqual(['/today', '/phases', '/ledger', '/sources'])
+    expect(withoutKey).toEqual(['/today', '/phases', '/ledger', '/learn', '/sources'])
     expect(hrefs(true)).toEqual([...withoutKey, '/interview'])
   })
 

@@ -7,6 +7,7 @@ import {
   estimateCostRange,
   estimateTokens,
   isTooLong,
+  type ExtractionKind,
   type ReviewedConcept,
 } from '@/lib/domain/extraction'
 import { plural } from '@/lib/domain/plural'
@@ -50,6 +51,7 @@ export function ExtractPanel({
   const [error, setError] = useState<string | null>(null)
   const [reviewed, setReviewed] = useState<ReviewedConcept[]>([])
   const [partial, setPartial] = useState(false)
+  const [kind, setKind] = useState<ExtractionKind | null>(null)
   const [saving, setSaving] = useState(false)
 
   /* Set by Cancel, read when the result lands. */
@@ -66,15 +68,16 @@ export function ExtractPanel({
   const cost = estimateCostRange(words)
   const money = (value: number) => `$${value.toFixed(2)}`
 
-  const run = async () => {
+  const run = async (nextKind: ExtractionKind) => {
     cancelled.current = false
     setError(null)
     setElapsed(0)
+    setKind(nextKind)
     setPhase('running')
 
     let result: ExtractResult
     try {
-      result = await extract(sourceId)
+      result = await extract(sourceId, nextKind)
     } catch {
       result = { ok: false, reason: 'The request did not complete. Nothing was saved.' }
     }
@@ -84,6 +87,7 @@ export function ExtractPanel({
 
     if (!result.ok) {
       setError(result.reason)
+      setKind(null)
       setPhase('idle')
       return
     }
@@ -95,7 +99,11 @@ export function ExtractPanel({
 
   const save = async () => {
     setSaving(true)
-    const outcome = await saveExtraction(sourceId, reviewed, partial, pass)
+    if (kind === null) {
+      setSaving(false)
+      return
+    }
+    const outcome = await saveExtraction(sourceId, reviewed, partial, pass, kind)
     setSaving(false)
 
     if (outcome.error !== null) {
@@ -104,23 +112,23 @@ export function ExtractPanel({
     }
     setPhase('idle')
     setReviewed([])
+    setKind(null)
   }
 
   const kept = reviewed.filter((entry) => entry.keep)
-  const keptQuestions = kept.reduce((total, entry) => total + entry.concept.questions.length, 0)
+  const itemLabel = kind === 'quizzes' ? 'quiz' : 'topic'
 
   if (phase === 'review') {
     return (
       <section data-testid="review-screen" className="rounded-lg border border-rule bg-surface">
         <div className="border-b border-rule px-[18px] py-4">
-          <h2 className="font-display text-[20px] font-medium">Review before saving</h2>
+          <h2 className="font-display text-[20px] font-medium">Review {kind === 'quizzes' ? 'quizzes' : 'topics'} before saving</h2>
           <p className="mt-1 font-mono text-[11.5px] text-ink-3">
-            {plural(reviewed.length, 'concept')} found · {kept.length} kept ·{' '}
-            {plural(keptQuestions, 'question')} · nothing saved yet
+            {plural(reviewed.length, itemLabel)} found · {kept.length} kept · nothing saved yet
           </p>
           {partial ? (
             <p className="mt-2 rounded-md border border-rule-strong bg-surface-2 px-3 py-2 text-meta text-ink-2">
-              The model stopped after {plural(reviewed.length, 'concept')}. Review and save these,
+              The model stopped after {plural(reviewed.length, itemLabel)}. Review and save these,
               or discard and try again — nothing has been saved either way.
             </p>
           ) : null}
@@ -176,7 +184,7 @@ export function ExtractPanel({
                 {entry.duplicateOf !== null ? (
                   <span data-testid="already-saved">already saved</span>
                 ) : (
-                  plural(entry.concept.questions.length, 'question')
+                  kind === 'quizzes' ? 'quiz' : 'topic'
                 )}
               </span>
             </li>
@@ -185,12 +193,13 @@ export function ExtractPanel({
 
         <div className="flex flex-wrap items-center gap-3 border-t border-rule px-[18px] py-3.5">
           <Button variant="primary" onClick={save} loading={saving} loadingLabel="Saving…">
-            Save {plural(kept.length, 'topic')} and {plural(keptQuestions, 'question')}
+            Save {plural(kept.length, itemLabel)}
           </Button>
           <Button
             variant="ghost"
             onClick={() => {
               setReviewed([])
+              setKind(null)
               setPhase('idle')
             }}
           >
@@ -256,7 +265,7 @@ export function ExtractPanel({
         </>
       ) : (
         <>
-          <p className="text-body font-medium">Extract everything from this transcript</p>
+          <p className="text-body font-medium">Choose what to extract from this transcript</p>
           <p className="mt-2 flex flex-wrap gap-x-3.5 gap-y-1 font-mono text-[11.5px] text-ink-3">
             <span>sends the transcript · {words.toLocaleString()} words</span>
             <span aria-hidden="true">·</span>
@@ -275,8 +284,11 @@ export function ExtractPanel({
             <span>20–40 seconds</span>
           </p>
           <div className="mt-4 flex flex-wrap items-center gap-3">
-            <Button variant="primary" onClick={run}>
-              Extract
+            <Button variant="primary" onClick={() => run('topics')}>
+              Extract topics &amp; definitions
+            </Button>
+            <Button onClick={() => run('quizzes')}>
+              Extract quizzes
             </Button>
             <span className="font-mono text-[11px] text-ink-3">
               Nothing is saved until you review it

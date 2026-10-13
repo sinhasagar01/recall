@@ -55,6 +55,7 @@ export function apprenticeshipNav(input: {
     */
     { href: '/phases', label: 'Phases', count: input.phases },
     { href: '/ledger', label: 'Ledger', count: input.ledger },
+    { href: '/learn', label: 'Learn', count: null },
     { href: '/sources', label: 'Sources', count: input.sources },
 
     /*
