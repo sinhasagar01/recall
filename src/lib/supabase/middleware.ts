@@ -37,6 +37,7 @@ export const GUARDED = [
   '/sources',
   '/phases',
   '/ledger',
+  '/learn',
   '/today',
   '/interview',
 ]
