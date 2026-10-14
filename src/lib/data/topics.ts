@@ -36,6 +36,8 @@ interface NewShared {
   */
   source_id: string | null
   capability_id: string | null
+  code_example?: string | null
+  code_language?: string | null
 }
 
 /**
@@ -85,6 +87,8 @@ function rowFor(input: NewTopic) {
     kind: input.kind,
     source_id: input.source_id,
     capability_id: input.capability_id,
+    code_example: input.code_example ?? null,
+    code_language: input.code_language ?? null,
     definition: input.definition,
     options: input.options,
     correct_option: input.correct_option,

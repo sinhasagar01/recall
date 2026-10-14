@@ -20,3 +20,42 @@ export async function saveLearningLesson(sourceId: string, lesson: LearningLesso
   const { error } = await supabase.from('sources').update({ learning_lesson: lesson as unknown as Json }).eq('id', sourceId)
   if (error) fail('Saving the clean lesson', error)
 }
+
+/**
+ * Lesson completion is intentionally kept inside its own saved lesson JSON.
+ * It is not a review grade and must not create a topic, quiz, or queue item.
+ */
+export async function completeLearningLesson(sourceId: string): Promise<void> {
+  const material = await readLearningMaterial(sourceId)
+  if (material?.lesson === null || material === null) throw new Error('This lesson is no longer available.')
+  await saveLearningLesson(sourceId, { ...material.lesson, completed_at: new Date().toISOString() })
+}
+
+export type LearningSourceSummary = {
+  id: string
+  lesson: string
+  transcriptWords: number | null
+  createdAt: string
+  status: 'ready' | 'in_progress' | 'completed'
+}
+
+/** A lightweight dashboard list; transcript bodies never leave the database here. */
+export async function listLearningSources(): Promise<LearningSourceSummary[]> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('sources')
+    .select('id, lesson, transcript_words, created_at, learning_lesson')
+    .order('created_at', { ascending: false })
+  if (error) fail('Loading saved lessons', error)
+
+  return data.map((source) => {
+    const lesson = parseLearningLesson(source.learning_lesson)
+    return {
+      id: source.id,
+      lesson: source.lesson,
+      transcriptWords: source.transcript_words,
+      createdAt: source.created_at,
+      status: lesson?.completed_at ? 'completed' : lesson ? 'in_progress' : 'ready',
+    }
+  })
+}

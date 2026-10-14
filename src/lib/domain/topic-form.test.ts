@@ -39,6 +39,8 @@ describe('a topic', () => {
       tags: [],
       source_id: null,
       capability_id: null,
+      code_example: null,
+      code_language: null,
       options: null,
       correct_option: null,
     })
@@ -68,6 +70,8 @@ describe('a quiz', () => {
       tags: [],
       source_id: null,
       capability_id: null,
+      code_example: null,
+      code_language: null,
       options: ['Yes', 'No'],
       correct_option: 0,
     })

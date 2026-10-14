@@ -59,7 +59,7 @@ import type { Confidence, Difficulty, QueueTopic, Quiz, Topic, TopicRecord } fro
  */
 export type TopicRow = Omit<
   Database['public']['Tables']['topics']['Row'],
-  'search_text' | 'source_id' | 'capability_id' | 'parent_topic_id'
+  'search_text' | 'source_id' | 'capability_id' | 'parent_topic_id' | 'code_example' | 'code_language'
 >
 
 /**

@@ -26,6 +26,7 @@
     "@supabase/supabase-js": "^2.112.4",
     "codemirror": "^6.0.2",
     "fflate": "^0.8.3",
+    "js-beautify": "^2.0.3",
     "next": "16.3.3",
     "react": "19.2.8",
     "react-dom": "19.2.8"
@@ -37,6 +38,7 @@
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.6",
+    "@types/js-beautify": "^1.14.3",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

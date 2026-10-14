@@ -23,6 +23,8 @@ interface TopicShared {
   user_id: string
   /** A topic's name; a quiz's question. The card shows it either way. */
   title: string
+  code_example?: string | null
+  code_language?: string | null
   /** A topic's mental model; a quiz's explanation. One field, one register. */
   mental_model: string | null
   category: string | null
