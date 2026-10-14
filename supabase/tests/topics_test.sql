@@ -1,5 +1,5 @@
 begin;
-select plan(73);
+select plan(75);
 
 -- ---------------------------------------------------------------------------
 -- Local helpers.
@@ -81,6 +81,7 @@ select columns_are('public'::name, 'topics'::name, ARRAY[
   'search_text',
   -- The quiz shape. See supabase/tests/quiz_shape_test.sql for what couples them.
   'kind', 'options', 'correct_option',
+  'code_example', 'code_language',
   -- Evidence. Three markers, each a date, a required note and an optional URL.
   -- See supabase/tests/evidence_shape_test.sql. Nine scalars rather than a jsonb
   -- document, so the type boundary and the CHECK both stay provable.
@@ -126,6 +127,8 @@ select col_type_is('public'::name, 'topics'::name, 'title'::name, 'text'::text);
 select col_type_is('public'::name, 'topics'::name, 'definition'::name, 'text'::text);
 select col_type_is('public'::name, 'topics'::name, 'mental_model'::name, 'text'::text);
 select col_type_is('public'::name, 'topics'::name, 'mental_model_image_path'::name, 'text'::text);
+select col_type_is('public'::name, 'topics'::name, 'code_example'::name, 'text'::text);
+select col_type_is('public'::name, 'topics'::name, 'code_language'::name, 'text'::text);
 select col_type_is('public'::name, 'topics'::name, 'category'::name, 'text'::text);
 select col_type_is('public'::name, 'topics'::name, 'tags'::name, 'text[]'::text);
 select col_type_is('public'::name, 'topics'::name, 'difficulty'::name, 'text'::text);

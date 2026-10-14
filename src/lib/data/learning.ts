@@ -21,6 +21,18 @@ export async function saveLearningLesson(sourceId: string, lesson: LearningLesso
   if (error) fail('Saving the clean lesson', error)
 }
 
+export async function markLearningSource(sourceId: string): Promise<void> {
+  const supabase = await createClient()
+  const { error } = await supabase.from('sources').update({ learning_lesson: { mode: 'learn' } as unknown as Json }).eq('id', sourceId)
+  if (error) fail('Preparing the learning transcript', error)
+}
+
+export async function removeLearningMaterial(sourceId: string): Promise<void> {
+  const supabase = await createClient()
+  const { error } = await supabase.from('sources').update({ transcript: null, transcript_deleted_at: new Date().toISOString(), learning_lesson: null }).eq('id', sourceId)
+  if (error) fail('Deleting the saved transcript', error)
+}
+
 /**
  * Lesson completion is intentionally kept inside its own saved lesson JSON.
  * It is not a review grade and must not create a topic, quiz, or queue item.
@@ -45,6 +57,7 @@ export async function listLearningSources(): Promise<LearningSourceSummary[]> {
   const { data, error } = await supabase
     .from('sources')
     .select('id, lesson, transcript_words, created_at, learning_lesson')
+    .not('learning_lesson', 'is', null)
     .order('created_at', { ascending: false })
   if (error) fail('Loading saved lessons', error)
 

@@ -123,7 +123,7 @@ function Eyebrow({ children }: { children: React.ReactNode }) {
 }
 
 function CodeEditor({ code, language, compact = false }: { code: string; language: string | null; compact?: boolean }) {
-  return <div className={`mt-6 overflow-hidden rounded-xl border border-[#30363d] bg-[#0d1117] ${compact ? '' : 'shadow-[0_8px_20px_rgba(13,17,23,.18)]'}`}><div className="flex items-center justify-between border-b border-[#30363d] bg-[#161b22] px-4 py-2 font-mono text-[10px] tracking-[.14em] text-[#8b949e] uppercase"><span>{language ?? 'Code example'}</span><span className="rounded bg-[#30363d] px-2 py-1 text-[#c9d1d9] normal-case">GitHub Dark</span></div><LearnCodeEditor code={code} /></div>
+  return <div className={`mt-6 overflow-hidden rounded-xl border border-[#30363d] bg-[#0d1117] ${compact ? '' : 'shadow-[0_8px_20px_rgba(13,17,23,.18)]'}`}><div className="flex items-center justify-between border-b border-[#30363d] bg-[#161b22] px-4 py-2 font-mono text-[10px] tracking-[.14em] text-[#8b949e] uppercase"><span>{language ?? 'Code example'}</span><span className="rounded bg-[#30363d] px-2 py-1 text-[#c9d1d9] normal-case">GitHub Dark</span></div><LearnCodeEditor code={code} language={language} /></div>
 }
 
 function Answer({ label, value, positive = true }: { label: string; value: string; positive?: boolean }) {

@@ -2,8 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { insertSource } from '@/lib/data/sources'
-import { deleteSource } from '@/lib/data/sources'
-import { completeLearningLesson, readLearningMaterial, saveLearningLesson } from '@/lib/data/learning'
+import { completeLearningLesson, markLearningSource, readLearningMaterial, removeLearningMaterial, saveLearningLesson } from '@/lib/data/learning'
 import { createLearningLesson } from '@/lib/ai/learn'
 
 export type LearnSourceResult = { error: string | null; id?: string }
@@ -34,6 +33,7 @@ export async function createLearnSource(
       url: null,
       transcript: body,
     })
+    await markLearningSource(source.id)
     revalidatePath('/learn')
     revalidatePath('/sources')
     return { error: null, id: source.id }
@@ -71,7 +71,7 @@ export async function markLearningLessonComplete(sourceId: string): Promise<{ er
 
 export async function removeLearningSource(sourceId: string): Promise<{ error: string | null }> {
   try {
-    await deleteSource(sourceId)
+    await removeLearningMaterial(sourceId)
     revalidatePath('/learn')
     revalidatePath('/sources')
     revalidatePath('/library')

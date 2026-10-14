@@ -4,6 +4,10 @@ import { useEffect, useRef } from 'react'
 import { EditorState } from '@codemirror/state'
 import { EditorView, lineNumbers } from '@codemirror/view'
 import { javascript } from '@codemirror/lang-javascript'
+import { css } from '@codemirror/lang-css'
+import { html } from '@codemirror/lang-html'
+import { json } from '@codemirror/lang-json'
+import { python } from '@codemirror/lang-python'
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language'
 import { tags } from '@lezer/highlight'
 
@@ -24,12 +28,22 @@ const theme = EditorView.theme({
   '.cm-activeLine, .cm-activeLineGutter': { backgroundColor: 'transparent' },
 })
 
-export function LearnCodeEditor({ code }: { code: string }) {
+function languageExtension(language: string | null) {
+  switch (language) {
+    case 'HTML': return html()
+    case 'CSS': return css()
+    case 'JSON': return json()
+    case 'Python': return python()
+    default: return javascript({ typescript: language === 'TypeScript' })
+  }
+}
+
+export function LearnCodeEditor({ code, language = 'JavaScript' }: { code: string; language?: string | null }) {
   const host = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (!host.current) return
-    const view = new EditorView({ parent: host.current, state: EditorState.create({ doc: code, extensions: [lineNumbers(), javascript({ typescript: true }), syntaxHighlighting(githubDark), theme, EditorView.editable.of(false), EditorState.readOnly.of(true)] }) })
+    const view = new EditorView({ parent: host.current, state: EditorState.create({ doc: code, extensions: [lineNumbers(), languageExtension(language), syntaxHighlighting(githubDark), theme, EditorView.editable.of(false), EditorState.readOnly.of(true)] }) })
     return () => view.destroy()
-  }, [code])
-  return <div ref={host} aria-label="Syntax highlighted JavaScript example" />
+  }, [code, language])
+  return <div ref={host} aria-label={`Syntax highlighted ${language ?? 'code'} example`} />
 }

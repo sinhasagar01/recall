@@ -90,6 +90,7 @@ select columns_are('public'::name, 'sources'::name, ARRAY[
   -- extraction persists beyond ordinary topics, because it is the record of a
   -- decision rather than a model response.
   'coverage',
+  'learning_lesson',
   'created_at', 'updated_at'
 ], 'sources has exactly these columns — additions and removals both fail here');
 

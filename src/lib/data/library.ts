@@ -43,7 +43,7 @@ export interface Cursor {
 
 /* The columns of a Topic, explicitly. Never `*`: that would ship search_text. */
 const TOPIC_COLUMNS =
-  'id, user_id, title, definition, mental_model, mental_model_image_path, category, tags, difficulty, confidence, practice_count, last_practiced_at, created_at, updated_at, kind, options, correct_option, rebuild_at, rebuild_note, rebuild_url, challenge_at, challenge_note, challenge_url, production_at, production_note, production_url'
+  'id, user_id, title, definition, mental_model, mental_model_image_path, code_example, code_language, category, tags, difficulty, confidence, practice_count, last_practiced_at, created_at, updated_at, kind, options, correct_option, rebuild_at, rebuild_note, rebuild_url, challenge_at, challenge_note, challenge_url, production_at, production_note, production_url'
 
 function hasFilters(filters: TopicFilters): boolean {
   return (
