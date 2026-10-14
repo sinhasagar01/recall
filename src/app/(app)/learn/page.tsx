@@ -1,10 +1,12 @@
-import Link from 'next/link'
 import { LearnStart } from '@/components/learn/learn-start'
+import { SavedLessons } from '@/components/learn/saved-lessons'
 import { StateBlock } from '@/components/ui/state-block'
-import { listSources } from '@/lib/data/sources'
+import { listLearningSources } from '@/lib/data/learning'
 
 export default async function LearnPage() {
-  const sources = await listSources()
+  const lessons = await listLearningSources()
+  const completed = lessons.filter((lesson) => lesson.status === 'completed').length
+  const inProgress = lessons.filter((lesson) => lesson.status === 'in_progress').length
 
   return (
     <>
@@ -18,25 +20,22 @@ export default async function LearnPage() {
       <LearnStart />
 
       <section className="mt-9">
-        <h2 className="font-display text-card-title font-medium">Continue from a saved transcript</h2>
-        {sources.length === 0 ? (
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="font-mono text-mono-sm tracking-[.14em] text-ink-3 uppercase">Your lesson shelf</p>
+            <h2 className="mt-1 font-display text-card-title font-medium">Continue from a saved transcript</h2>
+          </div>
+          {lessons.length > 0 ? <div className="flex gap-2 font-mono text-mono-sm"><span className="rounded-full border border-rule bg-surface px-2.5 py-1.5 text-ink-2">{inProgress} active</span><span className="rounded-full border border-[#c8e8d5] bg-ok-soft px-2.5 py-1.5 text-ok">{completed} complete</span></div> : null}
+        </div>
+        <p className="mt-2 text-meta text-ink-2">Lessons are separate from your Library. Continue one, revisit a finished lesson, or remove a transcript you no longer need.</p>
+        {lessons.length === 0 ? (
           <StateBlock
             eyebrow="Learn"
             title="Your next lesson starts above"
-            body="Paste a transcript and choose the ideas you want to keep."
+            body="Paste a transcript, turn it into a clean lesson, then work through it actively."
           />
         ) : (
-          <ul className="mt-3 divide-y divide-rule rounded-lg border border-rule bg-surface">
-            {sources.map(({ source }) => (
-              <li key={source.id} className="flex flex-wrap items-center justify-between gap-4 px-4 py-3.5">
-                <div>
-                  <p className="text-body font-medium text-ink">{source.lesson}</p>
-              <p className="mt-0.5 font-mono text-mono-sm text-ink-3">{source.transcript_words === null ? 'No transcript' : `${source.transcript_words.toLocaleString()} words`}</p>
-                </div>
-                <Link href={`/learn/${source.id}`} className="inline-flex min-h-11 items-center rounded-md border border-rule-strong px-3 text-label font-medium text-ink hover:border-ink-3">Open →</Link>
-              </li>
-            ))}
-          </ul>
+          <SavedLessons lessons={lessons} />
         )}
       </section>
     </>

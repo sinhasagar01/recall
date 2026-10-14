@@ -27,6 +27,8 @@ export interface TopicFormInput {
   tags: string[]
   options: string[]
   correctOption: string
+  codeExample?: string
+  codeLanguage?: string
 }
 
 export type ParsedTopicForm =
@@ -76,6 +78,8 @@ export function parseTopicForm(input: TopicFormInput): ParsedTopicForm {
     // Empty means "no source", never a blank string that would fail the FK.
     source_id: input.sourceId.trim() === '' ? null : input.sourceId.trim(),
     capability_id: input.capabilityId.trim() === '' ? null : input.capabilityId.trim(),
+    code_example: input.codeExample?.trim() || null,
+    code_language: input.codeExample?.trim() ? (input.codeLanguage?.trim() || 'JavaScript') : null,
   }
 
   if (input.kind === 'quiz') {

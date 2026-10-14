@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useRef, useState, useTransition } from 'react'
+import { css_beautify, html_beautify, js_beautify } from 'js-beautify'
 import { Button } from '@/components/ui/button'
 import { Field } from '@/components/ui/field'
 import { Kbd } from '@/components/ui/kbd'
@@ -27,6 +28,7 @@ const KINDS = [
   { value: 'topic', label: 'Topic' },
   { value: 'quiz', label: 'Quiz' },
 ]
+const CODE_LANGUAGES = ['JavaScript', 'TypeScript', 'JSON', 'HTML', 'CSS', 'Python'].map((value) => ({ value, label: value }))
 
 /**
  * One sheet, four modes — add/edit crossed with topic/quiz.
@@ -91,6 +93,8 @@ export function TopicSheet({
   // must be given one, rather than inheriting a default nobody chose.
   const [correct, setCorrect] = useState(topic?.correct_option ?? -1)
   const [mentalModel, setMentalModel] = useState(topic?.mental_model ?? '')
+  const [codeExample, setCodeExample] = useState(topic?.code_example ?? '')
+  const [codeLanguage, setCodeLanguage] = useState(topic?.code_language ?? 'JavaScript')
   /*
     ── The category follows the suggestion until you overrule it ──────────────
     `null` means "nobody has chosen"; the effective value is then whatever
@@ -162,6 +166,7 @@ export function TopicSheet({
     setOptions(['', ''])
     setCorrect(-1)
     setMentalModel('')
+    setCodeExample('')
     setChosenCategory(null)
     setTags([])
     setDifficulty('medium')
@@ -337,6 +342,11 @@ export function TopicSheet({
             onChange={(event) => setTitle(event.target.value)}
           />
         )}
+        <div className="mb-[18px]">
+          <label htmlFor="code_example" className="mb-1.5 block text-label font-medium text-ink">Code example <span className="font-normal text-ink-3">(optional · formats when pasted)</span></label>
+          <div className="mb-2 flex items-center gap-2"><span className="font-mono text-mono text-ink-3">Language</span><input type="hidden" name="code_language" value={codeLanguage} /><Select label="Code language" options={CODE_LANGUAGES} value={codeLanguage} unsetValue="" onChange={setCodeLanguage} /></div>
+          <textarea id="code_example" name="code_example" rows={5} value={codeExample} onChange={(event) => setCodeExample(event.target.value)} onPaste={(event) => { event.preventDefault(); setCodeExample(formatCode(event.clipboardData.getData('text'), codeLanguage)) }} placeholder="Paste code shown with this card…" className="w-full rounded-md border border-rule-strong bg-surface px-3 py-2.5 font-mono text-meta leading-[1.5] text-ink outline-offset-[-1px] focus:border-accent focus:outline-2 focus:outline-accent" />
+        </div>
 
         {isQuiz ? (
           <QuizOptionsField
@@ -549,4 +559,16 @@ export function TopicSheet({
       </form>
     </Sheet>
   )
+}
+
+function formatCode(value: string, language: string) {
+  const source = value.trim()
+  if (source === '') return source
+  const options = { indent_size: 2, preserve_newlines: true, max_preserve_newlines: 2 }
+  if (language === 'HTML') return html_beautify(source, options)
+  if (language === 'CSS') return css_beautify(source, options)
+  if (language === 'JSON') {
+    try { return JSON.stringify(JSON.parse(source), null, 2) } catch { return js_beautify(source, options) }
+  }
+  return js_beautify(source, options)
 }

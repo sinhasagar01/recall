@@ -22,5 +22,7 @@ export function readTopicForm(formData: FormData): TopicFormInput {
     tags: formData.getAll('tags').map(String),
     options: formData.getAll('options').map(String),
     correctOption: String(formData.get('correct_option') ?? ''),
+    codeExample: String(formData.get('code_example') ?? ''),
+    codeLanguage: String(formData.get('code_language') ?? ''),
   }
 }

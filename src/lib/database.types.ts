@@ -324,6 +324,8 @@ export type Database = {
           challenge_at: string | null
           challenge_note: string | null
           challenge_url: string | null
+          code_example: string | null
+          code_language: string | null
           confidence: string
           correct_option: number | null
           created_at: string
@@ -359,6 +361,8 @@ export type Database = {
           challenge_at?: string | null
           challenge_note?: string | null
           challenge_url?: string | null
+          code_example?: string | null
+          code_language?: string | null
           confidence?: string
           correct_option?: number | null
           created_at?: string
@@ -394,6 +398,8 @@ export type Database = {
           challenge_at?: string | null
           challenge_note?: string | null
           challenge_url?: string | null
+          code_example?: string | null
+          code_language?: string | null
           confidence?: string
           correct_option?: number | null
           created_at?: string

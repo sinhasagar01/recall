@@ -27,6 +27,7 @@ import {
 import type { Topic } from '@/lib/domain/types'
 import { BackToLibrary } from '@/components/ui/back-to-library'
 import { FROM_MEMORY, isRecalled, NOTHING_FROM_MEMORY } from '@/lib/domain/recall'
+import { LearnCodeEditor } from '@/components/learn/learn-code-editor'
 
 export function TopicDetail({
   topic,
@@ -106,6 +107,7 @@ export function TopicDetail({
         blank Definition register is invisible to the compiler and looks almost right.
       */}
       {topic.kind === 'topic' ? <Definition>{topic.definition}</Definition> : null}
+      {topic.code_example ? <RegisterSection title={topic.code_language ?? 'Code example'}><div className="mt-2.5 overflow-hidden rounded-md border border-[#30363d] bg-[#0d1117]"><LearnCodeEditor code={topic.code_example} /></div></RegisterSection> : null}
       {topic.mental_model ? (
         // "Why" is the word the add sheet uses for a quiz's explanation.
         <MentalModel label={topic.kind === 'quiz' ? 'Why' : 'Mental model'}>
