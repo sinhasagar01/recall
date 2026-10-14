@@ -345,7 +345,7 @@ export function TopicSheet({
         <div className="mb-[18px]">
           <label htmlFor="code_example" className="mb-1.5 block text-label font-medium text-ink">Code example <span className="font-normal text-ink-3">(optional · formats when pasted)</span></label>
           <div className="mb-2 flex items-center gap-2"><span className="font-mono text-mono text-ink-3">Language</span><input type="hidden" name="code_language" value={codeLanguage} /><Select label="Code language" options={CODE_LANGUAGES} value={codeLanguage} unsetValue="" onChange={setCodeLanguage} /></div>
-          <textarea id="code_example" name="code_example" rows={5} value={codeExample} onChange={(event) => setCodeExample(event.target.value)} onPaste={(event) => { event.preventDefault(); setCodeExample(formatCode(event.clipboardData.getData('text'), codeLanguage)) }} placeholder="Paste code shown with this card…" className="w-full rounded-md border border-rule-strong bg-surface px-3 py-2.5 font-mono text-meta leading-[1.5] text-ink outline-offset-[-1px] focus:border-accent focus:outline-2 focus:outline-accent" />
+          <textarea id="code_example" name="code_example" rows={5} value={codeExample} onChange={(event) => setCodeExample(event.target.value)} onPaste={(event) => { event.preventDefault(); const field = event.currentTarget; const formatted = formatCode(event.clipboardData.getData('text'), codeLanguage); setCodeExample(`${codeExample.slice(0, field.selectionStart)}${formatted}${codeExample.slice(field.selectionEnd)}`) }} placeholder="Paste code shown with this card…" className="w-full rounded-md border border-rule-strong bg-surface px-3 py-2.5 font-mono text-meta leading-[1.5] text-ink outline-offset-[-1px] focus:border-accent focus:outline-2 focus:outline-accent" />
         </div>
 
         {isQuiz ? (
@@ -567,6 +567,7 @@ function formatCode(value: string, language: string) {
   const options = { indent_size: 2, preserve_newlines: true, max_preserve_newlines: 2 }
   if (language === 'HTML') return html_beautify(source, options)
   if (language === 'CSS') return css_beautify(source, options)
+  if (language === 'Python') return source
   if (language === 'JSON') {
     try { return JSON.stringify(JSON.parse(source), null, 2) } catch { return js_beautify(source, options) }
   }

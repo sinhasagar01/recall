@@ -60,7 +60,11 @@ import type { Confidence, Difficulty, QueueTopic, Quiz, Topic, TopicRecord } fro
 export type TopicRow = Omit<
   Database['public']['Tables']['topics']['Row'],
   'search_text' | 'source_id' | 'capability_id' | 'parent_topic_id' | 'code_example' | 'code_language'
->
+> & {
+  /** Queue RPCs predate code examples; detail and library reads include them. */
+  code_example?: string | null
+  code_language?: string | null
+}
 
 /**
  * What `practice_ordered_page` actually returns: a topic row without evidence.
