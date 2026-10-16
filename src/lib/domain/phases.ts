@@ -49,6 +49,12 @@ export interface Capability {
   updated_at: string
 }
 
+/** The Phase list only needs the fields that establish demonstration. */
+export type CapabilityEvidenceSummary = Pick<
+  Topic,
+  'id' | 'kind' | 'confidence' | 'rebuild_at' | 'challenge_at' | 'production_at'
+>
+
 /** Confidences that count as "okay or better" for the recall half. */
 const RECALL_SUFFICIENT: ReadonlySet<string> = new Set(['okay', 'strong'])
 
@@ -90,6 +96,19 @@ const MARKERS: readonly EvidenceMarker[] = ['rebuild', 'challenge', 'production'
  * `extractionsFor` established in arc 2 (replaced by `sourceProgress` in arc 6).
  */
 export function demonstrationOf(linked: Topic[]): Demonstration {
+  return demonstrationFromEntries(linked)
+}
+
+/**
+ * The same derived rule for the deliberately narrow rows used on the paginated
+ * Phase index. `demonstrationOf` remains the full-topic domain boundary used by
+ * detail screens; this variant makes the index's smaller query explicit.
+ */
+export function demonstrationOfSummary(linked: CapabilityEvidenceSummary[]): Demonstration {
+  return demonstrationFromEntries(linked)
+}
+
+function demonstrationFromEntries(linked: CapabilityEvidenceSummary[]): Demonstration {
   const topics = linked.filter((entry) => entry.kind === 'topic')
   const quizzes = linked.filter((entry) => entry.kind === 'quiz')
 

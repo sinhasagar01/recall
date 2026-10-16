@@ -1,12 +1,12 @@
 'use client'
 
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { LibraryToolbar, type ToolbarState } from '@/components/topics/library-toolbar'
 import { MoreSheet } from '@/components/topics/more-sheet'
 import { TopicCard } from '@/components/topics/topic-card'
-import { TopicSheet } from '@/components/topics/topic-sheet'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { StateBlock } from '@/components/ui/state-block'
@@ -25,6 +25,12 @@ import {
 import { libraryCounts } from '@/lib/domain/library-counts'
 import { filterTopics, type QuickFilter, type TopicFilters } from '@/lib/domain/search-filter'
 import type { Confidence, Difficulty, Kind, Topic } from '@/lib/domain/types'
+
+/* The editor includes code formatting and image-upload code; load it only when opened. */
+const TopicSheet = dynamic(
+  () => import('@/components/topics/topic-sheet').then((module) => module.TopicSheet),
+  { ssr: false },
+)
 
 /** How long typing settles before server mode asks the database. */
 const SEARCH_DEBOUNCE_MS = 250
@@ -543,19 +549,21 @@ export function LibraryView({
       )}
 
       {/* Remounted per prefill, so the title arrives via a state initialiser. */}
-      <TopicSheet
-        key={prefillTitle}
-        open={sheetOpen}
-        onClose={closeSheet}
-        onSaved={setSaved}
-        categories={categoryOptionsFromCounts(counts.byCategory, counts.total)}
-        initialTitle={prefillTitle}
-        sourceId={distilSource}
-        sourceOptions={sourceOptions}
-        capabilityOptions={capabilityOptions}
-        initialDefinition={distilDefinition ?? ''}
-        initialKind={params.get('kind') === 'quiz' ? 'quiz' : 'topic'}
-      />
+      {sheetOpen ? (
+        <TopicSheet
+          key={prefillTitle}
+          open
+          onClose={closeSheet}
+          onSaved={setSaved}
+          categories={categoryOptionsFromCounts(counts.byCategory, counts.total)}
+          initialTitle={prefillTitle}
+          sourceId={distilSource}
+          sourceOptions={sourceOptions}
+          capabilityOptions={capabilityOptions}
+          initialDefinition={distilDefinition ?? ''}
+          initialKind={params.get('kind') === 'quiz' ? 'quiz' : 'topic'}
+        />
+      ) : null}
 
       <Modal
         open={confirmingDelete}

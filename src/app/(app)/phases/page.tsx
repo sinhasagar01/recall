@@ -1,10 +1,11 @@
 import Link from 'next/link'
 import { AddPhaseButton } from '@/components/phases/add-phase-button'
 import { StateBlock } from '@/components/ui/state-block'
-import { listPhases } from '@/lib/data/phases'
-import { currentPhaseId, demonstrationOf } from '@/lib/domain/phases'
+import { demonstrationOfSummary } from '@/lib/domain/phases'
 import { plural } from '@/lib/domain/plural'
 import { BackToLibrary } from '@/components/ui/back-to-library'
+import { Pagination } from '@/components/ui/pagination'
+import { PHASE_PAGE_SIZE, listPhaseSummariesPage, readCurrentPhaseId } from '@/lib/data/phases'
 
 /**
  * The phases you have started, in the order you started them.
@@ -12,17 +13,18 @@ import { BackToLibrary } from '@/components/ui/back-to-library'
  * No percentage, no burn-down, no week counter. "2 of 4" is a count you can click
  * through to. Nothing here changes because a date passed.
  */
-export default async function PhasesPage() {
-  const views = await listPhases()
+export default async function PhasesPage({ searchParams }: PageProps<'/phases'>) {
+  const params = await searchParams
+  const requested = Number(typeof params.page === 'string' ? params.page : '1')
+  const [{ views, total, page }, current] = await Promise.all([
+    listPhaseSummariesPage(Number.isSafeInteger(requested) && requested > 0 ? requested : 1),
+    readCurrentPhaseId(),
+  ])
 
   const withDemos = views.map((view) => ({
     ...view,
-    demos: view.capabilities.map((c) => demonstrationOf(c.entries)),
+    demos: view.capabilities.map((c) => demonstrationOfSummary(c.entries)),
   }))
-
-  const current = currentPhaseId(
-    withDemos.map((view) => ({ id: view.phase.id, capabilities: view.demos })),
-  )
 
   const capabilities = withDemos.reduce((total, view) => total + view.demos.length, 0)
   const demonstrated = withDemos.reduce(
@@ -41,7 +43,7 @@ export default async function PhasesPage() {
         <p className="mt-1.5 font-mono text-[11.5px] text-ink-3">
           {views.length === 0
             ? 'Nothing started yet'
-            : `${plural(views.length, 'phase')} · ${plural(capabilities, 'capability', 'capabilities')} · ${demonstrated} demonstrated`}
+            : `${total > views.length ? 'This page · ' : ''}${plural(views.length, 'phase')} · ${plural(capabilities, 'capability', 'capabilities')} · ${demonstrated} demonstrated`}
         </p>
       </div>
       <AddPhaseButton label="+ Add a phase" />
@@ -122,6 +124,8 @@ export default async function PhasesPage() {
           )
         })}
       </div>
+
+      <Pagination href="/phases" page={page} pageSize={PHASE_PAGE_SIZE} total={total} />
 
       <div className="mt-9 border-t border-rule pt-5">
         <BackToLibrary />

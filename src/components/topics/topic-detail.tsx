@@ -1,8 +1,8 @@
 'use client'
 
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
 import { useState, useTransition } from 'react'
-import { TopicSheet } from '@/components/topics/topic-sheet'
 import { Button } from '@/components/ui/button'
 import { Chip } from '@/components/ui/chip'
 import { ConfidenceMeter } from '@/components/ui/confidence-meter'
@@ -27,7 +27,15 @@ import {
 import type { Topic } from '@/lib/domain/types'
 import { BackToLibrary } from '@/components/ui/back-to-library'
 import { FROM_MEMORY, isRecalled, NOTHING_FROM_MEMORY } from '@/lib/domain/recall'
-import { LearnCodeEditor } from '@/components/learn/learn-code-editor'
+
+const TopicSheet = dynamic(
+  () => import('@/components/topics/topic-sheet').then((module) => module.TopicSheet),
+  { ssr: false },
+)
+const LearnCodeEditor = dynamic(
+  () => import('@/components/learn/learn-code-editor').then((module) => module.LearnCodeEditor),
+  { ssr: false },
+)
 
 export function TopicDetail({
   topic,
@@ -267,18 +275,20 @@ export function TopicDetail({
         Remounted per topic, so the prefilled fields come from state initialisers
         rather than an effect copying props into state after the fact.
       */}
-      <TopicSheet
-        sourceId={source?.source.id ?? null}
-        sourceOptions={sourceOptions}
-        capabilityId={capability?.capability.id ?? null}
-        capabilityOptions={capabilityOptions}
-        key={topic.id}
-        open={editing}
-        onClose={() => setEditing(false)}
-        onSaved={setSaved}
-        categories={categories}
-        topic={topic}
-      />
+      {editing ? (
+        <TopicSheet
+          sourceId={source?.source.id ?? null}
+          sourceOptions={sourceOptions}
+          capabilityId={capability?.capability.id ?? null}
+          capabilityOptions={capabilityOptions}
+          key={topic.id}
+          open
+          onClose={() => setEditing(false)}
+          onSaved={setSaved}
+          categories={categories}
+          topic={topic}
+        />
+      ) : null}
 
       <Modal
         open={confirmingDelete}

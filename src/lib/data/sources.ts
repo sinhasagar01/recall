@@ -4,7 +4,7 @@ import { fail } from '@/lib/data/fail'
 import { cache } from 'react'
 
 import { toTopic, type TopicRow } from '@/lib/data/topic-mapping'
-import type { Source, SourceSummary } from '@/lib/domain/sources'
+import type { Source, SourceEntrySummary, SourceFormSibling, SourceSummary } from '@/lib/domain/sources'
 import { parseCoverage } from '@/lib/domain/extraction'
 import type { Topic } from '@/lib/domain/types'
 import { createClient } from '@/lib/supabase/server'
@@ -82,8 +82,12 @@ function toSource(row: {
 export interface SourceWithEntries {
   source: SourceSummary
   /** Its topics and quizzes, for the progress summary and the derived list. */
-  entries: Topic[]
+  entries: SourceEntrySummary[]
 }
+
+export const SOURCE_PAGE_SIZE = 40
+
+export type SourcePage = { views: SourceWithEntries[]; total: number; page: number }
 
 /**
  * The sources list.
@@ -98,16 +102,24 @@ export const listSources = cache(async (): Promise<SourceWithEntries[]> => {
 
   const [sources, entries] = await Promise.all([
     supabase.from('sources').select(SUMMARY_COLUMNS).order('created_at', { ascending: false }),
-    supabase.from('topics').select(`${ENTRY_COLUMNS}, source_id`).not('source_id', 'is', null),
+    supabase
+      .from('topics')
+      .select('id, kind, confidence, practice_count, source_id')
+      .not('source_id', 'is', null),
   ])
 
   if (sources.error) fail('Loading your sources', sources.error)
   if (entries.error) fail('Loading what you distilled', entries.error)
 
-  const bySource = new Map<string, Topic[]>()
-  for (const row of entries.data as (TopicRow & { source_id: string })[]) {
+  const bySource = new Map<string, SourceEntrySummary[]>()
+  for (const row of entries.data as (SourceEntrySummary & { source_id: string })[]) {
     const list = bySource.get(row.source_id) ?? []
-    list.push(toTopic(row))
+    list.push({
+      id: row.id,
+      kind: row.kind,
+      confidence: row.confidence,
+      practice_count: row.practice_count,
+    })
     bySource.set(row.source_id, list)
   }
 
@@ -116,6 +128,58 @@ export const listSources = cache(async (): Promise<SourceWithEntries[]> => {
     entries: bySource.get(row.id) ?? [],
   }))
 })
+
+/** A bounded Sources page. Linked entry summaries are fetched only for its rows. */
+export async function listSourcesPage(page: number): Promise<SourcePage> {
+  const safePage = Math.max(1, page)
+  const from = (safePage - 1) * SOURCE_PAGE_SIZE
+  const to = from + SOURCE_PAGE_SIZE - 1
+  const supabase = await createClient()
+  const { data: sources, error: sourceError, count } = await supabase
+    .from('sources')
+    .select(SUMMARY_COLUMNS, { count: 'exact' })
+    .order('created_at', { ascending: false })
+    .range(from, to)
+
+  if (sourceError) fail('Loading your sources', sourceError)
+  const ids = sources.map((source) => source.id)
+  const entries = ids.length
+    ? await supabase.from('topics').select('id, kind, confidence, practice_count, source_id').in('source_id', ids)
+    : { data: [], error: null }
+  if (entries.error) fail('Loading what you distilled', entries.error)
+
+  const bySource = new Map<string, SourceEntrySummary[]>()
+  for (const row of entries.data as (SourceEntrySummary & { source_id: string })[]) {
+    const list = bySource.get(row.source_id) ?? []
+    list.push({ id: row.id, kind: row.kind, confidence: row.confidence, practice_count: row.practice_count })
+    bySource.set(row.source_id, list)
+  }
+
+  return {
+    views: sources.map((source) => ({ source: toSource(source), entries: bySource.get(source.id) ?? [] })),
+    total: count ?? 0,
+    page: safePage,
+  }
+}
+
+/** Source metadata only, used for detail-page edit choices without loading entries. */
+export async function listSourceSummaries(): Promise<SourceSummary[]> {
+  const supabase = await createClient()
+  const { data, error } = await supabase.from('sources').select(SUMMARY_COLUMNS).order('created_at', { ascending: false })
+  if (error) fail('Loading your sources', error)
+  return data.map(toSource)
+}
+
+/** Reusable course/chapter names for the add-source sheet, without source bodies. */
+export async function listSourceFormSiblings(): Promise<SourceFormSibling[]> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('sources')
+    .select('course, chapter, created_at')
+    .order('created_at', { ascending: false })
+  if (error) fail('Loading your source suggestions', error)
+  return data
+}
 
 /*
   What an entry needs to appear in a derived list: enough to render a row, plus

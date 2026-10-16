@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "check:bundle": "node scripts/check-bundle-size.mjs",
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
@@ -16,7 +17,7 @@
     "sweep:orphans": "node scripts/sweep-orphans.mts",
     "test:e2e": "npm run build && playwright test",
     "db:types": "supabase gen types typescript --local > src/lib/database.types.ts",
-    "verify": "npm run typecheck && npm run test && npm run gen:parity -- --check && npm run test:db && npm run test:e2e"
+    "verify": "npm run typecheck && npm run test && npm run gen:parity -- --check && npm run test:db && npm run test:e2e && npm run check:bundle"
   },
   "dependencies": {
     "@codemirror/lang-css": "^6.3.1",

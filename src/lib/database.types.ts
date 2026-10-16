@@ -557,6 +557,7 @@ export type Database = {
         Returns: Json
       }
       app_shell_summary: { Args: { p_review_confidences: string[] }; Returns: Json }
+      current_phase_id: { Args: Record<PropertyKey, never>; Returns: string | null }
       rail_counts: { Args: { p_review_confidences: string[] }; Returns: Json }
       topic_search_normalise: { Args: { p_value: string }; Returns: string }
       topic_search_pattern: { Args: { p_query: string }; Returns: string }

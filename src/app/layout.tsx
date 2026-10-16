@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { IBM_Plex_Mono, IBM_Plex_Sans, Newsreader } from 'next/font/google'
+import { WebVitals } from '@/components/performance/web-vitals'
 import './globals.css'
 
 /*
@@ -41,7 +42,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
       lang="en"
       className={`${newsreader.variable} ${plexSans.variable} ${plexMono.variable} h-full`}
     >
-      <body className="min-h-full">{children}</body>
+      <body className="min-h-full"><WebVitals />{children}</body>
     </html>
   )
 }

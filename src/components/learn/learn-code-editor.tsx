@@ -1,13 +1,8 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { EditorState } from '@codemirror/state'
+import { EditorState, type Extension } from '@codemirror/state'
 import { EditorView, lineNumbers } from '@codemirror/view'
-import { javascript } from '@codemirror/lang-javascript'
-import { css } from '@codemirror/lang-css'
-import { html } from '@codemirror/lang-html'
-import { json } from '@codemirror/lang-json'
-import { python } from '@codemirror/lang-python'
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language'
 import { tags } from '@lezer/highlight'
 
@@ -28,13 +23,13 @@ const theme = EditorView.theme({
   '.cm-activeLine, .cm-activeLineGutter': { backgroundColor: 'transparent' },
 })
 
-function languageExtension(language: string | null) {
+async function languageExtension(language: string | null): Promise<Extension> {
   switch (language) {
-    case 'HTML': return html()
-    case 'CSS': return css()
-    case 'JSON': return json()
-    case 'Python': return python()
-    default: return javascript({ typescript: language === 'TypeScript' })
+    case 'HTML': return (await import('@codemirror/lang-html')).html()
+    case 'CSS': return (await import('@codemirror/lang-css')).css()
+    case 'JSON': return (await import('@codemirror/lang-json')).json()
+    case 'Python': return (await import('@codemirror/lang-python')).python()
+    default: return (await import('@codemirror/lang-javascript')).javascript({ typescript: language === 'TypeScript' })
   }
 }
 
@@ -42,8 +37,31 @@ export function LearnCodeEditor({ code, language = 'JavaScript' }: { code: strin
   const host = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (!host.current) return
-    const view = new EditorView({ parent: host.current, state: EditorState.create({ doc: code, extensions: [lineNumbers(), languageExtension(language), syntaxHighlighting(githubDark), theme, EditorView.editable.of(false), EditorState.readOnly.of(true)] }) })
-    return () => view.destroy()
+    let disposed = false
+    let view: EditorView | null = null
+
+    void languageExtension(language).then((extension) => {
+      if (disposed || !host.current) return
+      view = new EditorView({
+        parent: host.current,
+        state: EditorState.create({
+          doc: code,
+          extensions: [
+            lineNumbers(),
+            extension,
+            syntaxHighlighting(githubDark),
+            theme,
+            EditorView.editable.of(false),
+            EditorState.readOnly.of(true),
+          ],
+        }),
+      })
+    })
+
+    return () => {
+      disposed = true
+      view?.destroy()
+    }
   }, [code, language])
   return <div ref={host} aria-label={`Syntax highlighted ${language ?? 'code'} example`} />
 }

@@ -3,13 +3,13 @@ import { notFound } from 'next/navigation'
 import { ExtractPanel } from '@/components/sources/extract-panel'
 import { SourceWorkspace } from '@/components/sources/source-workspace'
 import { hasKey } from '@/lib/ai/extract'
-import { listSources, readSource } from '@/lib/data/sources'
+import { listSourceSummaries, readSource } from '@/lib/data/sources'
 import { coverageSummary } from '@/lib/domain/extraction'
 import { transcriptState } from '@/lib/domain/sources'
 
 export default async function SourcePage({ params }: PageProps<'/sources/[id]'>) {
   const { id } = await params
-  const [found, siblings] = await Promise.all([readSource(id), listSources()])
+  const [found, siblings] = await Promise.all([readSource(id), listSourceSummaries()])
 
   // Not-found and not-yours are the same answer, the rule the topic page follows.
   if (found === null) notFound()
@@ -18,7 +18,7 @@ export default async function SourcePage({ params }: PageProps<'/sources/[id]'>)
 
   /* For the edit sheet's course and chapter comboboxes. Cached, so this is the
      same read the list uses rather than a second one. */
-  const sourceChoices = siblings.map((view) => view.source)
+  const sourceChoices = siblings
 
   /*
     Which pass this would be. Coverage records it per entry, so a second reading
