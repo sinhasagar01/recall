@@ -35,7 +35,12 @@ const relative = (file: string) => file.slice(SRC.length + 1)
  * not a way back, it is where you are, and it carries `aria-current` rather than
  * a label saying "back".
  */
-const ALLOWED = ['components/ui/back-to-library.tsx', 'components/topics/tab-bar.tsx']
+const ALLOWED = [
+  'components/ui/back-to-library.tsx',
+  'components/topics/tab-bar.tsx',
+  // The rail wordmark is persistent app navigation, not a contextual “back” action.
+  'app/(app)/layout.tsx',
+]
 
 describe('every way back to the library is the same control', () => {
   it('is the only thing that links to a bare /library', () => {
