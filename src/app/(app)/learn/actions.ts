@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { insertSource } from '@/lib/data/sources'
-import { completeLearningLesson, markLearningSource, readLearningMaterial, removeLearningMaterial, saveLearningLesson } from '@/lib/data/learning'
+import { completeLearningLesson, markLearningSource, readLearningMaterial, removeLearningMaterial, saveLearningLesson, updateLearningMaterial } from '@/lib/data/learning'
 import { createLearningLesson } from '@/lib/ai/learn'
 
 export type LearnSourceResult = { error: string | null; id?: string }
@@ -78,5 +78,23 @@ export async function removeLearningSource(sourceId: string): Promise<{ error: s
     return { error: null }
   } catch (cause) {
     return { error: cause instanceof Error ? cause.message : 'The saved transcript could not be deleted.' }
+  }
+}
+
+export async function updateLearnSource(
+  sourceId: string,
+  title: string,
+  transcript: string,
+): Promise<{ error: string | null }> {
+  try {
+    await updateLearningMaterial(sourceId, { lesson: title, transcript })
+    revalidatePath('/learn')
+    revalidatePath(`/learn/${sourceId}`)
+    revalidatePath(`/learn/${sourceId}/edit`)
+    revalidatePath('/home')
+    revalidatePath('/sources')
+    return { error: null }
+  } catch (cause) {
+    return { error: cause instanceof Error ? cause.message : 'The transcript changes could not be saved.' }
   }
 }

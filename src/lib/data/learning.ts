@@ -34,6 +34,51 @@ export async function removeLearningMaterial(sourceId: string): Promise<void> {
 }
 
 /**
+ * Update the two pieces of raw learning material people can meaningfully revise.
+ *
+ * A clean lesson is derived from its transcript. Keeping that derivation after
+ * the transcript changes would quietly teach the old material, so a changed
+ * body deliberately returns the source to its "ready to shape" state. Renaming
+ * alone leaves progress intact.
+ */
+export async function updateLearningMaterial(
+  sourceId: string,
+  input: { lesson: string; transcript: string },
+): Promise<void> {
+  const supabase = await createClient()
+  const lesson = input.lesson.trim()
+  const transcript = input.transcript.trim()
+
+  if (lesson === '') throw new Error('Name the lesson so you can find it again.')
+  if (transcript === '') throw new Error('Keep the transcript, or delete the saved lesson instead.')
+  if (transcript.length > 750_000) {
+    throw new Error('This transcript is too large to save at once. Add it in smaller parts.')
+  }
+
+  const { data: current, error: readError } = await supabase
+    .from('sources')
+    .select('transcript')
+    .eq('id', sourceId)
+    .maybeSingle()
+  if (readError) fail('Loading the saved transcript', readError)
+  if (current?.transcript === null || current === null) throw new Error('This saved transcript is no longer available.')
+
+  const transcriptChanged = current.transcript !== transcript
+  const { error } = await supabase
+    .from('sources')
+    .update({
+      lesson,
+      transcript,
+      transcript_deleted_at: null,
+      updated_at: new Date().toISOString(),
+      ...(transcriptChanged ? { learning_lesson: { mode: 'learn' } as unknown as Json } : {}),
+    })
+    .eq('id', sourceId)
+
+  if (error) fail('Saving the transcript changes', error)
+}
+
+/**
  * Lesson completion is intentionally kept inside its own saved lesson JSON.
  * It is not a review grade and must not create a topic, quiz, or queue item.
  */
