@@ -9,7 +9,7 @@ import { transcriptState } from '@/lib/domain/sources'
 
 export default async function SourcePage({ params }: PageProps<'/sources/[id]'>) {
   const { id } = await params
-  const found = await readSource(id)
+  const [found, siblings] = await Promise.all([readSource(id), listSources()])
 
   // Not-found and not-yours are the same answer, the rule the topic page follows.
   if (found === null) notFound()
@@ -18,7 +18,7 @@ export default async function SourcePage({ params }: PageProps<'/sources/[id]'>)
 
   /* For the edit sheet's course and chapter comboboxes. Cached, so this is the
      same read the list uses rather than a second one. */
-  const siblings = (await listSources()).map((view) => view.source)
+  const sourceChoices = siblings.map((view) => view.source)
 
   /*
     Which pass this would be. Coverage records it per entry, so a second reading
@@ -54,7 +54,7 @@ export default async function SourcePage({ params }: PageProps<'/sources/[id]'>)
         </div>
       ) : null}
 
-      <SourceWorkspace source={found.source} entries={found.entries} siblings={siblings} />
+      <SourceWorkspace source={found.source} entries={found.entries} siblings={sourceChoices} />
     </>
   )
 }

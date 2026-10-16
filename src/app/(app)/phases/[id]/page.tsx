@@ -7,7 +7,7 @@ import { currentPhaseId, demonstrationOf } from '@/lib/domain/phases'
 
 export default async function PhasePage({ params }: PageProps<'/phases/[id]'>) {
   const { id } = await params
-  const view = await readPhase(id)
+  const [view, all, ledger] = await Promise.all([readPhase(id), listPhases(), ledgerByCapability()])
   if (view === null) notFound()
 
   /*
@@ -17,7 +17,6 @@ export default async function PhasePage({ params }: PageProps<'/phases/[id]'>) {
   */
   // One query for the whole page, grouped in the data layer — not one per
   // capability. The shape arcs 2 and 3 both use.
-  const [all, ledger] = await Promise.all([listPhases(), ledgerByCapability()])
   const current = currentPhaseId(
     all.map((phase) => ({
       id: phase.phase.id,

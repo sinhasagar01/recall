@@ -51,6 +51,39 @@ export type LearningSourceSummary = {
   status: 'ready' | 'in_progress' | 'completed'
 }
 
+/**
+ * The lean read for the guided-lesson route.
+ *
+ * It intentionally does not call `readSource()`: that workspace helper also
+ * loads every extracted entry and the transcript, which made Learn fetch the
+ * transcript a second time just to read `learning_lesson`.
+ */
+export async function readLearningSource(sourceId: string): Promise<{
+  id: string
+  lessonName: string
+  transcriptWords: number
+  lesson: LearningLesson | null
+} | null> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('sources')
+    .select('id, lesson, transcript_words, transcript, learning_lesson')
+    .eq('id', sourceId)
+    .maybeSingle()
+
+  if (error) fail('Loading the learning material', error)
+  if (!data?.transcript) return null
+
+  return {
+    id: data.id,
+    lessonName: data.lesson,
+    transcriptWords: data.transcript_words ?? 0,
+    lesson: isCallbacksTranscript(data.transcript)
+      ? CALLBACKS_LESSON
+      : parseLearningLesson(data.learning_lesson),
+  }
+}
+
 /** A lightweight dashboard list; transcript bodies never leave the database here. */
 export async function listLearningSources(): Promise<LearningSourceSummary[]> {
   const supabase = await createClient()

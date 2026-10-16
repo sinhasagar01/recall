@@ -6,11 +6,7 @@ import { TabBar } from '@/components/topics/tab-bar'
 import { Kbd } from '@/components/ui/kbd'
 import { Wordmark } from '@/components/ui/wordmark'
 import { hasKey } from '@/lib/ai/client'
-import { railCounts } from '@/lib/data/library'
-import { countLedger } from '@/lib/data/ledger'
-import { readRecentDayCounts } from '@/lib/data/today'
-import { phaseCounts } from '@/lib/data/phases'
-import { countSources } from '@/lib/data/sources'
+import { readAppShellSummary } from '@/lib/data/app-shell'
 import { practiceQueueSize } from '@/lib/domain/practice-selection'
 import { createClient } from '@/lib/supabase/server'
 import { signOut } from '../(auth)/actions'
@@ -34,21 +30,16 @@ export default async function AppLayout({ children }: LayoutProps<'/'>) {
     verified. This is display, not authorization: the proxy did the authorizing.
   */
   const supabase = await createClient()
-  const [{ data }, counts, sourceCount, phases, ledgerCount, dayCounts] = await Promise.all([
+  const [{ data }, shell] = await Promise.all([
     supabase.auth.getClaims(),
-    railCounts(),
-    countSources(),
-    phaseCounts(),
-    countLedger(),
-    readRecentDayCounts(),
+    readAppShellSummary(),
   ])
 
   /*
-    Three counts rather than the whole library. This runs on every page in the
-    group, so reading every topic here made paginating the library page pointless
-    — the rail would have loaded what the page no longer did.
+    One compact aggregate rather than separate counts or the whole library. This
+    runs on every page in the group, so it must stay independent of library size.
   */
-  const queued = practiceQueueSize(counts.total)
+  const queued = practiceQueueSize(shell.rail.total)
 
   const footLink = 'cursor-pointer rounded-md text-left text-option text-ink-3'
 
@@ -83,14 +74,14 @@ export default async function AppLayout({ children }: LayoutProps<'/'>) {
 
         {/* `interview` is absent-not-disabled: no key, no entry, matching the route's own notFound(). */}
         <RailNav
-          total={counts.total}
+          total={shell.rail.total}
           queued={queued}
-          needsReview={counts.needsReview}
-          sources={sourceCount}
-          capabilities={phases.total}
-          demonstrated={phases.demonstrated}
-          ledger={ledgerCount}
-          today={dayCounts}
+          needsReview={shell.rail.needsReview}
+          sources={shell.sources}
+          capabilities={shell.phases.total}
+          demonstrated={shell.phases.demonstrated}
+          ledger={shell.ledger}
+          today={shell.days}
           interview={hasKey()}
         />
 
@@ -152,7 +143,7 @@ export default async function AppLayout({ children }: LayoutProps<'/'>) {
             </button>
           </form>
           {/* Irreversible, so it sits apart from Sign out and reads quieter. */}
-          <DeleteAccount topics={counts.total} images={counts.withImages} />
+          <DeleteAccount topics={shell.rail.total} images={shell.rail.withImages} />
         </div>
       </aside>
 

@@ -9,7 +9,12 @@ import { categoryOptionsFromCounts } from '@/lib/domain/library'
 export default async function TopicPage({ params }: PageProps<'/topic/[id]'>) {
   const { id } = await params
 
-  const topic = await getTopic(id)
+  const [topic, counts, sourceOptions, capabilityOptions] = await Promise.all([
+    getTopic(id),
+    libraryTotals(),
+    listSourceOptions(),
+    listCapabilityOptions(),
+  ])
 
   /*
     One path for both "no such id" and "somebody else's id". RLS returns zero rows
@@ -18,26 +23,20 @@ export default async function TopicPage({ params }: PageProps<'/topic/[id]'>) {
   */
   if (topic === null) notFound()
 
-  // For the edit sheet's category select, which shows counts from the user's data.
-  // Counts, not the library: this used to read every topic to tally categories.
-  const counts = await libraryTotals()
-
   /*
     Signed here, during the server render, so the URL is in the first paint. A
     client-side fetch would leave a hole in the layout while it resolved; this way
     there is nothing to resolve.
   */
-  const [imageUrl, source, sourceOptions, capability, capabilityOptions, parent] = await Promise.all([
+  const [imageUrl, source, capability, parent] = await Promise.all([
     signedImageUrl(topic.mental_model_image_path),
     readTopicSource(id),
-    listSourceOptions(),
     /*
       Two extra reads on this one page, and the price of the boundary: neither
       `source_id` nor `capability_id` is on the domain Topic, so neither arrives
       with the topic. In exchange the queue has no way to name either.
     */
     readTopicCapability(id),
-    listCapabilityOptions(),
     /* And a third, for the same reason: `parent_topic_id` is not on the Topic either. */
     parentTopicOf(id),
   ])
