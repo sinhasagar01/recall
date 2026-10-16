@@ -61,7 +61,7 @@ export default async function globalSetup(config: FullConfig) {
       await page.getByLabel('Email').fill(email)
       await page.getByLabel('Password').fill(password)
       await page.getByRole('button', { name: 'Sign in' }).click()
-      await page.waitForURL(/\/library/, { timeout: 30_000 })
+      await page.waitForURL(/\/home/, { timeout: 30_000 })
 
       fs.mkdirSync(path.dirname(statePath(fixture)), { recursive: true })
       await context.storageState({ path: statePath(fixture) })

@@ -29,6 +29,7 @@ import { NextResponse, type NextRequest } from 'next/server'
  * signed-out person meeting a stack trace where a sign-in form belongs.
  */
 export const GUARDED = [
+  '/home',
   '/library',
   '/topic',
   '/practice',
