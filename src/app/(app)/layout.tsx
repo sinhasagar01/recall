@@ -69,7 +69,9 @@ export default async function AppLayout({ children }: LayoutProps<'/'>) {
       */}
       <aside className="hidden flex-col gap-[26px] border-r border-rule bg-surface-2 px-3.5 py-[22px] md:sticky md:top-0 md:flex md:h-screen md:self-start md:overflow-y-auto">
         <div className="px-2">
-          <Wordmark />
+          <Link href="/library" aria-label="Recall library" className="inline-flex rounded-sm">
+            <Wordmark />
+          </Link>
         </div>
 
         {/* `interview` is absent-not-disabled: no key, no entry, matching the route's own notFound(). */}
