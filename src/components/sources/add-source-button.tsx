@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { SourceSheet } from '@/components/sources/source-sheet'
-import type { SourceSummary } from '@/lib/domain/sources'
+import type { SourceFormSibling } from '@/lib/domain/sources'
 
 /**
  * `siblings` is every source you already have, and it is what makes the two
@@ -17,7 +17,7 @@ export function AddSourceButton({
   siblings = [],
 }: {
   label: string
-  siblings?: SourceSummary[]
+  siblings?: SourceFormSibling[]
 }) {
   const [open, setOpen] = useState(false)
 

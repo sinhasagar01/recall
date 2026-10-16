@@ -9,7 +9,7 @@ import { Sheet } from '@/components/ui/sheet'
 import { createSource, saveSource } from '@/app/(app)/sources/actions'
 import { formatDuration, parseDuration } from '@/lib/domain/duration'
 import { plural } from '@/lib/domain/plural'
-import type { Source, SourceSummary } from '@/lib/domain/sources'
+import type { Source, SourceFormSibling } from '@/lib/domain/sources'
 
 /**
  * Course → chapter → lesson, in that order, top to bottom.
@@ -40,7 +40,7 @@ export function SourceSheet({
 }: {
   source?: Source
   /** Every other source, for the two comboboxes. Names only. */
-  siblings?: SourceSummary[]
+  siblings?: SourceFormSibling[]
   onClose: () => void
 }) {
   const router = useRouter()

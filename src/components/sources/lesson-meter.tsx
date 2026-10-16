@@ -1,5 +1,5 @@
 import { METER_SQUARES, lessonMeter, meterLabel } from '@/lib/domain/sources'
-import type { Topic } from '@/lib/domain/types'
+import type { SourceEntrySummary } from '@/lib/domain/sources'
 
 /**
  * Five squares, filled by entries at okay or better over entries from this lesson.
@@ -26,7 +26,7 @@ import type { Topic } from '@/lib/domain/types'
  * Dashed and empty for "nothing distilled", which is the confidence meter's own
  * idiom for no data yet, one level up.
  */
-export function LessonMeter({ entries }: { entries: Topic[] }) {
+export function LessonMeter({ entries }: { entries: SourceEntrySummary[] }) {
   const meter = lessonMeter(entries)
   const label = meterLabel(meter)
 

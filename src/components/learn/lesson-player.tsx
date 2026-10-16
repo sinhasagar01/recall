@@ -2,10 +2,15 @@
 
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
 import { Button } from '@/components/ui/button'
-import { LearnCodeEditor } from '@/components/learn/learn-code-editor'
 import type { LearningLesson } from '@/lib/domain/learning'
 import { markLearningLessonComplete } from '@/app/(app)/learn/actions'
+
+const LearnCodeEditor = dynamic(
+  () => import('@/components/learn/learn-code-editor').then((module) => module.LearnCodeEditor),
+  { ssr: false },
+)
 
 type Stage = 0 | 1 | 2 | 3
 

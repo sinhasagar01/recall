@@ -4,7 +4,7 @@ import { fail } from '@/lib/data/fail'
 import { cache } from 'react'
 
 import { toTopic, type TopicRow } from '@/lib/data/topic-mapping'
-import type { Capability, Phase } from '@/lib/domain/phases'
+import type { Capability, CapabilityEvidenceSummary, Phase } from '@/lib/domain/phases'
 import type { Topic } from '@/lib/domain/types'
 import { createClient } from '@/lib/supabase/server'
 
@@ -37,6 +37,110 @@ export interface PhaseWithCapabilities {
   phase: Phase
   capabilities: CapabilityWithEntries[]
 }
+
+export interface PhaseSummary {
+  phase: Phase
+  capabilities: { capability: Capability; entries: CapabilityEvidenceSummary[] }[]
+}
+
+export const PHASE_PAGE_SIZE = 40
+export type PhasePage = { views: PhaseSummary[]; total: number; page: number }
+
+const LIST_EVIDENCE_COLUMNS =
+  'id, capability_id, kind, confidence, rebuild_at, challenge_at, production_at'
+
+/**
+ * The Phases index needs only demonstration evidence, not definitions, code,
+ * quiz options, or image paths. Detail pages retain `listPhases()` below.
+ */
+export const listPhaseSummaries = cache(async (): Promise<PhaseSummary[]> => {
+  const supabase = await createClient()
+  const [phases, capabilities, entries] = await Promise.all([
+    supabase.from('phases').select(PHASE_COLUMNS_SQL).order('created_at', { ascending: true }),
+    supabase.from('capabilities').select(CAPABILITY_COLUMNS_SQL).order('created_at', { ascending: true }),
+    supabase.from('topics').select(LIST_EVIDENCE_COLUMNS).not('capability_id', 'is', null),
+  ])
+
+  if (phases.error) fail('Loading your phases', phases.error)
+  if (capabilities.error) fail('Loading your capabilities', capabilities.error)
+  if (entries.error) fail('Loading what serves them', entries.error)
+
+  const byCapability = new Map<string, CapabilityEvidenceSummary[]>()
+  for (const row of entries.data as (CapabilityEvidenceSummary & { capability_id: string })[]) {
+    const list = byCapability.get(row.capability_id) ?? []
+    list.push(row)
+    byCapability.set(row.capability_id, list)
+  }
+
+  const byPhase = new Map<string, { capability: Capability; entries: CapabilityEvidenceSummary[] }[]>()
+  for (const capability of capabilities.data as unknown as Capability[]) {
+    const list = byPhase.get(capability.phase_id) ?? []
+    list.push({ capability, entries: byCapability.get(capability.id) ?? [] })
+    byPhase.set(capability.phase_id, list)
+  }
+
+  return (phases.data as unknown as Phase[]).map((phase) => ({
+    phase,
+    capabilities: byPhase.get(phase.id) ?? [],
+  }))
+})
+
+/** A bounded Phase index with only the evidence fields its cards display. */
+export async function listPhaseSummariesPage(page: number): Promise<PhasePage> {
+  const safePage = Math.max(1, page)
+  const from = (safePage - 1) * PHASE_PAGE_SIZE
+  const to = from + PHASE_PAGE_SIZE - 1
+  const supabase = await createClient()
+  const { data: phases, error: phaseError, count } = await supabase
+    .from('phases')
+    .select(PHASE_COLUMNS_SQL, { count: 'exact' })
+    .order('created_at', { ascending: true })
+    .range(from, to)
+  if (phaseError) fail('Loading your phases', phaseError)
+
+  const phaseIds = phases.map((phase) => phase.id)
+  const capabilities = phaseIds.length
+    ? await supabase.from('capabilities').select(CAPABILITY_COLUMNS_SQL).in('phase_id', phaseIds).order('created_at', { ascending: true })
+    : { data: [], error: null }
+  if (capabilities.error) fail('Loading your capabilities', capabilities.error)
+
+  const capabilityIds = (capabilities.data as unknown as Capability[]).map((capability) => capability.id)
+  const entries = capabilityIds.length
+    ? await supabase.from('topics').select(LIST_EVIDENCE_COLUMNS).in('capability_id', capabilityIds)
+    : { data: [], error: null }
+  if (entries.error) fail('Loading what serves them', entries.error)
+
+  const byCapability = new Map<string, CapabilityEvidenceSummary[]>()
+  for (const row of entries.data as (CapabilityEvidenceSummary & { capability_id: string })[]) {
+    const list = byCapability.get(row.capability_id) ?? []
+    list.push(row)
+    byCapability.set(row.capability_id, list)
+  }
+  const byPhase = new Map<string, { capability: Capability; entries: CapabilityEvidenceSummary[] }[]>()
+  for (const capability of capabilities.data as unknown as Capability[]) {
+    const list = byPhase.get(capability.phase_id) ?? []
+    list.push({ capability, entries: byCapability.get(capability.id) ?? [] })
+    byPhase.set(capability.phase_id, list)
+  }
+
+  return {
+    views: (phases as unknown as Phase[]).map((phase) => ({ phase, capabilities: byPhase.get(phase.id) ?? [] })),
+    total: count ?? 0,
+    page: safePage,
+  }
+}
+
+/**
+ * The earliest phase that still has work to demonstrate. The function applies
+ * RLS as the signed-in caller, so it is both smaller and more accurate than
+ * rebuilding this answer from whichever page happens to be visible.
+ */
+export const readCurrentPhaseId = cache(async (): Promise<string | null> => {
+  const supabase = await createClient()
+  const { data, error } = await supabase.rpc('current_phase_id')
+  if (error) fail('Loading your current phase', error)
+  return data
+})
 
 /**
  * Every phase, its capabilities, and what is linked to each.

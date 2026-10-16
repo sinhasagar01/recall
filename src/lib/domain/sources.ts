@@ -76,10 +76,16 @@ export function sourceBreadcrumb(source: Pick<Source, 'lesson' | 'course' | 'cha
 /** What the list needs, which is everything except the body. */
 export type SourceSummary = Omit<Source, 'transcript'>
 
+/** The add-source comboboxes need only their reusable names and recency. */
+export type SourceFormSibling = Pick<SourceSummary, 'course' | 'chapter' | 'created_at'>
+
+/** The Sources list needs progress and session ids, not whole topic bodies. */
+export type SourceEntrySummary = Pick<Topic, 'id' | 'kind' | 'confidence' | 'practice_count'>
+
 /** A source and what has been distilled from it — the unit the list renders. */
 export interface SourceWithEntriesView {
   source: SourceSummary
-  entries: Topic[]
+  entries: SourceEntrySummary[]
 }
 
 /**
@@ -133,7 +139,7 @@ export interface SourceProgress {
   done: boolean
 }
 
-export function sourceProgress(linked: Topic[]): SourceProgress {
+export function sourceProgress(linked: SourceEntrySummary[]): SourceProgress {
   const neverPractised = linked.filter(isNeverPracticed)
   const weak = linked.filter((entry) => needsReview(entry) && !isNeverPracticed(entry))
 
@@ -196,20 +202,20 @@ export function sourceProgressCopy(progress: SourceProgress): string {
 */
 
 /** Did this lesson produce anything at all? */
-export function isMined(entries: Topic[]): boolean {
+export function isMined(entries: SourceEntrySummary[]): boolean {
   return entries.length > 0
 }
 
 /** Is this lesson done with you — every entry okay or better? */
-export function isFinished(entries: Topic[]): boolean {
+export function isFinished(entries: SourceEntrySummary[]): boolean {
   return sourceProgress(entries).done
 }
 
-export function minedCount(views: { entries: Topic[] }[]): number {
+export function minedCount(views: { entries: SourceEntrySummary[] }[]): number {
   return views.filter((view) => isMined(view.entries)).length
 }
 
-export function finishedCount(views: { entries: Topic[] }[]): number {
+export function finishedCount(views: { entries: SourceEntrySummary[] }[]): number {
   return views.filter((view) => isFinished(view.entries)).length
 }
 
@@ -248,11 +254,11 @@ export interface LessonMeter {
 }
 
 /** Entries you can actually recall: okay or better, which is `!needsReview`. */
-export function settledCount(entries: Topic[]): number {
+export function settledCount(entries: SourceEntrySummary[]): number {
   return entries.filter((entry) => !needsReview(entry)).length
 }
 
-export function lessonMeter(entries: Topic[]): LessonMeter {
+export function lessonMeter(entries: SourceEntrySummary[]): LessonMeter {
   const total = entries.length
   const settled = settledCount(entries)
 
@@ -290,7 +296,7 @@ export function meterLabel(meter: LessonMeter): string {
  * The button carries the verb and the meta carries the size, so the label stays
  * the same length whatever the count is.
  */
-export function practiseMeta(entries: Topic[]): string {
+export function practiseMeta(entries: SourceEntrySummary[]): string {
   const never = entries.filter(isNeverPracticed).length
   const parts = [plural(entries.length, 'entry', 'entries')]
   if (never > 0) parts.push(`${never} never practised`)
