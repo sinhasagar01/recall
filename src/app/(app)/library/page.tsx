@@ -1,10 +1,8 @@
 import { LibraryView } from '@/components/topics/library-view'
 import { hasKey } from '@/lib/ai/client'
-import { listLibrary, railCounts } from '@/lib/data/library'
-import { countLedger } from '@/lib/data/ledger'
-import { readRecentDayCounts } from '@/lib/data/today'
-import { countSources } from '@/lib/data/sources'
-import { listCapabilityOptions, phaseCounts } from '@/lib/data/phases'
+import { listLibrary } from '@/lib/data/library'
+import { readAppShellSummary } from '@/lib/data/app-shell'
+import { listCapabilityOptions } from '@/lib/data/phases'
 import { listSourceOptions } from '@/lib/data/sources'
 import type { QuickFilter, TopicFilters } from '@/lib/domain/search-filter'
 import type { Confidence, Difficulty, Kind } from '@/lib/domain/types'
@@ -66,35 +64,26 @@ export default async function LibraryPage({
 }) {
   const params = await searchParams
 
-  // railCounts is cache()d and the layout has already called it this request, so
-  // the account figures cost nothing extra here.
-  const [data, account, sourceOptions, capabilityOptions, phases, ledger, sources, dayCounts] =
+  // The layout and this page share one request-cached shell summary.
+  const [data, shell, sourceOptions, capabilityOptions] =
     await Promise.all([
     listLibrary(readFilters(params)),
-    railCounts(),
+    readAppShellSummary(),
     listSourceOptions(),
     listCapabilityOptions(),
-    /*
-      cache()d and already called by the layout this request, so the More sheet's
-      counts cost nothing extra and cannot disagree with the rail's.
-    */
-    phaseCounts(),
-    countLedger(),
-    countSources(),
-    readRecentDayCounts(),
   ])
 
   return (
     <LibraryView
       data={data}
-      account={{ topics: account.total, images: account.withImages }}
+      account={{ topics: shell.rail.total, images: shell.rail.withImages }}
       sourceOptions={sourceOptions}
       capabilityOptions={capabilityOptions}
       moreCounts={{
-        today: dayCounts,
-        phases: `${phases.demonstrated} / ${phases.total}`,
-        ledger: String(ledger),
-        sources: String(sources),
+        today: shell.days,
+        phases: `${shell.phases.demonstrated} / ${shell.phases.total}`,
+        ledger: String(shell.ledger),
+        sources: String(shell.sources),
         // Read on the server, exactly as the rail does — the sheet is its mobile twin.
         interview: hasKey(),
       }}
