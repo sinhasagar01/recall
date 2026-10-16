@@ -105,3 +105,26 @@ export async function listLearningSources(): Promise<LearningSourceSummary[]> {
     }
   })
 }
+
+/** The one saved lesson the signed-in home needs to offer as the next step. */
+export async function readLatestLearningSource(): Promise<LearningSourceSummary | null> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('sources')
+    .select('id, lesson, transcript_words, created_at, learning_lesson')
+    .not('learning_lesson', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (error) fail('Loading your next lesson', error)
+  if (data === null) return null
+
+  const lesson = parseLearningLesson(data.learning_lesson)
+  return {
+    id: data.id,
+    lesson: data.lesson,
+    transcriptWords: data.transcript_words,
+    createdAt: data.created_at,
+    status: lesson?.completed_at ? 'completed' : lesson ? 'in_progress' : 'ready',
+  }
+}

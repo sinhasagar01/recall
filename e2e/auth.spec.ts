@@ -24,7 +24,8 @@ test('a signed-out request to a guarded route lands on sign-in', async ({ page }
 
 test('the seeded user can sign in', async ({ page }) => {
   await signIn(page, EMAIL, PASSWORD)
-  await expect(page).toHaveURL(/\/library/)
+  await expect(page).toHaveURL(/\/home/)
+  await expect(page.getByRole('heading', { name: 'Your next useful step.' })).toBeVisible()
 })
 
 test('a wrong password shows the error and stays on the page', async ({ page }) => {
@@ -67,12 +68,12 @@ test('a rejected sign-in keeps the email and clears only the password', async ({
   of those, and would have to be kept in step with them for nothing.
 */
 
-test('a signed-in user visiting sign-in is sent to the library', async ({ page }) => {
+test('a signed-in user visiting sign-in is sent to home', async ({ page }) => {
   await signIn(page, EMAIL, PASSWORD)
-  await expect(page).toHaveURL(/\/library/)
+  await expect(page).toHaveURL(/\/home/)
 
   await page.goto('/sign-in')
-  await expect(page).toHaveURL(/\/library/)
+  await expect(page).toHaveURL(/\/home/)
 })
 
 /**
@@ -86,11 +87,11 @@ test('a signed-in user visiting sign-in is sent to the library', async ({ page }
  */
 test('the session survives a full reload and a server component can read the user', async ({ page }) => {
   await signIn(page, EMAIL, PASSWORD)
-  await expect(page).toHaveURL(/\/library/)
+  await expect(page).toHaveURL(/\/home/)
 
   await page.reload({ waitUntil: 'load' })
 
-  await expect(page).toHaveURL(/\/library/)
+  await expect(page).toHaveURL(/\/home/)
   await expect(page.getByTestId('signed-in-as')).toHaveText(EMAIL)
 })
 

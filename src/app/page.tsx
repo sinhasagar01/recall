@@ -11,7 +11,7 @@ import { createClient } from '@/lib/supabase/server'
 export default async function RootPage() {
   const supabase = await createClient()
   const { data } = await supabase.auth.getClaims()
-  if (data?.claims) redirect('/library')
+  if (data?.claims) redirect('/home')
 
   return (
     <main className="min-h-screen overflow-hidden bg-surface">

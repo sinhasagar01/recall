@@ -34,7 +34,7 @@ export async function signIn(_previous: AuthState, formData: FormData): Promise<
 
   if (error) return { error: authFailureMessage(error), email }
 
-  redirect('/library')
+  redirect('/home')
 }
 
 export type ResetState = { error: string | null; sentTo: string | null }
@@ -97,7 +97,7 @@ export async function setNewPassword(
   const { error } = await supabase.auth.updateUser({ password })
   if (error) return { error: error.message }
 
-  redirect('/library')
+  redirect('/home')
 }
 
 export async function signUp(
@@ -123,7 +123,7 @@ export async function signUp(
   */
   if (data.session === null) return { error: null, pendingFor: email }
 
-  redirect('/library')
+  redirect('/home')
 }
 
 /**

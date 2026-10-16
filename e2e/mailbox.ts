@@ -56,8 +56,8 @@ export async function clearMailbox(): Promise<void> {
 }
 
 /**
- * Signs up and completes the confirmation round-trip, leaving the page on the
- * library with a usable session.
+ * Signs up and completes the confirmation round-trip, leaving the page on Home
+ * with a usable session.
  *
  * Sign-up no longer signs you in, so every spec that used to open with three
  * lines and land on /library now needs the emailed link followed as well. That
@@ -72,5 +72,5 @@ export async function signUpConfirmed(page: Page, email: string, password: strin
   await expect(page.getByRole('heading', { name: 'Check your inbox' })).toBeVisible()
 
   await page.goto(linkFrom(await waitForEmail(email)))
-  await expect(page).toHaveURL(/\/library/)
+  await expect(page).toHaveURL(/\/home/)
 }

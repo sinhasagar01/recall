@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const tokenHash = searchParams.get('token_hash')
   const type = searchParams.get('type') as EmailOtpType | null
-  const next = searchParams.get('next') ?? '/library'
+  const next = searchParams.get('next') ?? '/home'
 
   if (!tokenHash || !type) redirect('/sign-in?error=link-invalid')
 
@@ -28,5 +28,5 @@ export async function GET(request: NextRequest) {
   if (error) redirect('/sign-in?error=link-expired')
 
   // Only ever a path on this app: `next` arrives from a URL and is not trusted.
-  redirect(next.startsWith('/') ? next : '/library')
+  redirect(next.startsWith('/') ? next : '/home')
 }

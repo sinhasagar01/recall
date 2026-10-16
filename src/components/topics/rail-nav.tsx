@@ -6,7 +6,7 @@ import { apprenticeshipNav } from '@/lib/domain/navigation'
 import { useLocalToday } from '@/lib/domain/use-local-today'
 
 /**
- * The rail's three destinations.
+ * The rail's main destinations.
  *
  * A client component only because the active entry has to be derived from the
  * current route, and the layout that owns the rail is a server component.
@@ -73,6 +73,7 @@ export function RailNav({
   const todayCount = todayRow ? `${todayRow.done} / ${todayRow.written}` : null
 
   const destinations: Destination[] = [
+    { href: '/home', label: 'Home', count: '' },
     { href: '/library', label: 'Library', count: String(total) },
     { href: '/practice', label: 'Practice', count: `${queued} queued` },
     {

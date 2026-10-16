@@ -23,10 +23,10 @@ test('signing up asks you to confirm, and does not sign you in', async ({ page }
   await page.getByLabel('Password').fill(password)
   await page.getByRole('button', { name: 'Create account' }).click()
 
-  // Not into the library — an unconfirmed address is not yet an account you can use.
+  // Not into Home — an unconfirmed address is not yet an account you can use.
   await expect(page.getByRole('heading', { name: 'Check your inbox' })).toBeVisible()
   await expect(page.getByText(email)).toBeVisible()
-  await expect(page).not.toHaveURL(/\/library/)
+  await expect(page).not.toHaveURL(/\/home/)
 })
 
 test('following the emailed link confirms the account and signs you in', async ({ page }) => {
@@ -41,7 +41,7 @@ test('following the emailed link confirms the account and signs you in', async (
   const link = linkFrom(await waitForEmail(email))
   await page.goto(link)
 
-  await expect(page).toHaveURL(/\/library/)
+  await expect(page).toHaveURL(/\/home/)
   await expect(page.getByTestId('signed-in-as')).toHaveText(email)
 })
 
@@ -74,7 +74,7 @@ test('a forgotten password can be reset from the emailed link', async ({ page })
   await page.getByLabel('Password').fill(password)
   await page.getByRole('button', { name: 'Create account' }).click()
   await page.goto(linkFrom(await waitForEmail(email)))
-  await expect(page).toHaveURL(/\/library/)
+  await expect(page).toHaveURL(/\/home/)
   await page.getByRole('button', { name: 'Sign out' }).click()
   await expect(page).toHaveURL(/\/sign-in/)
 
@@ -92,7 +92,7 @@ test('a forgotten password can be reset from the emailed link', async ({ page })
   await expect(page).toHaveURL(/\/reset-password\/update/)
   await page.getByLabel('New password').fill(newPassword)
   await page.getByRole('button', { name: 'Save new password' }).click()
-  await expect(page).toHaveURL(/\/library/)
+  await expect(page).toHaveURL(/\/home/)
 
   // The new one works and the old one does not.
   await page.getByRole('button', { name: 'Sign out' }).click()
@@ -106,7 +106,7 @@ test('a forgotten password can be reset from the emailed link', async ({ page })
   await page.getByLabel('Email').fill(email)
   await page.getByLabel('Password').fill(newPassword)
   await page.getByRole('button', { name: 'Sign in' }).click()
-  await expect(page).toHaveURL(/\/library/)
+  await expect(page).toHaveURL(/\/home/)
 })
 
 test('asking to reset an unknown address says the same thing as a known one', async ({ page }) => {

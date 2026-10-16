@@ -40,6 +40,8 @@ const ALLOWED = [
   'components/topics/tab-bar.tsx',
   // The rail wordmark is persistent app navigation, not a contextual “back” action.
   'app/(app)/layout.tsx',
+  // Home's library link is top-level navigation, not a contextual “back” action.
+  'app/(app)/home/page.tsx',
 ]
 
 describe('every way back to the library is the same control', () => {
