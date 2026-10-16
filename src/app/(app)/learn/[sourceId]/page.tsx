@@ -12,7 +12,10 @@ export default async function LearnSourcePage({ params }: PageProps<'/learn/[sou
 
   return (
     <>
-      <p className="mb-3.5 text-meta"><Link href="/learn" className="text-accent-ink underline hover:text-ink">← Learn</Link></p>
+      <div className="mb-3.5 flex flex-wrap items-center justify-between gap-3 text-meta">
+        <Link href="/learn" className="text-accent-ink underline hover:text-ink">← Learn</Link>
+        <Link href={`/learn/${sourceId}/edit`} className="text-accent-ink underline hover:text-ink">Edit transcript</Link>
+      </div>
       <div className="mb-6">
         <p className="font-mono text-mono-sm tracking-[0.12em] text-accent-ink uppercase">Transcript</p>
         <h1 className="mt-1 font-display text-page-title font-medium tracking-[-0.022em]">{material.lessonName}</h1>

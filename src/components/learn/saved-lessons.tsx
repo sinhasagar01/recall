@@ -47,6 +47,7 @@ export function SavedLessons({ lessons }: { lessons: LearningSourceSummary[] }) 
             </div>
             <div className="flex items-center gap-2">
               <Link href={`/learn/${lesson.id}`} className="inline-flex min-h-10 items-center rounded-md border border-rule-strong px-3 text-label font-medium text-ink hover:border-ink-3">{status.action}</Link>
+              <Link href={`/learn/${lesson.id}/edit`} className="inline-flex min-h-10 items-center rounded-md border border-transparent px-3 text-label font-medium text-ink-2 hover:border-rule hover:bg-surface-2 hover:text-ink">Edit</Link>
               <Button variant="danger-quiet" disabled={isRemoving} loading={isRemoving} loadingLabel="Deleting…" aria-label={`Delete ${lesson.lesson}`} onClick={() => remove(lesson)}>Delete</Button>
             </div>
           </li>
