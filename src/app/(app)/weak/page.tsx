@@ -6,6 +6,7 @@ import { weakPage, type WeakCursor } from '@/lib/data/practice'
 import { STALE_WINDOW_DAYS } from '@/lib/domain/confidence'
 import type { QueueTopic, Topic } from '@/lib/domain/types'
 import { practiceWeakLabel } from '@/lib/domain/practice-selection'
+import { PageHeader } from '@/components/ui/page-header'
 
 /*
   A list and a button. No analytics, no charts, no streaks, no scoring.
@@ -36,10 +37,11 @@ export default async function WeakPage() {
 
   return (
     <>
-      <div className="mb-[22px]">
-        <h1 className="font-display text-page-title font-medium tracking-[-0.022em]">Weak topics</h1>
-        <p className="mt-1 font-mono text-[11.5px] text-ink-3">
-          {libraryIsEmpty
+      <PageHeader
+        eyebrow="Review queue"
+        title="Weak topics"
+        summary={
+          libraryIsEmpty
             ? 'Nothing saved yet'
             : total === 0
               ? 'Nothing below okay'
@@ -50,9 +52,9 @@ export default async function WeakPage() {
                   review and how many have never been practised are different
                   questions, which is the test the library's pair failed.
                 */
-                `${total} need review · ${neverPracticed} never practiced`}
-        </p>
-      </div>
+                `${total} need review · ${neverPracticed} never practiced`
+        }
+      />
 
       {libraryIsEmpty ? (
         /*
@@ -115,7 +117,7 @@ export default async function WeakPage() {
 
       {total > 0 ? (
         <>
-          <div className="mb-5 flex items-center gap-4 rounded-lg border border-accent bg-accent-soft px-5 py-4">
+          <div className="mb-5 flex items-center gap-4 rounded-lg border border-accent/35 bg-accent-soft px-5 py-4 shadow-card">
             <div className="flex-1">
               <div className="font-medium text-accent-ink">
                 Start with what you&rsquo;ve never recalled

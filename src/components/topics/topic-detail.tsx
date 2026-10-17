@@ -85,13 +85,14 @@ export function TopicDetail({
   }
 
   return (
-    <article className="max-w-[760px]">
-      <header className="mb-7 border-b border-rule pb-5">
-        <div className="mb-3.5">
+    <article className="max-w-[880px]">
+      <header className="mb-8 rounded-lg border border-rule bg-surface p-6 shadow-card">
+        <div className="mb-5">
           <BackToLibrary>← Library</BackToLibrary>
         </div>
 
-        <h1 className="mb-3 font-display text-detail-title leading-[1.18] font-medium tracking-[-0.025em]">
+        <p className="mb-2 font-mono text-mono-xs tracking-[0.14em] text-accent-ink uppercase">{topic.kind}</p>
+        <h1 className="mb-4 font-display text-detail-title leading-[1.18] font-medium tracking-[-0.025em]">
           {topic.title}
         </h1>
 

@@ -5,6 +5,7 @@ import { groupSources, groupedHeadline } from '@/lib/domain/source-grouping'
 import { finishedCopy, finishedCount } from '@/lib/domain/sources'
 import { BackToLibrary } from '@/components/ui/back-to-library'
 import { Pagination } from '@/components/ui/pagination'
+import { PageHeader } from '@/components/ui/page-header'
 import { SOURCE_PAGE_SIZE, listSourceFormSiblings, listSourcesPage } from '@/lib/data/sources'
 
 /**
@@ -37,14 +38,12 @@ export default async function SourcesPage({ searchParams }: PageProps<'/sources'
     header, vary the subtitle, put the invitation below it.
   */
   const header = (
-    <div className="mb-[26px] flex items-start justify-between gap-4">
-      <div>
-        <h1 className="font-display text-page-title font-medium tracking-[-0.022em]">Sources</h1>
-        <p className="mt-1.5 text-meta text-ink-2">
-          {views.length === 0 ? (
-            'Nothing saved yet'
-          ) : (
-            <>
+    <PageHeader
+      eyebrow="Reference material"
+      title="Sources"
+      summary={
+        views.length === 0 ? 'Nothing saved yet' : (
+          <>
               {/*
                 `groupedHeadline` counts courses WITHOUT counting the absence of
                 one as a course — the mock's header read "2 courses" when one of
@@ -52,12 +51,11 @@ export default async function SourcesPage({ searchParams }: PageProps<'/sources'
               */}
               {groupedHeadline(courses)}
               {empty > 0 ? ` · ${empty} with nothing` : ''}
-            </>
-          )}
-        </p>
-      </div>
-      <AddSourceButton label="+ Add a source" siblings={sourceChoices} />
-    </div>
+          </>
+        )
+      }
+      action={<AddSourceButton label="+ Add a source" siblings={sourceChoices} />}
+    />
   )
 
   if (views.length === 0) {

@@ -8,7 +8,7 @@ import type { LearningSourceSummary } from '@/lib/data/learning'
 
 const STATUS = {
   ready: { label: 'Ready to shape', className: 'border-rule-strong bg-surface-2 text-ink-2', action: 'Create lesson →' },
-  in_progress: { label: 'In progress', className: 'border-[#d5d2ff] bg-[#f1f0ff] text-accent-ink', action: 'Resume →' },
+  in_progress: { label: 'In progress', className: 'border-accent/35 bg-accent-soft text-accent-ink', action: 'Resume →' },
   completed: { label: 'Completed', className: 'border-[#c8e8d5] bg-ok-soft text-ok', action: 'Revisit →' },
 } as const
 
@@ -37,7 +37,7 @@ export function SavedLessons({ lessons }: { lessons: LearningSourceSummary[] }) 
         {lessons.map((lesson) => {
           const status = STATUS[lesson.status]
           const isRemoving = pending && removing === lesson.id
-          return <li key={lesson.id} className="group flex flex-wrap items-center justify-between gap-4 rounded-xl border border-rule bg-surface px-4 py-4 shadow-card transition hover:border-rule-strong">
+          return <li key={lesson.id} className="group flex flex-wrap items-center justify-between gap-4 rounded-lg border border-rule bg-surface px-5 py-5 shadow-card transition hover:border-rule-strong">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="truncate text-body font-medium text-ink">{lesson.lesson}</p>

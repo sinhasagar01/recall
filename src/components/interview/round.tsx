@@ -527,10 +527,10 @@ export function Round({
   const TAG = 'rounded-full border px-[9px] py-[3px] font-mono text-[10.5px]'
 
   return (
-    <div className="bg-bg px-6 pt-6 pb-[70px]">
+    <div className="bg-bg px-6 pt-9 pb-[70px]">
       <main
         data-testid="room"
-        className="relative mx-auto max-w-[790px] overflow-hidden rounded-[20px] border border-rule bg-surface px-[30px] pt-[27px] pb-[30px] [box-shadow:var(--room-shadow)]"
+        className="relative mx-auto max-w-[840px] overflow-hidden rounded-lg border border-rule-strong bg-surface px-[30px] pt-[27px] pb-[30px] [box-shadow:var(--room-shadow)]"
       >
         {/* The room's one flourish: a 4px spectrum across the top of the card. */}
         <span

@@ -5,6 +5,7 @@ import { demonstrationOfSummary } from '@/lib/domain/phases'
 import { plural } from '@/lib/domain/plural'
 import { BackToLibrary } from '@/components/ui/back-to-library'
 import { Pagination } from '@/components/ui/pagination'
+import { PageHeader } from '@/components/ui/page-header'
 import { PHASE_PAGE_SIZE, listPhaseSummariesPage, readCurrentPhaseId } from '@/lib/data/phases'
 
 /**
@@ -37,17 +38,16 @@ export default async function PhasesPage({ searchParams }: PageProps<'/phases'>)
     carries an h1 and wayfinding.spec.ts holds them to it — the arc 2 regression.
   */
   const header = (
-    <div className="mb-[22px] flex items-start justify-between gap-4">
-      <div>
-        <h1 className="font-display text-page-title font-medium tracking-[-0.022em]">Phases</h1>
-        <p className="mt-1.5 font-mono text-[11.5px] text-ink-3">
-          {views.length === 0
-            ? 'Nothing started yet'
-            : `${total > views.length ? 'This page · ' : ''}${plural(views.length, 'phase')} · ${plural(capabilities, 'capability', 'capabilities')} · ${demonstrated} demonstrated`}
-        </p>
-      </div>
-      <AddPhaseButton label="+ Add a phase" />
-    </div>
+    <PageHeader
+      eyebrow="Learning plan"
+      title="Phases"
+      summary={
+        views.length === 0
+          ? 'Nothing started yet'
+          : `${total > views.length ? 'This page · ' : ''}${plural(views.length, 'phase')} · ${plural(capabilities, 'capability', 'capabilities')} · ${demonstrated} demonstrated`
+      }
+      action={<AddPhaseButton label="+ Add a phase" />}
+    />
   )
 
   if (views.length === 0) {
@@ -71,7 +71,7 @@ export default async function PhasesPage({ searchParams }: PageProps<'/phases'>)
     <>
       {header}
 
-      <div className="flex flex-col gap-2.5">
+      <div className="overflow-hidden rounded-lg border border-rule bg-surface shadow-card">
         {withDemos.map((view) => {
           const done = view.demos.filter((d) => d.demonstrated).length
           const isCurrent = view.phase.id === current
@@ -80,8 +80,8 @@ export default async function PhasesPage({ searchParams }: PageProps<'/phases'>)
             <Link
               key={view.phase.id}
               href={`/phases/${view.phase.id}`}
-              className={`flex items-center gap-4 rounded-lg border bg-surface px-[18px] py-4 shadow-[0_1px_2px_rgba(18,19,26,.05)] hover:border-rule-strong ${
-                isCurrent ? 'border-l-[3px] border-accent' : 'border-rule'
+              className={`flex items-center gap-4 border-b border-rule px-5 py-5 last:border-b-0 hover:bg-surface-2 ${
+                isCurrent ? 'bg-accent-soft/45' : ''
               }`}
             >
               {/* One square per capability, filled when demonstrated. */}

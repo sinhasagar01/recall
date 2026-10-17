@@ -1,6 +1,7 @@
 import { LearnStart } from '@/components/learn/learn-start'
 import { SavedLessons } from '@/components/learn/saved-lessons'
 import { StateBlock } from '@/components/ui/state-block'
+import { PageHeader } from '@/components/ui/page-header'
 import { listLearningSources } from '@/lib/data/learning'
 
 export default async function LearnPage() {
@@ -10,20 +11,19 @@ export default async function LearnPage() {
 
   return (
     <>
-      <div className="mb-[26px]">
-        <h1 className="font-display text-page-title font-medium tracking-[-0.022em]">Learn</h1>
-        <p className="mt-1.5 text-meta text-ink-2">
-          Paste raw material, turn it into one clean lesson, then learn it actively.
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="Guided learning"
+        title="Learn"
+        summary="Paste raw material, turn it into one clean lesson, then learn it actively."
+      />
 
       <LearnStart />
 
-      <section className="mt-9">
+      <section className="mt-10 rounded-lg border border-rule bg-surface p-6 shadow-card">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="font-mono text-mono-sm tracking-[.14em] text-ink-3 uppercase">Your lesson shelf</p>
-            <h2 className="mt-1 font-display text-card-title font-medium">Continue from a saved transcript</h2>
+            <p className="font-mono text-mono-sm tracking-[.14em] text-accent-ink uppercase">Your lesson shelf</p>
+            <h2 className="mt-1 font-display text-[24px] leading-[1.15] font-medium">Continue from a saved transcript</h2>
           </div>
           {lessons.length > 0 ? <div className="flex gap-2 font-mono text-mono-sm"><span className="rounded-full border border-rule bg-surface px-2.5 py-1.5 text-ink-2">{inProgress} active</span><span className="rounded-full border border-[#c8e8d5] bg-ok-soft px-2.5 py-1.5 text-ok">{completed} complete</span></div> : null}
         </div>

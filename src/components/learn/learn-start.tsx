@@ -25,7 +25,12 @@ export function LearnStart() {
   }
 
   return (
-    <section className="rounded-lg border border-rule bg-surface p-5 shadow-card">
+    <section className="rounded-lg border border-rule bg-surface p-6 shadow-card">
+      <div className="mb-6 border-b border-rule pb-5">
+        <p className="font-mono text-mono-xs tracking-[0.14em] text-accent-ink uppercase">Start a lesson</p>
+        <h2 className="mt-2 font-display text-[25px] leading-[1.15] font-medium tracking-[-0.018em]">Turn raw material into one idea worth keeping.</h2>
+        <p className="mt-2 max-w-[68ch] text-meta leading-[1.6] text-ink-2">Paste a transcript, your notes, or an article. Recall turns it into a focused active-learning lesson without adding anything to your Library.</p>
+      </div>
       <label className="block">
         <span className="text-label font-medium text-ink">Lesson name <span className="font-normal text-ink-3">(optional)</span></span>
         <input

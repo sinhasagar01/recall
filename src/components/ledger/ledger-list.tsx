@@ -42,9 +42,9 @@ export function LedgerList({
 
   return (
     <>
-      <p className="mb-4 font-mono text-[11.5px] text-ink-3">{ledgerSummary(items)}</p>
+      <p className="mb-5 font-mono text-[11.5px] text-ink-3">{ledgerSummary(items)}</p>
 
-      <div className="mb-4 flex flex-wrap gap-1.5">
+      <div className="mb-5 flex flex-wrap gap-1.5 rounded-lg border border-rule bg-surface p-3 shadow-card">
         <button
           type="button"
           aria-pressed={kind === 'all' && !openOnly}
@@ -77,7 +77,7 @@ export function LedgerList({
         ))}
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-rule bg-surface">
+      <div className="overflow-hidden rounded-lg border border-rule bg-surface shadow-card">
         {shown.map((item) => (
           <LedgerRow
             key={item.id}

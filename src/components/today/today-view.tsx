@@ -7,6 +7,7 @@ import { useEffect, useState, useTransition } from 'react'
 import { IntentionRow } from '@/components/today/intention-row'
 import { PracticeLine } from '@/components/today/practice-line'
 import { Button } from '@/components/ui/button'
+import { PageHeader } from '@/components/ui/page-header'
 import { resolveBlocker, saveBlocker, saveDay, setDone } from '@/app/(app)/today/actions'
 import { localDateString } from '@/lib/domain/evidence'
 import { formatShortDate } from '@/lib/domain/library'
@@ -143,25 +144,12 @@ function TodayBoard({
 
   return (
     <>
-      <div className="mb-[22px] flex items-start justify-between gap-5">
-        <div>
-          <h1 className="font-display text-page-title font-medium tracking-[-0.022em]">Today</h1>
-          <p className="mt-1.5 font-mono text-[11.5px] text-ink-3">{dayLabel(today)}</p>
-        </div>
-        {/*
-          A control, not an underlined word. It is a destination change the
-          reader chooses, which is what every other one in this app looks like —
-          and it was the last plain-link exit left after the six on Phases,
-          Ledger and Sources were converted.
-
-          `LinkButton` rather than its own class string: two components already
-          carried a copy of that string, and a third by copy-paste is how the
-          six came to disagree in the first place.
-        */}
-        <LinkButton href="/today/earlier" className="flex-none">
-          Earlier days
-        </LinkButton>
-      </div>
+      <PageHeader
+        eyebrow="Daily field note"
+        title="Today"
+        summary={dayLabel(today)}
+        action={<LinkButton href="/today/earlier" className="flex-none">Earlier days</LinkButton>}
+      />
 
       {error ? (
         <p role="alert" className="mb-4 rounded-md border border-flag bg-flag-soft px-4 py-3 text-meta text-flag">
@@ -171,7 +159,7 @@ function TodayBoard({
 
       {written ? (
         <>
-          <div className="rounded-lg border border-rule bg-surface px-[17px]">
+          <div className="rounded-lg border border-rule bg-surface px-5 shadow-card">
             {INTENTIONS.map((slot) => (
               <IntentionRow
                 key={slot}
@@ -194,7 +182,7 @@ function TodayBoard({
         */
         <form
           action={(formData) => run(() => saveDay(today, formData))}
-          className="rounded-lg border border-rule bg-surface px-[17px]"
+          className="rounded-lg border border-rule bg-surface px-5 shadow-card"
         >
           {INTENTIONS.map((slot) => (
             <div key={slot} className="flex items-start gap-3.5 border-b border-rule py-3.5 last:border-b-0">

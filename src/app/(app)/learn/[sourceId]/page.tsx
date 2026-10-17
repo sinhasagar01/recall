@@ -4,6 +4,7 @@ import { LessonBuilder } from '@/components/learn/lesson-builder'
 import { LessonPlayer } from '@/components/learn/lesson-player'
 import { hasKey } from '@/lib/ai/extract'
 import { readLearningSource } from '@/lib/data/learning'
+import { PageHeader } from '@/components/ui/page-header'
 
 export default async function LearnSourcePage({ params }: PageProps<'/learn/[sourceId]'>) {
   const { sourceId } = await params
@@ -16,11 +17,11 @@ export default async function LearnSourcePage({ params }: PageProps<'/learn/[sou
         <Link href="/learn" className="text-accent-ink underline hover:text-ink">← Learn</Link>
         <Link href={`/learn/${sourceId}/edit`} className="text-accent-ink underline hover:text-ink">Edit transcript</Link>
       </div>
-      <div className="mb-6">
-        <p className="font-mono text-mono-sm tracking-[0.12em] text-accent-ink uppercase">Transcript</p>
-        <h1 className="mt-1 font-display text-page-title font-medium tracking-[-0.022em]">{material.lessonName}</h1>
-        <p className="mt-1.5 text-meta text-ink-2">Turn this transcript into one focused guided lesson. Nothing is added to your library.</p>
-      </div>
+      <PageHeader
+        eyebrow="Transcript"
+        title={material.lessonName}
+        summary="Turn this transcript into one focused guided lesson. Nothing is added to your library."
+      />
 
       {material.lesson ? <><LessonPlayer lesson={material.lesson} sourceId={sourceId} /><div className="mt-5"><LessonBuilder sourceId={sourceId} words={material.transcriptWords} /></div></> : hasKey() ? <LessonBuilder sourceId={sourceId} words={material.transcriptWords} /> : <p className="rounded-lg border border-rule bg-surface p-5 text-meta text-ink-2">This transcript is not available, or an OpenAI key is not configured.</p>}
     </>
