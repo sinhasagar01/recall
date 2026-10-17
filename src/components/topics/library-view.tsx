@@ -430,39 +430,29 @@ export function LibraryView({
             difficulties={difficultyOptionsFromCounts(counts.byDifficulty, counts.total)}
             quickCounts={quickCounts}
             kindCounts={kindCounts}
-          />
-
-          <div className="mb-5 flex flex-wrap items-center gap-2.5 rounded-md border border-rule bg-surface-2 px-3 py-2.5">
-            {selecting ? (
-              <>
-                <span className="mr-auto text-meta text-ink-2" aria-live="polite">
-                  {selectedCount === 0 ? 'Choose entries to delete' : `${selectedCount} selected`}
-                </span>
-                {allSelected ? (
-                  <span className="font-mono text-[11.5px] text-ink-3">Every library entry is selected</span>
-                ) : (
-                  <Button onClick={() => setAllSelected(true)}>
-                    Select all {counts.total}
+            actions={
+              selecting ? (
+                <div className="flex flex-wrap items-center justify-end gap-1.5" aria-live="polite">
+                  <span className="mr-1 font-mono text-mono-sm text-ink-2">
+                    {selectedCount === 0 ? 'Choose entries' : `${selectedCount} selected`}
+                  </span>
+                  {allSelected ? (
+                    <span className="hidden font-mono text-mono-sm text-ink-3 lg:inline">All selected</span>
+                  ) : (
+                    <Button onClick={() => setAllSelected(true)}>Select all {counts.total}</Button>
+                  )}
+                  <Button onClick={cancelSelection}>Cancel</Button>
+                  <Button variant="danger" disabled={selectedCount === 0} onClick={() => setConfirmingDelete(true)}>
+                    Delete
                   </Button>
-                )}
-                <Button onClick={cancelSelection}>Cancel</Button>
-                <Button
-                  variant="danger"
-                  disabled={selectedCount === 0}
-                  onClick={() => setConfirmingDelete(true)}
-                >
-                  Delete selected
-                </Button>
-              </>
-            ) : (
-              <>
-                <span className="mr-auto text-meta text-ink-2">Remove more than one topic or quiz at once.</span>
-                <Button variant="danger-quiet" onClick={beginSelection}>
+                </div>
+              ) : (
+                <Button variant="danger-quiet" onClick={beginSelection} className="px-2.5 py-1.5 font-mono text-mono-sm">
                   Select entries
                 </Button>
-              </>
-            )}
-          </div>
+              )
+            }
+          />
 
           {deleteError ? (
             <p role="alert" className="mb-5 rounded-md border border-flag bg-flag-soft px-4 py-3 text-meta text-flag">
