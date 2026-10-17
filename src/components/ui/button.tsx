@@ -62,7 +62,7 @@ export function Button({
       aria-busy={loading || undefined}
       className={`${
         CALLER_SETS_DISPLAY.test(className) ? '' : 'inline-flex'
-      } cursor-pointer items-center gap-[7px] rounded-md border font-body font-medium whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-45 ${
+      } cursor-pointer items-center gap-[7px] rounded-md border font-body font-medium whitespace-nowrap transition-[background-color,border-color,color,box-shadow,transform] duration-150 hover:not-disabled:-translate-y-px disabled:cursor-not-allowed disabled:opacity-45 ${
         VARIANT[variant]
       } ${SIZE[size]} ${block ? 'w-full justify-center' : ''} ${className}`}
     >

@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useState, useTransition } from 'react'
 import { removeLearningSource } from '@/app/(app)/learn/actions'
 import { Button } from '@/components/ui/button'
+import { Modal } from '@/components/ui/modal'
 import type { LearningSourceSummary } from '@/lib/data/learning'
 
 const STATUS = {
@@ -15,10 +16,10 @@ const STATUS = {
 export function SavedLessons({ lessons }: { lessons: LearningSourceSummary[] }) {
   const [removing, setRemoving] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [confirming, setConfirming] = useState<LearningSourceSummary | null>(null)
   const [pending, startTransition] = useTransition()
 
   const remove = (lesson: LearningSourceSummary) => {
-    if (!window.confirm(`Delete “${lesson.lesson}”? This removes the saved transcript and lesson. Any Library cards made from this source will stay in your Library.`)) return
     setError(null)
     setRemoving(lesson.id)
     startTransition(async () => {
@@ -48,11 +49,19 @@ export function SavedLessons({ lessons }: { lessons: LearningSourceSummary[] }) 
             <div className="flex items-center gap-2">
               <Link href={`/learn/${lesson.id}`} className="inline-flex min-h-10 items-center rounded-md border border-rule-strong px-3 text-label font-medium text-ink hover:border-ink-3">{status.action}</Link>
               <Link href={`/learn/${lesson.id}/edit`} className="inline-flex min-h-10 items-center rounded-md border border-transparent px-3 text-label font-medium text-ink-2 hover:border-rule hover:bg-surface-2 hover:text-ink">Edit</Link>
-              <Button variant="danger-quiet" disabled={isRemoving} loading={isRemoving} loadingLabel="Deleting…" aria-label={`Delete ${lesson.lesson}`} onClick={() => remove(lesson)}>Delete</Button>
+              <Button variant="danger-quiet" disabled={isRemoving} loading={isRemoving} loadingLabel="Deleting…" aria-label={`Delete ${lesson.lesson}`} onClick={() => setConfirming(lesson)}>Delete</Button>
             </div>
           </li>
         })}
       </ul>
+      <Modal
+        open={confirming !== null}
+        onClose={() => setConfirming(null)}
+        title="Delete this saved lesson?"
+        footer={<><Button variant="ghost" onClick={() => setConfirming(null)}>Cancel</Button><Button variant="danger" loading={pending && removing === confirming?.id} loadingLabel="Deleting…" onClick={() => { if (confirming) { remove(confirming); setConfirming(null) } }}>Delete lesson</Button></>}
+      >
+        This removes the transcript and its clean lesson. Any Library cards made from this source will stay in your Library.
+      </Modal>
     </div>
   )
 }
