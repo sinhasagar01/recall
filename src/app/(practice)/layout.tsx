@@ -8,5 +8,5 @@
   group, so this costs no auth work.
 */
 export default function PracticeLayout({ children }: LayoutProps<'/'>) {
-  return <div className="mx-auto min-h-screen max-w-[720px] px-6 pt-[34px] pb-[70px]">{children}</div>
+  return <div className="mx-auto min-h-screen max-w-[860px] px-6 pt-9 pb-[70px]">{children}</div>
 }

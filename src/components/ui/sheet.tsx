@@ -82,13 +82,11 @@ export function Sheet({
         className={
           placement === 'bottom'
             ? 'flex max-h-[80vh] w-full flex-col rounded-t-lg bg-surface shadow-pop [animation:sheet-up_260ms_cubic-bezier(0.22,1,0.36,1)] md:mb-6 md:w-[min(460px,100%)] md:rounded-lg'
-            : 'flex h-full w-full flex-col bg-surface shadow-pop [animation:sheet-in_260ms_cubic-bezier(0.22,1,0.36,1)] md:w-[min(560px,100%)] md:border-l md:border-rule'
+            : 'flex h-full w-full flex-col border-l border-rule-strong bg-surface shadow-pop [animation:sheet-in_260ms_cubic-bezier(0.22,1,0.36,1)] md:w-[min(600px,100%)]'
         }
       >
-        <div className="flex shrink-0 items-center justify-between gap-4 px-5 pt-5 pb-[22px] md:px-[30px] md:pt-[26px]">
-          <h2 className="font-display text-[19px] font-medium tracking-[-0.02em] md:text-[23px]">
-            {title}
-          </h2>
+        <div className="flex shrink-0 items-center justify-between gap-4 border-b border-rule px-5 pt-5 pb-5 md:px-[30px] md:pt-6">
+          <div><p className="mb-1 font-mono text-mono-xs tracking-[0.14em] text-accent-ink uppercase">Workspace</p><h2 className="font-display text-[19px] font-medium tracking-[-0.02em] md:text-[23px]">{title}</h2></div>
           {/*
             Escape and the scrim already close this, but neither is an affordance —
             and a phone has no Escape key at all.

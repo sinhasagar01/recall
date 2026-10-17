@@ -39,19 +39,21 @@ export function PracticeSetup({
   const reviewCopy = `Practice ${needsPractice} ${kindLabel} that you marked weak or have not practised yet.`
 
   return (
-    <section className="max-w-[680px]">
-      <LinkButton href="/practice" className="mb-6">
+    <section className="max-w-[820px]">
+      <header className="mb-7 border-b border-rule pb-5">
+      <LinkButton href="/practice" className="mb-5">
         ← Back to practice types
       </LinkButton>
-      <p className="font-mono text-[11.5px] tracking-[0.12em] text-ink-3 uppercase">Practice</p>
-      <h1 className="mt-2 font-display text-page-title font-medium tracking-[-0.022em]">
+      <p className="font-mono text-mono-xs tracking-[0.14em] text-accent-ink uppercase">Practice setup</p>
+      <h1 className="mt-2 font-display text-[32px] leading-[1.1] font-medium tracking-[-0.025em]">
         Set up your {kind === 'topic' ? 'topic' : 'quiz'} practice
       </h1>
       <p className="mt-2 max-w-[58ch] text-body leading-[1.6] text-ink-2">
         Choose the material you want to work through. Topics and quizzes always stay separate.
       </p>
+      </header>
 
-      <div className="mt-7 rounded-lg border border-rule-strong bg-surface p-5 shadow-card">
+      <div className="rounded-lg border border-rule bg-surface p-6 shadow-card">
         <fieldset>
           <legend className="font-display text-card-title font-medium">What should this session focus on?</legend>
           <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -59,7 +61,7 @@ export function PracticeSetup({
               type="button"
               aria-pressed={focus === 'all'}
               onClick={() => setFocus('all')}
-              className={`rounded-md border p-4 text-left transition-colors ${
+              className={`min-h-[148px] rounded-lg border p-5 text-left transition-colors ${
                 focus === 'all'
                   ? 'border-accent bg-accent-soft text-accent-ink'
                   : 'border-rule-strong bg-surface text-ink hover:border-ink-3'
@@ -74,7 +76,7 @@ export function PracticeSetup({
               type="button"
               aria-pressed={focus === 'needs-practice'}
               onClick={() => setFocus('needs-practice')}
-              className={`rounded-md border p-4 text-left transition-colors ${
+              className={`min-h-[148px] rounded-lg border p-5 text-left transition-colors ${
                 focus === 'needs-practice'
                   ? 'border-accent bg-accent-soft text-accent-ink'
                   : 'border-rule-strong bg-surface text-ink hover:border-ink-3'

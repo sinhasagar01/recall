@@ -29,9 +29,10 @@ export function Modal({
         aria-modal="true"
         aria-label={title}
         tabIndex={-1}
-        className="w-[min(430px,100%)] rounded-lg bg-surface p-6 shadow-pop"
+        className="w-[min(460px,100%)] rounded-lg border border-rule-strong bg-surface p-6 shadow-pop"
       >
-        <h2 className="mb-2 font-display text-[21px] font-medium tracking-[-0.02em]">{title}</h2>
+        <p className="mb-2 font-mono text-mono-xs tracking-[0.14em] text-accent-ink uppercase">Confirm action</p>
+        <h2 className="mb-2 font-display text-[23px] font-medium tracking-[-0.02em]">{title}</h2>
         {children ? <div className="mb-5 text-[14px] text-ink-2">{children}</div> : null}
         {footer ? <div className="flex justify-end gap-2.5">{footer}</div> : null}
       </div>
