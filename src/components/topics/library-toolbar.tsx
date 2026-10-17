@@ -1,7 +1,7 @@
 'use client'
 
 import { SEARCH_INPUT_ID } from '@/components/topics/global-keys'
-import { useState } from 'react'
+import { type ReactNode, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { QuickFilterChip } from '@/components/ui/chip'
 import { Kbd } from '@/components/ui/kbd'
@@ -34,6 +34,7 @@ export function LibraryToolbar({
   difficulties,
   quickCounts,
   kindCounts,
+  actions,
 }: {
   state: ToolbarState
   onChange: (next: Partial<ToolbarState>) => void
@@ -44,6 +45,8 @@ export function LibraryToolbar({
   quickCounts: Record<QuickFilter, number>
   /** All is `total`, so it is not carried separately. */
   kindCounts: { total: number } & Record<Kind, number>
+  /** Bulk actions belong to the same working surface as filters, not a separate banner. */
+  actions: ReactNode
 }) {
   const [filtersOpen, setFiltersOpen] = useState(false)
 
@@ -64,56 +67,39 @@ export function LibraryToolbar({
 
   return (
     <>
-      <div className="mb-[26px] flex flex-wrap items-center gap-2.5">
-        <div className="relative min-w-[240px] flex-1">
-          <span className="pointer-events-none absolute top-1/2 left-[11px] flex -translate-y-1/2 text-ink-3">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-              <circle cx="11" cy="11" r="7" />
-              <path d="m20 20-3.5-3.5" />
-            </svg>
-          </span>
-          <input
-            /* Targeted by the `/` shortcut; see components/topics/global-keys.tsx. */
-            id={SEARCH_INPUT_ID}
-            type="search"
-            aria-label="Search your knowledge"
-            placeholder="Search your knowledge…"
-            value={state.query}
-            onChange={(event) => onChange({ query: event.target.value })}
-            className="w-full rounded-md border border-rule-strong bg-surface py-2.5 pr-10 pl-[34px] text-body text-ink outline-offset-[-1px] placeholder:text-ink-3 focus:border-accent focus:outline-2 focus:outline-accent"
-          />
-          <span className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2">
-            <Kbd>/</Kbd>
-          </span>
+      <section className="mb-6 overflow-visible rounded-lg border border-rule bg-surface shadow-card" aria-label="Library controls">
+        <div className="flex flex-wrap items-center gap-2.5 p-3">
+          <div className="relative min-w-[240px] flex-1">
+            <span className="pointer-events-none absolute top-1/2 left-[11px] flex -translate-y-1/2 text-ink-3">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <circle cx="11" cy="11" r="7" />
+                <path d="m20 20-3.5-3.5" />
+              </svg>
+            </span>
+            <input
+              /* Targeted by the `/` shortcut; see components/topics/global-keys.tsx. */
+              id={SEARCH_INPUT_ID}
+              type="search"
+              aria-label="Search your knowledge"
+              placeholder="Search your knowledge…"
+              value={state.query}
+              onChange={(event) => onChange({ query: event.target.value })}
+              className="w-full rounded-md border border-rule-strong bg-surface py-2.5 pr-10 pl-[34px] text-body text-ink outline-offset-[-1px] placeholder:text-ink-3 focus:border-accent focus:outline-2 focus:outline-accent"
+            />
+            <span className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2"><Kbd>/</Kbd></span>
+          </div>
+
+          {/* On a phone the same selects move into the Filters sheet below. */}
+          <div className="hidden flex-wrap gap-1.5 md:flex">
+            <Selects state={state} onChange={onChange} categories={categories} confidences={confidences} difficulties={difficulties} />
+            {isFiltered ? <Button variant="ghost" onClick={onClear} className="font-mono text-[11.5px]">Clear</Button> : null}
+          </div>
         </div>
 
-        {/*
-          Three popovers side by side do not fit at 390pt, so below the breakpoint
-          they move into a sheet behind one Filters chip. Same components, same
-          state — only where they are drawn changes.
-        */}
-        <div className="hidden flex-wrap gap-1.5 md:flex">
-          <Selects
-            state={state}
-            onChange={onChange}
-            categories={categories}
-            confidences={confidences}
-            difficulties={difficulties}
-          />
-          {isFiltered ? (
-            <Button variant="ghost" onClick={onClear} className="font-mono text-[11.5px]">
-              Clear
-            </Button>
-          ) : null}
-        </div>
-      </div>
-
-      {/*
-        Each chip carries its count. A chip that would match nothing reads
-        "Recently added 0" and explains itself, where a disabled chip only says
-        "no" — and after a quiet fortnight the 7-day window makes that common.
-      */}
-      <div className="mt-[-14px] mb-[22px] flex flex-wrap gap-1.5">
+        {/* Scope, quick filters and careful bulk actions share one composed lower rail. */}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-rule bg-surface-2/60 px-3 py-2.5">
+          <span className="font-mono text-mono-xs tracking-[0.12em] text-ink-3 uppercase">Show</span>
+          <div className="flex flex-wrap gap-1.5">
         {/*
           The type chips lead the row, and unlike the quick filters they are
           mutually exclusive — All is the absence of the filter, not a third value.
@@ -191,7 +177,10 @@ export function LibraryToolbar({
             </QuickFilterChip>
           </span>
         ) : null}
-      </div>
+          </div>
+          <div className="ml-auto flex min-h-8 items-center">{actions}</div>
+        </div>
+      </section>
 
       <Sheet open={filtersOpen} onClose={() => setFiltersOpen(false)} title="Filters">
         <div className="flex flex-col gap-4">
