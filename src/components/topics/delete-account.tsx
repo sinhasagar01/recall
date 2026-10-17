@@ -33,7 +33,7 @@ export function DeleteAccount({ topics, images }: { topics: number; images: numb
       <button
         type="button"
         onClick={() => setConfirming(true)}
-        className="cursor-pointer rounded-md text-left text-option text-ink-3 hover:text-flag"
+        className="flex min-h-9 w-full cursor-pointer items-center rounded-sm px-2 text-left text-option text-ink-3 hover:bg-flag-soft hover:text-flag"
       >
         Delete account
       </button>

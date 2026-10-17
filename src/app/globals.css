@@ -14,32 +14,32 @@
 */
 @theme {
   /* Surfaces */
-  --color-bg: #e9eaf0;
+  --color-bg: #f3f5ff;
   --color-surface: #ffffff;
-  --color-surface-2: #f5f5fa;
-  --color-surface-3: #edeef4;
+  --color-surface-2: #e8ecff;
+  --color-surface-3: #dce7ff;
 
   /* Text */
-  --color-ink: #12131a;
-  --color-ink-2: #53555f;
-  --color-ink-3: #83858f;
+  --color-ink: #121b38;
+  --color-ink-2: #485672;
+  --color-ink-3: #71809b;
 
   /* Lines */
-  --color-rule: #e1e1e9;
-  --color-rule-strong: #c9c9d4;
+  --color-rule: #d5dcfa;
+  --color-rule-strong: #adbce8;
 
   /* Accent */
-  --color-accent: #3f3ac7;
-  --color-accent-soft: #edecfb;
-  --color-accent-ink: #2e2a9e;
+  --color-accent: #1248dd;
+  --color-accent-soft: #dce7ff;
+  --color-accent-ink: #0b36b3;
 
   /* The only alarm colour: weak confidence, destructive actions, errors. */
-  --color-flag: #b4325c;
-  --color-flag-soft: #fbebf1;
+  --color-flag: #cf2d28;
+  --color-flag-soft: #ffe8e6;
 
   /* Correct quiz answers, evidence, and a finished (strong) library card. */
-  --color-ok: #1b6b4f;
-  --color-ok-soft: #e6f2ec;
+  --color-ok: #08754a;
+  --color-ok-soft: #e2f6ec;
 
   /*
     DESIGN.md names these --radius / --radius-lg / --radius-sm. Tailwind v4 has no
@@ -51,8 +51,8 @@
   --radius-lg: 10px;
 
   /* Two shadows only. Nothing else gets one. */
-  --shadow-card: 0 1px 2px rgba(18, 19, 26, 0.05), 0 1px 1px rgba(18, 19, 26, 0.03);
-  --shadow-pop: 0 4px 8px rgba(18, 19, 26, 0.06), 0 12px 32px rgba(18, 19, 26, 0.1);
+  --shadow-card: 0 1px 2px rgba(18, 37, 96, 0.05), 0 1px 1px rgba(18, 37, 96, 0.03);
+  --shadow-pop: 0 4px 10px rgba(18, 37, 96, 0.08), 0 14px 34px rgba(18, 37, 96, 0.12);
 
   /*
     serif = knowledge, sans = reading, mono = system. The var() names are the ones

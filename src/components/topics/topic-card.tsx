@@ -2,7 +2,6 @@ import Link from 'next/link'
 import { ConfidenceMeter } from '@/components/ui/confidence-meter'
 import { topicPath } from '@/lib/domain/library'
 import type { Topic } from '@/lib/domain/types'
-import { QuizBadge } from '@/components/ui/quiz-badge'
 import { EvidenceBar } from '@/components/evidence/evidence-bar'
 import { hasEvidence } from '@/lib/domain/evidence'
 
@@ -38,41 +37,38 @@ export function TopicCard({ topic, timestamp, selected, selectionMode = false, o
       ) : null}
       <Link
         href={`/topic/${topic.id}`}
-        className={`flex h-full min-h-[236px] flex-col gap-[9px] rounded-lg border p-5 shadow-card ${
+        className={`flex h-full min-h-[252px] flex-col rounded-lg border p-6 shadow-card transition-[border-color,background-color,transform,box-shadow] duration-150 hover:-translate-y-px hover:shadow-pop ${
           complete
             ? 'border-ok/45 bg-ok-soft hover:border-ok'
             : 'border-rule bg-surface hover:border-rule-strong'
-        } ${
-          topic.kind === 'quiz' ? 'border-l-[3px] border-l-accent' : ''
         }`}
       >
-        <div>
-          <div className="flex items-start gap-3">
-            {/* Reserve two lines, so one short title cannot shrink its card. */}
-            <h3 className="min-h-[49px] min-w-0 flex-1 line-clamp-2 font-display text-card-title leading-[1.28] font-medium tracking-[-0.01em]">
-              {topic.title}
-            </h3>
-            {topic.kind === 'quiz' ? <QuizBadge /> : null}
-          </div>
-          <p className={`truncate font-mono text-mono-sm ${secondaryText}`}>{topicPath(topic)}</p>
+        <div className="flex items-center justify-between gap-3 font-mono text-mono-xs tracking-[0.13em] uppercase">
+          <span className={topic.kind === 'quiz' ? 'text-accent-ink' : 'text-ink-3'}>
+            {topic.kind === 'quiz' ? 'Quiz' : 'Topic'}
+          </span>
+          <span className={complete ? 'text-ok' : 'text-ink-3'}>
+            {complete ? 'Complete' : timestamp ? `Saved ${timestamp}` : 'New'}
+          </span>
         </div>
 
-        {/* A dedicated, reserved row keeps time out of the title's layout. */}
-        <p className={`min-h-[17px] font-mono text-[11.5px] ${secondaryText}`}>
-          {timestamp ? `Saved ${timestamp}` : <span aria-hidden="true">&nbsp;</span>}
-        </p>
+        {/* Reserve two lines: varied titles still form a calm, even grid. */}
+        <h3 className="mt-4 min-h-[58px] line-clamp-2 font-display text-[23px] leading-[1.18] font-medium tracking-[-0.018em]">
+          {topic.title}
+        </h3>
+        <p className={`mt-2 truncate font-mono text-mono-sm ${secondaryText}`}>{topicPath(topic)}</p>
 
         {/*
-          A quiz has no excerpt, but it reserves the topic excerpt's space so every
-          library card shares one stable height and the footer aligns across a row.
+          Both kinds reserve the same reading space. A quiz gets useful orientation
+          instead of a blank hole, while topic definitions stay scannable.
         */}
         {topic.kind === 'topic' ? (
-          <p className="min-h-[47px] line-clamp-2 text-option leading-[1.6] text-ink-2">{topic.definition}</p>
+          <p className="mt-4 min-h-[47px] line-clamp-2 text-option leading-[1.65] text-ink-2">{topic.definition}</p>
         ) : (
-          <div className="min-h-[47px]" aria-hidden="true" />
+          <p className="mt-4 min-h-[47px] text-option leading-[1.65] text-ink-2">Choose an answer, then check the reasoning.</p>
         )}
 
-        <div className={`mt-auto flex items-center justify-between gap-2.5 border-t pt-[11px] ${
+        <div className={`mt-auto flex items-center justify-between gap-2.5 border-t pt-4 ${
           complete ? 'border-ok/45' : 'border-rule'
         }`}>
           <ConfidenceMeter confidence={topic.confidence} showLabel />
@@ -116,14 +112,15 @@ export function TopicCard({ topic, timestamp, selected, selectionMode = false, o
 /** Matches the card's geometry exactly, so nothing shifts when data lands. */
 export function TopicCardSkeleton({ widths }: { widths: [string, string] }) {
   return (
-    <div className="flex min-h-[236px] flex-col gap-[9px] rounded-lg border border-rule bg-surface p-5 shadow-card">
+    <div className="flex min-h-[252px] flex-col rounded-lg border border-rule bg-surface p-6 shadow-card">
       <div>
-        <div className="animate-skeleton h-[18px] rounded-sm bg-surface-3" style={{ width: widths[0] }} />
-        <div className="animate-skeleton mt-[9px] h-[11px] w-[38%] rounded-sm bg-surface-3" />
+        <div className="animate-skeleton h-[10px] w-[24%] rounded-sm bg-surface-3" />
+        <div className="animate-skeleton mt-4 h-[23px] rounded-sm bg-surface-3" style={{ width: widths[0] }} />
+        <div className="animate-skeleton mt-2 h-[10px] w-[38%] rounded-sm bg-surface-3" />
       </div>
-      <div className="animate-skeleton mt-3 h-[11px] w-[42%] rounded-sm bg-surface-3" />
+      <div className="animate-skeleton mt-4 h-[11px] w-[42%] rounded-sm bg-surface-3" />
       <div className="animate-skeleton mt-2 h-[11px] rounded-sm bg-surface-3" style={{ width: widths[1] }} />
-      <div className="mt-auto animate-skeleton h-[13px] w-[84px] rounded-sm bg-surface-3" />
+      <div className="mt-auto animate-skeleton h-[13px] w-[96px] rounded-sm bg-surface-3" />
     </div>
   )
 }

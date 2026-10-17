@@ -35,7 +35,8 @@ const TopicSheet = dynamic(
 /** How long typing settles before server mode asks the database. */
 const SEARCH_DEBOUNCE_MS = 250
 
-const GRID = 'grid grid-cols-1 gap-6 md:grid-cols-[repeat(auto-fill,minmax(292px,1fr))]'
+/* Three deliberate columns give each card room to read like a field note. */
+const GRID = 'grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3'
 const QUICK_FILTERS: QuickFilter[] = [
   'never-practiced',
   'needs-review',
