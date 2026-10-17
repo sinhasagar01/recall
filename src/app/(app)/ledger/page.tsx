@@ -5,6 +5,7 @@ import { StateBlock } from '@/components/ui/state-block'
 import { listLedger } from '@/lib/data/ledger'
 import { listCapabilityOptions } from '@/lib/data/phases'
 import { BackToLibrary } from '@/components/ui/back-to-library'
+import { PageHeader } from '@/components/ui/page-header'
 
 /**
  * The ledger. One list, newest first.
@@ -31,20 +32,17 @@ export default async function LedgerPage({ searchParams }: PageProps<'/ledger'>)
     carries an h1 and wayfinding.spec.ts holds them to it — the arc 2 regression.
   */
   const header = (
-    <div className="mb-[20px] flex items-start justify-between gap-4">
-      <div>
-        <h1 className="font-display text-page-title font-medium tracking-[-0.022em]">Ledger</h1>
-        {capabilityId ? (
-          <p className="mt-1.5 font-mono text-[11.5px] text-ink-3">
-            {capabilityNames[capabilityId] ?? 'One capability'} ·{' '}
-            <Link href="/ledger" className="underline hover:text-ink">
-              show everything
-            </Link>
-          </p>
-        ) : null}
-      </div>
-      <AddItemButton label="+ Add an item" capabilityOptions={capabilityOptions} />
-    </div>
+    <PageHeader
+      eyebrow="Proof of work"
+      title="Ledger"
+      summary={capabilityId ? (
+        <>
+          {capabilityNames[capabilityId] ?? 'One capability'} ·{' '}
+          <Link href="/ledger" className="underline hover:text-ink">show everything</Link>
+        </>
+      ) : 'Decisions, artefacts, and evidence connected to your learning.'}
+      action={<AddItemButton label="+ Add an item" capabilityOptions={capabilityOptions} />}
+    />
   )
 
   if (items.length === 0) {

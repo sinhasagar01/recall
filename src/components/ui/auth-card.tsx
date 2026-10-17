@@ -1,5 +1,3 @@
-import { Wordmark } from '@/components/ui/wordmark'
-
 /** The shell both auth screens share: mark, tagline, bordered box, alt line. */
 export function AuthCard({
   tagline,
@@ -11,16 +9,13 @@ export function AuthCard({
   alt: React.ReactNode
 }) {
   return (
-    <div className="w-[min(400px,100%)]">
-      <div className="mb-2 flex justify-center">
-        <Wordmark size="lg" />
-      </div>
+    <div className="w-[min(420px,100%)]">
+      <p className="font-mono text-mono-sm tracking-[.14em] text-accent-ink uppercase">Recall workspace</p>
+      <p className="mt-3 max-w-[35ch] text-register leading-[1.55] text-ink-2">{tagline}</p>
 
-      <p className="mb-8 text-center text-[14px] text-ink-2">{tagline}</p>
+      <div className="mt-7 rounded-lg border border-rule-strong bg-surface p-6 shadow-pop md:p-7">{children}</div>
 
-      <div className="rounded-lg border border-rule bg-surface p-[26px] shadow-card">{children}</div>
-
-      <p className="mt-[18px] text-center text-label text-ink-2">{alt}</p>
+      <p className="mt-5 text-label text-ink-2">{alt}</p>
     </div>
   )
 }

@@ -189,29 +189,29 @@ export function Setup({
   }
 
   return (
-    <main className="mx-auto max-w-[1020px] px-[26px] pt-7 pb-20">
+    <main className="mx-auto max-w-[1120px] px-[26px] pt-9 pb-20">
       {/*
         The interview group has no rail, so this page had no way back to the
         library at all — the same absence the room has by design and this page
         has by omission.
       */}
-      <div className="mb-5">
-        <BackToLibrary>← Library</BackToLibrary>
-      </div>
-
-      <h1 className="font-display text-[29px] font-medium tracking-[-0.022em]">
-        Set up an interview round
-      </h1>
-      <p className="mt-1.5 max-w-[62ch] text-ink-2">
-        Every question comes from your own library. Nothing is asked that you have not saved —
-        with one exception, and the card that makes it says so.
-      </p>
+      <header className="mb-7 border-b border-rule pb-5">
+        <div className="mb-5"><BackToLibrary>← Library</BackToLibrary></div>
+        <p className="font-mono text-mono-xs tracking-[0.14em] text-accent-ink uppercase">Interview practice</p>
+        <h1 className="mt-2 font-display text-[32px] leading-[1.1] font-medium tracking-[-0.025em]">
+          Set up an interview round
+        </h1>
+        <p className="mt-2 max-w-[62ch] text-ink-2">
+          Every question comes from your own library. Nothing is asked that you have not saved —
+          with one exception, and the card that makes it says so.
+        </p>
+      </header>
 
       {/* ── Round ─────────────────────────────────────────────────────────── */}
       <fieldset>
         <legend className="sr-only">Round</legend>
         <Rule>Round</Rule>
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(224px,1fr))] gap-3">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {ROUND_TYPES.map((option) => {
             /*
               The card's OWN unit, not the selected type's. `questions` is
@@ -234,10 +234,10 @@ export function Setup({
                 key={option}
                 data-testid={`round-type-${option}`}
                 data-picked={picked}
-                className={`${TYPE[option].tone} relative flex cursor-pointer flex-col rounded-[10px] border bg-surface px-[18px] pt-[17px] pb-[15px] text-left shadow-[0_1px_2px_rgba(18,19,26,0.04)] transition-[border-color,box-shadow] duration-150 hover:border-[var(--tone)] has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--volt)] ${
+                className={`${TYPE[option].tone} relative flex min-h-[192px] cursor-pointer flex-col rounded-lg border bg-surface px-5 pt-5 pb-4 text-left shadow-card transition-[border-color,background-color,transform,box-shadow] duration-150 hover:-translate-y-px hover:border-[var(--tone)] hover:shadow-pop has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--volt)] ${
                   picked
-                    ? 'border-[var(--tone)] shadow-[inset_0_0_0_1px_var(--tone)]'
-                    : 'border-rule hover:shadow-[0_2px_4px_rgba(18,19,26,0.05)]'
+                    ? 'border-accent bg-accent-soft/35 shadow-card'
+                    : 'border-rule'
                 }`}
               >
                 <input
@@ -415,7 +415,7 @@ export function Setup({
       {/* ── The start card ────────────────────────────────────────────────── */}
       <div
         data-testid="start-card"
-        className="relative mt-5 overflow-hidden rounded-[22px] px-[30px] pt-7 pb-[26px] text-[var(--mesh-ink)] [background:var(--mesh)] [box-shadow:var(--mesh-shadow)]"
+        className="relative mt-6 overflow-hidden rounded-lg border border-accent/25 px-[30px] pt-7 pb-[26px] text-[var(--mesh-ink)] [background:var(--mesh)] [box-shadow:var(--mesh-shadow)]"
       >
         <p className="font-mono text-[10px] tracking-[0.16em] text-[var(--mesh-key)] uppercase">
           {TYPE[type].name} · {minutes} minutes · {LEVEL_LABEL[level].name.toLowerCase()} ·{' '}

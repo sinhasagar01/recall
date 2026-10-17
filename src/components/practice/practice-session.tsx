@@ -140,7 +140,7 @@ export function PracticeSession({
   const resultsById = new Map(results.map((result) => [result.topic.id, result]))
 
   return (
-    <div>
+    <div className="rounded-lg border border-rule bg-surface p-6 shadow-card md:p-8">
       <div className="mb-[34px] flex items-center justify-between gap-4">
         <div className="flex items-center gap-[3px]" role="img" aria-label={`Card ${index + 1} of ${queue.length}`}>
           {queue.map((item, position) => (

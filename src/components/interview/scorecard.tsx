@@ -230,7 +230,7 @@ export function Scorecard({
 
   return (
     <main
-      className="mx-auto max-w-[1020px] px-[26px] pt-7 pb-20"
+      className="mx-auto max-w-[1120px] px-[26px] pt-9 pb-20"
       data-testid="scorecard"
       data-round-id={roundId ?? undefined}
     >

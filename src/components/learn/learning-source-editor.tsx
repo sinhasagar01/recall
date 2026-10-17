@@ -36,9 +36,9 @@ export function LearningSourceEditor({
   }
 
   return (
-    <section className="rounded-lg border border-rule bg-surface p-5 shadow-card">
+    <section className="rounded-lg border border-rule-strong bg-surface p-5 shadow-card md:p-7">
       <label className="block">
-        <span className="text-label font-medium text-ink">Lesson name</span>
+        <span className="font-mono text-mono-sm tracking-[.1em] text-ink-2 uppercase">Lesson name</span>
         <input
           value={lesson}
           onChange={(event) => setLesson(event.target.value)}
@@ -48,7 +48,7 @@ export function LearningSourceEditor({
       </label>
 
       <label className="mt-4 block">
-        <span className="text-label font-medium text-ink">Transcript</span>
+        <span className="font-mono text-mono-sm tracking-[.1em] text-ink-2 uppercase">Transcript</span>
         <textarea
           value={transcript}
           onChange={(event) => setTranscript(event.target.value)}

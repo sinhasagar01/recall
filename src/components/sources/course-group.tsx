@@ -90,9 +90,9 @@ export function CourseGroup({ node, now }: { node: CourseNode; now: Date }) {
     <section
       data-testid="course-group"
       data-course={node.course ?? ''}
-      className="mb-3.5 overflow-hidden rounded-lg border border-rule bg-surface shadow-[0_1px_2px_rgba(18,19,26,.05),0_1px_1px_rgba(18,19,26,.03)]"
+      className="mb-4 overflow-hidden rounded-lg border border-rule bg-surface shadow-card"
     >
-      <div className="flex items-start gap-4 px-5 py-4">
+      <div className="flex items-start gap-4 px-6 py-5">
         <div className="min-w-0 flex-1">
           <h2
             className={`font-display text-[20px] leading-[1.25] font-medium ${
@@ -121,7 +121,7 @@ export function CourseGroup({ node, now }: { node: CourseNode; now: Date }) {
             gave chapters to is noise about an absence.
           */}
           {chapter.chapter !== null || node.chapters.length > 1 ? (
-            <div className="flex flex-wrap items-center gap-x-3.5 gap-y-2 border-y border-rule bg-surface-2 px-5 py-[11px]">
+            <div className="flex flex-wrap items-center gap-x-3.5 gap-y-2 border-y border-rule bg-surface-2 px-6 py-3">
               <span
                 className={`flex-1 text-[13.5px] font-medium ${
                   chapter.chapter === null ? 'text-ink-3' : 'text-ink'
@@ -160,7 +160,7 @@ export function CourseGroup({ node, now }: { node: CourseNode; now: Date }) {
       ))}
 
       {visible.has('course') ? (
-        <div className="flex flex-wrap items-center gap-3 border-t border-rule bg-surface-2 px-5 py-3">
+        <div className="flex flex-wrap items-center gap-3 border-t border-rule bg-surface-2 px-6 py-3.5">
           {/*
             A Link wearing the primary Button's styling, not a `<Button>` around
             a `<Link>` — that is invalid markup and gives a screen reader two

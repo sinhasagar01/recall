@@ -48,11 +48,11 @@ export function WeakList({
 
   return (
     <>
-      <ul className="overflow-hidden rounded-lg border border-rule bg-surface">
+      <ul className="overflow-hidden rounded-lg border border-rule bg-surface shadow-card">
         {topics.map((topic) => (
           <li
             key={topic.id}
-            className="flex items-center gap-4 border-b border-rule px-[18px] py-[15px] last:border-b-0 hover:bg-surface-2"
+            className="flex items-center gap-4 border-b border-rule px-5 py-5 last:border-b-0 hover:bg-surface-2"
           >
             <ConfidenceMeter confidence={topic.confidence} />
 

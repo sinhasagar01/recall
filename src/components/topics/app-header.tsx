@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from '@/app/(auth)/actions'
 import { DeleteAccount } from '@/components/topics/delete-account'
+import { Wordmark } from '@/components/ui/wordmark'
 
 const PAGE_LABELS: [prefix: string, label: string][] = [
   ['/library', 'Library'],
@@ -43,14 +44,17 @@ export function AppHeader({
     .toUpperCase()
 
   return (
-    <header className="flex h-[75px] items-center justify-between border-b border-rule bg-surface/70 px-5 md:px-[42px]">
-      <p className="text-meta text-ink-3">
+    <header className="flex h-16 items-center justify-between border-b border-rule bg-surface/90 px-4 backdrop-blur-sm md:h-[75px] md:px-[42px]">
+      <Link href="/home" aria-label="Recall home" className="rounded-sm md:hidden">
+        <Wordmark />
+      </Link>
+      <p className="hidden text-meta text-ink-3 md:block">
         <span className="font-medium text-ink">{label}</span>
         <span aria-hidden="true" className="mx-2 text-rule-strong">/</span>
         <span>Your workspace</span>
       </p>
       <details className="group relative">
-        <summary className="grid size-8 cursor-pointer list-none place-items-center rounded-full bg-accent-soft font-mono text-mono-sm font-medium text-accent-ink marker:content-none hover:bg-accent hover:text-white">
+        <summary className="grid size-9 cursor-pointer list-none place-items-center rounded-md border border-rule bg-accent-soft font-mono text-mono-sm font-medium text-accent-ink marker:content-none transition hover:border-accent hover:bg-accent hover:text-white">
           <span className="sr-only">Open profile menu</span>
           {initials}
         </summary>

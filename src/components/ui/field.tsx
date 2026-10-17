@@ -22,8 +22,8 @@ export function Field({
   const errorId = `${inputId}-error`
 
   return (
-    <div className="mb-[18px]">
-      <label htmlFor={inputId} className="mb-1.5 block text-label font-medium text-ink">
+    <div className="mb-5">
+      <label htmlFor={inputId} className="mb-2 block font-mono text-mono-sm tracking-[0.08em] text-ink-2 uppercase">
         {label}
         {hint ? (
           <span className="ml-1.5 font-mono text-mono font-normal text-ink-3">{hint}</span>
@@ -35,7 +35,7 @@ export function Field({
         id={inputId}
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? errorId : undefined}
-        className={`w-full rounded-md border bg-surface px-3 py-2.5 text-body text-ink outline-offset-[-1px] placeholder:text-ink-3 ${
+        className={`w-full rounded-md border bg-surface px-3 py-2.5 text-body text-ink outline-offset-[-1px] placeholder:text-ink-3 transition-colors ${
           error
             ? 'border-flag focus:border-flag focus:outline-2 focus:outline-flag'
             : 'border-rule-strong focus:border-accent focus:outline-2 focus:outline-accent'

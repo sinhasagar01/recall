@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { EarlierDays } from '@/components/today/earlier-days'
 import { StateBlock } from '@/components/ui/state-block'
+import { PageHeader } from '@/components/ui/page-header'
 import { readAllDays } from '@/lib/data/today'
 
 /**
@@ -17,19 +18,20 @@ export default async function EarlierDaysPage() {
   const days = await readAllDays()
 
   const header = (
-    <div className="mb-[22px]">
-      <p className="mb-2 font-mono text-mono">
-        <Link href="/today" className="text-accent-ink underline hover:text-ink">
-          ← Today
-        </Link>
+    <>
+      <p className="mb-3.5 font-mono text-mono">
+        <Link href="/today" className="text-accent-ink underline hover:text-ink">← Today</Link>
       </p>
-      <h1 className="font-display text-page-title font-medium tracking-[-0.022em]">Earlier days</h1>
-      <p className="mt-1.5 font-mono text-[11.5px] text-ink-3">
-        {days.length === 0
+      <PageHeader
+        eyebrow="Daily field notes"
+        title="Earlier days"
+        summary={
+          days.length === 0
           ? 'Nothing recorded yet'
-          : `${days.length} ${days.length === 1 ? 'day' : 'days'} recorded · newest first`}
-      </p>
-    </div>
+          : `${days.length} ${days.length === 1 ? 'day' : 'days'} recorded · newest first`
+        }
+      />
+    </>
   )
 
   if (days.length === 0) {

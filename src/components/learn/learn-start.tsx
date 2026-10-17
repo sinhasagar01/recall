@@ -25,9 +25,14 @@ export function LearnStart() {
   }
 
   return (
-    <section className="rounded-lg border border-rule bg-surface p-5 shadow-card">
+    <section className="rounded-lg border border-rule-strong bg-surface p-5 shadow-card md:p-7">
+      <div className="mb-6 border-b border-rule pb-5">
+        <p className="font-mono text-mono-xs tracking-[0.14em] text-accent-ink uppercase">Start a lesson</p>
+        <h2 className="mt-2 max-w-[28ch] font-display text-[28px] leading-[1.1] font-semibold tracking-[-0.025em]">Turn raw material into one idea worth keeping.</h2>
+        <p className="mt-3 max-w-[68ch] text-body leading-[1.6] text-ink-2">Paste a transcript, your notes, or an article. Recall turns it into a focused active-learning lesson without adding anything to your Library.</p>
+      </div>
       <label className="block">
-        <span className="text-label font-medium text-ink">Lesson name <span className="font-normal text-ink-3">(optional)</span></span>
+        <span className="font-mono text-mono-sm tracking-[.1em] text-ink-2 uppercase">Lesson name <span className="font-normal text-ink-3">(optional)</span></span>
         <input
           value={title}
           onChange={(event) => setTitle(event.target.value)}
@@ -36,7 +41,7 @@ export function LearnStart() {
         />
       </label>
       <label className="mt-4 block">
-        <span className="text-label font-medium text-ink">Transcript</span>
+        <span className="font-mono text-mono-sm tracking-[.1em] text-ink-2 uppercase">Transcript</span>
         <textarea
           value={transcript}
           onChange={(event) => setTranscript(event.target.value)}

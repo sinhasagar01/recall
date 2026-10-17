@@ -3,6 +3,7 @@ import { ChangePassword } from '@/components/topics/change-password'
 import { ExportButton } from '@/components/topics/export-button'
 import { RegisterSection } from '@/components/ui/register'
 import { BackToLibrary } from '@/components/ui/back-to-library'
+import { PageHeader } from '@/components/ui/page-header'
 
 /*
   Two things. Nothing else.
@@ -27,14 +28,9 @@ import { BackToLibrary } from '@/components/ui/back-to-library'
 export default function SettingsPage() {
   return (
     <>
-      <div className="mb-[22px]">
-        <h1 className="font-display text-page-title font-medium tracking-[-0.022em]">Settings</h1>
-        <p className="mt-1 font-mono text-[11.5px] text-ink-3">
-          Your password, and a copy of everything you&rsquo;ve saved
-        </p>
-      </div>
+      <PageHeader eyebrow="Account" title="Settings" summary="Your password, and a copy of everything you’ve saved." />
 
-      <div className="max-w-[560px]">
+      <div className="max-w-[680px] rounded-lg border border-rule bg-surface p-6 shadow-card">
         <RegisterSection title="Password">
           <p className="mt-2 text-body text-ink-2">
             Changing it needs the current one. Without that, anyone at an unlocked laptop
