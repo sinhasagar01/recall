@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { AppIcon, type AppIconName } from '@/components/ui/app-icon'
 import { apprenticeshipNav } from '@/lib/domain/navigation'
 import { useLocalToday } from '@/lib/domain/use-local-today'
 
@@ -25,7 +26,10 @@ import { useLocalToday } from '@/lib/domain/use-local-today'
  * copied the library screen's rail onto every screen.
  */
 const ITEM =
-  'flex items-center justify-between gap-2 rounded-md px-2.5 py-2 text-option text-ink-2'
+  'relative flex items-center justify-between gap-2 px-3 py-2.5 text-option text-ink-2'
+
+const ACTIVE_ITEM =
+  'bg-accent-soft text-ink before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-accent'
 
 interface Destination {
   href: string
@@ -33,6 +37,19 @@ interface Destination {
   count: string
   /** The flag colour is the weak count's, not a general "active" treatment. */
   countClass?: string
+}
+
+function iconFor(href: string): AppIconName {
+  if (href === '/home') return 'home'
+  if (href === '/library') return 'library'
+  if (href === '/practice') return 'brain'
+  if (href === '/weak') return 'weak'
+  if (href === '/learn') return 'sparkles'
+  if (href === '/sources') return 'layers'
+  if (href === '/today') return 'today'
+  if (href === '/phases') return 'target'
+  if (href === '/ledger') return 'chart'
+  return 'brain'
 }
 
 export function RailNav({
@@ -76,24 +93,10 @@ export function RailNav({
     { href: '/home', label: 'Home', count: '' },
     { href: '/library', label: 'Library', count: String(total) },
     { href: '/practice', label: 'Practice', count: `${queued} queued` },
-    {
-      href: '/weak',
-      label: 'Weak topics',
-      count: String(needsReview),
-      countClass: 'text-flag',
-    },
+    { href: '/learn', label: 'Learn', count: '' },
+    { href: '/sources', label: 'Sources', count: String(sources) },
   ]
 
-  /*
-    Sources sits under its own group, below the three that matter. A source is
-    raw material; putting it beside Library would let it compete with the library
-    for the same attention, which is the same reason a source row is not a topic
-    card.
-
-    The list itself lives in `lib/domain/navigation.ts`, because the More sheet
-    renders the same group on mobile and the two copies had already drifted once:
-    interview mode shipped with an entry in neither.
-  */
   const apprenticeship = apprenticeshipNav({
     today: todayCount,
     phases: `${demonstrated} / ${capabilities}`,
@@ -101,6 +104,18 @@ export function RailNav({
     sources: String(sources),
     interview,
   })
+
+  const progress: Destination[] = [
+    {
+      href: '/weak',
+      label: 'Weak topics',
+      count: String(needsReview),
+      countClass: 'text-flag',
+    },
+    ...apprenticeship
+      .filter((destination) => destination.href !== '/learn' && destination.href !== '/sources')
+      .map((destination) => ({ ...destination, count: destination.count ?? '' })),
+  ]
 
   return (
     <nav className="flex flex-col gap-0.5">
@@ -120,10 +135,12 @@ export function RailNav({
             href={destination.href}
             aria-current={isCurrent ? 'page' : undefined}
             className={`${ITEM} ${
-              isCurrent ? 'bg-surface text-ink' : 'hover:bg-surface hover:text-ink'
+              isCurrent
+                ? ACTIVE_ITEM
+                : 'hover:bg-surface hover:text-ink'
             }`}
           >
-            <span>{destination.label}</span>
+            <span className="flex items-center gap-2.5"><AppIcon name={iconFor(destination.href)} className="size-[15px]" />{destination.label}</span>
             <span className={`font-mono text-mono-sm ${destination.countClass ?? 'text-ink-3'}`}>
               {destination.count}
             </span>
@@ -132,20 +149,20 @@ export function RailNav({
       })}
 
       <span className="mt-5 mb-1.5 px-3 font-mono text-[9.5px] tracking-[0.14em] text-ink-3 uppercase">
-        Apprenticeship
+        Progress
       </span>
-      {apprenticeship.map((destination) => (
+      {progress.map((destination) => (
         <Link
           key={destination.href}
           href={destination.href}
           aria-current={pathname.startsWith(destination.href) ? 'page' : undefined}
           className={`${ITEM} ${
             pathname.startsWith(destination.href)
-              ? 'bg-surface text-ink'
+              ? ACTIVE_ITEM
               : 'hover:bg-surface hover:text-ink'
           }`}
         >
-          <span>{destination.label}</span>
+          <span className="flex items-center gap-2.5"><AppIcon name={iconFor(destination.href)} className="size-[15px]" />{destination.label}</span>
           <span className="font-mono text-mono-sm text-ink-3">{destination.count ?? ''}</span>
         </Link>
       ))}

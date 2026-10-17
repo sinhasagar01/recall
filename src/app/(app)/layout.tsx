@@ -1,15 +1,13 @@
 import Link from 'next/link'
-import { DeleteAccount } from '@/components/topics/delete-account'
+import { AppHeader } from '@/components/topics/app-header'
 import { GlobalKeys } from '@/components/topics/global-keys'
 import { RailNav } from '@/components/topics/rail-nav'
 import { TabBar } from '@/components/topics/tab-bar'
-import { Kbd } from '@/components/ui/kbd'
 import { Wordmark } from '@/components/ui/wordmark'
 import { hasKey } from '@/lib/ai/client'
 import { readAppShellSummary } from '@/lib/data/app-shell'
 import { practiceQueueSize } from '@/lib/domain/practice-selection'
 import { createClient } from '@/lib/supabase/server'
-import { signOut } from '../(auth)/actions'
 
 /*
   The rail. A server component, so the counts come from the same read the page
@@ -41,10 +39,8 @@ export default async function AppLayout({ children }: LayoutProps<'/'>) {
   */
   const queued = practiceQueueSize(shell.rail.total)
 
-  const footLink = 'cursor-pointer rounded-md text-left text-option text-ink-3'
-
   return (
-    <div className="grid min-h-screen grid-cols-1 md:grid-cols-[212px_1fr]">
+    <div className="grid min-h-screen grid-cols-1 md:grid-cols-[238px_1fr]">
       {/*
         Mounted once for the whole group, so N, / and P work on the library, the
         weak list and a topic. The rail below has advertised them since phase 4.
@@ -67,7 +63,7 @@ export default async function AppLayout({ children }: LayoutProps<'/'>) {
         Every class is `md:`-prefixed. Below 860px the rail is `hidden` and the
         tab bar is already fixed; nothing about mobile changes.
       */}
-      <aside className="hidden flex-col gap-[26px] border-r border-rule bg-surface-2 px-3.5 py-[22px] md:sticky md:top-0 md:flex md:h-screen md:self-start md:overflow-y-auto">
+      <aside className="hidden flex-col gap-[26px] border-r border-rule bg-surface-2 px-3.5 py-[25px] md:sticky md:top-0 md:flex md:h-screen md:self-start md:overflow-y-auto">
         <div className="px-2">
           <Link href="/home" aria-label="Recall home" className="inline-flex rounded-sm">
             <Wordmark />
@@ -103,56 +99,20 @@ export default async function AppLayout({ children }: LayoutProps<'/'>) {
         */}
         <Link
           href="/library?add=1"
-          className="inline-flex min-h-11 w-full cursor-pointer items-center justify-center rounded-md border border-accent bg-accent px-3.5 py-2.5 text-label font-medium text-white hover:border-accent-ink hover:bg-accent-ink"
+          className="inline-flex min-h-11 w-full cursor-pointer items-center justify-center rounded-md border border-accent bg-accent px-3.5 py-2.5 text-label font-medium text-white shadow-card hover:border-accent-ink hover:bg-accent-ink"
         >
           + Add topic
         </Link>
 
-        <div className="mt-auto flex flex-col gap-2.5 px-2">
-          <p className="font-mono text-mono leading-[1.9] text-ink-3">
-            <Kbd>N</Kbd> new topic
-            <br />
-            <Kbd>/</Kbd> search
-            <br />
-            <Kbd>P</Kbd> practice
-          </p>
-          {/*
-            The signed-in identity, rendered by a server component. The phase 3
-            reload spec asserts on this: it is what proves the session cookie
-            survived a full reload and is visible to the server.
-          */}
-          <p className="truncate font-mono text-mono text-ink-3" data-testid="signed-in-as">
-            {data?.claims.email}
-          </p>
-          {/*
-            The account foot, which is a DESKTOP surface: this whole aside is
-            `hidden` below `md`. Its mobile counterpart is the `md:hidden` cluster
-            in the library head (library-view.tsx), and that is where Sources goes
-            on a phone — beside Settings, exactly as here, rather than becoming a
-            fourth tab entry. Sources needs no entry in this foot because the rail
-            above already gives it its own group.
-          */}
-          <Link href="/settings" className={`${footLink} hover:text-ink`}>
-            Settings
-          </Link>
-
-          <form action={signOut}>
-            <button
-              type="submit"
-              className="cursor-pointer rounded-md text-option text-ink-2 hover:text-ink"
-            >
-              Sign out
-            </button>
-          </form>
-          {/* Irreversible, so it sits apart from Sign out and reads quieter. */}
-          <DeleteAccount topics={shell.rail.total} images={shell.rail.withImages} />
-        </div>
       </aside>
 
       {/* pb-24 leaves room for the tab bar, which is fixed over the content. */}
-      <main className="max-w-[1920px] px-5 pt-6 pb-24 md:px-[34px] md:pt-[30px] md:pb-15">
-        {children}
-      </main>
+      <div className="min-w-0">
+        <AppHeader email={data?.claims.email} topics={shell.rail.total} images={shell.rail.withImages} />
+        <main className="max-w-[1920px] px-5 pt-6 pb-24 md:px-[42px] md:pt-[36px] md:pb-15">
+          {children}
+        </main>
+      </div>
 
       {/*
         The tab bar replaces the rail below --breakpoint-md. Two destinations plus
