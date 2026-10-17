@@ -32,7 +32,7 @@ export default function LibraryLoading() {
         <div className="animate-skeleton h-[38px] w-[130px] rounded-md bg-surface-3" />
       </div>
 
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(292px,1fr))] gap-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {SKELETON_WIDTHS.map((widths, index) => (
           <TopicCardSkeleton key={index} widths={widths} />
         ))}
