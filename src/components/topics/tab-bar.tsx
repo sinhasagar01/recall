@@ -42,7 +42,7 @@ export function TabBar() {
     <nav
       aria-label="Main"
       data-testid="tab-bar"
-      className="fixed inset-x-0 bottom-0 z-50 flex items-center justify-around gap-1.5 border-t border-rule bg-surface px-3 pt-2.5 pb-4 md:hidden"
+      className="fixed inset-x-0 bottom-0 z-50 mx-auto flex max-w-[560px] items-center justify-around gap-1.5 border-t border-rule bg-surface/95 px-3 pt-2.5 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_-8px_24px_rgba(18,37,96,.08)] backdrop-blur-md md:hidden"
     >
       <TabItem href="/library" label="Library" current={on('/library')}>
         <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
@@ -53,7 +53,7 @@ export function TabBar() {
       <Link
         href="/library?add=1"
         aria-label="Add topic"
-        className="-mt-[22px] grid size-[46px] shrink-0 place-items-center rounded-full border-[3px] border-surface bg-accent text-white"
+        className="-mt-[22px] grid size-[48px] shrink-0 place-items-center rounded-full border-[3px] border-surface bg-accent text-white shadow-pop transition hover:bg-accent-ink"
       >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true">
           <path d="M12 5v14M5 12h14" />
@@ -86,7 +86,7 @@ function TabItem({
       href={href}
       aria-current={current ? 'page' : undefined}
       data-current={current}
-      className={`relative flex min-h-11 flex-col items-center justify-center gap-1 px-4 font-mono text-[9.5px] tracking-[0.06em] uppercase ${
+      className={`relative flex min-h-11 min-w-[78px] flex-col items-center justify-center gap-1 rounded-md px-4 font-mono text-[9.5px] tracking-[0.06em] uppercase ${
         current ? 'font-medium text-ink' : 'text-ink-3'
       }`}
     >

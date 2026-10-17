@@ -42,17 +42,17 @@ export function LessonPlayer({ lesson, sourceId }: { lesson: LearningLesson; sou
   }
 
   return (
-    <section className="overflow-hidden rounded-lg border border-rule bg-surface-2 shadow-card">
-      <header className="flex items-center justify-between border-b border-rule bg-surface px-6 py-5 md:px-9">
+    <section className="overflow-hidden rounded-lg border border-rule-strong bg-surface shadow-card">
+      <header className="flex items-center justify-between border-b border-rule bg-surface-2 px-5 py-5 md:px-9 md:py-6">
         <div className="min-w-0">
-          <p className="font-mono text-mono-sm tracking-[.14em] text-accent uppercase">Guided lesson</p>
-          <h1 className="mt-1 truncate font-display text-[28px] font-semibold tracking-[-.025em] md:text-[36px]">{lesson.title}</h1>
+          <p className="font-mono text-mono-sm tracking-[.14em] text-accent-ink uppercase">Guided learning · focused lesson</p>
+          <h1 className="mt-1 truncate font-display text-[29px] font-semibold tracking-[-.03em] md:text-[39px]">{lesson.title}</h1>
         </div>
         <span className="hidden rounded-full border border-rule bg-surface-2 px-3 py-2 font-mono text-mono-sm text-ink-2 sm:block">≈ 5 minutes</span>
       </header>
 
       <div className="px-5 py-7 md:px-9 md:py-9">
-        <p className="max-w-3xl text-register text-ink-2">Understand the idea, retrieve it without notes, then use it in a new situation.</p>
+        <p className="max-w-3xl text-register leading-[1.6] text-ink-2">Understand the mechanism, retrieve it without notes, then prove you can use it in a new situation.</p>
         <Progress stage={stage} furthestStage={furthestStage} onSelect={setStage} />
 
         <article className="mt-7 overflow-hidden rounded-lg border border-rule bg-surface shadow-card">
@@ -74,7 +74,7 @@ function Progress({ stage, furthestStage, onSelect }: { stage: Stage; furthestSt
         const complete = itemStage < furthestStage
         const active = itemStage === stage
         const available = itemStage <= furthestStage
-        return <li key={item.label}><button type="button" disabled={!available} onClick={() => onSelect(itemStage)} aria-current={active ? 'step' : undefined} className={`min-h-[76px] w-full rounded-lg border px-3 text-left transition ${active ? 'border-accent bg-accent-soft text-accent-ink shadow-card' : complete ? 'border-ok/45 bg-ok-soft text-ok hover:border-ok' : 'border-rule bg-surface text-ink-3 disabled:cursor-not-allowed disabled:opacity-70'}`}><span className={`mr-2 inline-grid size-6 place-items-center rounded-full font-mono text-mono-sm ${active ? 'bg-accent text-white' : complete ? 'bg-ok-soft text-ok' : 'bg-surface-3 text-ink-3'}`}>{complete ? '✓' : index + 1}</span><span className="font-medium">{item.label}</span><span className="mt-1 block pl-8 text-[12px] leading-none opacity-75">{item.detail}</span></button></li>
+        return <li key={item.label}><button type="button" disabled={!available} onClick={() => onSelect(itemStage)} aria-current={active ? 'step' : undefined} className={`min-h-[80px] w-full rounded-lg border px-3.5 text-left transition ${active ? 'border-accent bg-accent-soft text-accent-ink shadow-card' : complete ? 'border-ok/45 bg-ok-soft text-ok hover:border-ok' : 'border-rule bg-surface text-ink-3 disabled:cursor-not-allowed disabled:opacity-70'}`}><span className={`mr-2 inline-grid size-6 place-items-center rounded-full font-mono text-mono-sm ${active ? 'bg-accent text-white' : complete ? 'bg-ok-soft text-ok' : 'bg-surface-3 text-ink-3'}`}>{complete ? '✓' : index + 1}</span><span className="font-medium">{item.label}</span><span className="mt-1 block pl-8 font-mono text-[10px] leading-none tracking-[.04em] opacity-75">{item.detail}</span></button></li>
       })}
     </ol>
   )
@@ -120,7 +120,7 @@ function FinishStage({ lesson, onReview, savingCompletion, completionError }: { 
 }
 
 function Pane({ children, side }: { children: React.ReactNode; side: React.ReactNode }) {
-  return <div className="grid gap-7 p-6 md:grid-cols-[minmax(0,1fr)_280px] md:p-9"><div>{children}</div><aside className="h-fit rounded-lg border border-rule bg-surface-2 p-5 text-body leading-[1.65] text-ink-2">{side}</aside></div>
+  return <div className="grid gap-7 p-5 md:grid-cols-[minmax(0,1fr)_280px] md:p-9"><div>{children}</div><aside className="order-first h-fit rounded-lg border border-rule bg-surface-2 p-5 text-body leading-[1.65] text-ink-2 md:order-none">{side}</aside></div>
 }
 
 function Eyebrow({ children }: { children: React.ReactNode }) {
@@ -128,11 +128,11 @@ function Eyebrow({ children }: { children: React.ReactNode }) {
 }
 
 function CodeEditor({ code, language, compact = false }: { code: string; language: string | null; compact?: boolean }) {
-  return <div className={`mt-6 overflow-hidden rounded-xl border border-[#30363d] bg-[#0d1117] ${compact ? '' : 'shadow-[0_8px_20px_rgba(13,17,23,.18)]'}`}><div className="flex items-center justify-between border-b border-[#30363d] bg-[#161b22] px-4 py-2 font-mono text-[10px] tracking-[.14em] text-[#8b949e] uppercase"><span>{language ?? 'Code example'}</span><span className="rounded bg-[#30363d] px-2 py-1 text-[#c9d1d9] normal-case">GitHub Dark</span></div><LearnCodeEditor code={code} language={language} /></div>
+  return <div className={`mt-6 overflow-hidden rounded-lg border border-[#30363d] bg-[#0d1117] ${compact ? '' : 'shadow-[0_8px_20px_rgba(13,17,23,.18)]'}`}><div className="flex items-center justify-between border-b border-[#30363d] bg-[#161b22] px-4 py-2 font-mono text-[10px] tracking-[.14em] text-[#8b949e] uppercase"><span>{language ?? 'Code example'}</span><span className="rounded bg-[#30363d] px-2 py-1 text-[#c9d1d9] normal-case">GitHub Dark</span></div><LearnCodeEditor code={code} language={language} /></div>
 }
 
 function Answer({ label, value, positive = true }: { label: string; value: string; positive?: boolean }) {
-  return <div className={`mt-4 rounded-xl border p-4 ${positive ? 'border-[#c8e8d5] bg-ok-soft' : 'border-[#f2cbcb] bg-[#fff6f5]'}`}><p className={`font-mono text-mono-sm tracking-[.1em] uppercase ${positive ? 'text-ok' : 'text-flag'}`}>{label}</p><p className="mt-2 leading-[1.65]">{value}</p></div>
+  return <div className={`mt-4 rounded-lg border p-4 ${positive ? 'border-[#c8e8d5] bg-ok-soft' : 'border-[#f2cbcb] bg-[#fff6f5]'}`}><p className={`font-mono text-mono-sm tracking-[.1em] uppercase ${positive ? 'text-ok' : 'text-flag'}`}>{label}</p><p className="mt-2 leading-[1.65]">{value}</p></div>
 }
 
 function Prompt({ label, value }: { label: string; value: string }) {
