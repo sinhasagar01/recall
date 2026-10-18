@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useEffect, useRef } from 'react'
 import { usePathname } from 'next/navigation'
 import { signOut } from '@/app/(auth)/actions'
 import { DeleteAccount } from '@/components/topics/delete-account'
@@ -34,6 +35,7 @@ export function AppHeader({
   images: number
 }) {
   const pathname = usePathname()
+  const profileRef = useRef<HTMLDetailsElement>(null)
   const label = pageLabel(pathname)
   const initials = (email ?? 'Recall')
     .split('@')[0]
@@ -43,8 +45,25 @@ export function AppHeader({
     .slice(0, 2)
     .toUpperCase()
 
+  useEffect(() => {
+    const closeOnOutsidePress = (event: PointerEvent) => {
+      if (profileRef.current?.open && !profileRef.current.contains(event.target as Node)) {
+        profileRef.current.open = false
+      }
+    }
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && profileRef.current?.open) profileRef.current.open = false
+    }
+    document.addEventListener('pointerdown', closeOnOutsidePress)
+    document.addEventListener('keydown', closeOnEscape)
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsidePress)
+      document.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [])
+
   return (
-    <header className="flex h-16 items-center justify-between border-b border-rule bg-surface/90 px-4 backdrop-blur-sm md:h-[75px] md:px-[42px]">
+    <header className="relative z-50 flex h-16 items-center justify-between border-b border-rule bg-surface/90 px-4 backdrop-blur-sm md:h-[75px] md:px-[42px]">
       <Link href="/home" aria-label="Recall home" className="rounded-sm md:hidden">
         <Wordmark />
       </Link>
@@ -53,12 +72,12 @@ export function AppHeader({
         <span aria-hidden="true" className="mx-2 text-rule-strong">/</span>
         <span>Your workspace</span>
       </p>
-      <details className="group relative">
+      <details ref={profileRef} className="group relative">
         <summary className="grid size-9 cursor-pointer list-none place-items-center rounded-md border border-rule bg-accent-soft font-mono text-mono-sm font-medium text-accent-ink marker:content-none transition hover:border-accent hover:bg-accent hover:text-white">
           <span className="sr-only">Open profile menu</span>
           {initials}
         </summary>
-        <div className="absolute right-0 top-[calc(100%+10px)] z-50 w-60 rounded-md border border-rule-strong bg-surface p-2 shadow-pop">
+        <div className="absolute right-0 top-[calc(100%+10px)] z-60 w-60 rounded-md border border-rule-strong bg-surface p-2 shadow-pop">
           <p className="truncate px-2.5 py-2 font-mono text-mono-sm text-ink-3" data-testid="signed-in-as">{email ?? 'Signed in'}</p>
           <div className="border-t border-rule pt-1">
             <Link href="/settings" className="flex min-h-9 items-center rounded-sm px-2.5 text-option text-ink-2 hover:bg-surface-2 hover:text-ink">Settings</Link>

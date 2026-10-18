@@ -343,12 +343,12 @@ export function TopicSheet({
           />
         )}
         <div className="mb-5">
-          <div className="overflow-hidden rounded-lg border border-rule-strong bg-surface">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-rule bg-surface-2 px-3 py-2.5">
+          <div className="relative rounded-lg border border-rule-strong bg-[#0d1117]">
+            <div className="relative z-10 flex flex-wrap items-center justify-between gap-2 rounded-t-lg border-b border-rule bg-surface-2 px-3 py-2.5">
               <label htmlFor="code_example" className="font-mono text-mono-sm tracking-[0.1em] text-ink-2 uppercase">Code example <span className="normal-case text-ink-3">(optional)</span></label>
-              <div className="flex items-center gap-2"><span className="font-mono text-mono text-ink-3">Language</span><input type="hidden" name="code_language" value={codeLanguage} /><Select label="Code language" options={CODE_LANGUAGES} value={codeLanguage} unsetValue="" onChange={setCodeLanguage} /></div>
+              <div className="flex items-center gap-2"><span className="font-mono text-mono text-ink-3">Language</span><input type="hidden" name="code_language" value={codeLanguage} /><Select label="Code language" options={CODE_LANGUAGES} value={codeLanguage} unsetValue="" onChange={setCodeLanguage} align="right" /></div>
             </div>
-            <textarea id="code_example" name="code_example" rows={6} value={codeExample} onChange={(event) => setCodeExample(event.target.value)} onPaste={(event) => { event.preventDefault(); const field = event.currentTarget; const formatted = formatCode(event.clipboardData.getData('text'), codeLanguage); setCodeExample(`${codeExample.slice(0, field.selectionStart)}${formatted}${codeExample.slice(field.selectionEnd)}`) }} placeholder="Paste code here — it formats automatically." className="w-full border-0 bg-[#0d1117] px-4 py-3 font-mono text-meta leading-[1.6] text-[#c9d1d9] outline-none placeholder:text-[#8b949e]" />
+            <textarea id="code_example" name="code_example" rows={6} value={codeExample} onChange={(event) => setCodeExample(event.target.value)} onPaste={(event) => { event.preventDefault(); const field = event.currentTarget; const formatted = formatCode(event.clipboardData.getData('text'), codeLanguage); setCodeExample(`${codeExample.slice(0, field.selectionStart)}${formatted}${codeExample.slice(field.selectionEnd)}`) }} placeholder="Paste code here — it formats automatically." className="block min-h-[184px] w-full rounded-b-lg border-0 bg-[#0d1117] px-4 py-3 font-mono text-meta leading-[1.6] text-[#c9d1d9] outline-none placeholder:text-[#8b949e]" />
           </div>
         </div>
 
@@ -443,30 +443,23 @@ export function TopicSheet({
           One optional field and nothing else. Editing a topic lets you attach or
           change its source; the sheet does not grow a second concept.
         */}
-        {sourceOptions.length > 0 ? (
-          <div className="mb-[18px]">
-            <label htmlFor="source_id" className="mb-1.5 block text-label font-medium text-ink">
+        <div className="mb-[18px]">
+            <span className="mb-1.5 block text-label font-medium text-ink">
               Source
               <span className="ml-1.5 font-mono text-mono font-normal text-ink-3">
                 optional — where you learned it
               </span>
-            </label>
-            <select
-              id="source_id"
-              name="source_id"
+            </span>
+            <input type="hidden" name="source_id" value={chosenSource} />
+            <Select
+              label="Source"
+              options={[{ value: '', label: sourceOptions.length === 0 ? 'No saved sources yet' : 'No source' }, ...sourceOptions.map((option) => ({ value: option.id, label: option.lesson }))]}
               value={chosenSource}
-              onChange={(event) => setChosenSource(event.target.value)}
-              className="w-full rounded-md border border-rule-strong bg-surface px-3 py-2.5 text-body text-ink outline-offset-[-1px] focus:border-accent focus:outline-2 focus:outline-accent"
-            >
-              <option value="">No source</option>
-              {sourceOptions.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.lesson}
-                </option>
-              ))}
-            </select>
-          </div>
-        ) : null}
+              unsetValue=""
+              onChange={setChosenSource}
+              filterable
+            />
+        </div>
 
         {/*
           One optional field, exactly like Source. Grouped by phase because a
