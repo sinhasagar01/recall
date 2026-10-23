@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 import { signOut } from '@/app/(auth)/actions'
 import { DeleteAccount } from '@/components/topics/delete-account'
 import { Wordmark } from '@/components/ui/wordmark'
+import { ThemeToggle } from '@/components/ui/theme-toggle'
 
 const PAGE_LABELS: [prefix: string, label: string][] = [
   ['/library', 'Library'],
@@ -72,6 +73,8 @@ export function AppHeader({
         <span aria-hidden="true" className="mx-2 text-rule-strong">/</span>
         <span>Your workspace</span>
       </p>
+      <div className="flex items-center gap-2">
+      <ThemeToggle />
       <details ref={profileRef} className="group relative">
         <summary className="grid size-9 cursor-pointer list-none place-items-center rounded-md border border-rule bg-accent-soft font-mono text-mono-sm font-medium text-accent-ink marker:content-none transition hover:border-accent hover:bg-accent hover:text-white">
           <span className="sr-only">Open profile menu</span>
@@ -90,6 +93,7 @@ export function AppHeader({
           </div>
         </div>
       </details>
+      </div>
     </header>
   )
 }

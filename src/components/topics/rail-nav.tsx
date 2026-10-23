@@ -62,6 +62,7 @@ export function RailNav({
   ledger,
   today,
   interview,
+  collapsed = false,
 }: {
   total: number
   queued: number
@@ -83,6 +84,8 @@ export function RailNav({
    * client component.
    */
   interview: boolean
+  /** The desktop rail condenses to its icons without changing mobile navigation. */
+  collapsed?: boolean
 }) {
   const pathname = usePathname()
   const localToday = useLocalToday()
@@ -133,37 +136,43 @@ export function RailNav({
           <Link
             key={destination.href}
             href={destination.href}
+            title={collapsed ? destination.label : undefined}
             aria-current={isCurrent ? 'page' : undefined}
-            className={`${ITEM} ${
+            className={`${collapsed ? 'relative flex items-center justify-center px-2 py-2.5 text-option text-ink-2' : ITEM} ${
               isCurrent
                 ? ACTIVE_ITEM
                 : 'hover:bg-surface hover:text-ink'
             }`}
           >
-            <span className="flex items-center gap-2.5"><AppIcon name={iconFor(destination.href)} className="size-[15px]" />{destination.label}</span>
-            <span className={`font-mono text-mono-sm ${destination.countClass ?? 'text-ink-3'}`}>
+            <span className="flex items-center gap-2.5"><AppIcon name={iconFor(destination.href)} className="size-[15px]" /><span className={collapsed ? 'sr-only' : undefined}>{destination.label}</span></span>
+            <span className={`${collapsed ? 'sr-only' : ''} font-mono text-mono-sm ${destination.countClass ?? 'text-ink-3'}`}>
               {destination.count}
             </span>
           </Link>
         )
       })}
 
-      <span className="mt-5 mb-1.5 px-3 font-mono text-[9.5px] tracking-[0.14em] text-ink-3 uppercase">
-        Progress
-      </span>
+      {collapsed ? (
+        <span aria-hidden="true" className="mx-1 mt-5 mb-1.5 border-t border-rule" />
+      ) : (
+        <span className="mt-5 mb-1.5 px-3 font-mono text-[9.5px] tracking-[0.14em] text-ink-3 uppercase">
+          Progress
+        </span>
+      )}
       {progress.map((destination) => (
         <Link
           key={destination.href}
           href={destination.href}
+          title={collapsed ? destination.label : undefined}
           aria-current={pathname.startsWith(destination.href) ? 'page' : undefined}
-          className={`${ITEM} ${
+          className={`${collapsed ? 'relative flex items-center justify-center px-2 py-2.5 text-option text-ink-2' : ITEM} ${
             pathname.startsWith(destination.href)
               ? ACTIVE_ITEM
               : 'hover:bg-surface hover:text-ink'
           }`}
         >
-          <span className="flex items-center gap-2.5"><AppIcon name={iconFor(destination.href)} className="size-[15px]" />{destination.label}</span>
-          <span className="font-mono text-mono-sm text-ink-3">{destination.count ?? ''}</span>
+          <span className="flex items-center gap-2.5"><AppIcon name={iconFor(destination.href)} className="size-[15px]" /><span className={collapsed ? 'sr-only' : undefined}>{destination.label}</span></span>
+          <span className={`${collapsed ? 'sr-only' : ''} font-mono text-mono-sm text-ink-3`}>{destination.count ?? ''}</span>
         </Link>
       ))}
     </nav>

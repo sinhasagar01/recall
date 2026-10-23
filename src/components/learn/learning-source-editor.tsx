@@ -59,7 +59,7 @@ export function LearningSourceEditor({
       </label>
 
       {transcriptChanged ? (
-        <p className="mt-3 rounded-md border border-[#d5d2ff] bg-[#f1f0ff] px-3 py-2 text-meta text-accent-ink">
+        <p className="mt-3 rounded-md border border-accent/35 bg-accent-soft px-3 py-2 text-meta text-accent-ink">
           Updating the transcript will reset its generated lesson, so it can be shaped from the new material.
         </p>
       ) : null}

@@ -3,6 +3,8 @@ import { IBM_Plex_Mono, IBM_Plex_Sans, Newsreader } from 'next/font/google'
 import { WebVitals } from '@/components/performance/web-vitals'
 import './globals.css'
 
+const themeBootstrap = `(() => { try { const theme = localStorage.getItem('recall-theme'); if (theme === 'amber') document.documentElement.dataset.theme = 'amber'; } catch {} })()`
+
 /*
   Only the weights the auth screens actually use. Phase 4 adds more as the
   primitives need them, rather than shipping the whole family up front.
@@ -40,8 +42,10 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${newsreader.variable} ${plexSans.variable} ${plexMono.variable} h-full`}
     >
+      <head><script dangerouslySetInnerHTML={{ __html: themeBootstrap }} /></head>
       <body className="min-h-full"><WebVitals />{children}</body>
     </html>
   )
