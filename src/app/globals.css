@@ -32,6 +32,7 @@
   --color-accent: #1248dd;
   --color-accent-soft: #dce7ff;
   --color-accent-ink: #0b36b3;
+  --color-accent-foreground: #ffffff;
 
   /* The only alarm colour: weak confidence, destructive actions, errors. */
   --color-flag: #cf2d28;
@@ -93,6 +94,43 @@
   --text-mono: 10.5px;
   --text-mono-xs: 9.5px;
 }
+
+/*
+  Amber Ledger is Recall's night workspace. Components consume semantic tokens,
+  so the same hierarchy carries through Library, Learn, Practice, forms and
+  feedback states without each page inventing a separate dark palette.
+*/
+:root[data-theme='amber'] {
+  color-scheme: dark;
+  --color-bg: #171611;
+  --color-surface: #222119;
+  --color-surface-2: #2a281e;
+  --color-surface-3: #353122;
+  --color-ink: #f5f0df;
+  --color-ink-2: #c4bda5;
+  --color-ink-3: #958e78;
+  --color-rule: #403c2c;
+  --color-rule-strong: #5e5740;
+  --color-accent: #f0bd42;
+  --color-accent-soft: #3a3017;
+  --color-accent-ink: #f6d276;
+  --color-accent-foreground: #211a08;
+  --color-flag: #f07b70;
+  --color-flag-soft: #3b211e;
+  --color-ok: #8bd0a1;
+  --color-ok-soft: #1d3023;
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.22), 0 1px 1px rgba(0, 0, 0, 0.14);
+  --shadow-pop: 0 7px 16px rgba(0, 0, 0, 0.28), 0 18px 42px rgba(0, 0, 0, 0.36);
+}
+
+/* A few utility combinations use `ink` or `surface-3` as a dark light-mode
+   background. Their semantic foreground needs the inverse value at night. */
+:root[data-theme='amber'] .bg-ink { background-color: #10100d; }
+:root[data-theme='amber'] .text-surface-3 { color: #c4bda5; }
+:root[data-theme='amber'] .bg-accent.text-white,
+:root[data-theme='amber'] .bg-accent-ink.text-white { color: var(--color-accent-foreground); }
+:root[data-theme='amber'] .recall-mark { background-color: var(--color-accent); color: var(--color-accent-foreground); }
+:root[data-theme='amber'] ::selection { background: #594719; color: #fff8e8; }
 
 /* The indeterminate upload bar. Reduced motion collapses it to a static track,
    which is fine: the "Uploading" label carries the meaning on its own. */
@@ -393,6 +431,66 @@
     outline: 2px solid var(--volt);
     outline-offset: 2px;
   }
+}
+
+/* The interview room keeps its specialised score scale, but shifts its room,
+   prompts and progress surfaces into Amber Ledger when the app is at night. */
+:root[data-theme='amber'] [data-mode='interview'] {
+  --volt: #f0bd42;
+  --volt-2: #d99e26;
+  --volt-ink: #f6d276;
+  --volt-soft: #3a3017;
+  --gold: #f0bd42;
+  --gold-ink: #f6d276;
+  --gold-soft: #382d16;
+  --mint: #8bd0a1;
+  --mint-ink: #a7e7ba;
+  --mint-soft: #1d3023;
+  --rose: #f07b70;
+  --rose-ink: #ffaaa1;
+  --rose-soft: #3b211e;
+  --teal: #73c9b0;
+  --teal-soft: #1d302a;
+  --indigo: #e7c55e;
+  --indigo-2: #d99e26;
+  --blue: #f0bd42;
+  --slate: #c4bda5;
+  --volt-glow: 0 2px 10px rgba(240, 189, 66, 0.22);
+  --mesh-base: #17130b;
+  --mesh: radial-gradient(120% 130% at 8% 0%, #594719 0%, rgba(89, 71, 25, 0) 55%), radial-gradient(90% 120% at 100% 20%, #4a3218 0%, rgba(74, 50, 24, 0) 60%), radial-gradient(100% 140% at 60% 110%, #17372a 0%, rgba(23, 55, 42, 0) 55%), var(--mesh-base);
+  --mesh-ink: #fff8e8;
+  --mesh-ink-2: #d6c9ab;
+  --mesh-ink-3: #a99c7f;
+  --mesh-key: #f6d276;
+  --mesh-shadow: 0 16px 44px rgba(0, 0, 0, 0.38);
+  --purple: #d99e26;
+  --room-shadow: 0 4px 22px rgba(0, 0, 0, 0.28);
+  --room-rule: linear-gradient(90deg, var(--volt), var(--gold) 55%, var(--teal));
+  --phase-now: linear-gradient(135deg, #3a3017, #2a2517);
+  --phase-done: linear-gradient(135deg, #1d3023, #18271d);
+  --phase-glow: 0 0 0 1px var(--volt), 0 4px 14px rgba(240, 189, 66, 0.16);
+  --pip-glow: 0 0 8px rgba(240, 189, 66, 0.3);
+  --volt-soft-2: #302811;
+  --gold-soft-2: #332812;
+  --mint-soft-2: #18271d;
+  --volt-line: rgba(240, 189, 66, 0.36);
+  --gold-line: rgba(240, 189, 66, 0.34);
+  --mint-line: rgba(139, 208, 161, 0.34);
+  --teal-line: rgba(115, 201, 176, 0.42);
+  --teal-ink: #9cddc8;
+  --sc-base: #15130d;
+  --sc-hero: radial-gradient(135% 120% at 0% 0%, #493719 0%, rgba(73, 55, 25, 0) 56%), radial-gradient(110% 130% at 100% 0%, #3d2918 0%, rgba(61, 41, 24, 0) 52%), radial-gradient(130% 150% at 78% 130%, #17362b 0%, rgba(23, 54, 43, 0) 56%);
+  --sc-blob: radial-gradient(circle, rgba(240, 189, 66, 0.17) 0%, rgba(240, 189, 66, 0) 68%);
+  --sc-shadow: 0 24px 64px rgba(0, 0, 0, 0.5), 0 1px 0 rgba(255, 248, 232, 0.08) inset;
+  --sc-ink: #fff8e8;
+  --sc-ink-2: #d6c9ab;
+  --sc-ink-3: #a99c7f;
+  --sc-eyebrow: #c9b989;
+  --sc-stat-ink: #dacbaa;
+  --sc-stats-bg: rgba(15, 13, 8, 0.5);
+  --sc-stats-line: rgba(255, 248, 232, 0.1);
+  --sc-stat-rule: rgba(255, 248, 232, 0.08);
+  --sc-track: rgba(255, 248, 232, 0.08);
 }
 
 /*

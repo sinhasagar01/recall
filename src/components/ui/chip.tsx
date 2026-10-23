@@ -35,7 +35,7 @@ export function QuickFilterChip({
       onClick={onClick}
       className={`cursor-pointer rounded-full border px-2.5 py-1 font-mono text-mono-sm ${
         pressed
-          ? 'border-ink bg-ink text-surface'
+          ? 'border-accent bg-accent text-[var(--color-accent-foreground)]'
           : 'border-rule bg-transparent text-ink-3 hover:border-rule-strong hover:text-ink'
       }`}
     >

@@ -10,7 +10,7 @@ import type { LearningSourceSummary } from '@/lib/data/learning'
 const STATUS = {
   ready: { label: 'Ready to shape', className: 'border-rule-strong bg-surface-2 text-ink-2', action: 'Create lesson →' },
   in_progress: { label: 'In progress', className: 'border-accent/35 bg-accent-soft text-accent-ink', action: 'Resume →' },
-  completed: { label: 'Completed', className: 'border-[#c8e8d5] bg-ok-soft text-ok', action: 'Revisit →' },
+  completed: { label: 'Completed', className: 'border-ok/45 bg-ok-soft text-ok', action: 'Revisit →' },
 } as const
 
 export function SavedLessons({ lessons }: { lessons: LearningSourceSummary[] }) {

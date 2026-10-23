@@ -56,7 +56,7 @@ export function TopicCard({ topic, timestamp, selected, selectionMode = false, o
         <h3 className="mt-4 min-h-[58px] line-clamp-2 font-display text-[23px] leading-[1.18] font-medium tracking-[-0.018em]">
           {topic.title}
         </h3>
-        <p className={`mt-2 truncate font-mono text-mono-sm ${secondaryText}`}>{topicPath(topic)}</p>
+        <span className={`mt-2 inline-flex w-fit max-w-full truncate rounded-full border border-rule bg-surface-2 px-2.5 py-1 font-mono text-mono-sm ${secondaryText}`}>{topicPath(topic)}</span>
 
         {/*
           Both kinds reserve the same reading space. A quiz gets useful orientation

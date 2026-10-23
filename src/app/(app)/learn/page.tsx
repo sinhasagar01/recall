@@ -25,7 +25,7 @@ export default async function LearnPage() {
             <p className="font-mono text-mono-sm tracking-[.14em] text-accent-ink uppercase">Your lesson shelf</p>
             <h2 className="mt-1 font-display text-[24px] leading-[1.15] font-medium">Continue from a saved transcript</h2>
           </div>
-          {lessons.length > 0 ? <div className="flex gap-2 font-mono text-mono-sm"><span className="rounded-full border border-rule bg-surface px-2.5 py-1.5 text-ink-2">{inProgress} active</span><span className="rounded-full border border-[#c8e8d5] bg-ok-soft px-2.5 py-1.5 text-ok">{completed} complete</span></div> : null}
+          {lessons.length > 0 ? <div className="flex gap-2 font-mono text-mono-sm"><span className="rounded-full border border-rule bg-surface px-2.5 py-1.5 text-ink-2">{inProgress} active</span><span className="rounded-full border border-ok/45 bg-ok-soft px-2.5 py-1.5 text-ok">{completed} complete</span></div> : null}
         </div>
         <p className="mt-2 text-meta text-ink-2">Lessons are separate from your Library. Continue one, revisit a finished lesson, or remove a transcript you no longer need.</p>
         {lessons.length === 0 ? (
