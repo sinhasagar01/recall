@@ -5,7 +5,7 @@ import { cache } from 'react'
 
 import { toTopic, type TopicRow } from '@/lib/data/topic-mapping'
 import { REVIEW_CONFIDENCES, type LibraryCounts } from '@/lib/domain/library-counts'
-import { LOCAL_MODE_MAX, SERVER_PAGE_SIZE } from '@/lib/domain/library-paging'
+import { DEFAULT_LIBRARY_PAGE_SIZE, LOCAL_MODE_MAX, type LibraryPageSize } from '@/lib/domain/library-paging'
 import { RECENT_WINDOW_DAYS, type TopicFilters } from '@/lib/domain/search-filter'
 import type { Topic } from '@/lib/domain/types'
 import { createClient } from '@/lib/supabase/server'
@@ -91,7 +91,11 @@ function rpcArgs(filters: TopicFilters, readAt: string) {
  * everything was the more expensive mistake.
  */
 export const listLibrary = cache(
-  async (filters: TopicFilters = {}, cursor: Cursor | null = null): Promise<LibraryData> => {
+  async (
+    filters: TopicFilters = {},
+    cursor: Cursor | null = null,
+    pageSize: LibraryPageSize = DEFAULT_LIBRARY_PAGE_SIZE,
+  ): Promise<LibraryData> => {
     const supabase = await createClient()
     const readAt = new Date().toISOString()
 
@@ -119,7 +123,7 @@ export const listLibrary = cache(
         ...args,
         p_cursor_created_at: cursor?.createdAt ?? undefined,
         p_cursor_id: cursor?.id ?? undefined,
-        p_limit: SERVER_PAGE_SIZE,
+        p_limit: pageSize,
       }),
       supabase.rpc('library_counts', args),
     ])
@@ -141,7 +145,7 @@ export const listLibrary = cache(
         price of not running a count for every page.
       */
       nextCursor:
-        topics.length === SERVER_PAGE_SIZE && last
+        topics.length === pageSize && last
           ? { createdAt: last.created_at, id: last.id }
           : null,
       readAt,

@@ -109,6 +109,80 @@ export function TopicCard({ topic, timestamp, selected, selectionMode = false, o
   )
 }
 
+/**
+ * The library's denser reading mode. It carries the same learning signals as a
+ * card — kind, path, confidence and evidence — without turning the list into a
+ * detached table.
+ */
+export function TopicListItem({ topic, timestamp, selected, selectionMode = false, onSelect }: {
+  topic: Topic
+  timestamp?: string
+  selected?: boolean
+  selectionMode?: boolean
+  onSelect?: () => void
+}) {
+  const complete = topic.confidence === 'strong'
+  const secondaryText = complete ? 'text-ink-2' : 'text-ink-3'
+  const description = topic.kind === 'quiz'
+    ? 'Choose an answer, then check the reasoning.'
+    : topic.definition
+
+  return (
+    <div className="relative">
+      {selectionMode ? (
+        <label className="absolute top-3 right-3 z-10 flex size-7 cursor-pointer items-center justify-center rounded-md border border-rule-strong bg-surface shadow-card">
+          <input
+            type="checkbox"
+            aria-label={`Select “${topic.title}”`}
+            checked={selected}
+            onChange={onSelect}
+            disabled={!onSelect}
+            className="size-4 accent-accent"
+          />
+        </label>
+      ) : null}
+      <Link
+        href={`/topic/${topic.id}`}
+        className={`grid min-h-[108px] items-center gap-x-5 gap-y-3 rounded-lg border px-5 py-4 shadow-card transition-[border-color,background-color,transform,box-shadow] duration-150 hover:-translate-y-px hover:shadow-pop md:grid-cols-[142px_minmax(220px,1.25fr)_minmax(180px,1fr)_auto] ${
+          complete
+            ? 'border-ok/45 bg-ok-soft hover:border-ok'
+            : 'border-rule bg-surface hover:border-rule-strong'
+        } ${selected ? 'ring-2 ring-accent ring-offset-2 ring-offset-bg' : ''}`}
+      >
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <span className={`font-mono text-mono-xs tracking-[0.13em] uppercase ${topic.kind === 'quiz' ? 'text-accent-ink' : 'text-ink-3'}`}>
+            {topic.kind === 'quiz' ? 'Quiz' : 'Topic'}
+          </span>
+          <span className="font-mono text-mono-xs text-ink-3">·</span>
+          <span className={`font-mono text-mono-xs ${complete ? 'text-ok' : 'text-ink-3'}`}>
+            {complete ? 'Complete' : timestamp ? `Saved ${timestamp}` : 'New'}
+          </span>
+          <span className={`w-fit max-w-full truncate rounded-full border border-rule bg-surface-2 px-2 py-1 font-mono text-mono-xs ${secondaryText}`}>
+            {topicPath(topic)}
+          </span>
+        </div>
+
+        <h3 className="min-w-0 font-display text-[21px] leading-[1.18] font-medium tracking-[-0.018em] text-ink">
+          {topic.title}
+        </h3>
+
+        <p className="line-clamp-2 min-w-0 text-meta leading-[1.55] text-ink-2">{description}</p>
+
+        <div className="flex min-w-[120px] items-center justify-end gap-3 border-t border-rule pt-3 md:border-t-0 md:pt-0">
+          <ConfidenceMeter confidence={topic.confidence} showLabel />
+          {topic.kind === 'quiz'
+            ? topic.practice_count > 0 && (
+                <span className={`font-mono text-mono-sm ${secondaryText}`}>{topic.practice_count}×</span>
+              )
+            : hasEvidence(topic)
+              ? <EvidenceBar topic={topic} />
+              : topic.mental_model && <span className="font-mono text-[10px] tracking-[0.1em] text-accent uppercase">Model ✓</span>}
+        </div>
+      </Link>
+    </div>
+  )
+}
+
 /** Matches the card's geometry exactly, so nothing shifts when data lands. */
 export function TopicCardSkeleton({ widths }: { widths: [string, string] }) {
   return (

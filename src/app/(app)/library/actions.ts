@@ -12,6 +12,7 @@ import {
 import { parseTopicForm } from '@/lib/domain/topic-form'
 import { readTopicForm } from '@/lib/data/topic-form-data'
 import type { TopicFilters } from '@/lib/domain/search-filter'
+import type { LibraryPageSize } from '@/lib/domain/library-paging'
 import type { Topic } from '@/lib/domain/types'
 
 export type SaveTopicResult =
@@ -122,8 +123,9 @@ export async function createTopic(formData: FormData): Promise<SaveTopicResult> 
 export async function loadMoreTopics(
   filters: TopicFilters,
   cursor: Cursor,
+  pageSize: LibraryPageSize,
 ): Promise<{ topics: Topic[]; nextCursor: Cursor | null }> {
-  const data = await listLibrary(filters, cursor)
+  const data = await listLibrary(filters, cursor, pageSize)
 
   // listLibrary only returns local mode for an unfiltered first read, and this
   // always passes a cursor. The branch is here because the type demands it.

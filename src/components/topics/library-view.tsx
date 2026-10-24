@@ -1,14 +1,14 @@
 'use client'
 
-import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { LibraryToolbar, type ToolbarState } from '@/components/topics/library-toolbar'
 import { MoreSheet } from '@/components/topics/more-sheet'
-import { TopicCard } from '@/components/topics/topic-card'
+import { TopicCard, TopicListItem } from '@/components/topics/topic-card'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
+import { Select } from '@/components/ui/select'
 import { StateBlock } from '@/components/ui/state-block'
 import { Toast } from '@/components/ui/toast'
 import { deleteLibraryItems, loadMoreTopics } from '@/app/(app)/library/actions'
@@ -25,6 +25,12 @@ import {
 import { libraryCounts } from '@/lib/domain/library-counts'
 import { filterTopics, type QuickFilter, type TopicFilters } from '@/lib/domain/search-filter'
 import type { Confidence, Difficulty, Kind, Topic } from '@/lib/domain/types'
+import {
+  DEFAULT_LIBRARY_PAGE_SIZE,
+  isLibraryPageSize,
+  LIBRARY_PAGE_SIZES,
+  type LibraryPageSize,
+} from '@/lib/domain/library-paging'
 
 /* The editor includes code formatting and image-upload code; load it only when opened. */
 const TopicSheet = dynamic(
@@ -67,7 +73,22 @@ function readState(params: URLSearchParams): ToolbarState {
   }
 }
 
-function stateToParams(state: ToolbarState): string {
+type LibraryViewMode = 'tiles' | 'list'
+
+interface LibraryPreferences {
+  pageSize: LibraryPageSize
+  view: LibraryViewMode
+}
+
+function readPreferences(params: URLSearchParams): LibraryPreferences {
+  const pageSize = params.get('pageSize')
+  return {
+    pageSize: isLibraryPageSize(pageSize) ? Number(pageSize) as LibraryPageSize : DEFAULT_LIBRARY_PAGE_SIZE,
+    view: params.get('view') === 'list' ? 'list' : 'tiles',
+  }
+}
+
+function stateToParams(state: ToolbarState, preferences: LibraryPreferences): string {
   const params = new URLSearchParams()
   if (state.query) params.set('q', state.query)
   if (state.category !== 'all') params.set('category', state.category)
@@ -75,6 +96,8 @@ function stateToParams(state: ToolbarState): string {
   if (state.difficulty !== 'any') params.set('difficulty', state.difficulty)
   if (state.kind !== 'all') params.set('kind', state.kind)
   for (const quick of state.quickFilters) params.append('quick', quick)
+  if (preferences.pageSize !== DEFAULT_LIBRARY_PAGE_SIZE) params.set('pageSize', String(preferences.pageSize))
+  if (preferences.view !== 'tiles') params.set('view', preferences.view)
 
   return params.toString()
 }
@@ -139,6 +162,7 @@ export function LibraryView({
   const at = new Date(data.readAt)
   const params = new URLSearchParams(searchParams.toString())
   const state = readState(params)
+  const preferences = readPreferences(params)
   const filters = toFilters(state)
 
   /*
@@ -151,6 +175,7 @@ export function LibraryView({
     readAt: string
     topics: Topic[]
     nextCursor: Cursor | null
+    page: number
   } | null>(null)
   const [isLoadingMore, startLoadingMore] = useTransition()
 
@@ -163,19 +188,6 @@ export function LibraryView({
   const more = loaded?.readAt === data.readAt ? loaded : null
   const appended = more?.topics ?? []
   const nextCursor = more ? more.nextCursor : data.mode === 'server' ? data.nextCursor : null
-
-  const loadMore = () => {
-    if (nextCursor === null) return
-
-    startLoadingMore(async () => {
-      const page = await loadMoreTopics(filters, nextCursor)
-      setLoaded({
-        readAt: data.readAt,
-        topics: [...appended, ...page.topics],
-        nextCursor: page.nextCursor,
-      })
-    })
-  }
 
   /*
     ── The only place the two reading modes differ ─────────────────────────────
@@ -191,7 +203,7 @@ export function LibraryView({
     supabase/tests/library_parity_test.sql asserts the two branches produce the
     same rows AND the same counts over a shared corpus.
   */
-  const { counts, rows } =
+  const { counts, rows: allRows } =
     data.mode === 'local'
       ? {
           counts: libraryCounts(data.topics, filters, at),
@@ -217,11 +229,15 @@ export function LibraryView({
 
   useEffect(() => () => clearTimeout(refetch.current ?? undefined), [])
 
-  const writeState = (next: ToolbarState) => {
-    const query = stateToParams(next)
+  const writeState = (
+    next: ToolbarState,
+    nextPreferences = preferences,
+    refreshServer = true,
+  ) => {
+    const query = stateToParams(next, nextPreferences)
     window.history.replaceState(null, '', query === '' ? window.location.pathname : `?${query}`)
 
-    if (data.mode === 'local') return
+    if (data.mode === 'local' || !refreshServer) return
 
     clearTimeout(refetch.current ?? undefined)
     refetch.current = setTimeout(() => {
@@ -267,7 +283,19 @@ export function LibraryView({
     if (addRequested) writeState(state)
   }
 
-  const update = (next: Partial<ToolbarState>) => writeState({ ...state, ...next })
+  const [localPage, setLocalPage] = useState(1)
+
+  const update = (next: Partial<ToolbarState>) => {
+    setLocalPage(1)
+    writeState({ ...state, ...next })
+  }
+
+  const updatePreferences = (next: Partial<LibraryPreferences>) => {
+    const nextPreferences = { ...preferences, ...next }
+    setLocalPage(1)
+    // Server mode needs a fresh first page when the requested page size changes.
+    writeState(state, nextPreferences, next.pageSize !== undefined && data.mode === 'server')
+  }
 
   const isFiltered =
     state.query !== '' ||
@@ -278,6 +306,41 @@ export function LibraryView({
     state.quickFilters.length > 0
 
   const stats = libraryStatsFromCounts(counts)
+
+  const totalPages = Math.max(1, Math.ceil(counts.matching / preferences.pageSize))
+  const currentPage = data.mode === 'local'
+    ? Math.min(localPage, totalPages)
+    : more?.page ?? 1
+  const loadedPageCount = Math.ceil(allRows.length / preferences.pageSize)
+  const visibleRows = allRows.slice(
+    (currentPage - 1) * preferences.pageSize,
+    currentPage * preferences.pageSize,
+  )
+
+  const goToPage = (nextPage: number) => {
+    if (nextPage < 1 || nextPage > totalPages || nextPage === currentPage) return
+
+    if (data.mode === 'local') {
+      setLocalPage(nextPage)
+      return
+    }
+
+    if (nextPage <= loadedPageCount) {
+      setLoaded((current) => current && current.readAt === data.readAt ? { ...current, page: nextPage } : current)
+      return
+    }
+
+    if (nextCursor === null) return
+    startLoadingMore(async () => {
+      const page = await loadMoreTopics(filters, nextCursor, preferences.pageSize)
+      setLoaded({
+        readAt: data.readAt,
+        topics: [...appended, ...page.topics],
+        nextCursor: page.nextCursor,
+        page: nextPage,
+      })
+    })
+  }
 
   /*
     Counts come from the FULL library, never the filtered set. The reference is
@@ -311,7 +374,7 @@ export function LibraryView({
     claim about the library, so it is safe in both modes and now runs in both.
   */
   const recentIds = new Set(
-    filterTopics(rows, { quickFilters: ['recently-added'] }, at).map((topic) => topic.id),
+    filterTopics(allRows, { quickFilters: ['recently-added'] }, at).map((topic) => topic.id),
   )
 
   const openAdd = (title: string) => {
@@ -460,7 +523,7 @@ export function LibraryView({
             </p>
           ) : null}
 
-          {rows.length === 0 ? (
+          {allRows.length === 0 ? (
             /*
               Distinct from the empty library: there ARE topics, this search has
               none. Conflating the two would tell someone their library is empty
@@ -507,33 +570,51 @@ export function LibraryView({
               aria-busy={isFetching}
               className={isFetching ? 'opacity-60 transition-opacity' : undefined}
             >
-              <div className={GRID}>
-                {rows.map((topic) => (
-                  <TopicCard
-                    key={topic.id}
-                    topic={topic}
-                    selected={allSelected || selectedIds.includes(topic.id)}
-                    selectionMode={selecting}
-                    onSelect={selecting && !allSelected ? () => toggleSelected(topic.id) : undefined}
-                    timestamp={
-                      recentIds.has(topic.id)
-                        ? formatRelativeTime(topic.created_at, at)
-                        : undefined
-                    }
-                  />
-                ))}
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3" aria-live="polite">
+                <p className="font-mono text-[11.5px] text-ink-3">
+                  <span className="text-ink-2">{counts.matching} result{counts.matching === 1 ? '' : 's'}</span>
+                  {' · '}Page {currentPage} of {totalPages}
+                </p>
+                <ViewSwitcher value={preferences.view} onChange={(view) => updatePreferences({ view })} />
               </div>
 
-              {nextCursor === null ? null : (
-                <div className="mt-9 flex flex-col items-center gap-2">
-                  <Button onClick={loadMore} loading={isLoadingMore} loadingLabel="Loading…">
-                    Load more
-                  </Button>
-                  <p className="font-mono text-[11.5px] text-ink-3">
-                    Showing {rows.length} of {counts.matching}
-                  </p>
+              {preferences.view === 'tiles' ? (
+                <div className={GRID}>
+                  {visibleRows.map((topic) => (
+                    <TopicCard
+                      key={topic.id}
+                      topic={topic}
+                      selected={allSelected || selectedIds.includes(topic.id)}
+                      selectionMode={selecting}
+                      onSelect={selecting && !allSelected ? () => toggleSelected(topic.id) : undefined}
+                      timestamp={recentIds.has(topic.id) ? formatRelativeTime(topic.created_at, at) : undefined}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {visibleRows.map((topic) => (
+                    <TopicListItem
+                      key={topic.id}
+                      topic={topic}
+                      selected={allSelected || selectedIds.includes(topic.id)}
+                      selectionMode={selecting}
+                      onSelect={selecting && !allSelected ? () => toggleSelected(topic.id) : undefined}
+                      timestamp={recentIds.has(topic.id) ? formatRelativeTime(topic.created_at, at) : undefined}
+                    />
+                  ))}
                 </div>
               )}
+
+              <LibraryPagination
+                page={currentPage}
+                pageSize={preferences.pageSize}
+                total={counts.matching}
+                totalPages={totalPages}
+                loading={isLoadingMore}
+                onPageChange={goToPage}
+                onPageSizeChange={(pageSize) => updatePreferences({ pageSize })}
+              />
             </div>
           )}
         </>
@@ -575,5 +656,103 @@ export function LibraryView({
       {saved ? <Toast message={`Saved — ${saved}`} /> : null}
       {deleteNotice ? <Toast message={deleteNotice} /> : null}
     </>
+  )
+}
+
+function ViewSwitcher({ value, onChange }: { value: LibraryViewMode; onChange: (value: LibraryViewMode) => void }) {
+  return (
+    <div className="inline-flex rounded-md border border-rule-strong bg-surface p-0.5" aria-label="Library view">
+      <button
+        type="button"
+        aria-label="Tile view"
+        aria-pressed={value === 'tiles'}
+        onClick={() => onChange('tiles')}
+        className={`grid size-8 cursor-pointer place-items-center rounded-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+          value === 'tiles' ? 'bg-accent-soft text-accent-ink' : 'text-ink-3 hover:bg-surface-2 hover:text-ink'
+        }`}
+      >
+        <svg aria-hidden="true" viewBox="0 0 16 16" className="size-4 fill-current">
+          <path d="M2 2h5v5H2V2Zm7 0h5v5H9V2ZM2 9h5v5H2V9Zm7 0h5v5H9V9Z" />
+        </svg>
+      </button>
+      <button
+        type="button"
+        aria-label="List view"
+        aria-pressed={value === 'list'}
+        onClick={() => onChange('list')}
+        className={`grid size-8 cursor-pointer place-items-center rounded-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+          value === 'list' ? 'bg-accent-soft text-accent-ink' : 'text-ink-3 hover:bg-surface-2 hover:text-ink'
+        }`}
+      >
+        <svg aria-hidden="true" viewBox="0 0 16 16" className="size-4 fill-current">
+          <path d="M2 3h2v2H2V3Zm4 0h8v2H6V3ZM2 7h2v2H2V7Zm4 0h8v2H6V7ZM2 11h2v2H2v-2Zm4 0h8v2H6v-2Z" />
+        </svg>
+      </button>
+    </div>
+  )
+}
+
+function LibraryPagination({
+  page,
+  pageSize,
+  total,
+  totalPages,
+  loading,
+  onPageChange,
+  onPageSizeChange,
+}: {
+  page: number
+  pageSize: LibraryPageSize
+  total: number
+  totalPages: number
+  loading: boolean
+  onPageChange: (page: number) => void
+  onPageSizeChange: (pageSize: LibraryPageSize) => void
+}) {
+  const first = total === 0 ? 0 : (page - 1) * pageSize + 1
+  const last = Math.min(page * pageSize, total)
+
+  return (
+    <div className="mt-7 flex flex-wrap items-center justify-between gap-4 border-t border-rule pt-4">
+      <p className="font-mono text-[11.5px] text-ink-3" aria-live="polite">
+        Showing <span className="text-ink-2">{first}–{last}</span> of <span className="text-ink-2">{total}</span>
+      </p>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <Select
+          label="Items per page"
+          options={LIBRARY_PAGE_SIZES.map((size) => ({ value: String(size), label: `${size} per page` }))}
+          value={String(pageSize)}
+          unsetValue={String(DEFAULT_LIBRARY_PAGE_SIZE)}
+          onChange={(value) => {
+            if (isLibraryPageSize(value)) onPageSizeChange(Number(value) as LibraryPageSize)
+          }}
+          align="right"
+        />
+        <nav className="flex items-center gap-1.5" aria-label="Library pages">
+          <Button
+            aria-label="Previous page"
+            disabled={page === 1 || loading}
+            onClick={() => onPageChange(page - 1)}
+            className="px-2.5 py-2 font-mono text-mono-md"
+          >
+            ←
+          </Button>
+          <span className="min-w-[74px] text-center font-mono text-mono-md text-ink-2">
+            {page} / {totalPages}
+          </span>
+          <Button
+            aria-label="Next page"
+            disabled={page === totalPages || loading}
+            loading={loading}
+            loadingLabel=""
+            onClick={() => onPageChange(page + 1)}
+            className="px-2.5 py-2 font-mono text-mono-md"
+          >
+            →
+          </Button>
+        </nav>
+      </div>
+    </div>
   )
 }
