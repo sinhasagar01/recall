@@ -6,6 +6,7 @@ import { listCapabilityOptions } from '@/lib/data/phases'
 import { listSourceOptions } from '@/lib/data/sources'
 import type { QuickFilter, TopicFilters } from '@/lib/domain/search-filter'
 import type { Confidence, Difficulty, Kind } from '@/lib/domain/types'
+import { DEFAULT_LIBRARY_PAGE_SIZE, isLibraryPageSize, type LibraryPageSize } from '@/lib/domain/library-paging'
 
 /*
   A server component: the first paint carries the data, with no client waterfall
@@ -57,6 +58,12 @@ function readFilters(params: Record<string, string | string[] | undefined>): Top
   }
 }
 
+function readPageSize(params: Record<string, string | string[] | undefined>) {
+  const value = params.pageSize
+  const one = Array.isArray(value) ? value[0] : value
+  return isLibraryPageSize(one ?? null) ? Number(one) as LibraryPageSize : DEFAULT_LIBRARY_PAGE_SIZE
+}
+
 export default async function LibraryPage({
   searchParams,
 }: {
@@ -67,7 +74,7 @@ export default async function LibraryPage({
   // The layout and this page share one request-cached shell summary.
   const [data, shell, sourceOptions, capabilityOptions] =
     await Promise.all([
-    listLibrary(readFilters(params)),
+    listLibrary(readFilters(params), null, readPageSize(params)),
     readAppShellSummary(),
     listSourceOptions(),
     listCapabilityOptions(),

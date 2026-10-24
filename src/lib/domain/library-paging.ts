@@ -17,5 +17,20 @@
  */
 export const LOCAL_MODE_MAX = 500
 
-/** Page size once the library is too big to send whole. */
-export const SERVER_PAGE_SIZE = 60
+/** The Library selector deliberately offers a short, scannable set of sizes. */
+export const LIBRARY_PAGE_SIZES = [12, 24, 48] as const
+
+export type LibraryPageSize = (typeof LIBRARY_PAGE_SIZES)[number]
+
+/** The card grid is most legible when a first visit has two tidy rows of cards. */
+export const DEFAULT_LIBRARY_PAGE_SIZE: LibraryPageSize = 12
+
+/**
+ * The server uses the same size the visible paginator does. Keeping this alias
+ * makes the old server-paging import a stable API for scripts and tests.
+ */
+export const SERVER_PAGE_SIZE = DEFAULT_LIBRARY_PAGE_SIZE
+
+export function isLibraryPageSize(value: string | null): value is `${LibraryPageSize}` {
+  return value !== null && LIBRARY_PAGE_SIZES.some((size) => String(size) === value)
+}
