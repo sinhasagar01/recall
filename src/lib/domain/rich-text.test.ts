@@ -14,4 +14,8 @@ describe('rich text storage', () => {
   it('keeps callout text searchable without exposing its storage markers', () => {
     expect(richTextToPlainText(':::hint[check]\nRemember this\n:::\n\n:::quote\nA useful quote\n:::')).toBe('Remember this A useful quote')
   })
+
+  it('keeps legacy hint content readable while it is migrated on its next edit', () => {
+    expect(richTextToPlainText('> 💡 Keep this in mind')).toBe('💡 Keep this in mind')
+  })
 })
