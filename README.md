@@ -1,155 +1,149 @@
 # Recall
 
-A personal learning library. Save something the moment you understand it, find it
-again later, try to explain it from memory, see what's weak, review.
+> A personal learning workspace for turning things you understand today into things you can still explain, apply, and build with later.
 
-One user. Not an LMS, not a quiz platform, not a SaaS product.
+[![Next.js](https://img.shields.io/badge/Next.js-16.3-black?logo=next.js)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Supabase](https://img.shields.io/badge/Supabase-Postgres%20%2B%20Auth%20%2B%20Storage-3ECF8E?logo=supabase&logoColor=white)](https://supabase.com/)
+[![Tests](https://img.shields.io/badge/tests-717%20passing-1f7a5c)](#quality)
 
-The loop: **learn → save → find → practise → see what's weak → review.**
+Recall is not an LMS, a course platform, or another generic flashcard app. It is a deliberately small system for technical learning: capture a concept in your own words, practise retrieving it, trace how it works, apply it to a new case, and revisit what is still weak.
 
-- `DESIGN.md` — tokens, component contracts, behaviour and copy rules
-- `design-reference.html` — the visual contract; open it and use the tab bar
-- `ARCHITECTURE.md` — the layers, the boundaries, and every trap the build hit
-- `TASKS.md` — the twelve phases, and what was deliberately not built
+Built independently as a product-engineering project, from information architecture and interaction design through database constraints, performance work, accessibility, testing, and release.
+
+## The learning loop
+
+```mermaid
+flowchart LR
+  A[Capture a topic, quiz, or source] --> B[Understand in your own words]
+  B --> C[Recall before revealing]
+  C --> D[Trace execution and transfer the idea]
+  D --> E[Review what is still weak]
+  E --> C
+```
+
+The product separates **topics** from **quizzes** all the way through practice. You can work through everything, focus on weak material, or narrow a session by category—without mixing two fundamentally different learning interactions.
+
+## What is in the product
+
+| Area | What it does |
+| --- | --- |
+| **Library** | Searchable topic and quiz library with categories, tags, confidence, list/tile views, bulk selection, deletion, pagination, and strong-state visual feedback. |
+| **Practice** | Separate topic and quiz practice flows, weak-only filtering, category selection, per-question progress, correct/incorrect feedback, and a useful session summary. |
+| **Learn** | Turns a transcript into an active lesson: understand once, recall, trace code, transfer the idea, then add compact prompts to the review queue. |
+| **Sources & phases** | Keep the origin of a concept, connect it to a learning phase, and see progress without flattening everything into a single score. |
+| **Rich technical notes** | Markdown-compatible rich text with headings, lists, links, bold, italics, quotes, syntax-highlighted code, and configurable hint callouts. |
+| **Interview workspace** | A dedicated area to practise and record demonstrated capability, rather than treating learning as a passive reading log. |
+
+## Rich notes that stay readable
+
+Technical notes need more than a textarea. Recall's editor uses slash commands for structure, keeps content in a safe portable Markdown subset, and renders the same meaningful hierarchy in the editor, library, detail pages, and practice sessions.
+
+<p align="center">
+  <img src="public/readme/rich-text-callout-editor.png" alt="A Recall hint callout and quote while writing" width="720" />
+</p>
+
+Hints are semantic callouts rather than styled text. Their icon can communicate the intent of the note—information, encouragement, confirmation, warning, or correction—and that choice persists when the note is saved.
+
+<p align="center">
+  <img src="public/readme/hint-icon-picker.png" alt="Hint icon picker in Recall's rich text editor" width="720" />
+</p>
+
+## Architecture: boundaries over cleverness
+
+Recall keeps product decisions testable by giving every layer a narrow job.
+
+```text
+src/lib/domain/      Pure business rules. No database imports.
+src/lib/data/        The only data-access boundary; maps database rows to domain shapes.
+src/lib/supabase/    Browser, server, and session integration via @supabase/ssr.
+src/components/ui/   Reusable accessible primitives and interaction models.
+src/components/*/    Feature UI: library, practice, learn, sources, phases, interview.
+src/app/             Next.js App Router routes and server actions.
+supabase/            Migrations, RLS policy tests, and local stack configuration.
+e2e/                 Playwright journeys against seeded users.
+```
+
+### Decisions that are intentional
+
+- **Domain rules are pure functions.** Search, category suggestions, confidence mapping, practice selection, and rich-text normalisation can run in milliseconds without a database. If a rule needs a database merely to test it, it lives in the wrong layer.
+- **Supabase is the backend, not a shortcut around backend design.** Postgres, Auth, Storage, RLS, SQL functions, and migrations are treated as first-class application code.
+- **The UI never owns critical data decisions.** Data access is isolated, server actions validate at the boundary, and database constraints backstop the shape of topics and quizzes.
+- **Rich content is stored as a safe Markdown subset, not arbitrary HTML.** It stays searchable, exportable, and compatible with plain text surfaces while preserving meaningful formatting.
+- **Performance is designed in.** List pages use summary-shaped data and pagination; navigation has loading states; heavy editor/code dependencies are lazy-loaded; bundle budgets and production Web Vitals reporting keep regressions visible.
+
+For the deeper engineering notes—including why each database constraint is tested by proving it rejects bad input—see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Stack
 
-Next.js 16 (App Router) · React 19 · TypeScript strict · Tailwind CSS v4 (CSS-first,
-no `tailwind.config.js`) · Supabase for Postgres, Auth and Storage.
-
-Supabase is the entire backend. No ORM, no client state library, no separate API
-server. One table.
-
-## Prerequisites
-
-- **Node 22.18+** — the seed script is a `.mts` file run directly by Node
-- **Docker**, running — the local Supabase stack is containers, and `supabase start`
-  will not work without it
-- **Supabase CLI** 2.116+
-
-## Setup, from clone to running
-
-```bash
-npm install
-```
-
-```bash
-supabase start
-```
-
-That prints the local credentials. It takes a few minutes the first time while Docker
-pulls images.
-
-```bash
-cp .env.example .env.local
-```
-
-Fill `.env.local` from `supabase status`:
-
-| Variable | Where it comes from |
+| Layer | Technology |
 | --- | --- |
-| `NEXT_PUBLIC_SUPABASE_URL` | `API_URL`, e.g. `http://127.0.0.1:54321` |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | `PUBLISHABLE_KEY`, an `sb_publishable_…` value |
-| `SUPABASE_SECRET_KEY` | `SECRET_KEY`, an `sb_secret_…` value. **Server only** |
-| `E2E_*_USER_EMAIL` / `_PASSWORD` | anything; the seed script creates them |
+| Application | Next.js 16 App Router, React 19, TypeScript (strict) |
+| UI | Tailwind CSS v4, accessible custom primitives, CodeMirror, Tiptap / ProseMirror |
+| Backend | Supabase: Postgres, Auth, Storage, Row Level Security |
+| Quality | Vitest, Testing Library, pgTAP, Playwright |
+| Delivery confidence | Typecheck, database migration tests, browser journeys, bundle budgets, Web Vitals reporting |
 
-This CLI version no longer emits `anon` / `service_role` keys, so there is no
-`NEXT_PUBLIC_SUPABASE_ANON_KEY`. **Never give a secret key a `NEXT_PUBLIC_` prefix** —
-that ships it to the browser.
+## Quality
 
-`.env.example` is committed with placeholders; `.env.local` is git-ignored and holds
-the real values. Nothing else needs configuring.
+Recall is built around behavioural confidence, not screenshots that happen to look right.
 
-```bash
-npm run dev
-```
-
-Open http://localhost:3000 and create an account.
-
-Sign-up sends a confirmation email, and locally that email goes to **Mailpit**, not to a
-real inbox. Open http://127.0.0.1:54324, click the message, follow its link, and you land
-on the library signed in. Password resets arrive the same way. Nothing else needs
-configuring — the local stack runs its own SMTP catcher.
-
-## Tests
+- **717 automated tests** across domain logic and component interaction models.
+- **pgTAP database tests** cover schema shape, RLS isolation, storage policy, database functions, and invalid topic/quiz states.
+- **Playwright journeys** start from seeded accounts for empty, weak, strong, small, and large-library states.
+- **Adversarial constraint tests** remove individual protection clauses to prove each guard is necessary—not only that a valid row can be inserted.
+- **Production safeguards** include lazy-loaded editor/code modules, bundle-size checks, loading UI, and Web Vitals reporting.
 
 ```bash
 npm run verify
 ```
 
-That is the whole gate: a typecheck, then all four test layers.
+`verify` runs the typecheck, unit/component tests, parity checks, database tests, end-to-end tests, and bundle budget check.
 
-| Command | What it runs |
-| --- | --- |
-| `npm run typecheck` | `tsc --noEmit` |
-| `npm test` | Vitest — the `domain` (node) and `components` (jsdom) projects |
-| `npm run test:watch` | Vitest in watch mode |
-| `npm run test:db` | pgTAP against the local stack |
-| `npm run test:e2e` | seeds the fixture users, then Playwright against `next dev` |
-| `npm run verify` | all of the above, in that order |
-| `npm run seed:e2e` | the fixture users on their own |
-| `npm run gen:parity` | regenerate the library parity test; `-- --check` fails if stale |
-| `npm run sweep:orphans` | list storage objects no topic points at; `-- --delete` to remove them |
-| `npm run db:types` | regenerate `src/lib/database.types.ts` after a migration |
-| `supabase config push` | apply `[remotes.production]` to the hosted project (see below) |
+## Run locally
 
-`test:db` needs the stack running and says so if it is not. `test:e2e` starts
-`next dev` itself and reuses one already running.
+### Prerequisites
 
-See ARCHITECTURE.md for what belongs in each layer — the short version is that a rule
-needing a database to test is in the wrong one.
+- Node.js 22.18+
+- Docker Desktop
+- Supabase CLI 2.116+
 
-## Production configuration
-
-Production auth settings — site URL, redirect allow-list, whether sign-up is open,
-rate limits, SMTP — live in the `[remotes.production]` block at the end of
-`supabase/config.toml`, not in the dashboard.
-
-`config push` applies the **merged** config, so a field the block does not name gets the
-local value, not the dashboard's. The local rate limits are raised for the test suite and
-would be actively harmful in production; they are overridden for that reason.
-
-The SMTP password is the one thing not in the repo:
+### Setup
 
 ```bash
-export SUPABASE_AUTH_SMTP_PASSWORD='<the Resend API key>'
-supabase config push
+npm install
+supabase start
+cp .env.example .env.local
 ```
 
-Check the output says `Loading config override: [remotes.production]`. Without that line
-the override did not apply and the local values went up — a `project_id` that matches
-nothing fails silently.
+Copy the local values printed by `supabase status` into `.env.local`:
 
-## The seeded users
+| Variable | Local source |
+| --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL` | `API_URL` |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | `PUBLISHABLE_KEY` |
+| `SUPABASE_SECRET_KEY` | `SECRET_KEY` — server only |
+| `E2E_*_USER_EMAIL` / `_PASSWORD` | Any values; the seed script creates the accounts |
 
-`npm run seed:e2e` creates five fixture accounts. Each exists so a specific state can
-be tested without another spec's data getting in the way, and the seed resets them on
-every run so a half-finished run cannot poison the next one.
+```bash
+npm run dev
+```
 
-| User | State | What it is for |
-| --- | --- | --- |
-| `E2E_USER_*` | reset each run | The general-purpose account. Specs create their own uniquely-titled topics and assert only on those, so the four Playwright workers never collide |
-| `E2E_EMPTY_USER_*` | no topics, ever | The empty-library state. No spec writes to it, and the seed clears it, so leftovers cannot defeat the test |
-| `E2E_FEW_USER_*` | exactly 2 topics | The too-few-to-practise state and its override. Two is below the practice minimum of three |
-| `E2E_STRONG_USER_*` | 2 topics, okay and strong | "Nothing needs review", so the weak page's empty state is tested for the reason its copy gives rather than because the library is empty |
-| `E2E_LARGE_USER_*` | 501 topics | One more than the library sends whole, which is the smallest library that is definitely read through SQL. Both reading modes are covered end to end |
+Open [http://localhost:3000](http://localhost:3000). Local sign-up confirmation and reset emails arrive in Mailpit at [http://127.0.0.1:54324](http://127.0.0.1:54324).
 
-The seed also purges those users' storage folders: rows disappear with a
-`supabase db reset`, objects do not.
+## Project map
 
-## Known gaps
+| Document | Why read it |
+| --- | --- |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Data boundaries, database invariants, performance decisions, and engineering postmortems. |
+| [DESIGN.md](DESIGN.md) | Design tokens, component contracts, content style, and interaction rules. |
+| [TASKS.md](TASKS.md) | The build record: phases, trade-offs, and deliberate non-goals. |
+| [`.env.example`](.env.example) | Safe local environment template. |
 
-Tracked as [GitHub issues](https://github.com/sinhasagar01/recall/issues) rather than
-listed here, so there is one place to look. Labels say when each one matters:
-`blocks-multiuser`, `blocks-public`, `scale`, `billing`, `tech-debt`.
+## Scope
 
-One is worth knowing before you use this:
+Recall is intentionally opinionated: one person's private learning workspace, email/password auth, and a focused learning loop. It avoids gamified streaks, social feeds, generic analytics dashboards, and artificial “AI” features that make the core action—learning something well—harder.
 
-- **A practice session scans your whole backlog to pick ten.** Not a bug and not
-  fixable: choosing ten at random from a group of equally-stale topics has to consider
-  all of them. It happens inside Postgres now rather than by shipping every topic to the
-  browser — 20,000 topics take about 25ms and ten rows cross the wire.
+---
 
-Deliberately out of scope, and not going to change: email and password only — no OAuth,
-no profile management. One image per topic, no cropping or annotation. No spaced
-repetition, scoring, streaks or analytics. One table.
+Built by [Sagar Sinha](https://github.com/sinhasagar01) as an independent frontend and AI product-engineering project.
