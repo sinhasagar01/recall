@@ -1,6 +1,6 @@
-import Link from 'next/link'
 import { ChangePassword } from '@/components/topics/change-password'
 import { ExportButton } from '@/components/topics/export-button'
+import { ImportButton } from '@/components/topics/import-button'
 import { RegisterSection } from '@/components/ui/register'
 import { BackToLibrary } from '@/components/ui/back-to-library'
 import { PageHeader } from '@/components/ui/page-header'
@@ -47,6 +47,13 @@ export default function SettingsPage() {
             Nothing here depends on Recall still existing.
           </p>
           <ExportButton />
+        </RegisterSection>
+
+        <RegisterSection title="Import">
+          <p className="mt-2 text-body text-ink-2">
+            Bring a <code className="font-mono text-mono-sm">recall-….zip</code> export into this library. Topics and quizzes are added as new entries, so nothing already here is replaced. Rich text, code, quiz answers, tags, confidence, and practice notes come with them. Source and phase links stay with the original account.
+          </p>
+          <ImportButton />
         </RegisterSection>
 
         {/*
