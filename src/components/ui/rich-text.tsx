@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
-import type { Editor } from '@tiptap/core'
+import { mergeAttributes, Node as TiptapNode, type Editor } from '@tiptap/core'
 import { EditorContent, useEditor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Link from '@tiptap/extension-link'
@@ -11,6 +11,33 @@ type Props = { id: string; name: string; value: string; onChange: (value: string
 type CommandId = 'text' | 'heading-1' | 'heading-2' | 'heading-3' | 'ordered-list' | 'bullet-list' | 'bold' | 'italic' | 'hint' | 'quote'
 type CommandOption = { id: CommandId; label: string; hint: string }
 type SlashMenu = { query: string; top: number; left: number; from: number; to: number }
+type HintIcon = keyof typeof HINT_ICONS
+
+const HINT_ICONS = {
+  info: 'ⓘ',
+  smile: '☻',
+  check: '✓',
+  alert: '!',
+  cross: '×',
+} as const
+
+const Hint = TiptapNode.create({
+  name: 'hint',
+  group: 'block',
+  content: 'inline*',
+  defining: true,
+  addAttributes() {
+    return {
+      icon: {
+        default: 'info',
+        parseHTML: (element) => hintIcon(element.getAttribute('data-icon')),
+        renderHTML: (attributes) => ({ 'data-icon': hintIcon(attributes.icon) }),
+      },
+    }
+  },
+  parseHTML() { return [{ tag: 'aside[data-rich-text-hint]' }] },
+  renderHTML({ HTMLAttributes }) { return ['aside', mergeAttributes({ 'data-rich-text-hint': 'true', class: 'rich-text-hint' }, HTMLAttributes), 0] },
+})
 
 const COMMAND_OPTIONS: readonly CommandOption[] = [
   { id: 'text', label: 'Text', hint: 'Start writing normally' },
@@ -33,6 +60,7 @@ export function RichTextEditor({ id, name, value, onChange, required = false, pl
   const [activeSlashIndex, setActiveSlashIndex] = useState(0)
   const [linkOpen, setLinkOpen] = useState(false)
   const [linkValue, setLinkValue] = useState('')
+  const [iconPickerOpen, setIconPickerOpen] = useState(false)
   const [, redraw] = useState(0)
 
   const refreshSlash = useCallback((current: Editor) => {
@@ -55,6 +83,7 @@ export function RichTextEditor({ id, name, value, onChange, required = false, pl
     immediatelyRender: false,
     extensions: [
       StarterKit.configure({ heading: { levels: [1, 2, 3] }, link: false }),
+      Hint,
       Link.configure({ openOnClick: false, autolink: true, linkOnPaste: true, HTMLAttributes: { rel: 'noreferrer noopener', target: '_blank' } }),
       Placeholder.configure({ placeholder: placeholder ?? 'Write here…' }),
     ],
@@ -87,7 +116,7 @@ export function RichTextEditor({ id, name, value, onChange, required = false, pl
     if (option.id === 'bullet-list') chain = chain.toggleBulletList()
     if (option.id === 'bold') chain = chain.toggleBold()
     if (option.id === 'italic') chain = chain.toggleItalic()
-    if (option.id === 'hint') chain = chain.toggleBlockquote().insertContent('💡 ')
+    if (option.id === 'hint') chain = chain.setNode('hint', { icon: 'info' })
     if (option.id === 'quote') chain = chain.toggleBlockquote()
     chain.run()
     setSlashMenu(null)
@@ -104,6 +133,10 @@ export function RichTextEditor({ id, name, value, onChange, required = false, pl
     if (href === '') editor.chain().focus().unsetLink().run()
     else editor.chain().focus().setLink({ href: /^(https?:|mailto:)/i.test(href) ? href : `https://${href}` }).run()
     setLinkOpen(false)
+  }
+  const changeHintIcon = (icon: HintIcon) => {
+    editor?.chain().focus().updateAttributes('hint', { icon }).run()
+    setIconPickerOpen(false)
   }
   const options = slashMenu ? COMMAND_OPTIONS.filter((option) => option.label.toLowerCase().includes(slashMenu.query.toLowerCase())) : []
 
@@ -139,6 +172,7 @@ export function RichTextEditor({ id, name, value, onChange, required = false, pl
         <div className="relative ml-auto flex items-center gap-1">
           <ToolbarButton label="Bold" active={editor?.isActive('bold') ?? false} onClick={() => editor?.chain().focus().toggleBold().run()}><strong>B</strong></ToolbarButton>
           <ToolbarButton label="Italic" active={editor?.isActive('italic') ?? false} onClick={() => editor?.chain().focus().toggleItalic().run()}><em>I</em></ToolbarButton>
+          {editor?.isActive('hint') ? <div className="relative"><ToolbarButton label="Change hint icon" active={iconPickerOpen} onClick={() => setIconPickerOpen((open) => !open)}>{HINT_ICONS[hintIcon(editor.getAttributes('hint').icon)]}</ToolbarButton>{iconPickerOpen ? <div role="menu" aria-label="Hint icon" className="absolute right-0 bottom-[calc(100%+8px)] z-40 flex gap-1 rounded-lg border border-rule-strong bg-surface p-1.5 shadow-pop">{(Object.keys(HINT_ICONS) as HintIcon[]).map((icon) => <button key={icon} type="button" role="menuitemradio" aria-checked={hintIcon(editor.getAttributes('hint').icon) === icon} aria-label={`Use ${icon} hint icon`} onMouseDown={(event) => event.preventDefault()} onClick={() => changeHintIcon(icon)} className={`grid size-9 place-items-center rounded-md text-lg focus-visible:outline-2 focus-visible:outline-accent ${hintIcon(editor.getAttributes('hint').icon) === icon ? 'bg-accent text-accent-foreground' : 'text-ink-2 hover:bg-surface-2'}`}>{HINT_ICONS[icon]}</button>)}</div> : null}</div> : null}
           <ToolbarButton label="Add link" active={editor?.isActive('link') ?? false} disabled={!editor || editor.state.selection.empty} onClick={openLink}>↗</ToolbarButton>
           {linkOpen ? <div role="dialog" aria-label="Add link" className="absolute right-0 bottom-[calc(100%+8px)] z-40 flex w-[290px] gap-2 rounded-lg border border-rule-strong bg-surface p-2 shadow-pop"><input autoFocus value={linkValue} onChange={(event) => setLinkValue(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); saveLink() } if (event.key === 'Escape') { event.preventDefault(); setLinkOpen(false) } }} placeholder="https://example.com" className="min-w-0 flex-1 rounded-md border border-rule-strong bg-surface px-2 py-1.5 text-meta text-ink outline-none focus:border-accent" /><button type="button" onClick={saveLink} className="rounded-md bg-accent px-2.5 py-1.5 text-meta font-medium text-accent-foreground">Apply</button></div> : null}
         </div>
@@ -165,7 +199,8 @@ function editorHtmlToMarkdown(root: HTMLElement): string {
       case 'li': return text
       case 'ul': return Array.from(element.children).map((child) => `- ${convert(child).trim()}`).join('\n') + '\n\n'
       case 'ol': return Array.from(element.children).map((child, index) => `${index + 1}. ${convert(child).trim()}`).join('\n') + '\n\n'
-      case 'blockquote': return `> ${text.trim().replace(/\n+/g, '\n> ')}\n\n`
+      case 'aside': return element.hasAttribute('data-rich-text-hint') ? `:::hint[${hintIcon(element.getAttribute('data-icon'))}]\n${text.trim()}\n:::\n\n` : text
+      case 'blockquote': return `:::quote\n${text.trim()}\n:::\n\n`
       case 'div': case 'p': return `${text}\n\n`
       default: return text
     }
@@ -178,11 +213,14 @@ function markdownToEditorHtml(value: string): string {
     const line = lines[index]; if (line.trim() === '') { index += 1; continue }
     const heading = /^(#{1,3})\s+(.+)$/.exec(line)
     if (heading) { const level = heading[1].length; blocks.push(`<h${level}>${inlineToHtml(heading[2])}</h${level}>`); index += 1; continue }
+    const callout = /^:::(hint|quote)(?:\[([a-z]+)\])?$/.exec(line)
+    if (callout) { const content: string[] = []; index += 1; while (index < lines.length && lines[index] !== ':::') { content.push(lines[index]); index += 1 }; if (lines[index] === ':::') index += 1; const body = inlineToHtml(content.join('\n')).replace(/\n/g, '<br>'); blocks.push(callout[1] === 'hint' ? `<aside data-rich-text-hint="true" data-icon="${hintIcon(callout[2])}">${body}</aside>` : `<blockquote><p>${body}</p></blockquote>`); continue }
     if (/^>\s?/.test(line)) { const quote: string[] = []; while (index < lines.length && /^>\s?/.test(lines[index])) { quote.push(lines[index].replace(/^>\s?/, '')); index += 1 }; blocks.push(`<blockquote><p>${inlineToHtml(quote.join('\n')).replace(/\n/g, '<br>')}</p></blockquote>`); continue }
     const list = /^(?:[-*]\s+|\d+\.\s+)/.test(line)
     if (list) { const ordered = /^\d+\.\s+/.test(line); const items: string[] = []; while (index < lines.length && (ordered ? /^\d+\.\s+/.test(lines[index]) : /^[-*]\s+/.test(lines[index]))) { items.push(`<li>${inlineToHtml(lines[index].replace(ordered ? /^\d+\.\s+/ : /^[-*]\s+/, ''))}</li>`); index += 1 }; blocks.push(`<${ordered ? 'ol' : 'ul'}>${items.join('')}</${ordered ? 'ol' : 'ul'}>`); continue }
-    const paragraph: string[] = [line]; index += 1; while (index < lines.length && lines[index].trim() !== '' && !/^(#{1,3}\s+|[-*]\s+|\d+\.\s+)/.test(lines[index])) { paragraph.push(lines[index]); index += 1 }; blocks.push(`<p>${inlineToHtml(paragraph.join('\n')).replace(/\n/g, '<br>')}</p>`)
+    const paragraph: string[] = [line]; index += 1; while (index < lines.length && lines[index].trim() !== '' && !/^(#{1,3}\s+|[-*]\s+|\d+\.\s+|:::)/.test(lines[index])) { paragraph.push(lines[index]); index += 1 }; blocks.push(`<p>${inlineToHtml(paragraph.join('\n')).replace(/\n/g, '<br>')}</p>`)
   }
   return blocks.join('')
 }
 function inlineToHtml(value: string): string { const escaped = value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); return escaped.replace(/\[([^\]]+)\]\((https?:[^\s)]+|mailto:[^\s)]+)\)/g, '<a href="$2">$1</a>').replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>').replace(/\*([^*]+)\*/g, '<em>$1</em>') }
+function hintIcon(value: unknown): HintIcon { return typeof value === 'string' && value in HINT_ICONS ? value as HintIcon : 'info' }

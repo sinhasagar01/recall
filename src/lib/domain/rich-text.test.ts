@@ -10,4 +10,8 @@ describe('rich text storage', () => {
   it('normalises line endings without flattening an author’s structure', () => {
     expect(normaliseRichText('  First\r\n\r\nSecond  ')).toBe('First\n\nSecond')
   })
+
+  it('keeps callout text searchable without exposing its storage markers', () => {
+    expect(richTextToPlainText(':::hint[check]\nRemember this\n:::\n\n:::quote\nA useful quote\n:::')).toBe('Remember this A useful quote')
+  })
 })

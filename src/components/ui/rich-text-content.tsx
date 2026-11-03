@@ -1,6 +1,8 @@
 import { Fragment, type ReactNode } from 'react'
 
 type Props = { value: string; className?: string }
+const HINT_ICONS = { info: 'ⓘ', smile: '☻', check: '✓', alert: '!', cross: '×' } as const
+type HintIcon = keyof typeof HINT_ICONS
 
 /** Renders Recall's safe Markdown subset as React nodes — never raw HTML. */
 export function RichTextContent({ value, className }: Props) {
@@ -8,6 +10,14 @@ export function RichTextContent({ value, className }: Props) {
   return (
     <div className={className}>
       {blocks.map((block, index) => {
+        const callout = /^:::(hint|quote)(?:\[([a-z]+)\])?\n([\s\S]*?)\n?:::$/.exec(block)
+        if (callout) {
+          if (callout[1] === 'hint') {
+            const icon = hintIcon(callout[2])
+            return <aside key={index} className="rich-text-hint-display" data-icon={icon}><span aria-hidden="true" className="rich-text-hint-display-icon">{HINT_ICONS[icon]}</span><p>{inline(callout[3])}</p></aside>
+          }
+          return <blockquote key={index} className="rich-text-quote-display">{callout[3].split('\n').map((line, item) => <Fragment key={item}>{item > 0 ? <br /> : null}{inline(line)}</Fragment>)}</blockquote>
+        }
         const heading = /^(#{1,3})\s+([\s\S]*)$/.exec(block)
         if (heading) {
           const Tag = `h${heading[1].length}` as 'h1' | 'h2' | 'h3'
@@ -20,8 +30,8 @@ export function RichTextContent({ value, className }: Props) {
           const hint = quote.startsWith('💡 ')
           const text = hint ? quote.slice(3) : quote
           return hint
-            ? <aside key={index} className="rounded-md border border-accent/30 bg-accent-soft px-4 py-3 text-ink"><p className="mb-1 font-mono text-mono-sm font-semibold tracking-[0.08em] text-accent-ink uppercase">Hint</p><p>{inline(text)}</p></aside>
-            : <blockquote key={index} className="border-l-2 border-rule-strong pl-4 italic text-ink-2">{lines.map((line, item) => <Fragment key={item}>{item > 0 ? <br /> : null}{inline(line.replace(/^>\s?/, ''))}</Fragment>)}</blockquote>
+            ? <aside key={index} className="rich-text-hint-display" data-icon="info"><span aria-hidden="true" className="rich-text-hint-display-icon">{HINT_ICONS.info}</span><p>{inline(text)}</p></aside>
+            : <blockquote key={index} className="rich-text-quote-display">{lines.map((line, item) => <Fragment key={item}>{item > 0 ? <br /> : null}{inline(line.replace(/^>\s?/, ''))}</Fragment>)}</blockquote>
         }
         if (lines.every((line) => /^\d+\.\s+/.test(line))) return <ol key={index} className="list-decimal space-y-1 pl-6">{lines.map((line, item) => <li key={item}>{inline(line.replace(/^\d+\.\s+/, ''))}</li>)}</ol>
         if (lines.every((line) => /^[-*]\s+/.test(line))) return <ul key={index} className="list-disc space-y-1 pl-6">{lines.map((line, item) => <li key={item}>{inline(line.replace(/^[-*]\s+/, ''))}</li>)}</ul>
@@ -30,6 +40,8 @@ export function RichTextContent({ value, className }: Props) {
     </div>
   )
 }
+
+function hintIcon(value: string | undefined): HintIcon { return value && value in HINT_ICONS ? value as HintIcon : 'info' }
 
 function inline(value: string): ReactNode[] {
   const nodes: ReactNode[] = []

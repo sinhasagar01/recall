@@ -11,6 +11,8 @@ export function richTextToPlainText(value: string): string {
     .replace(/\*([^*]+)\*/g, '$1')
     .replace(/^#{1,3}\s+/gm, '')
     .replace(/^>\s?/gm, '')
+    .replace(/^:::(?:hint|quote)(?:\[[a-z]+\])?$/gm, '')
+    .replace(/^:::\s*$/gm, '')
     .replace(/^\s*(?:[-*]|\d+\.)\s+/gm, '')
     .replace(/\\([\\[\]()*_])/g, '$1')
     .replace(/\s+/g, ' ')
