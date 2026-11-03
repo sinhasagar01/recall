@@ -9,6 +9,7 @@ import { ConfidenceMeter } from '@/components/ui/confidence-meter'
 import { Lightbox } from '@/components/ui/lightbox'
 import { Modal } from '@/components/ui/modal'
 import { Definition, MentalModel, RegisterSection } from '@/components/ui/register'
+import { RichTextContent } from '@/components/ui/rich-text-content'
 import { EvidenceSection } from '@/components/evidence/evidence-section'
 import { TopicCapabilityLine } from '@/components/phases/topic-capability-line'
 import type { Capability, Phase } from '@/lib/domain/phases'
@@ -115,12 +116,12 @@ export function TopicDetail({
         rendered empty; e2e/quiz.spec.ts asserts the section is absent, because a
         blank Definition register is invisible to the compiler and looks almost right.
       */}
-      {topic.kind === 'topic' ? <Definition>{topic.definition}</Definition> : null}
+      {topic.kind === 'topic' ? <Definition><RichTextContent value={topic.definition} /></Definition> : null}
       {topic.code_example ? <RegisterSection title={topic.code_language ?? 'Code example'}><div className="mt-2.5 overflow-hidden rounded-md border border-[#30363d] bg-[#0d1117]"><LearnCodeEditor code={topic.code_example} language={topic.code_language} /></div></RegisterSection> : null}
       {topic.mental_model ? (
         // "Why" is the word the add sheet uses for a quiz's explanation.
         <MentalModel label={topic.kind === 'quiz' ? 'Why' : 'Mental model'}>
-          {topic.mental_model}
+          <RichTextContent value={topic.mental_model} />
         </MentalModel>
       ) : null}
 
@@ -317,7 +318,7 @@ export function TopicDetail({
         />
       ) : null}
 
-      {saved ? <Toast message="Changes saved" /> : null}
+      {saved ? <Toast message="Changes saved" onDismiss={() => setSaved(null)} /> : null}
     </article>
   )
 }

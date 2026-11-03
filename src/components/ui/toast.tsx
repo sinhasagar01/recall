@@ -1,5 +1,7 @@
 'use client'
 
+import { useEffect } from 'react'
+
 /*
   A pill at the bottom of the screen. role="status" so it is announced without
   stealing focus; the error variant uses role="alert" because it interrupts.
@@ -8,11 +10,21 @@ export function Toast({
   message,
   tone = 'default',
   action,
+  onDismiss,
+  duration = 1000,
 }: {
   message: string
   tone?: 'default' | 'error'
   action?: { label: string; onClick: () => void }
+  onDismiss: () => void
+  duration?: number
 }) {
+  useEffect(() => {
+    if (tone === 'error') return
+    const timer = window.setTimeout(onDismiss, duration)
+    return () => window.clearTimeout(timer)
+  }, [duration, onDismiss, tone])
+
   return (
     <div
       role={tone === 'error' ? 'alert' : 'status'}

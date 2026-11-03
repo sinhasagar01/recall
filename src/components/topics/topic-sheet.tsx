@@ -9,7 +9,9 @@ import { Segmented } from '@/components/ui/segmented'
 import { Select } from '@/components/ui/select'
 import { Sheet } from '@/components/ui/sheet'
 import { TagsInput } from '@/components/ui/tags-input'
+import { RichTextEditor } from '@/components/ui/rich-text'
 import { suggestCategory, UNCATEGORIZED } from '@/lib/domain/category-suggest'
+import { richTextToPlainText } from '@/lib/domain/rich-text'
 import { DIFFICULTY_LABEL, type CategoryOption } from '@/lib/domain/library'
 import { QuizOptionsField } from '@/components/topics/quiz-options-field'
 import type { Difficulty, Kind } from '@/lib/domain/types'
@@ -130,7 +132,7 @@ export function TopicSheet({
     The Suggested group comes from the phase 2 keyword heuristic. No AI, no keys —
     it reads the title and definition the user has already typed.
   */
-  const suggestion = useMemo(() => suggestCategory(title, definition), [title, definition])
+  const suggestion = useMemo(() => suggestCategory(title, richTextToPlainText(definition)), [title, definition])
 
   /*
     What the control shows and what a save sends. The app had this answer already
@@ -366,14 +368,14 @@ export function TopicSheet({
             <label htmlFor="definition" className="mb-1.5 block text-label font-medium text-ink">
               Definition
             </label>
-            <textarea
+            <RichTextEditor
               id="definition"
               name="definition"
               required
-              rows={4}
               value={definition}
-              onChange={(event) => setDefinition(event.target.value)}
-              className="w-full rounded-md border border-rule-strong bg-surface px-3 py-2.5 text-body leading-[1.5] text-ink outline-offset-[-1px] focus:border-accent focus:outline-2 focus:outline-accent"
+              onChange={setDefinition}
+              ariaLabel="Definition"
+              placeholder="Explain the concept in your own words."
             />
           </div>
         )}
@@ -392,14 +394,14 @@ export function TopicSheet({
               {isQuiz ? 'shown after you answer' : 'how you think about it'}
             </span>
           </label>
-          <textarea
+          <RichTextEditor
             id="mental_model"
             name="mental_model"
             required={isQuiz}
-            rows={3}
             value={mentalModel}
-            onChange={(event) => setMentalModel(event.target.value)}
-            className="w-full rounded-md border border-rule-strong bg-surface px-3 py-2.5 text-body leading-[1.5] text-ink outline-offset-[-1px] focus:border-accent focus:outline-2 focus:outline-accent"
+            onChange={setMentalModel}
+            ariaLabel={isQuiz ? 'Why' : 'Mental model'}
+            placeholder={isQuiz ? 'Explain why the answer is correct.' : 'Add an analogy, intuition, or useful way to think about it.'}
           />
         </div>
 

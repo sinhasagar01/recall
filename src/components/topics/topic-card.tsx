@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { ConfidenceMeter } from '@/components/ui/confidence-meter'
 import { topicPath } from '@/lib/domain/library'
 import type { Topic } from '@/lib/domain/types'
+import { richTextToPlainText } from '@/lib/domain/rich-text'
 import { EvidenceBar } from '@/components/evidence/evidence-bar'
 import { hasEvidence } from '@/lib/domain/evidence'
 
@@ -63,7 +64,7 @@ export function TopicCard({ topic, timestamp, selected, selectionMode = false, o
           instead of a blank hole, while topic definitions stay scannable.
         */}
         {topic.kind === 'topic' ? (
-          <p className="mt-4 min-h-[47px] line-clamp-2 text-option leading-[1.65] text-ink-2">{topic.definition}</p>
+          <p className="mt-4 min-h-[47px] line-clamp-2 text-option leading-[1.65] text-ink-2">{richTextToPlainText(topic.definition)}</p>
         ) : (
           <p className="mt-4 min-h-[47px] text-option leading-[1.65] text-ink-2">Choose an answer, then check the reasoning.</p>
         )}
@@ -125,7 +126,7 @@ export function TopicListItem({ topic, timestamp, selected, selectionMode = fals
   const secondaryText = complete ? 'text-ink-2' : 'text-ink-3'
   const description = topic.kind === 'quiz'
     ? 'Choose an answer, then check the reasoning.'
-    : topic.definition
+    : richTextToPlainText(topic.definition)
 
   return (
     <div className="relative">

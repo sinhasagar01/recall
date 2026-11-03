@@ -6,9 +6,10 @@ import { Button } from '@/components/ui/button'
 import { Kbd } from '@/components/ui/kbd'
 import { ConfidenceMeter } from '@/components/ui/confidence-meter'
 import { MentalModel } from '@/components/ui/register'
+import { RichTextContent } from '@/components/ui/rich-text-content'
 import { CONFIDENCE_LABEL, gradeQuiz } from '@/lib/domain/confidence'
 import { seededShuffle } from '@/lib/domain/practice-selection'
-import type { QueueTopic, Quiz } from '@/lib/domain/types'
+import type { QueueTopic } from '@/lib/domain/types'
 
 /**
  * Answering a quiz. Select, then Check.
@@ -224,7 +225,7 @@ export function QuizCard({
             reference draws no eyebrow there. Same panel the detail page and a
             topic's mental model use — one field, one register, one voice.
           */}
-          {quiz.mental_model ? <MentalModel label={null}>{quiz.mental_model}</MentalModel> : null}
+          {quiz.mental_model ? <MentalModel label={null}><RichTextContent value={quiz.mental_model} /></MentalModel> : null}
 
           {/*
             The verdict, with the meter the rest of the app uses for confidence —

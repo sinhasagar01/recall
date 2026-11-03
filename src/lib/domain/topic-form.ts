@@ -1,4 +1,5 @@
 import type { Kind } from '@/lib/domain/types'
+import { normaliseRichText, richTextToPlainText } from '@/lib/domain/rich-text'
 
 /**
  * Reading the add/edit sheet's form data, for both shapes.
@@ -67,7 +68,7 @@ export const MIN_QUIZ_OPTIONS = 2
 
 export function parseTopicForm(input: TopicFormInput): ParsedTopicForm {
   const title = input.title.trim()
-  const mentalModel = input.mentalModel.trim()
+  const mentalModel = normaliseRichText(input.mentalModel)
   const category = input.category.trim()
 
   const shared = {
@@ -126,9 +127,9 @@ export function parseTopicForm(input: TopicFormInput): ParsedTopicForm {
     }
   }
 
-  const definition = input.definition.trim()
+  const definition = normaliseRichText(input.definition)
   if (title === '') return { error: 'Give the topic a title so you can find it again.' }
-  if (definition === '') return { error: 'A topic needs a definition. What is it?' }
+  if (richTextToPlainText(definition) === '') return { error: 'A topic needs a definition. What is it?' }
 
   return {
     value: { ...shared, kind: 'topic', definition, options: null, correct_option: null },

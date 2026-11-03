@@ -44,7 +44,7 @@ export function RegisterSection({
 export function Definition({ children }: { children: React.ReactNode }) {
   return (
     <RegisterSection title="Definition">
-      <p className="mt-2.5 max-w-[66ch] text-register leading-[1.72] text-ink">{children}</p>
+      <div className="mt-2.5 max-w-[66ch] space-y-3 text-register leading-[1.72] text-ink">{children}</div>
     </RegisterSection>
   )
 }
@@ -68,9 +68,9 @@ export function MentalModel({
   label?: string | null
 }) {
   const panel = (
-    <p className="max-w-[66ch] rounded-r-md border-l-2 border-accent bg-accent-soft px-5 py-4 font-display text-model leading-[1.68] text-accent-ink">
+    <div className="max-w-[66ch] space-y-3 rounded-r-md border-l-2 border-accent bg-accent-soft px-5 py-4 font-display text-model leading-[1.68] text-accent-ink">
       {children}
-    </p>
+    </div>
   )
 
   if (label === null) return <div className="mt-[18px] mb-[26px]">{panel}</div>
