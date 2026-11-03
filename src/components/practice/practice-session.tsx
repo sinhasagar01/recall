@@ -9,12 +9,13 @@ import { ConfidenceMeter } from '@/components/ui/confidence-meter'
 import { Kbd } from '@/components/ui/kbd'
 import { QuizBadge } from '@/components/ui/quiz-badge'
 import { Definition, MentalModel, RegisterSection } from '@/components/ui/register'
+import { RichTextContent } from '@/components/ui/rich-text-content'
 import { QuizCard } from '@/components/practice/quiz-card'
 import { answerQuiz, gradeTopic } from '@/app/(practice)/practice/actions'
 import { CONFIDENCE_LABEL, GRADE_TO_CONFIDENCE, gradeQuiz, type Grade } from '@/lib/domain/confidence'
 import { topicPath } from '@/lib/domain/library'
 import { sessionSummary, sessionTally, type GradedResult } from '@/lib/domain/practice-session'
-import type { QueueTopic, Topic } from '@/lib/domain/types'
+import type { QueueTopic } from '@/lib/domain/types'
 import { BackToLibrary } from '@/components/ui/back-to-library'
 
 const GRADES = [
@@ -244,8 +245,8 @@ export function PracticeSession({
           </RegisterSection>
 
           {/* The same two components the detail page imports. */}
-          <Definition>{topic.definition}</Definition>
-          {topic.mental_model ? <MentalModel>{topic.mental_model}</MentalModel> : null}
+          <Definition><RichTextContent value={topic.definition} /></Definition>
+          {topic.mental_model ? <MentalModel><RichTextContent value={topic.mental_model} /></MentalModel> : null}
 
           {imageUrls[topic.id] ? (
             <RegisterSection title="Visual">

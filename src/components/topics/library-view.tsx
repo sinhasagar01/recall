@@ -653,8 +653,8 @@ export function LibraryView({
         This removes the selected topics and quizzes, along with any attached diagrams and practice results. It can&apos;t be undone.
       </Modal>
 
-      {saved ? <Toast message={`Saved — ${saved}`} /> : null}
-      {deleteNotice ? <Toast message={deleteNotice} /> : null}
+      {saved ? <Toast message={`Saved — ${saved}`} onDismiss={() => setSaved(null)} /> : null}
+      {deleteNotice ? <Toast message={deleteNotice} onDismiss={() => setDeleteNotice(null)} /> : null}
     </>
   )
 }
