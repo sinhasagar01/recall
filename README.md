@@ -37,6 +37,7 @@ The product separates **topics** from **quizzes** all the way through practice. 
 | **Learn** | Turns a transcript into an active lesson: understand once, recall, trace code, transfer the idea, then add compact prompts to the review queue. |
 | **Sources & phases** | Keep the origin of a concept, connect it to a learning phase, and see progress without flattening everything into a single score. |
 | **Rich technical notes** | Markdown-compatible rich text with headings, lists, links, bold, italics, quotes, syntax-highlighted code, and configurable hint callouts. |
+| **Portable library** | Export a self-contained archive, then add its topics and quizzes to another Recall library without overwriting existing work. |
 | **Interview workspace** | A dedicated area to practise and record demonstrated capability, rather than treating learning as a passive reading log. |
 
 The library is designed as a working knowledge base—not a pile of cards. Filters, confidence, category tags, completion state, bulk actions, and tile/list views help someone decide what to learn or revisit next.

@@ -5,7 +5,8 @@ import { cache } from 'react'
 
 import { toTopic } from '@/lib/data/topic-mapping'
 import { evidenceColumns, type EvidenceKind } from '@/lib/domain/evidence'
-import type { Confidence, Difficulty, Topic } from '@/lib/domain/types'
+import type { ImportedTopic } from '@/lib/domain/library-import'
+import type { Difficulty, Topic } from '@/lib/domain/types'
 import { createClient } from '@/lib/supabase/server'
 import type { TopicPracticeUpdate } from '@/lib/domain/confidence'
 
@@ -126,6 +127,25 @@ export async function insertTopic(input: NewTopic, provenance: Provenance = {}):
 
   if (error) fail('Saving the topic', error)
 
+  return toTopic(data)
+}
+
+/**
+ * Adds one record from a Recall export. It intentionally never receives an id,
+ * user id, source id, or capability id: importing into another account creates
+ * new library entries and cannot overwrite or cross-link existing ones.
+ */
+export async function insertImportedTopic(input: ImportedTopic): Promise<Topic> {
+  const supabase = await createClient()
+  const { imageEntry, ...row } = input
+  void imageEntry
+  const { data, error } = await supabase
+    .from('topics')
+    .insert({ ...row, source_id: null, capability_id: null, mental_model_image_path: null })
+    .select()
+    .single()
+
+  if (error) fail('Adding an imported topic', error)
   return toTopic(data)
 }
 

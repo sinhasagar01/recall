@@ -54,15 +54,14 @@ const PRIVATE_GROUPS = readdirSync(APP, { withFileTypes: true })
 /**
  * Private, but guarded by itself rather than by the proxy — with the reason.
  *
- * `/export` is a route handler that answers a file. A proxy redirect would send a
- * 307 to `/sign-in` and the browser would save the sign-in page's HTML under the
- * name of a zip; the handler returns **401** instead, which `export.spec.ts`
- * asserts. Guarding it here as well would turn that 401 into a redirect and break
- * it, which is exactly what happened when this list was first widened.
+ * `/export` and `/import` are route handlers for a library archive. A proxy
+ * redirect would make an API caller treat sign-in HTML as a zip response; both
+ * handlers return **401** JSON instead. Guarding them here would turn that into
+ * a redirect and break the error contract.
  *
  * An entry here is a claim that the route guards itself, so each one names how.
  */
-const SELF_GUARDED = ['/export']
+const SELF_GUARDED = ['/export', '/import']
 
 function routesIn(group: string): string[] {
   return readdirSync(join(APP, group), { withFileTypes: true })
