@@ -11,6 +11,10 @@ Recall is not an LMS, a course platform, or another generic flashcard app. It is
 
 Built independently as a product-engineering project, from information architecture and interaction design through database constraints, performance work, accessibility, testing, and release.
 
+<p align="center">
+  <img src="public/readme/home-dashboard.jpg" alt="Recall homepage showing the next useful learning action" width="960" />
+</p>
+
 ## The learning loop
 
 ```mermaid
@@ -34,6 +38,12 @@ The product separates **topics** from **quizzes** all the way through practice. 
 | **Sources & phases** | Keep the origin of a concept, connect it to a learning phase, and see progress without flattening everything into a single score. |
 | **Rich technical notes** | Markdown-compatible rich text with headings, lists, links, bold, italics, quotes, syntax-highlighted code, and configurable hint callouts. |
 | **Interview workspace** | A dedicated area to practise and record demonstrated capability, rather than treating learning as a passive reading log. |
+
+The library is designed as a working knowledge base—not a pile of cards. Filters, confidence, category tags, completion state, bulk actions, and tile/list views help someone decide what to learn or revisit next.
+
+<p align="center">
+  <img src="public/readme/library.jpg" alt="Recall library showing filters, topic cards, quizzes, confidence, and categories" width="960" />
+</p>
 
 ## Rich notes that stay readable
 
