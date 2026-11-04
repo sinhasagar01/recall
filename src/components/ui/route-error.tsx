@@ -4,6 +4,12 @@ import { Button } from '@/components/ui/button'
 import { StateBlock } from '@/components/ui/state-block'
 
 export function RouteError({ error, reset, title = "Couldn't load this page" }: { error: Error & { digest?: string }; reset: () => void; title?: string }) {
+  const detail = process.env.NODE_ENV === 'development'
+    ? error.message
+    : error.digest
+      ? `Reference: ${error.digest}`
+      : undefined
+
   return (
     <StateBlock
       tone="error"
@@ -11,7 +17,7 @@ export function RouteError({ error, reset, title = "Couldn't load this page" }: 
       title={title}
       body="The request did not finish. Your saved work is safe—try again in a moment."
       action={<Button variant="primary" onClick={reset}>Try again</Button>}
-      footnote={error.message}
+      footnote={detail}
     />
   )
 }

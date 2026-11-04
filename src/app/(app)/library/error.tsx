@@ -10,6 +10,12 @@ export default function LibraryError({
   error: Error & { digest?: string }
   reset: () => void
 }) {
+  const detail = process.env.NODE_ENV === 'development'
+    ? error.message
+    : error.digest
+      ? `Reference: ${error.digest}`
+      : undefined
+
   return (
     <>
       <div className="mb-[22px]">
@@ -28,14 +34,14 @@ export default function LibraryError({
           </svg>
         }
         title="Couldn't load your topics"
-        body="The request to the database failed. Your topics are safe — this is a connection problem, not a data problem."
+        body="The server could not load your library. Your topics are safe — try again in a moment."
         action={
           <Button variant="primary" onClick={reset}>
             Try again
           </Button>
         }
-        /* The real reason, as the mock shows it. Never a generic apology. */
-        footnote={error.message}
+        /* Production Server Component messages are intentionally redacted by React. */
+        footnote={detail}
       />
     </>
   )
