@@ -256,6 +256,27 @@
 .rich-text-editor .ProseMirror blockquote,
 .rich-text-quote-display { margin: 0 0 10px; border-left: 3px solid var(--color-rule-strong); border-radius: 0 6px 6px 0; padding: 8px 14px; color: var(--color-ink-2); }
 .rich-text-editor .ProseMirror blockquote p { margin: 0; }
+.rich-text-editor .ProseMirror pre,
+.rich-text-code-display { overflow-x: auto; margin: 0 0 10px; border: 1px solid #30363d; border-radius: 8px; background: #0d1117; padding: 14px 16px; color: #c9d1d9; font-family: var(--font-mono); font-size: 13px; line-height: 1.7; tab-size: 2; }
+.rich-text-editor .ProseMirror pre code,
+.rich-text-code-display code { display: block; min-width: max-content; font-family: inherit; }
+.rich-text-editor .ProseMirror pre code:empty::before { content: 'Write code here'; color: #8b949e; pointer-events: none; }
+.rich-text-editor .ProseMirror .hljs-keyword,
+.rich-text-code-display .hljs-keyword { color: #ff7b72; }
+.rich-text-editor .ProseMirror .hljs-string,
+.rich-text-code-display .hljs-string { color: #a5d6ff; }
+.rich-text-editor .ProseMirror .hljs-number,
+.rich-text-editor .ProseMirror .hljs-literal,
+.rich-text-code-display .hljs-number,
+.rich-text-code-display .hljs-literal { color: #79c0ff; }
+.rich-text-editor .ProseMirror .hljs-comment,
+.rich-text-code-display .hljs-comment { color: #8b949e; font-style: italic; }
+.rich-text-editor .ProseMirror .hljs-title,
+.rich-text-editor .ProseMirror .hljs-function,
+.rich-text-code-display .hljs-title,
+.rich-text-code-display .hljs-function { color: #d2a8ff; }
+.rich-text-editor .ProseMirror .hljs-params,
+.rich-text-code-display .hljs-params { color: #c9d1d9; }
 .rich-text-editor .ProseMirror .rich-text-hint,
 .rich-text-hint-display { position: relative; margin: 0 0 10px; border: 1px solid color-mix(in srgb, var(--color-accent) 35%, var(--color-rule)); border-radius: 10px; background: var(--color-accent-soft); padding: 12px 14px 12px 48px; color: var(--color-ink); }
 .rich-text-editor .ProseMirror .rich-text-hint::before,

@@ -4,11 +4,13 @@ import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type Reac
 import { mergeAttributes, Node as TiptapNode, type Editor } from '@tiptap/core'
 import { EditorContent, useEditor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
+import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
 import Link from '@tiptap/extension-link'
 import Placeholder from '@tiptap/extension-placeholder'
+import { codeHighlighter } from '@/lib/code-highlighting'
 
 type Props = { id: string; name: string; value: string; onChange: (value: string) => void; required?: boolean; placeholder?: string; ariaLabel: string }
-type CommandId = 'text' | 'heading-1' | 'heading-2' | 'heading-3' | 'ordered-list' | 'bullet-list' | 'bold' | 'italic' | 'hint' | 'quote'
+type CommandId = 'text' | 'heading-1' | 'heading-2' | 'heading-3' | 'ordered-list' | 'bullet-list' | 'bold' | 'italic' | 'hint' | 'quote' | 'code-block'
 type CommandOption = { id: CommandId; label: string; hint: string }
 type SlashMenu = { query: string; top: number; left: number; from: number; to: number }
 type HintIcon = keyof typeof HINT_ICONS
@@ -50,6 +52,7 @@ const COMMAND_OPTIONS: readonly CommandOption[] = [
   { id: 'italic', label: 'Italic', hint: 'Add nuance or emphasis' },
   { id: 'hint', label: 'Hint', hint: 'A helpful memory cue' },
   { id: 'quote', label: 'Quote', hint: 'A quoted idea or source' },
+  { id: 'code-block', label: 'Code block', hint: 'A formatted code example' },
 ]
 
 /** A real ProseMirror editor, with Recall’s compact slash-command product layer. */
@@ -82,7 +85,8 @@ export function RichTextEditor({ id, name, value, onChange, required = false, pl
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
-      StarterKit.configure({ heading: { levels: [1, 2, 3] }, link: false }),
+      StarterKit.configure({ heading: { levels: [1, 2, 3] }, link: false, codeBlock: false }),
+      CodeBlockLowlight.configure({ lowlight: codeHighlighter, defaultLanguage: 'javascript', enableTabIndentation: true }),
       Hint,
       Link.configure({ openOnClick: false, autolink: true, linkOnPaste: true, HTMLAttributes: { rel: 'noreferrer noopener', target: '_blank' } }),
       Placeholder.configure({ placeholder: placeholder ?? 'Write here…' }),
@@ -118,6 +122,7 @@ export function RichTextEditor({ id, name, value, onChange, required = false, pl
     if (option.id === 'italic') chain = chain.toggleItalic()
     if (option.id === 'hint') chain = chain.setNode('hint', { icon: 'info' })
     if (option.id === 'quote') chain = chain.toggleBlockquote()
+    if (option.id === 'code-block') chain = chain.setCodeBlock({ language: 'javascript' })
     chain.run()
     setSlashMenu(null)
   }
@@ -199,6 +204,11 @@ function editorHtmlToMarkdown(root: HTMLElement): string {
       case 'li': return text
       case 'ul': return Array.from(element.children).map((child) => `- ${convert(child).trim()}`).join('\n') + '\n\n'
       case 'ol': return Array.from(element.children).map((child, index) => `${index + 1}. ${convert(child).trim()}`).join('\n') + '\n\n'
+      case 'pre': {
+        const code = element.querySelector('code')
+        const language = code?.className.match(/language-([\w+-]+)/)?.[1] ?? 'javascript'
+        return `\`\`\`${language}\n${text.replace(/\n+$/, '')}\n\`\`\`\n\n`
+      }
       case 'aside': return element.hasAttribute('data-rich-text-hint') ? `:::hint[${hintIcon(element.getAttribute('data-icon'))}]\n${text.trim()}\n:::\n\n` : text
       case 'blockquote': return `:::quote\n${text.trim()}\n:::\n\n`
       case 'div': case 'p': return `${text}\n\n`
@@ -211,6 +221,8 @@ function markdownToEditorHtml(value: string): string {
   const blocks: string[] = []; const lines = value.replace(/\r\n?/g, '\n').split('\n'); let index = 0
   while (index < lines.length) {
     const line = lines[index]; if (line.trim() === '') { index += 1; continue }
+    const codeFence = /^```([\w+-]*)\s*$/.exec(line)
+    if (codeFence) { const code: string[] = []; index += 1; while (index < lines.length && !/^```\s*$/.test(lines[index])) { code.push(lines[index]); index += 1 }; if (index < lines.length && /^```\s*$/.test(lines[index])) index += 1; blocks.push(`<pre><code class="language-${codeLanguage(codeFence[1])}">${escapeHtml(code.join('\n'))}</code></pre>`); continue }
     const heading = /^(#{1,3})\s+(.+)$/.exec(line)
     if (heading) { const level = heading[1].length; blocks.push(`<h${level}>${inlineToHtml(heading[2])}</h${level}>`); index += 1; continue }
     const callout = /^:::(hint|quote)(?:\[([a-z]+)\])?$/.exec(line)
@@ -218,9 +230,11 @@ function markdownToEditorHtml(value: string): string {
     if (/^>\s?/.test(line)) { const quote: string[] = []; while (index < lines.length && /^>\s?/.test(lines[index])) { quote.push(lines[index].replace(/^>\s?/, '')); index += 1 }; const legacyHint = quote[0]?.startsWith('💡 '); if (legacyHint) quote[0] = quote[0].slice(3); const body = inlineToHtml(quote.join('\n')).replace(/\n/g, '<br>'); blocks.push(legacyHint ? `<aside data-rich-text-hint="true" data-icon="info">${body}</aside>` : `<blockquote><p>${body}</p></blockquote>`); continue }
     const list = /^(?:[-*]\s+|\d+\.\s+)/.test(line)
     if (list) { const ordered = /^\d+\.\s+/.test(line); const items: string[] = []; while (index < lines.length && (ordered ? /^\d+\.\s+/.test(lines[index]) : /^[-*]\s+/.test(lines[index]))) { items.push(`<li>${inlineToHtml(lines[index].replace(ordered ? /^\d+\.\s+/ : /^[-*]\s+/, ''))}</li>`); index += 1 }; blocks.push(`<${ordered ? 'ol' : 'ul'}>${items.join('')}</${ordered ? 'ol' : 'ul'}>`); continue }
-    const paragraph: string[] = [line]; index += 1; while (index < lines.length && lines[index].trim() !== '' && !/^(#{1,3}\s+|[-*]\s+|\d+\.\s+|:::)/.test(lines[index])) { paragraph.push(lines[index]); index += 1 }; blocks.push(`<p>${inlineToHtml(paragraph.join('\n')).replace(/\n/g, '<br>')}</p>`)
+    const paragraph: string[] = [line]; index += 1; while (index < lines.length && lines[index].trim() !== '' && !/^(#{1,3}\s+|[-*]\s+|\d+\.\s+|:::|```)/.test(lines[index])) { paragraph.push(lines[index]); index += 1 }; blocks.push(`<p>${inlineToHtml(paragraph.join('\n')).replace(/\n/g, '<br>')}</p>`)
   }
   return blocks.join('')
 }
-function inlineToHtml(value: string): string { const escaped = value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); return escaped.replace(/\[([^\]]+)\]\((https?:[^\s)]+|mailto:[^\s)]+)\)/g, '<a href="$2">$1</a>').replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>').replace(/\*([^*]+)\*/g, '<em>$1</em>') }
+function escapeHtml(value: string): string { return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') }
+function inlineToHtml(value: string): string { const escaped = escapeHtml(value); return escaped.replace(/\[([^\]]+)\]\((https?:[^\s)]+|mailto:[^\s)]+)\)/g, '<a href="$2">$1</a>').replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>').replace(/\*([^*]+)\*/g, '<em>$1</em>') }
+function codeLanguage(value: string): string { return /^[\w+-]+$/.test(value) && value !== '' ? value.toLowerCase() : 'javascript' }
 function hintIcon(value: unknown): HintIcon { return typeof value === 'string' && value in HINT_ICONS ? value as HintIcon : 'info' }

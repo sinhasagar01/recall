@@ -1,4 +1,5 @@
 import { Fragment, type ReactNode } from 'react'
+import { codeHighlighter, supportedCodeLanguage } from '@/lib/code-highlighting'
 
 type Props = { value: string; className?: string }
 const HINT_ICONS = { info: 'ⓘ', smile: '☻', check: '✓', alert: '!', cross: '×' } as const
@@ -6,10 +7,12 @@ type HintIcon = keyof typeof HINT_ICONS
 
 /** Renders Recall's safe Markdown subset as React nodes — never raw HTML. */
 export function RichTextContent({ value, className }: Props) {
-  const blocks = value.replace(/\r\n?/g, '\n').trim().split(/\n{2,}/)
+  const blocks = richTextBlocks(value)
   return (
     <div className={className}>
       {blocks.map((block, index) => {
+        const code = /^```([\w+-]*)\n?([\s\S]*?)\n?```$/.exec(block)
+        if (code) return <pre key={index} className="rich-text-code-display"><code className={`language-${codeLanguage(code[1])}`}>{highlightCode(code[2], codeLanguage(code[1]))}</code></pre>
         const callout = /^:::(hint|quote)(?:\[([a-z]+)\])?\n([\s\S]*?)\n?:::$/.exec(block)
         if (callout) {
           if (callout[1] === 'hint') {
@@ -41,7 +44,39 @@ export function RichTextContent({ value, className }: Props) {
   )
 }
 
+function richTextBlocks(value: string): string[] {
+  const lines = value.replace(/\r\n?/g, '\n').trim().split('\n')
+  const blocks: string[] = []; let current: string[] = []; let index = 0
+  const flush = () => { if (current.length) blocks.push(current.join('\n')); current = [] }
+  while (index < lines.length) {
+    if (/^```/.test(lines[index])) { flush(); const code = [lines[index]]; index += 1; while (index < lines.length) { code.push(lines[index]); const closing = /^```\s*$/.test(lines[index]); index += 1; if (closing) break }; blocks.push(code.join('\n')); continue }
+    if (lines[index].trim() === '') { flush(); index += 1; continue }
+    current.push(lines[index]); index += 1
+  }
+  flush(); return blocks
+}
+
 function hintIcon(value: string | undefined): HintIcon { return value && value in HINT_ICONS ? value as HintIcon : 'info' }
+function codeLanguage(value: string): string { return /^[\w+-]+$/.test(value) && value !== '' ? value.toLowerCase() : 'javascript' }
+
+type HighlightNode = { type: string; value?: string; properties?: { className?: string[] }; children?: HighlightNode[] }
+
+function highlightCode(value: string, language: string): ReactNode[] {
+  try {
+    return renderHighlightNodes(codeHighlighter.highlight(supportedCodeLanguage(language), value).children as HighlightNode[])
+  } catch {
+    return [value]
+  }
+}
+
+function renderHighlightNodes(nodes: HighlightNode[], prefix = 'code'): ReactNode[] {
+  return nodes.map((node, index) => {
+    const key = `${prefix}-${index}`
+    if (node.type === 'text') return node.value ?? ''
+    const className = node.properties?.className?.join(' ')
+    return <span key={key} className={className}>{renderHighlightNodes(node.children ?? [], key)}</span>
+  })
+}
 
 function inline(value: string): ReactNode[] {
   const nodes: ReactNode[] = []

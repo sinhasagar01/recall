@@ -15,13 +15,14 @@ import type { TopicRecord } from '@/lib/domain/types'
  * The mobile button opens the dialog with `askKind`, so the kind is chosen in the
  * dialog rather than by which cell was tapped.
  */
-export function EvidenceSection({ topic }: { topic: TopicRecord }) {
+export function EvidenceSection({ topic, compact = false }: { topic: TopicRecord; compact?: boolean }) {
   const [open, setOpen] = useState<{ kind: EvidenceKind; askKind: boolean } | null>(null)
 
   return (
     <>
       <EvidenceRow
         topic={topic}
+        compact={compact}
         onRecord={(kind) => setOpen({ kind, askKind: window.innerWidth < 860 })}
       />
 

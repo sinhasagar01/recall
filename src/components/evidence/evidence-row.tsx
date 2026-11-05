@@ -31,9 +31,12 @@ import type { TopicRecord } from '@/lib/domain/types'
  */
 export function EvidenceRow({
   topic,
+  compact = false,
   onRecord,
 }: {
   topic: TopicRecord
+  /** Two columns keep the learning signals legible inside a detail-page side panel. */
+  compact?: boolean
   onRecord: (kind: EvidenceKind) => void
 }) {
   const practised =
@@ -52,7 +55,7 @@ export function EvidenceRow({
         {EVIDENCE_RULE}
       </p>
 
-      <div className="grid grid-cols-2 overflow-hidden rounded-lg border border-rule bg-surface md:grid-cols-4">
+      <div className={`grid grid-cols-2 overflow-hidden rounded-lg border border-rule bg-surface ${compact ? 'md:grid-cols-2' : 'md:grid-cols-4'}`}>
         {/*
           `isNeverPracticed` is the project's one definition, and it keys on
           confidence rather than on a timestamp because editing a topic can set
