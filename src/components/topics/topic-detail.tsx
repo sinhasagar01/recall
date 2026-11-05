@@ -73,6 +73,7 @@ export function TopicDetail({
   const [saved, setSaved] = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [isDeleting, startDeleting] = useTransition()
+  const showEvidence = takesEvidence(topic)
 
   const confirmDelete = () => {
     startDeleting(async () => {
@@ -86,7 +87,8 @@ export function TopicDetail({
   }
 
   return (
-    <article className="max-w-[880px]">
+    <article className={showEvidence ? 'grid max-w-[1280px] gap-8 xl:grid-cols-[minmax(0,880px)_minmax(300px,1fr)] xl:items-start xl:gap-10' : 'max-w-[880px]'}>
+      <div className="min-w-0">
       <header className="mb-8 rounded-lg border border-rule bg-surface p-6 shadow-card">
         <div className="mb-5">
           <BackToLibrary>← Library</BackToLibrary>
@@ -197,7 +199,15 @@ export function TopicDetail({
         <TopicCapabilityLine capability={capability.capability} phase={capability.phase} />
       ) : null}
 
-      {takesEvidence(topic) ? <EvidenceSection topic={topic} /> : null}
+      </div>
+
+      {showEvidence ? (
+        <aside aria-label="Evidence" className="rounded-lg border border-rule bg-surface p-5 shadow-card xl:sticky xl:top-7 [&>section]:mb-0">
+          <EvidenceSection topic={topic} compact />
+        </aside>
+      ) : null}
+
+      <div className="min-w-0 xl:col-start-1">
 
       <RegisterSection title="Recall history">
         <div className="mt-3 grid grid-cols-3 gap-px overflow-hidden rounded-md border border-rule bg-rule">
@@ -271,6 +281,8 @@ export function TopicDetail({
         <Button variant="danger-quiet" onClick={() => setConfirmingDelete(true)}>
           Delete
         </Button>
+      </div>
+
       </div>
 
       {/*
